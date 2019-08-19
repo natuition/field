@@ -114,4 +114,5 @@ dmypy.json
 ~$*.*
 
 # NATUITION
-config/config_local.json
+config/config.py
+test.py
