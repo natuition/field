@@ -55,7 +55,7 @@ B_F_MAX = 1000
 C_F_MIN = 1
 C_F_MAX = 1000
 
-ONE_MM_IN_SMOOTHIE = 0.404  # for B axis!
+ONE_MM_IN_SMOOTHIE = 0.338  # for B axis! # 0.404 for new wheels
 NAV_TURN_WHEELS_CENTER = 0
 
 # ======================================================================================================================

@@ -13,17 +13,18 @@ def main():
     pca = adapters.PiCameraAdapter()
     print("Loading complete.")
 
-    dist = int(input("Move straight for (meters): "))
+    dist = float(input("Move straight for (meters): "))
     dist *= 1000  # convert to mm
+    dist = int(dist)
 
     # offset = int(input("Take image every (mm): "))
     offset = 151  # mm
 
     for B in range(0, dist, offset):
         image = pca.get_image()
-        cv.imwrite("/gathered_data/" + str(datetime.datetime.now()) + " - " + str(B) + ".jpg", image)
+        cv.imwrite("gathered_data/" + str(datetime.datetime.now()) + " - " + str(B) + ".jpg", image)
 
-        sma.nav_move_forward(int(B * config.ONE_MM_IN_SMOOTHIE), config.B_F_MAX)
+        sma.nav_move_forward(int(offset * config.ONE_MM_IN_SMOOTHIE), config.B_F_MAX)
 
         sma.wait_for_all_actions_done()
         # time.sleep(2) # if function above is not working properly
