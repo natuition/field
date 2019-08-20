@@ -8,7 +8,8 @@ import datetime
 def main():
     print("Loading...")
     sma = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
-    sma.ext_align_cork_center(config.XY_F_MAX)
+    if config.USE_X_AXIS_CALIBRATION and config.USE_Y_AXIS_CALIBRATION:
+        sma.ext_align_cork_center(config.XY_F_MAX)
     pca = adapters.PiCameraAdapter()
     print("Loading complete.")
 

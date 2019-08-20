@@ -62,7 +62,7 @@ class SmoothieAdapter:
         raise NotImplementedError("This option is not available yet.")
 
     def nav_move_forward(self, distance: int, F: int):
-        with self._b_cur.getlock():
+        with self._b_cur.get_lock():
             self._smc.write("G0 B{0} F{1}".format(distance, F))
             self._b_cur.value += distance
             self._smc.read_until("ok\r\n")
@@ -71,7 +71,7 @@ class SmoothieAdapter:
         raise NotImplementedError("This option is not available yet.")
 
     def nav_turn_wheels_for(self, value: int, F: int):
-        with self._a_cur.getlock():
+        with self._a_cur.get_lock():
             error_msg = self.validate_value(self._a_cur.value, value, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
             if error_msg:
                 return error_msg
@@ -84,7 +84,7 @@ class SmoothieAdapter:
             self._smc.read_until("ok\r\n")
 
     def nav_turn_wheels_to(self, destination: int, F: int):
-        with self._a_cur.getlock():
+        with self._a_cur.get_lock():
             error_msg = self.validate_value(0, destination, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
             if error_msg:
                 return error_msg
@@ -115,8 +115,8 @@ class SmoothieAdapter:
                 self._smc.read_until("ok\r\n")
 
     def ext_align_cork_center(self, F: int):
-        with self._x_cur.getlock():
-            with self._y_cur.getlock():
+        with self._x_cur.get_lock():
+            with self._y_cur.get_lock():
                 # calc cork center coords and xy movement values for smoothie g-code
                 center_x, center_y = int(config.X_MAX / 2), int(config.Y_MAX / 2)
                 smc_x, smc_y = self._calc_coords_diff(self._x_cur.value, center_x),\
