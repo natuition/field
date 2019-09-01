@@ -18,7 +18,7 @@ def main():
     dist = int(dist)
 
     # offset = int(input("Take image every (mm): "))
-    offset = 151  # mm
+    offset = 75  # 151 mm is full AOI
 
     for B in range(0, dist, offset):
         image = pca.get_image()
