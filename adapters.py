@@ -6,14 +6,11 @@ import time
 from config import config
 import cv2 as cv
 
-if config.USE_PI_CAMERA:
-    from picamera.array import PiRGBArray
-    from picamera import PiCamera
-
 
 class SmoothieAdapter:
 
     def __init__(self, smoothie_host):
+        self._sync_locker = multiprocessing.RLock()
         self._smc = connectors.SmoothieConnector(smoothie_host)
         self._x_cur = multiprocessing.Value("i", 0)
         self._y_cur = multiprocessing.Value("i", 0)
@@ -28,34 +25,146 @@ class SmoothieAdapter:
         return self._smc
 
     def wait_for_all_actions_done(self):
-        self._smc.write("M400")
-        self._smc.read_until("ok\r\n")
+        with self._sync_locker.acquire():
+            self._smc.write("M400")
+            self._smc.read_until("ok\r\n")
 
     def halt(self):
-        self._smc.write("M112")
-        self._smc.read_until("ed to exit HALT state\r\n")
+        with self._sync_locker.acquire():
+            self._smc.write("M112")
+            self._smc.read_until("ed to exit HALT state\r\n")
 
     def reset(self):
-        self._smc.write("M999")
-        self._smc.read_until(" currently unknown\nok\n")
+        with self._sync_locker.acquire():
+            self._smc.write("M999")
+            self._smc.read_until(" currently unknown\nok\n")
 
     def switch_to_relative(self):
-        self._smc.write("G91")
-        self._smc.read_until("ok\r\n")
+        with self._sync_locker.acquire():
+            self._smc.write("G91")
+            self._smc.read_until("ok\r\n")
 
     def set_current_coordinates(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
+        if self._check_arg_types(type(None), X, Y, Z, A, B, C):
+            raise TypeError("at least one axis shouldn't be None")
+        if not self._check_arg_types([int, type(None)], X, Y, Z, A, B, C):
+            raise TypeError("incorrect axis current value(s) type(s)")
+
+        with self._sync_locker.acquire():
+            g_code = "G92"
+            if X is not None:
+                g_code += " X" + str(X)
+            if Y is not None:
+                g_code += " Y" + str(Y)
+            if Z is not None:
+                g_code += " Z" + str(Z)
+            if A is not None:
+                g_code += " A" + str(A)
+            if B is not None:
+                g_code += " B" + str(B)
+            if C is not None:
+                g_code += " C" + str(C)
+
+            self._smc.write(g_code)
+            self._smc.read_until("ok\r\n")
+
+            if X is not None:
+                with self._x_cur.get_lock():
+                    self._x_cur.value = X
+            if Y is not None:
+                with self._y_cur.get_lock():
+                    self._y_cur.value = Y
+            if Z is not None:
+                with self._z_cur.get_lock():
+                    self._z_cur.value = Z
+            if A is not None:
+                with self._a_cur.get_lock():
+                    self._a_cur.value = A
+            if B is not None:
+                with self._b_cur.get_lock():
+                    self._b_cur.value = B
+            if C is not None:
+                with self._c_cur.get_lock():
+                    self._c_cur.value = C
+
+    def get_adapter_current_coordinates(self):
+        with self._sync_locker.acquire():
+            return {
+                "X": self._x_cur.value,
+                "Y": self._y_cur.value,
+                "Z": self._z_cur.value,
+                "A": self._a_cur.value,
+                "B": self._b_cur.value,
+                "C": self._c_cur.value,
+            }
+
+    def get_smoothie_current_coordinates(self):
+        with self._sync_locker.acquire():
+            self._smc.write("M114")
+            res = self._smc.read_some()
+
+            """
+            Answers:
+            M114:   b'ok C: X:2.0240 Y:0.0000 Z:0.0000\r\n'
+            M114.1  b'ok WCS: X:2.0250 Y:0.0000 Z:0.0000\r\n'
+            M114.2  b'ok MCS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+            M114.3  b'ok APOS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+            M114.4  b'ok MP: X:2.0240 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+            """
+
         raise NotImplementedError("This option is not available yet.")
 
-    def get_current_coordinates(self):
-        raise NotImplementedError("This option is not available yet.")
-
-    def check_current_coordinates(self):
+    def sync_check_current_coordinates(self):
         # True if Value = smoothieware val, False otherwise
+
         raise NotImplementedError("This option is not available yet.")
 
-    def custom_move_for(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
+    def custom_move_for(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement by some value(s)"""
-        raise NotImplementedError("This option is not available yet.")
+
+        if self._check_arg_types(type(None), X, Y, Z, A, B, C):
+            raise TypeError("at least one axis shouldn't be None")
+        if not self._check_arg_types([int, type(None)], X, Y, Z, A, B, C):
+            raise TypeError("incorrect axis coordinates value(s) type(s)")
+        if not self._check_arg_types([int], F):
+            raise TypeError("incorrect force F value type")
+
+        with self._sync_locker.acquire():
+            g_code = "G0"
+            if X is not None:
+                g_code += " X" + str(X)
+            if Y is not None:
+                g_code += " Y" + str(Y)
+            if Z is not None:
+                g_code += " Z" + str(Z)
+            if A is not None:
+                g_code += " A" + str(A)
+            if B is not None:
+                g_code += " B" + str(B)
+            if C is not None:
+                g_code += " C" + str(C)
+
+            self._smc.write(g_code)
+            self._smc.read_until("ok\r\n")
+
+            if X is not None:
+                with self._x_cur.get_lock():
+                    self._x_cur.value += X
+            if Y is not None:
+                with self._y_cur.get_lock():
+                    self._y_cur.value += Y
+            if Z is not None:
+                with self._z_cur.get_lock():
+                    self._z_cur.value += Z
+            if A is not None:
+                with self._a_cur.get_lock():
+                    self._a_cur.value += A
+            if B is not None:
+                with self._b_cur.get_lock():
+                    self._b_cur.value += B
+            if C is not None:
+                with self._c_cur.get_lock():
+                    self._c_cur.value += C
 
     def custom_move_to(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement to the specified position"""
@@ -155,9 +264,16 @@ class SmoothieAdapter:
             self._smc.write("G92 {0}{1}".format(axis_label, axis_cur.value))
             self._smc.read_until("ok\r\n")
 
-    def _check_if_all_nones(self, *args):
+    def _check_arg_types(self, types: list, *args):
+        if len(args) < 1:
+            raise TypeError("item(s) to check is missed")
+        if type(types) is not list:
+            raise TypeError("expected list of types, received " + str(type(types)))
+        if len(types) < 1:
+            raise ValueError("list of types should contain at least one item")
+
         for arg in args:
-            if arg is not None:
+            if type(arg) not in types:
                 return False
         return True
 
@@ -181,6 +297,8 @@ class SmoothieAdapter:
 class PiCameraAdapter:
 
     def __init__(self):
+        from picamera.array import PiRGBArray
+        from picamera import PiCamera
         self._camera = PiCamera()
         self._camera.resolution = (config.CAMERA_W, config.CAMERA_H)
         self._camera.framerate = config.CAMERA_FRAMERATE

@@ -21,9 +21,9 @@ class SmoothieConnector:
 
     def write(self, command: str):
         if type(command) != str:
-            raise TypeError("Invalid command type: should be str, received " + type(command).__name__)
+            raise TypeError("invalid command type: should be str, received " + type(command).__name__)
         if command == "":
-            raise ValueError("Invalid command value: should not be an empty string")
+            raise ValueError("invalid command value: should not be an empty string")
         self._tn.write(command.encode("ascii") + b"\n")
 
     def read_until(self, value: str, timeout=None):
