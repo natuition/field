@@ -25,22 +25,22 @@ class SmoothieAdapter:
         return self._smc
 
     def wait_for_all_actions_done(self):
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             self._smc.write("M400")
             self._smc.read_until("ok\r\n")
 
     def halt(self):
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             self._smc.write("M112")
             self._smc.read_until("ed to exit HALT state\r\n")
 
     def reset(self):
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             self._smc.write("M999")
             self._smc.read_until(" currently unknown\nok\n")
 
     def switch_to_relative(self):
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             self._smc.write("G91")
             self._smc.read_until("ok\r\n")
 
@@ -50,7 +50,7 @@ class SmoothieAdapter:
         if not self._check_arg_types([int, type(None)], X, Y, Z, A, B, C):
             raise TypeError("incorrect axis current value(s) type(s)")
 
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             g_code = "G92"
             if X is not None:
                 g_code += " X" + str(X)
@@ -88,7 +88,7 @@ class SmoothieAdapter:
                     self._c_cur.value = C
 
     def get_adapter_current_coordinates(self):
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             return {
                 "X": self._x_cur.value,
                 "Y": self._y_cur.value,
@@ -99,7 +99,7 @@ class SmoothieAdapter:
             }
 
     def get_smoothie_current_coordinates(self):
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             self._smc.write("M114.2")
             res = self._smc.read_some()  # unite 2 msg into 1
 
@@ -129,7 +129,7 @@ class SmoothieAdapter:
         if not self._check_arg_types([int], F):
             raise TypeError("incorrect force F value type")
 
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             g_code = "G0"
 
             if X is not None:
@@ -219,7 +219,7 @@ class SmoothieAdapter:
         if not self._check_arg_types([int], F):
             raise TypeError("incorrect force F value type")
 
-        with self._sync_locker.acquire():
+        with self._sync_locker:
             g_code = "G0"
 
             if X is not None:
