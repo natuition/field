@@ -456,7 +456,6 @@ class CompassAdapter:
         self._x_axis_h = 0x03  # Address of X-axis MSB data register
         self._z_axis_h = 0x05  # Address of Z-axis MSB data register
         self._y_axis_h = 0x07  # Address of Y-axis MSB data register
-        self._declination = -0.00669  # define declination angle of location where measurement going to be done
         self._bus = smbus.SMBus(1) 	# or bus = smbus.SMBus(0) for older version boards
 
         #write to Configuration Register A
@@ -480,7 +479,7 @@ class CompassAdapter:
     def get_heading_angle(self):
         x = self._read_raw_data(self._x_axis_h)
         y = self._read_raw_data(self._y_axis_h)
-        heading = math.atan2(y, x) + self._declination
+        heading = math.atan2(y, x) + config.COMPASS_DECLINATION
 
         # Due to declination check for > 360 degree
         if heading > 2 * math.pi:
