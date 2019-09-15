@@ -5,6 +5,7 @@ import multiprocessing
 import time
 from config import config
 import cv2 as cv
+import math
 
 
 class SmoothieAdapter:
@@ -378,7 +379,7 @@ class SmoothieAdapter:
 
         # Y axis calibration
         if config.USE_Y_AXIS_CALIBRATION:
-            self._calibrate_axis(self._y_cur, "Y", config.Y_MIN, config.Y_MAX, config.X_AXIS_CALIBRATION_TO_MAX)
+            self._calibrate_axis(self._y_cur, "Y", config.Y_MIN, config.Y_MAX, config.Y_AXIS_CALIBRATION_TO_MAX)
 
         # Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
@@ -443,3 +444,50 @@ class PiCameraAdapter:
         image = cv.cvtColor(next(self._gen).array, cv.COLOR_RGB2BGR)
         self._raw_capture.truncate(0)
         return image
+
+
+class CompassAdapter:
+
+    def __init__(self):
+        import smbus
+        self._register_a = 0  # Address of Configuration register A
+        self._register_b = 0x01  # Address of configuration register B
+        self._register_mode = 0x02  # Address of mode register
+        self._x_axis_h = 0x03  # Address of X-axis MSB data register
+        self._z_axis_h = 0x05  # Address of Z-axis MSB data register
+        self._y_axis_h = 0x07  # Address of Y-axis MSB data register
+        self._declination = -0.00669  # define declination angle of location where measurement going to be done
+        self._bus = smbus.SMBus(1) 	# or bus = smbus.SMBus(0) for older version boards
+
+        #write to Configuration Register A
+        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_a, 0x70)
+        #Write to Configuration Register B for gain
+        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_b, 0xa0)
+        #Write to mode Register for selecting mode
+        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_mode, 0)
+
+    def _read_raw_data(self, address):
+        # Read raw 16-bit value
+        high = self._bus.read_byte_data(config.COMPASS_DEVICE_ADDRESS, address)
+        low = self._bus.read_byte_data(config.COMPASS_DEVICE_ADDRESS, address + 1)
+
+        # concatenate higher and lower value
+        value = ((high << 8) | low)
+
+        # get signed value from module
+        return value - 65536 if value > 32768 else value
+
+    def get_heading_angle(self):
+        x = self._read_raw_data(self._x_axis_h)
+        y = self._read_raw_data(self._y_axis_h)
+        heading = math.atan2(y, x) + self._declination
+
+        # Due to declination check for > 360 degree
+        if heading > 2 * math.pi:
+            heading -= 2 * math.pi
+        # check for sign
+        if heading < 0:
+            heading += 2 * math.pi
+
+        # convert into angle
+        return int(heading * 180 / math.pi)
