@@ -30,6 +30,11 @@ class SmoothieAdapter:
 
         return self._smc
 
+    def try_get_response(self):
+        """Only for debug!"""
+
+        return self._smc.read_eager()
+
     def wait_for_all_actions_done(self):
         with self._sync_locker:
             self._smc.write("M400")
