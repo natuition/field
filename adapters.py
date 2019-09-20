@@ -10,49 +10,58 @@ import math
 
 class SmoothieAdapter:
 
+    RESPONSE_OK = "ok\r\n"
+
     def __init__(self, smoothie_host):
         self._sync_locker = multiprocessing.RLock()
         self._smc = connectors.SmoothieConnector(smoothie_host)
-        self._x_cur = multiprocessing.Value("i", 0)
-        self._y_cur = multiprocessing.Value("i", 0)
-        self._z_cur = multiprocessing.Value("i", 0)
-        self._a_cur = multiprocessing.Value("i", 0)
-        self._b_cur = multiprocessing.Value("i", 0)
-        self._c_cur = multiprocessing.Value("i", 0)
+        self._x_cur = multiprocessing.Value("d", 0)
+        self._y_cur = multiprocessing.Value("d", 0)
+        self._z_cur = multiprocessing.Value("d", 0)
+        self._a_cur = multiprocessing.Value("d", 0)
+        self._b_cur = multiprocessing.Value("d", 0)
+        self._c_cur = multiprocessing.Value("d", 0)
         self.switch_to_relative()
         self.ext_calibrate_cork()
 
     def get_connector(self):
+        """Only for debug!"""
+
         return self._smc
 
     def wait_for_all_actions_done(self):
         with self._sync_locker:
             self._smc.write("M400")
-            self._smc.read_until("ok\r\n")
+            # "ok\r\n"
+            return self._smc.read_some()
 
     def halt(self):
         with self._sync_locker:
             self._smc.write("M112")
-            self._smc.read_until("ed to exit HALT state\r\n")
+            # "ok Emergency Stop Requested - reset or M999 required to exit HALT state\r\n"
+            return self._smc.read_some() + self._smc.read_eager()
 
     def reset(self):
         with self._sync_locker:
             self._smc.write("M999")
-            self._smc.read_until(" currently unknown\nok\n")
+            # "WARNING: After HALT you should HOME as position is currently unknown\nok\n"
+            return self._smc.read_some() + self._smc.read_eager()
 
     def switch_to_relative(self):
         with self._sync_locker:
             self._smc.write("G91")
-            self._smc.read_until("ok\r\n")
+            # "ok\r\n"
+            return self._smc.read_some()
 
     def set_current_coordinates(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
         if self._check_arg_types(type(None), X, Y, Z, A, B, C):
             raise TypeError("at least one axis shouldn't be None")
-        if not self._check_arg_types([int, type(None)], X, Y, Z, A, B, C):
+        if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
             raise TypeError("incorrect axis current value(s) type(s)")
 
         with self._sync_locker:
             g_code = "G92"
+
             if X is not None:
                 g_code += " X" + str(X)
             if Y is not None:
@@ -67,26 +76,29 @@ class SmoothieAdapter:
                 g_code += " C" + str(C)
 
             self._smc.write(g_code)
-            self._smc.read_until("ok\r\n")
+            # "ok\r\n"
+            response = self._smc.read_some()
 
-            if X is not None:
-                with self._x_cur.get_lock():
-                    self._x_cur.value = X
-            if Y is not None:
-                with self._y_cur.get_lock():
-                    self._y_cur.value = Y
-            if Z is not None:
-                with self._z_cur.get_lock():
-                    self._z_cur.value = Z
-            if A is not None:
-                with self._a_cur.get_lock():
-                    self._a_cur.value = A
-            if B is not None:
-                with self._b_cur.get_lock():
-                    self._b_cur.value = B
-            if C is not None:
-                with self._c_cur.get_lock():
-                    self._c_cur.value = C
+            if response == self.RESPONSE_OK:
+                if X is not None:
+                    with self._x_cur.get_lock():
+                        self._x_cur.value = X
+                if Y is not None:
+                    with self._y_cur.get_lock():
+                        self._y_cur.value = Y
+                if Z is not None:
+                    with self._z_cur.get_lock():
+                        self._z_cur.value = Z
+                if A is not None:
+                    with self._a_cur.get_lock():
+                        self._a_cur.value = A
+                if B is not None:
+                    with self._b_cur.get_lock():
+                        self._b_cur.value = B
+                if C is not None:
+                    with self._c_cur.get_lock():
+                        self._c_cur.value = C
+            return response
 
     def get_adapter_current_coordinates(self):
         with self._sync_locker:
@@ -96,24 +108,28 @@ class SmoothieAdapter:
                 "Z": self._z_cur.value,
                 "A": self._a_cur.value,
                 "B": self._b_cur.value,
-                "C": self._c_cur.value,
+                "C": self._c_cur.value
             }
 
     def get_smoothie_current_coordinates(self):
         with self._sync_locker:
             self._smc.write("M114.2")
-            res = self._smc.read_some()  # unite 2 msg into 1
-
             """
             Answers:
-            M114:   b'ok C: X:2.0240 Y:0.0000 Z:0.0000\r\n'
-            M114.1  b'ok WCS: X:2.0250 Y:0.0000 Z:0.0000\r\n'
-            M114.2  b'ok MCS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
-            M114.3  b'ok APOS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
-            M114.4  b'ok MP: X:2.0240 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+            M114:   'ok C: X:2.0240 Y:0.0000 Z:0.0000\r\n'
+            M114.1  'ok WCS: X:2.0250 Y:0.0000 Z:0.0000\r\n'
+            M114.2  'ok MCS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+            M114.3  'ok APOS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+            M114.4  'ok MP: X:2.0240 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
             """
-
-        raise NotImplementedError("This option is not available yet.")
+            response = (self._smc.read_some() + self._smc.read_eager()).split(" ")[2:]
+            return {
+                "X": float(response[0][2:]),
+                "Y": float(response[1][2:]),
+                "Z": float(response[2][2:]),
+                "A": float(response[3][2:]),
+                "B": float(response[4][2:])
+            }
 
     def sync_check_current_coordinates(self):
         # True if Value = smoothieware val, False otherwise
@@ -125,7 +141,7 @@ class SmoothieAdapter:
 
         if self._check_arg_types(type(None), X, Y, Z, A, B, C):
             raise TypeError("at least one axis shouldn't be None")
-        if not self._check_arg_types([int, type(None)], X, Y, Z, A, B, C):
+        if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
             raise TypeError("incorrect axis coordinates value(s) type(s)")
         if not self._check_arg_types([int], F):
             raise TypeError("incorrect force F value type")
@@ -188,34 +204,36 @@ class SmoothieAdapter:
                 g_code += " C" + str(C)
 
             self._smc.write(g_code)
-            self._smc.read_until("ok\r\n")
+            # "ok\r\n"
+            response = self._smc.read_some()
 
-            if X is not None:
-                with self._x_cur.get_lock():
-                    self._x_cur.value += X
-            if Y is not None:
-                with self._y_cur.get_lock():
-                    self._y_cur.value += Y
-            if Z is not None:
-                with self._z_cur.get_lock():
-                    self._z_cur.value += Z
-            if A is not None:
-                with self._a_cur.get_lock():
-                    self._a_cur.value += A
-            if B is not None:
-                with self._b_cur.get_lock():
-                    self._b_cur.value += B
-            if C is not None:
-                with self._c_cur.get_lock():
-                    self._c_cur.value += C
-        return None
+            if response == self.RESPONSE_OK:
+                if X is not None:
+                    with self._x_cur.get_lock():
+                        self._x_cur.value += X
+                if Y is not None:
+                    with self._y_cur.get_lock():
+                        self._y_cur.value += Y
+                if Z is not None:
+                    with self._z_cur.get_lock():
+                        self._z_cur.value += Z
+                if A is not None:
+                    with self._a_cur.get_lock():
+                        self._a_cur.value += A
+                if B is not None:
+                    with self._b_cur.get_lock():
+                        self._b_cur.value += B
+                if C is not None:
+                    with self._c_cur.get_lock():
+                        self._c_cur.value += C
+            return response
 
     def custom_move_to(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement to the specified position"""
 
         if self._check_arg_types(type(None), X, Y, Z, A, B, C):
             raise TypeError("at least one axis shouldn't be None")
-        if not self._check_arg_types([int, type(None)], X, Y, Z, A, B, C):
+        if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
             raise TypeError("incorrect axis coordinates value(s) type(s)")
         if not self._check_arg_types([int], F):
             raise TypeError("incorrect force F value type")
@@ -284,93 +302,149 @@ class SmoothieAdapter:
                 g_code += " C" + str(smc_c)
 
             self._smc.write(g_code)
-            self._smc.read_until("ok\r\n")
+            # "ok\r\n"
+            response = self._smc.read_some()
 
-            if X is not None:
-                with self._x_cur.get_lock():
-                    self._x_cur.value += smc_x
-            if Y is not None:
-                with self._y_cur.get_lock():
-                    self._y_cur.value += smc_y
-            if Z is not None:
-                with self._z_cur.get_lock():
-                    self._z_cur.value += smc_z
-            if A is not None:
-                with self._a_cur.get_lock():
-                    self._a_cur.value += smc_a
-            if B is not None:
-                with self._b_cur.get_lock():
-                    self._b_cur.value += smc_b
-            if C is not None:
-                with self._c_cur.get_lock():
-                    self._c_cur.value += smc_z
-        return None
+            if response == self.RESPONSE_OK:
+                if X is not None:
+                    with self._x_cur.get_lock():
+                        self._x_cur.value += smc_x
+                if Y is not None:
+                    with self._y_cur.get_lock():
+                        self._y_cur.value += smc_y
+                if Z is not None:
+                    with self._z_cur.get_lock():
+                        self._z_cur.value += smc_z
+                if A is not None:
+                    with self._a_cur.get_lock():
+                        self._a_cur.value += smc_a
+                if B is not None:
+                    with self._b_cur.get_lock():
+                        self._b_cur.value += smc_b
+                if C is not None:
+                    with self._c_cur.get_lock():
+                        self._c_cur.value += smc_z
+            return response
 
-    def nav_move_forward(self, distance: int, F: int):
-        with self._b_cur.get_lock():
-            self._smc.write("G0 B{0} F{1}".format(distance, F))
-            self._b_cur.value += distance
-            self._smc.read_until("ok\r\n")
+    def nav_move_forward(self, distance, F: int):
+        with self._sync_locker:
+            with self._b_cur.get_lock():
+                if not self._check_arg_types([float, int], distance):
+                    raise TypeError("incorrect axis coordinates value type")
+                if not self._check_arg_types([int], F):
+                    raise TypeError("incorrect force F value type")
+                error_msg = self.validate_value(0, F, "F", config.B_F_MIN, config.B_F_MAX, "B_F_MIN", "B_F_MAX")
+                if error_msg:
+                    raise ValueError(error_msg)
 
-    def nav_move_backward(self, distance: int, F: int):
+                self._smc.write("G0 B{0} F{1}".format(distance, F))
+                # "ok\r\n"
+                response = self._smc.read_some()
+                if response == self.RESPONSE_OK:
+                    self._b_cur.value += distance
+                return response
+
+    def nav_move_backward(self, distance, F: int):
 
         raise NotImplementedError("This option is not available yet.")
 
-    def nav_turn_wheels_for(self, value: int, F: int):
-        with self._a_cur.get_lock():
-            error_msg = self.validate_value(self._a_cur.value, value, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
-            if error_msg:
-                return error_msg
-            error_msg = self.validate_value(0, F, "F", config.A_F_MIN, config.A_F_MAX, "A_F_MIN", "A_F_MAX")
-            if error_msg:
-                return error_msg
+    def nav_turn_wheels_for(self, value, F: int):
+        with self._sync_locker:
+            with self._a_cur.get_lock():
+                if not self._check_arg_types([float, int], value):
+                    raise TypeError("incorrect axis coordinates value type")
+                if not self._check_arg_types([int], F):
+                    raise TypeError("incorrect force F value type")
 
-            self._smc.write("G0 A{0} F{1}".format(value, F))
-            self._a_cur.value += value
-            self._smc.read_until("ok\r\n")
+                error_msg = self.validate_value(self._a_cur.value, value, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
+                if error_msg:
+                    raise ValueError(error_msg)
+                error_msg = self.validate_value(0, F, "F", config.A_F_MIN, config.A_F_MAX, "A_F_MIN", "A_F_MAX")
+                if error_msg:
+                    raise ValueError(error_msg)
 
-    def nav_turn_wheels_to(self, destination: int, F: int):
-        with self._a_cur.get_lock():
-            error_msg = self.validate_value(0, destination, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
-            if error_msg:
-                return error_msg
-            error_msg = self.validate_value(0, F, "F", config.A_F_MIN, config.A_F_MAX, "A_F_MIN", "A_F_MAX")
-            if error_msg:
-                return error_msg
+                self._smc.write("G0 A{0} F{1}".format(value, F))
+                # "ok\r\n"
+                response = self._smc.read_some()
+                if response == self.RESPONSE_OK:
+                    self._a_cur.value += value
+                return response
 
-            smc_a = destination - self._a_cur.value
-            self._smc.write("G0 A{0} F{1}".format(smc_a, F))
-            self._a_cur.value += smc_a
-            self._smc.read_until("ok\r\n")
+    def nav_turn_wheels_to(self, destination, F: int):
+        with self._sync_locker:
+            with self._a_cur.get_lock():
+                if not self._check_arg_types([float, int], destination):
+                    raise TypeError("incorrect axis coordinates value type")
+                if not self._check_arg_types([int], F):
+                    raise TypeError("incorrect force F value type")
+
+                error_msg = self.validate_value(0, destination, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
+                if error_msg:
+                    raise ValueError(error_msg)
+                error_msg = self.validate_value(0, F, "F", config.A_F_MIN, config.A_F_MAX, "A_F_MIN", "A_F_MAX")
+                if error_msg:
+                    raise ValueError(error_msg)
+
+                smc_a = destination - self._a_cur.value
+                self._smc.write("G0 A{0} F{1}".format(smc_a, F))
+                # "ok\r\n"
+                response = self._smc.read_some()
+                if response == self.RESPONSE_OK:
+                    self._a_cur.value += smc_a
+                return response
 
     def nav_turn_wheels_left_max(self, F: int):
-        self.nav_turn_wheels_to(config.A_MIN, config.A_F_MIN)
+        return self.nav_turn_wheels_to(config.A_MIN, config.A_F_MIN)
 
     def nav_turn_wheels_right_max(self, F: int):
-        self.nav_turn_wheels_to(config.A_MAX, config.A_F_MAX)
+        return self.nav_turn_wheels_to(config.A_MAX, config.A_F_MAX)
 
     def nav_align_wheels_center(self, F: int):
-        self.nav_turn_wheels_to(config.NAV_TURN_WHEELS_CENTER, config.A_F_MAX)
+        return self.nav_turn_wheels_to(config.NAV_TURN_WHEELS_CENTER, config.A_F_MAX)
 
     def ext_do_extraction(self, F: int):
-        with self._z_cur.get_lock():
-            for dist in [str(-config.EXTRACTION_Z), str(config.EXTRACTION_Z)]:
-                g_code = "G0 Z" + dist + " F" + str(config.Z_F_MAX)
-                self._smc.write(g_code)
-                self._z_cur.value += config.EXTRACTION_Z
-                self._smc.read_until("ok\r\n")
+        with self._sync_locker:
+            with self._z_cur.get_lock():
+                if not self._check_arg_types([int], F):
+                    raise TypeError("incorrect force F value type")
+
+                error_msg = self.validate_value(0, F, "F", config.Z_F_MIN, config.Z_F_MAX, "Z_F_MIN", "Z_F_MAX")
+                if error_msg:
+                    raise ValueError(error_msg)
+
+                for dist in [str(-config.EXTRACTION_Z), str(config.EXTRACTION_Z)]:
+                    g_code = "G0 Z" + dist + " F" + str(config.Z_F_MAX)
+                    self._smc.write(g_code)
+                    # "ok\r\n"
+                    response = self._smc.read_some()
+                    if response == self.RESPONSE_OK:
+                        self._z_cur.value += config.EXTRACTION_Z
+                    else:
+                        return response
+                return response
 
     def ext_align_cork_center(self, F: int):
-        with self._x_cur.get_lock():
-            with self._y_cur.get_lock():
-                # calc cork center coords and xy movement values for smoothie g-code
-                center_x, center_y = int(config.X_MAX / 2), int(config.Y_MAX / 2)
-                smc_x, smc_y = center_x - self._x_cur.value, center_y - self._y_cur.value
-                g_code = "G0 X" + str(smc_x) + " Y" + str(smc_y) + " F" + str(config.XY_F_MAX)
-                self._smc.write(g_code)
-                self._x_cur.value += smc_x
-                self._y_cur.value += smc_y
-                self._smc.read_until("ok\r\n")
+        with self._sync_locker:
+            with self._x_cur.get_lock():
+                with self._y_cur.get_lock():
+                    if not self._check_arg_types([int], F):
+                        raise TypeError("incorrect force F value type")
+
+                    error_msg = self.validate_value(0, F, "F", config.XY_F_MIN, config.XY_F_MAX, "XY_F_MIN", "XY_F_MAX")
+                    if error_msg:
+                        raise ValueError(error_msg)
+
+                    # calc cork center coords and xy movement values for smoothie g-code
+                    center_x, center_y = int(config.X_MAX / 2), int(config.Y_MAX / 2)
+                    smc_x, smc_y = center_x - self._x_cur.value, center_y - self._y_cur.value
+                    g_code = "G0 X" + str(smc_x) + " Y" + str(smc_y) + " F" + str(config.XY_F_MAX)
+                    self._smc.write(g_code)
+                    # "ok\r\n"
+                    response = self._smc.read_some()
+                    if response == self.RESPONSE_OK:
+                        self._x_cur.value += smc_x
+                        self._y_cur.value += smc_y
+                    return response
 
     def ext_calibrate_cork(self):
         # X axis calibration
@@ -389,16 +463,25 @@ class SmoothieAdapter:
         with axis_cur.get_lock():
             if axis_calibration_to_max:
                 self._smc.write("G28 {0}{1}".format(axis_label, config.CALIBRATION_DISTANCE))
-                self._smc.read_until("ok\r\n")
-                axis_cur.value = axis_max - config.AFTER_CALIBRATION_AXIS_OFFSET
+                # "ok\r\n"
+                response = self._smc.read_some()
+                if response == self.RESPONSE_OK:
+                    axis_cur.value = axis_max - config.AFTER_CALIBRATION_AXIS_OFFSET
+                else:
+                    return response
             else:
                 self._smc.write("G28 {0}{1}".format(axis_label, -config.CALIBRATION_DISTANCE))
-                self._smc.read_until("ok\r\n")
-                axis_cur.value = axis_min + config.AFTER_CALIBRATION_AXIS_OFFSET
+                # "ok\r\n"
+                response = self._smc.read_some()
+                if response == self.RESPONSE_OK:
+                    axis_cur.value = axis_min + config.AFTER_CALIBRATION_AXIS_OFFSET
+                else:
+                    return response
 
             # set fresh current coordinates on smoothie too
             self._smc.write("G92 {0}{1}".format(axis_label, axis_cur.value))
-            self._smc.read_until("ok\r\n")
+            # "ok\r\n"
+            return self._smc.read_some()
 
     def _check_arg_types(self, types: list, *args):
         if len(args) < 1:
