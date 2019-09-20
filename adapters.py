@@ -11,6 +11,7 @@ import math
 class SmoothieAdapter:
 
     RESPONSE_OK = "ok\r\n"
+    RESPONSE_ALARM_LOCK = 'error:Alarm lock\n'
 
     def __init__(self, smoothie_host):
         self._sync_locker = multiprocessing.RLock()
