@@ -60,7 +60,7 @@ class SmoothieAdapter:
             return self._smc.read_some()
 
     def set_current_coordinates(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
-        if self._check_arg_types(type(None), X, Y, Z, A, B, C):
+        if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
             raise TypeError("at least one axis shouldn't be None")
         if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
             raise TypeError("incorrect axis current value(s) type(s)")
@@ -151,7 +151,7 @@ class SmoothieAdapter:
     def custom_move_for(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement by some value(s)"""
 
-        if self._check_arg_types(type(None), X, Y, Z, A, B, C):
+        if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
             raise TypeError("at least one axis shouldn't be None")
         if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
             raise TypeError("incorrect axis coordinates value(s) type(s)")
@@ -243,7 +243,7 @@ class SmoothieAdapter:
     def custom_move_to(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement to the specified position"""
 
-        if self._check_arg_types(type(None), X, Y, Z, A, B, C):
+        if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
             raise TypeError("at least one axis shouldn't be None")
         if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
             raise TypeError("incorrect axis coordinates value(s) type(s)")
