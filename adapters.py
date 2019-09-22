@@ -113,8 +113,8 @@ class SmoothieAdapter:
                 "Y": self._y_cur.value,
                 "Z": self._z_cur.value,
                 "A": self._a_cur.value,
-                "B": self._b_cur.value,
-                "C": self._c_cur.value
+                "B": self._b_cur.value
+                #"C": self._c_cur.value
             }
 
     def get_smoothie_current_coordinates(self):
@@ -137,10 +137,16 @@ class SmoothieAdapter:
                 "B": float(response[4][2:])
             }
 
-    def sync_check_current_coordinates(self):
-        # True if Value = smoothieware val, False otherwise
+    def compare_coordinates(self, coordinates_a, coordinates_b, precision=1e-10):
+        if type(coordinates_a) != dict or type(coordinates_b) != dict:
+            raise AttributeError("coordinates should be stored in dict")
+        if len(coordinates_a) != len(coordinates_b):
+            raise AttributeError("coordinates dicts should have similar items count")
 
-        raise NotImplementedError("This option is not available yet.")
+        for key in coordinates_a:
+            if abs(coordinates_a[key] - coordinates_b[key]) > precision:
+                return False
+        return True
 
     def custom_move_for(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement by some value(s)"""
