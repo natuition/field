@@ -1,6 +1,6 @@
 import cv2 as cv
 
-CONFIG_VERSION = "0.1"
+CONFIG_VERSION = "0.2"
 
 # ======================================================================================================================
 # SMOOTHIE SETTINGS
@@ -98,6 +98,21 @@ HIST_COMP_METHOD = cv.HISTCMP_CHISQR
 
 # for some hist comp algs lesser distance means more similar images, and vice versa
 LESSER_DIST_MORE_SIMILAR = True
+
+
+# ======================================================================================================================
+# YOLO DETECTION CONFIG
+# ======================================================================================================================
+CONFIDENCE_THRESHOLD = 0.25    # Confidence threshold
+NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
+INPUT_SIZE = (416, 416)
+OUTPUT_IMG_DIR = "output/"
+INPUT_IMG_DIR = "input/"
+INPUT_IMG_FILE = "10.jpg"
+YOLO_CONFIG_FILE = "yolo/yolov3_plantain_inference.cfg"
+YOLO_WEIGHTS_FILE = "yolo/yolov3_plantain_final.weights"
+YOLO_CLASSES_FILE = "yolo/classes.names"
+
 
 # ======================================================================================================================
 # APP CONFIG

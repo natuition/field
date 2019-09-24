@@ -116,3 +116,5 @@ dmypy.json
 # NATUITION
 config/config.py
 test.py
+input/
+output/

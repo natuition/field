@@ -1,10 +1,7 @@
 import cv2 as cv
 import numpy as np
 import os
-
-conf_threshold = 0.25    # Confidence threshold
-nms_threshold = 0.4      # Non-maximum suppression threshold
-input_size = (416, 416)
+from config import config
 
 
 # Load names of classes
@@ -39,7 +36,7 @@ def draw_bbox(image, classes, class_id, conf, left, top, right, bottom):
     label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
     top = max(top, label_size[1])
     cv.rectangle(image, (left, top - round(1.5 * label_size[1])), (left + round(1.5 * label_size[0]), top + base_line),
-                  (0, 0, 255), cv.FILLED)
+                 (0, 0, 255), cv.FILLED)
     cv.putText(image, label, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
 
 
@@ -64,7 +61,7 @@ def post_process(image, outs, classes):
             #     print(detection[4], " - ", scores[class_id], " - th : ", conf_threshold)
             #     print(detection)
 
-            if confidence > conf_threshold:
+            if confidence > config.CONFIDENCE_THRESHOLD:
                 center_x = int(detection[0] * frame_width)
                 center_y = int(detection[1] * frame_height)
                 width = int(detection[2] * frame_width)
@@ -76,7 +73,7 @@ def post_process(image, outs, classes):
                 boxes.append([left, top, width, height])
 
     # Perform non maximum suppression to eliminate redundant overlapping boxes with lower confidences.
-    indices = cv.dnn.NMSBoxes(boxes, confidences, conf_threshold, nms_threshold)
+    indices = cv.dnn.NMSBoxes(boxes, confidences, config.CONFIDENCE_THRESHOLD, config.NMS_THRESHOLD)
 
     for i in indices:
         i = i[0]
@@ -92,7 +89,7 @@ def post_process(image, outs, classes):
 
 def detect(image, net, classes):
     # Create a 4D blob from a frame.
-    blob = cv.dnn.blobFromImage(image, 1 / 255, input_size, [0, 0, 0], 1, crop=False)
+    blob = cv.dnn.blobFromImage(image, 1 / 255, config.INPUT_SIZE, [0, 0, 0], 1, crop=False)
 
     # Sets the input to the network
     net.setInput(blob)
@@ -106,35 +103,27 @@ def detect(image, net, classes):
 
 
 def main():
-    output_img_dir = "output2/"
-    if not os.path.exists(output_img_dir):
+    if not os.path.exists(config.OUTPUT_IMG_DIR):
         try:
-            os.mkdir(output_img_dir)
+            os.mkdir(config.OUTPUT_IMG_DIR)
         except OSError:
-            print("Creation of the directory %s failed" % output_img_dir)
+            print("Creation of the directory %s failed" % config.OUTPUT_IMG_DIR)
         else:
-            print("Successfully created the directory %s " % output_img_dir)
+            print("Successfully created the directory %s " % config.OUTPUT_IMG_DIR)
 
-    input_img_dir = "input/"
-    input_img_file = "10.jpg"
-    config_file = "yolo/yolov3_plantain_inference.cfg"
-    weights_file = "yolo/yolov3_plantain_final.weights"
-    classes_file = "yolo/classes.names"
-
-    classes = load_class_names(classes_file)
-    net = cv.dnn.readNetFromDarknet(config_file, weights_file)
+    classes = load_class_names(config.YOLO_CLASSES_FILE)
+    net = cv.dnn.readNetFromDarknet(config.YOLO_CONFIG_FILE, config.YOLO_WEIGHTS_FILE)
     net.setPreferableBackend(cv.dnn.DNN_BACKEND_OPENCV)
     net.setPreferableTarget(cv.dnn.DNN_TARGET_CPU)
 
-    img = cv.imread(input_img_dir + input_img_file)
+    img = cv.imread(config.INPUT_IMG_DIR + config.INPUT_IMG_FILE)
     boxes = detect(img, net, classes)
 
     for i in range(len(boxes)):
         left, top, right, bottom = boxes[i].get_box_points()
         draw_bbox(img, classes, boxes[i].get_class_id(), boxes[i].get_confidence(), left, top, right, bottom)
 
-
-    cv.imwrite(output_img_dir + "Result " + input_img_file, img)
+    cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + config.INPUT_IMG_FILE, img)
 
 
 class YoloOpenCVDetection:
