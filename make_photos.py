@@ -3,9 +3,19 @@ import cv2 as cv
 from config import config
 import time
 import datetime
+import os
 
 
 def main():
+    output_dir = "gathered_data/"
+    if not os.path.exists(output_dir):
+        try:
+            os.mkdir(output_dir)
+        except OSError:
+            print("Creation of the directory %s failed" % output_dir)
+        else:
+            print("Successfully created the directory %s " % output_dir)
+
     print("Loading...")
     sma = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
     if config.USE_X_AXIS_CALIBRATION and config.USE_Y_AXIS_CALIBRATION:
@@ -24,7 +34,7 @@ def main():
 
     for B in range(0, dist, offset):
         image = pca.get_image()
-        cv.imwrite("gathered_data/" + str(datetime.datetime.now()) + sep + str(B) + sep + label + ".jpg", image)
+        cv.imwrite(output_dir + str(datetime.datetime.now()) + sep + str(B) + sep + label + ".jpg", image)
 
         sma.nav_move_forward(int(offset * config.ONE_MM_IN_SMOOTHIE), config.B_F_MAX)
 
