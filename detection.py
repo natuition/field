@@ -100,18 +100,28 @@ class DetectedPlantBox:
         self._confidence = confidence
 
     def get_box_points(self):
+        """Returns left, top, right, bottom points of the box"""
+
         return self._left, self._top, self._right, self._bottom
 
     def get_center_point(self):
+        """Returns pair of x and y box center coordinates"""
+
         return self._center_x, self._center_y
 
     def get_sizes(self):
+        """Returns x and y sizes of the box"""
+
         return self._right - self._left, self._bottom - self._top
 
     def get_name(self):
+        """Returns plant class name"""
+
         return self._classes[self._class_id]
 
     def get_class_id(self):
+        """Returns plant class index in the classes list"""
+
         return self._class_id
 
     def get_confidence(self):
@@ -119,13 +129,14 @@ class DetectedPlantBox:
 
 
 # Draw the predicted bounding box
-def draw_bbox(image, label, conf, left, top, right, bottom):
+def draw_box(image, box: DetectedPlantBox):
+    left, top, right, bottom = box.get_box_points()
     # Draw a bounding box
     cv.rectangle(image, (left, top), (right, bottom), (0, 0, 255), 3)
     # draw a center of that box
     cv.circle(image, (int(left + (right - left) / 2), int(top + (bottom - top) / 2)), 4, (0, 0, 255), thickness=3)
 
-    label = '%s:%.2f' % (label, conf)
+    label = '%s:%.2f' % (box.get_name(), box.get_confidence())
 
     # Display the label at the top of the bounding box
     label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
@@ -144,9 +155,10 @@ def _detect_folder(det, image_folder):
 
         img = cv.imread(file_path)
         boxes = det.detect(img)
+
         for i in range(len(boxes)):
-            left, top, right, bottom = boxes[i].get_box_points()
-            draw_bbox(img, boxes[i].get_name(), boxes[i].get_confidence(), left, top, right, bottom)
+            draw_box(img, boxes[i])
+
         file_name = file_path.split("\\")[-1]
         cv.imwrite(config.OUTPUT_IMAGE_DIR + "Result " + file_name, img)
 
@@ -156,8 +168,7 @@ def _detect_single(det):
     boxes = det.detect(img)
 
     for i in range(len(boxes)):
-        left, top, right, bottom = boxes[i].get_box_points()
-        draw_bbox(img, boxes[i].get_name(), boxes[i].get_confidence(), left, top, right, bottom)
+        draw_box(img, boxes[i])
 
     cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + config.INPUT_IMG_FILE, img)
 
