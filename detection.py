@@ -2,43 +2,7 @@ import cv2 as cv
 import numpy as np
 import os
 from config import config
-
-
-# Draw the predicted bounding box
-def draw_bbox(image, label, conf, left, top, right, bottom):
-    # Draw a bounding box
-    cv.rectangle(image, (left, top), (right, bottom), (0, 0, 255), 3)
-    # draw a center of that box
-    cv.circle(image, (int(left + (right - left) / 2), int(top + (bottom - top) / 2)), 4, (0, 0, 255), thickness=3)
-
-    label = '%s:%.2f' % (label, conf)
-
-    # Display the label at the top of the bounding box
-    label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-    top = max(top, label_size[1])
-    cv.rectangle(image, (left, top - round(1.5 * label_size[1])), (left + round(1.5 * label_size[0]), top + base_line),
-                 (0, 0, 255), cv.FILLED)
-    cv.putText(image, label, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
-
-
-def test():
-    if not os.path.exists(config.OUTPUT_IMG_DIR):
-        try:
-            os.mkdir(config.OUTPUT_IMG_DIR)
-        except OSError:
-            print("Creation of the directory %s failed" % config.OUTPUT_IMG_DIR)
-        else:
-            print("Successfully created the directory %s " % config.OUTPUT_IMG_DIR)
-
-    det = YoloOpenCVDetection()
-    img = cv.imread(config.INPUT_IMG_DIR + config.INPUT_IMG_FILE)
-    boxes = det.detect(img)
-
-    for i in range(len(boxes)):
-        left, top, right, bottom = boxes[i].get_box_points()
-        draw_bbox(img, boxes[i].get_name(), boxes[i].get_confidence(), left, top, right, bottom)
-
-    cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + config.INPUT_IMG_FILE, img)
+import glob
 
 
 class YoloOpenCVDetection:
@@ -154,5 +118,75 @@ class DetectedPlantBox:
         return self._confidence
 
 
+# Draw the predicted bounding box
+def draw_bbox(image, label, conf, left, top, right, bottom):
+    # Draw a bounding box
+    cv.rectangle(image, (left, top), (right, bottom), (0, 0, 255), 3)
+    # draw a center of that box
+    cv.circle(image, (int(left + (right - left) / 2), int(top + (bottom - top) / 2)), 4, (0, 0, 255), thickness=3)
+
+    label = '%s:%.2f' % (label, conf)
+
+    # Display the label at the top of the bounding box
+    label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+    top = max(top, label_size[1])
+    cv.rectangle(image, (left, top - round(1.5 * label_size[1])), (left + round(1.5 * label_size[0]), top + base_line),
+                 (0, 0, 255), cv.FILLED)
+    cv.putText(image, label, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
+
+
+def _detect_folder(det, image_folder):
+    images = glob.glob(image_folder + "*.jpg")
+    counter = 1
+    for file_path in images:
+        print("Processing " + str(counter) + " of " + str(len(images)) + " images")
+        counter += 1
+
+        img = cv.imread(file_path)
+        boxes = det.detect(img)
+        for i in range(len(boxes)):
+            left, top, right, bottom = boxes[i].get_box_points()
+            draw_bbox(img, boxes[i].get_name(), boxes[i].get_confidence(), left, top, right, bottom)
+        file_name = file_path.split("\\")[-1]
+        cv.imwrite(config.OUTPUT_IMAGE_DIR + "Result " + file_name, img)
+
+
+def _detect_single(det):
+    img = cv.imread(config.INPUT_IMG_DIR + config.INPUT_IMG_FILE)
+    boxes = det.detect(img)
+
+    for i in range(len(boxes)):
+        left, top, right, bottom = boxes[i].get_box_points()
+        draw_bbox(img, boxes[i].get_name(), boxes[i].get_confidence(), left, top, right, bottom)
+
+    cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + config.INPUT_IMG_FILE, img)
+
+
+def _test():
+    # check if input folder exists
+    if not os.path.exists(config.INPUT_IMG_DIR):
+        try:
+            os.mkdir(config.INPUT_IMG_DIR)
+        except OSError:
+            print("Creation of the directory %s failed" % config.INPUT_IMG_DIR)
+            exit()
+        else:
+            print("Successfully created the directory %s " % config.INPUT_IMG_DIR)
+
+    # check if input folder exists
+    if not os.path.exists(config.OUTPUT_IMG_DIR):
+        try:
+            os.mkdir(config.OUTPUT_IMG_DIR)
+        except OSError:
+            print("Creation of the directory %s failed" % config.OUTPUT_IMG_DIR)
+            exit()
+        else:
+            print("Successfully created the directory %s " % config.OUTPUT_IMG_DIR)
+
+    det = YoloOpenCVDetection()
+    #_detect_single(det)
+    _detect_folder(det, config.INPUT_IMG_DIR)
+
+
 if __name__ == '__main__':
-    test()
+    _test()
