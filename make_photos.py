@@ -43,7 +43,7 @@ def main():
 
     # take last image
     image = pca.get_image()
-    cv.imwrite("/gathered_data/" + str(datetime.datetime.now()) + sep + "last" + sep + label + ".jpg", image)
+    cv.imwrite(output_dir + str(datetime.datetime.now()) + sep + "last" + sep + label + ".jpg", image)
 
     print("Done.")
 
