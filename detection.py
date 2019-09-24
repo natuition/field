@@ -4,33 +4,14 @@ import os
 from config import config
 
 
-# Load names of classes
-def load_class_names(labels_file):
-    with open(labels_file, 'rt') as f:
-        return f.read().rstrip('\n').split('\n')
-
-
-# Get the names of the output layers
-def get_output_names(net):
-    # Get the names of all the layers in the network
-    layers_names = net.getLayerNames()
-    # Get the names of the output layers, i.e. the layers with unconnected outputs
-    return [layers_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
-
-
 # Draw the predicted bounding box
-def draw_bbox(image, classes, class_id, conf, left, top, right, bottom):
-    # Draw a bounding box.
+def draw_bbox(image, label, conf, left, top, right, bottom):
+    # Draw a bounding box
     cv.rectangle(image, (left, top), (right, bottom), (0, 0, 255), 3)
-    # Draw a center of that box
+    # draw a center of that box
     cv.circle(image, (int(left + (right - left) / 2), int(top + (bottom - top) / 2)), 4, (0, 0, 255), thickness=3)
 
-    label = '%.2f' % conf
-
-    # Get the label for the class name and its confidence
-    if classes:
-        assert (class_id < len(classes))
-        label = '%s:%s' % (classes[class_id], label)
+    label = '%s:%.2f' % (label, conf)
 
     # Display the label at the top of the bounding box
     label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
@@ -40,69 +21,7 @@ def draw_bbox(image, classes, class_id, conf, left, top, right, bottom):
     cv.putText(image, label, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
 
 
-# Remove the bounding boxes with low confidence using non-maxima suppression
-def post_process(image, outs, classes):
-    frame_height = image.shape[0]
-    frame_width = image.shape[1]
-    class_ids = []
-    confidences = []
-    boxes = []
-    final_plant_boxes = []
-
-    # Scan through all the bounding boxes output from the network and keep only the
-    # ones with high confidence scores. Assign the box's class label as the class with the highest score.
-    for out in outs:
-        for detection in out:
-            scores = detection[5:]
-            class_id = np.argmax(scores)
-            confidence = scores[class_id]
-
-            # if detection[4] > conf_threshold:
-            #     print(detection[4], " - ", scores[class_id], " - th : ", conf_threshold)
-            #     print(detection)
-
-            if confidence > config.CONFIDENCE_THRESHOLD:
-                center_x = int(detection[0] * frame_width)
-                center_y = int(detection[1] * frame_height)
-                width = int(detection[2] * frame_width)
-                height = int(detection[3] * frame_height)
-                left = int(center_x - width / 2)
-                top = int(center_y - height / 2)
-                class_ids.append(class_id)
-                confidences.append(float(confidence))
-                boxes.append([left, top, width, height])
-
-    # Perform non maximum suppression to eliminate redundant overlapping boxes with lower confidences.
-    indices = cv.dnn.NMSBoxes(boxes, confidences, config.CONFIDENCE_THRESHOLD, config.NMS_THRESHOLD)
-
-    for i in indices:
-        i = i[0]
-        box = boxes[i]
-        left = box[0]
-        top = box[1]
-        width = box[2]
-        height = box[3]
-        final_plant_boxes.append(DetectedPlantBox(left, top, left + width, top + height, classes, class_ids[i],
-                                                  confidences[i]))
-    return final_plant_boxes
-
-
-def detect(image, net, classes):
-    # Create a 4D blob from a frame.
-    blob = cv.dnn.blobFromImage(image, 1 / 255, config.INPUT_SIZE, [0, 0, 0], 1, crop=False)
-
-    # Sets the input to the network
-    net.setInput(blob)
-
-    # Runs the forward pass to get output of the output layers
-    out_layers = get_output_names(net)
-    outs = net.forward(out_layers)
-
-    # Remove the bounding boxes with low confidence
-    return post_process(image, outs, classes)
-
-
-def main():
+def test():
     if not os.path.exists(config.OUTPUT_IMG_DIR):
         try:
             os.mkdir(config.OUTPUT_IMG_DIR)
@@ -111,23 +30,96 @@ def main():
         else:
             print("Successfully created the directory %s " % config.OUTPUT_IMG_DIR)
 
-    classes = load_class_names(config.YOLO_CLASSES_FILE)
-    net = cv.dnn.readNetFromDarknet(config.YOLO_CONFIG_FILE, config.YOLO_WEIGHTS_FILE)
-    net.setPreferableBackend(cv.dnn.DNN_BACKEND_OPENCV)
-    net.setPreferableTarget(cv.dnn.DNN_TARGET_CPU)
-
+    det = YoloOpenCVDetection()
     img = cv.imread(config.INPUT_IMG_DIR + config.INPUT_IMG_FILE)
-    boxes = detect(img, net, classes)
+    boxes = det.detect(img)
 
     for i in range(len(boxes)):
         left, top, right, bottom = boxes[i].get_box_points()
-        draw_bbox(img, classes, boxes[i].get_class_id(), boxes[i].get_confidence(), left, top, right, bottom)
+        draw_bbox(img, boxes[i].get_name(), boxes[i].get_confidence(), left, top, right, bottom)
 
     cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + config.INPUT_IMG_FILE, img)
 
 
 class YoloOpenCVDetection:
-    pass
+
+    def __init__(self):
+        self.classes = self._load_class_names(config.YOLO_CLASSES_FILE)
+        self.net = cv.dnn.readNetFromDarknet(config.YOLO_CONFIG_FILE, config.YOLO_WEIGHTS_FILE)
+        self.net.setPreferableBackend(cv.dnn.DNN_BACKEND_OPENCV)
+        self.net.setPreferableTarget(cv.dnn.DNN_TARGET_CPU)
+
+    def detect(self, image):
+        # Create a 4D blob from a frame.
+        blob = cv.dnn.blobFromImage(image, 1 / 255, config.INPUT_SIZE, [0, 0, 0], 1, crop=False)
+
+        # Sets the input to the network
+        self.net.setInput(blob)
+
+        # Runs the forward pass to get output of the output layers
+        out_layers = self._get_output_names(self.net)
+        outs = self.net.forward(out_layers)
+
+        # Remove the bounding boxes with low confidence
+        return self._post_process(image, outs, self.classes)
+
+    # Get the names of the output layers
+    def _get_output_names(self, net):
+        # Get the names of all the layers in the network
+        layers_names = net.getLayerNames()
+        # Get the names of the output layers, i.e. the layers with unconnected outputs
+        return [layers_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+
+    # Remove the bounding boxes with low confidence using non-maxima suppression
+    def _post_process(self, image, outs, classes):
+        frame_height = image.shape[0]
+        frame_width = image.shape[1]
+        class_ids = []
+        confidences = []
+        boxes = []
+        final_plant_boxes = []
+
+        # Scan through all the bounding boxes output from the network and keep only the
+        # ones with high confidence scores. Assign the box's class label as the class with the highest score.
+        for out in outs:
+            for detection in out:
+                scores = detection[5:]
+                class_id = np.argmax(scores)
+                confidence = scores[class_id]
+
+                # if detection[4] > conf_threshold:
+                #     print(detection[4], " - ", scores[class_id], " - th : ", conf_threshold)
+                #     print(detection)
+
+                if confidence > config.CONFIDENCE_THRESHOLD:
+                    center_x = int(detection[0] * frame_width)
+                    center_y = int(detection[1] * frame_height)
+                    width = int(detection[2] * frame_width)
+                    height = int(detection[3] * frame_height)
+                    left = int(center_x - width / 2)
+                    top = int(center_y - height / 2)
+                    class_ids.append(class_id)
+                    confidences.append(float(confidence))
+                    boxes.append([left, top, width, height])
+
+        # Perform non maximum suppression to eliminate redundant overlapping boxes with lower confidences.
+        indices = cv.dnn.NMSBoxes(boxes, confidences, config.CONFIDENCE_THRESHOLD, config.NMS_THRESHOLD)
+
+        for i in indices:
+            i = i[0]
+            box = boxes[i]
+            left = box[0]
+            top = box[1]
+            width = box[2]
+            height = box[3]
+            final_plant_boxes.append(DetectedPlantBox(left, top, left + width, top + height, classes, class_ids[i],
+                                                      confidences[i]))
+        return final_plant_boxes
+
+    # Load names of classes
+    def _load_class_names(self, labels_file):
+        with open(labels_file, 'rt') as f:
+            return f.read().rstrip('\n').split('\n')
 
 
 class DetectedPlantBox:
@@ -152,7 +144,7 @@ class DetectedPlantBox:
     def get_sizes(self):
         return self._right - self._left, self._bottom - self._top
 
-    def get_label(self):
+    def get_name(self):
         return self._classes[self._class_id]
 
     def get_class_id(self):
@@ -163,4 +155,4 @@ class DetectedPlantBox:
 
 
 if __name__ == '__main__':
-    main()
+    test()
