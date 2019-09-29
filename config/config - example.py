@@ -1,6 +1,6 @@
 import cv2 as cv
 
-CONFIG_VERSION = "0.2"
+CONFIG_VERSION = "0.2.1"
 
 # ======================================================================================================================
 # SMOOTHIE SETTINGS
@@ -38,7 +38,6 @@ B_AXIS_CALIBRATION_TO_MAX = None
 C_AXIS_CALIBRATION_TO_MAX = None
 
 CALIBRATION_DISTANCE = 1000
-AFTER_CALIBRATION_AXIS_OFFSET = 15
 
 # NAVIGATION
 A_MIN = -20

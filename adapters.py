@@ -478,7 +478,7 @@ class SmoothieAdapter:
                 # "ok\r\n"
                 response = self._smc.read_some()
                 if response == self.RESPONSE_OK:
-                    axis_cur.value = axis_max - config.AFTER_CALIBRATION_AXIS_OFFSET
+                    axis_cur.value = axis_max
                 else:
                     return response
             else:
@@ -486,7 +486,7 @@ class SmoothieAdapter:
                 # "ok\r\n"
                 response = self._smc.read_some()
                 if response == self.RESPONSE_OK:
-                    axis_cur.value = axis_min + config.AFTER_CALIBRATION_AXIS_OFFSET
+                    axis_cur.value = axis_min
                 else:
                     return response
 
