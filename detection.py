@@ -3,6 +3,7 @@ import numpy as np
 import os
 from config import config
 import glob
+import math
 
 
 class YoloOpenCVDetection:
@@ -99,12 +100,16 @@ class DetectedPlantBox:
         self._class_id = class_id
         self._confidence = confidence
 
+    def __str__(self):
+        return "Plant Box L=" + str(self._left) + " T=" + str(self._top) + " R=" + str(self._right) + " B=" +\
+               str(self._bottom) + " X=" + str(self._center_x) + " Y=" + str(self._center_y)
+
     def get_box_points(self):
         """Returns left, top, right, bottom points of the box"""
 
         return self._left, self._top, self._right, self._bottom
 
-    def get_center_point(self):
+    def get_center_points(self):
         """Returns pair of x and y box center coordinates"""
 
         return self._center_x, self._center_y
@@ -126,6 +131,9 @@ class DetectedPlantBox:
 
     def get_confidence(self):
         return self._confidence
+
+    def get_distance_from(self, px_point_x, px_point_y):
+        return math.sqrt((self._center_x - px_point_x) ** 2 + (self._center_y - px_point_y) ** 2)
 
 
 # Draw the predicted bounding box
@@ -195,7 +203,7 @@ def _test():
             print("Successfully created the directory %s " % config.OUTPUT_IMG_DIR)
 
     det = YoloOpenCVDetection()
-    #_detect_single(det)
+    # _detect_single(det)
     _detect_folder(det, config.INPUT_IMG_DIR)
 
 
