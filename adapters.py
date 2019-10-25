@@ -535,6 +535,15 @@ class PiCameraAdapter:
         self._gen = self._camera.capture_continuous(self._raw_capture, format="rgb")
         time.sleep(2)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+    def release(self):
+        self._camera.close()
+
     def get_image(self):
         image = cv.cvtColor(next(self._gen).array, cv.COLOR_RGB2BGR)
         self._raw_capture.truncate(0)
@@ -574,7 +583,7 @@ class CameraAdapterIMX219_170:
     def __enter__(self):
         return self
 
-    def __exit__(self, type_of, value, traceback):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.release()
 
     def release(self):
