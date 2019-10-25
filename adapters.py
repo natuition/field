@@ -541,6 +541,53 @@ class PiCameraAdapter:
         return image
 
 
+class CameraAdapterIMX219_170:
+
+    def __init__(self,
+                 capture_width=config.CAMERA_W,
+                 capture_height=config.CAMERA_H,
+                 display_width=config.CAMERA_W,
+                 display_height=config.CAMERA_H,
+                 framerate=config.CAMERA_FRAMERATE,
+                 flip_method=config.CAMERA_FLIP_METHOD):
+
+        gst_config = (
+                "nvarguscamerasrc ! "
+                "video/x-raw(memory:NVMM), "
+                "width=(int)%d, height=(int)%d, "
+                "format=(string)NV12, framerate=(fraction)%d/1 ! "
+                "nvvidconv flip-method=%d ! "
+                "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+                "videoconvert ! "
+                "video/x-raw, format=(string)BGR ! appsink"
+                % (
+                    capture_width,
+                    capture_height,
+                    framerate,
+                    flip_method,
+                    display_width,
+                    display_height
+                )
+        )
+        self._cap = cv.VideoCapture(gst_config, cv.CAP_GSTREAMER)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type_of, value, traceback):
+        self.release()
+
+    def release(self):
+        self._cap.release()
+
+    def get_image(self):
+        if self._cap.isOpened():
+            ret_val, image = self._cap.read()
+            return image
+        else:
+            raise RuntimeError("Unable to open camera")
+
+
 class CompassAdapter:
 
     def __init__(self):
