@@ -118,3 +118,4 @@ config/config.py
 test.py
 input/
 output/
+yolo/
