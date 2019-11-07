@@ -592,7 +592,8 @@ class CameraAdapterIMX219_170:
     def get_image(self):
         if self._cap.isOpened():
             ret_val, image = self._cap.read()
-            return cv.rotate(image, 2)  # turn image counterclock-wise for 90 degrees
+            # rotate for 90 degrees and crop black zones
+            return cv.rotate(image, 2)[440:2930, 0:2330]
         else:
             raise RuntimeError("Unable to open camera")
 
