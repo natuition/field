@@ -1,6 +1,6 @@
 import cv2 as cv
 
-CONFIG_VERSION = "0.2.3"
+CONFIG_VERSION = "0.2.4"
 
 # ======================================================================================================================
 # SMOOTHIE SETTINGS
@@ -126,6 +126,10 @@ APP_MODE = "searching"
 USE_PI_CAMERA = True
 CAMERA_W = 3280
 CAMERA_H = 2464
+CROP_W_FROM = 0
+CROP_W_TO = 2330
+CROP_H_FROM = 440
+CROP_H_TO = 2930
 CAMERA_FRAMERATE = 5
 CAMERA_FLIP_METHOD = 0
 CORK_CENTER_X = 1292

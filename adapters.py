@@ -593,7 +593,7 @@ class CameraAdapterIMX219_170:
         if self._cap.isOpened():
             ret_val, image = self._cap.read()
             # rotate for 90 degrees and crop black zones
-            return cv.rotate(image, 2)[440:2930, 0:2330]
+            return cv.rotate(image, 2)[config.CROP_H_FROM:config.CROP_H_TO, config.CROP_W_FROM:config.CROP_W_TO]
         else:
             raise RuntimeError("Unable to open camera")
 
