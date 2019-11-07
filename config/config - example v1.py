@@ -1,6 +1,6 @@
 import cv2 as cv
 
-CONFIG_VERSION = "0.2.2"
+CONFIG_VERSION = "0.2.3"
 
 # ======================================================================================================================
 # SMOOTHIE SETTINGS
@@ -124,9 +124,9 @@ YOLO_CLASSES_FILE = "yolo/classes.names"
 # depends on use_camera setting
 APP_MODE = "searching"
 USE_PI_CAMERA = True
-CAMERA_W = 3280
-CAMERA_H = 2464
-CAMERA_FRAMERATE = 5
+CAMERA_W = 2592
+CAMERA_H = 1944
+CAMERA_FRAMERATE = 32
 CAMERA_FLIP_METHOD = 0
 CORK_CENTER_X = 1292
 CORK_CENTER_Y = 1172
