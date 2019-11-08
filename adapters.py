@@ -471,6 +471,13 @@ class SmoothieAdapter:
         if config.USE_Z_AXIS_CALIBRATION:
             self._calibrate_axis(self._z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
 
+    def ext_cork_up(self):
+        # Z axis calibration
+        if config.USE_Z_AXIS_CALIBRATION:
+            return self._calibrate_axis(self._z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
+        else:
+            raise RuntimeError("picking up corkscrew with stoppers usage requires Z axis calibration permission")
+
     def _calibrate_axis(self, axis_cur: multiprocessing.Value, axis_label, axis_min, axis_max, axis_calibration_to_max):
         with axis_cur.get_lock():
             if axis_calibration_to_max:
