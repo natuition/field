@@ -22,6 +22,12 @@ def sort_plant_boxes_dist(boxes: list, current_px_x, current_px_y):
     return sorted(boxes, key=lambda box: box.get_distance_from(current_px_x, current_px_y))
 
 
+def min_plant_box_dist(boxes: list, current_px_x, current_px_y):
+    """Returns closest to current coordinates plant box"""
+
+    return min(boxes, key=lambda box: box.get_distance_from(current_px_x, current_px_y))
+
+
 def sort_plant_boxes_conf(boxes: list):
     """Returns list sorted by descending plant confidence"""
 
@@ -54,35 +60,43 @@ def main():
     plant_boxes = sort_plant_boxes_dist(plant_boxes, config.CORK_CENTER_X, config.CORK_CENTER_Y)
 
     for box in plant_boxes:
-        smoothie.ext_align_cork_center(config.XY_F_MAX)
+        smoothie.ext_align_cork_center(config.XY_F_MAX)  # camera in real center
         smoothie.wait_for_all_actions_done()
         box_x, box_y = box.get_center_points()
-        
+
         # if inside the working zone
         if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, working_zone_radius):
             while True:
                 box_x, box_y = box.get_center_points()
-                sm_x = px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
-                sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
-                res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
-                smoothie.wait_for_all_actions_done()
-
-                # check if no movement errors
-                if res != smoothie.RESPONSE_OK:
-                    print("Couldn't move to plant, smoothie error occurred:", res)
-                    exit(1)
 
                 # if inside undistorted zone
                 if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, undistorted_zone_radius):
+                    # move corkscrew over plant
+                    sm_x = px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
+                    sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
+                    res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                    smoothie.wait_for_all_actions_done()
+
+                    # check if no movement errors
+                    if res != smoothie.RESPONSE_OK:
+                        print("Couldn't move to plant, smoothie error occurred:", res)
+                        exit(1)
+
+                    # waiting confirmation for extraction (just to make people see how it's going on)
                     input("Ready to plant extraction, press enter to begin")
+
                     # extraction, cork down
                     res = smoothie.custom_move_for(config.Z_F_MAX, Z=-60)
+                    smoothie.wait_for_all_actions_done()
+
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
                         exit(1)
 
-                    smoothie.wait_for_all_actions_done()
+                    # extraction, cork up
                     res = smoothie.ext_cork_up()
+                    smoothie.wait_for_all_actions_done()
+
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor up, smoothie error occurred:", res)
                         exit(1)
@@ -90,17 +104,31 @@ def main():
 
                 # if outside undistorted zone but in working zone
                 else:
+                    # move camera over plant
+                    sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                    sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                    res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                    smoothie.wait_for_all_actions_done()
+
+                    # check if no movement errors
+                    if res != smoothie.RESPONSE_OK:
+                        print("Couldn't move to plant, smoothie error occurred:", res)
+                        exit(1)
+
+                    # make new photo and re-detect plants
                     temp_img = camera.get_image()
                     temp_plant_boxes = detector.detect(temp_img)
-                    # get closest box
-                    box = sort_plant_boxes_dist(temp_plant_boxes, config.CORK_CENTER_X, config.CORK_CENTER_Y)[0]
+                    # get closest box (exactly update current box from main list coordinates after moving closer)
+                    box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
 
         # if not in working zone
         else:
-            print(str(box), "is not in working area, switching to next")
+            print("skipped", str(box), "(not in working area)")
+
+    print("Done.")
 
 
-def test():
+def tools_test():
     test_boxes = [
         detection.DetectedPlantBox(5, 5, 60, 60, ["Test_1"], 0, 0.89),
         detection.DetectedPlantBox(200, 200, 250, 250, ["Test_2"], 0, 0.74),
@@ -108,28 +136,36 @@ def test():
     ]
 
     # test px to mm converter
+    """
     px_x = px_to_smoohie_value(460, 500, config.ONE_MM_IN_PX)
     px_y = px_to_smoohie_value(450, 500, config.ONE_MM_IN_PX)
     print("Px values x, y: ", px_x, px_y)
+    """
 
     # test sort box by dist
     print()
     cur_x = 1000
     cur_y = 1000
 
+    res_min = min_plant_box_dist(test_boxes, cur_x, cur_y)
+    print(res_min.get_name(), res_min.get_confidence())
+
     res = sort_plant_boxes_dist(test_boxes, cur_x, cur_y)
 
     for plant_box in res:
         print(plant_box.get_name(), plant_box.get_confidence())
 
+    print(res == res_min)
+
     # test sort box by confidence
+    """
     print()
     res = sort_plant_boxes_conf(test_boxes)
 
     for plant_box in res:
         print(plant_box.get_name(), plant_box.get_confidence())
+    """
 
 
 if __name__ == "__main__":
-    pass
     main()
