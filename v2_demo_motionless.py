@@ -10,10 +10,10 @@ working_zone_radius = 850
 undistorted_zone_radius = 600
 
 
-def px_to_smoohie_value(value_px, center_px, one_mm_in_px):
+def px_to_smoohie_value(target_px, center_px, one_mm_in_px):
     """Converts px into mm-s"""
 
-    return (value_px - center_px) / one_mm_in_px
+    return (center_px - target_px) / one_mm_in_px
 
 
 def sort_plant_boxes_dist(boxes: list, current_px_x, current_px_y):
@@ -55,7 +55,7 @@ def main():
     smoothie.wait_for_all_actions_done()
 
     image = camera.get_image()
-    img_y_c, img_x_c = image.shape[:2]
+    img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
     plant_boxes = detector.detect(image)
     plant_boxes = sort_plant_boxes_dist(plant_boxes, config.CORK_CENTER_X, config.CORK_CENTER_Y)
 
