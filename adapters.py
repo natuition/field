@@ -6,6 +6,8 @@ import time
 from config import config
 import cv2 as cv
 import math
+import queue
+import threading
 
 
 class SmoothieAdapter:
@@ -114,7 +116,7 @@ class SmoothieAdapter:
                 "Z": self._z_cur.value,
                 "A": self._a_cur.value,
                 "B": self._b_cur.value
-                #"C": self._c_cur.value
+                # "C": self._c_cur.value
             }
 
     def get_smoothie_current_coordinates(self):
@@ -368,7 +370,8 @@ class SmoothieAdapter:
                 if not self._check_arg_types([int], F):
                     raise TypeError("incorrect force F value type")
 
-                error_msg = self.validate_value(self._a_cur.value, value, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
+                error_msg = self.validate_value(self._a_cur.value, value, "A", config.A_MIN, config.A_MAX, "A_MIN",
+                                                "A_MAX")
                 if error_msg:
                     raise ValueError(error_msg)
                 error_msg = self.validate_value(0, F, "F", config.A_F_MIN, config.A_F_MAX, "A_F_MIN", "A_F_MAX")
@@ -525,10 +528,10 @@ class SmoothieAdapter:
 
         if cur_value + value > key_max:
             return "Value {0} for {1} goes beyond max acceptable range of {3} = {2}, " \
-                       .format(value, key_label, key_max, key_max_label)
+                .format(value, key_label, key_max, key_max_label)
         if cur_value + value < key_min:
             return "Value {0} for {1} goes beyond min acceptable range of {3} = {2}, " \
-                       .format(value, key_label, key_min, key_min_label)
+                .format(value, key_label, key_min, key_min_label)
         return None
 
 
@@ -587,7 +590,7 @@ class CameraAdapterIMX219_170:
                     display_height
                 )
         )
-        self._cap = cv.VideoCapture(gst_config, cv.CAP_GSTREAMER)
+        self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
 
     def __enter__(self):
         return self
@@ -607,6 +610,32 @@ class CameraAdapterIMX219_170:
             raise RuntimeError("Unable to open camera")
 
 
+class VideoCaptureNoBuffer:
+
+    def __init__(self, *args):
+        self._cap = cv.VideoCapture(*args)
+        self._queue = queue.Queue()
+        self._thread = threading.Thread(target=self._reader)
+        self._thread.daemon = True
+        self._thread.start()
+
+    # read frames as soon as they are available, keeping only most recent one
+    def _reader(self):
+        while True:
+            ret, frame = self._cap.read()
+            if not ret:
+                break
+            if not self._queue.empty():
+                try:
+                    self._queue.get_nowait()  # discard previous (unprocessed) frame
+                except queue.Empty:
+                    pass
+            self._queue.put(frame)
+
+    def read(self):
+        return self._queue.get()
+
+
 class CompassAdapter:
 
     def __init__(self):
@@ -617,13 +646,13 @@ class CompassAdapter:
         self._x_axis_h = 0x03  # Address of X-axis MSB data register
         self._z_axis_h = 0x05  # Address of Z-axis MSB data register
         self._y_axis_h = 0x07  # Address of Y-axis MSB data register
-        self._bus = smbus.SMBus(1) 	# or bus = smbus.SMBus(0) for older version boards
+        self._bus = smbus.SMBus(1)  # or bus = smbus.SMBus(0) for older version boards
 
-        #write to Configuration Register A
+        # write to Configuration Register A
         self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_a, 0x70)
-        #Write to Configuration Register B for gain
+        # Write to Configuration Register B for gain
         self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_b, 0xa0)
-        #Write to mode Register for selecting mode
+        # Write to mode Register for selecting mode
         self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_mode, 0)
 
     def _read_raw_data(self, address):
