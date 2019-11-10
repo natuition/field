@@ -619,6 +619,12 @@ class VideoCaptureNoBuffer:
         self._thread.daemon = True
         self._thread.start()
 
+    def release(self):
+        self._cap.release()
+
+    def isOpened(self):
+        return self._cap.isOpened()
+
     # read frames as soon as they are available, keeping only most recent one
     def _reader(self):
         while True:
