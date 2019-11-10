@@ -71,6 +71,12 @@ def main():
     plant_boxes = detector.detect(image)
     plant_boxes = sort_plant_boxes_dist(plant_boxes, config.CORK_CENTER_X, config.CORK_CENTER_Y)
 
+    # check if no plants detected
+    if len(plant_boxes) < 1:
+        print("No plants detected on view scan, exiting.")
+        cv.imwrite(log_dir + str(log_counter) + " starting - see no plants.jpg", image)
+        exit(0)
+
     #log
     log_img = image.copy()
     log_img = detection.draw_boxes(log_img, plant_boxes)
@@ -145,6 +151,13 @@ def main():
                     temp_img = camera.get_image()
                     temp_plant_boxes = detector.detect(temp_img)
 
+                    # check if no plants detected
+                    if len(temp_plant_boxes) < 1:
+                        print("No plants detected (plant was in undistorted zone before), trying to move on next item")
+                        cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - see no plants.jpg", temp_img)
+                        log_counter += 1
+                        break
+
                     # log
                     log_img = temp_img.copy()
                     log_img = detection.draw_boxes(log_img, temp_plant_boxes)
@@ -163,7 +176,7 @@ def main():
         else:
             print("skipped", str(box), "(not in working area)")
 
-    print("Done.")
+    print("Script executing is done.")
 
 
 def tools_test():
