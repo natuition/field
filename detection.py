@@ -154,6 +154,12 @@ def draw_box(image, box: DetectedPlantBox):
     cv.putText(image, label, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
 
 
+def draw_boxes(image, boxes: list):
+    for i in range(len(boxes)):
+        draw_box(image, boxes[i])
+    return image
+
+
 def _detect_folder(det, image_folder):
     images = glob.glob(image_folder + "*.jpg")
     counter = 1

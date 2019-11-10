@@ -3,6 +3,8 @@ import detection
 import adapters
 import time
 import math
+import os
+import cv2 as cv
 
 # circle working area
 working_zone_radius = 850
@@ -47,6 +49,16 @@ def is_point_in_circle(point_x, point_y, circle_center_x, circle_center_y, circl
 
 
 def main():
+    log_counter = 1
+    log_dir = "log/"
+    if not os.path.exists(log_dir):
+        try:
+            os.mkdir(log_dir)
+        except OSError:
+            print("Creation of the directory %s failed" % log_dir)
+        else:
+            print("Successfully created the directory %s " % log_dir)
+
     smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
     camera = adapters.CameraAdapterIMX219_170()
     time.sleep(2)
@@ -58,6 +70,12 @@ def main():
     img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
     plant_boxes = detector.detect(image)
     plant_boxes = sort_plant_boxes_dist(plant_boxes, config.CORK_CENTER_X, config.CORK_CENTER_Y)
+
+    #log
+    log_img = image.copy()
+    log_img = detection.draw_boxes(log_img, plant_boxes)
+    cv.imwrite(log_dir + str(log_counter) + " starting.jpg", log_img)
+    log_counter += 1
 
     for box in plant_boxes:
         smoothie.ext_align_cork_center(config.XY_F_MAX)  # camera in real center
@@ -126,8 +144,20 @@ def main():
                     # make new photo and re-detect plants
                     temp_img = camera.get_image()
                     temp_plant_boxes = detector.detect(temp_img)
+
+                    # log
+                    log_img = temp_img.copy()
+                    log_img = detection.draw_boxes(log_img, temp_plant_boxes)
+                    cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - all.jpg", log_img)
+
                     # get closest box (exactly update current box from main list coordinates after moving closer)
                     box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
+
+                    # log
+                    log_img = temp_img.copy()
+                    log_img = detection.draw_box(log_img, box)
+                    cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - closest.jpg", log_img)
+                    log_counter += 1
 
         # if not in working zone
         else:
