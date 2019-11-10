@@ -48,6 +48,12 @@ def is_point_in_circle(point_x, point_y, circle_center_x, circle_center_y, circl
     return math.sqrt((point_x - circle_center_x) ** 2 + (point_y - circle_center_y) ** 2) <= circle_radius
 
 
+def draw_zones_circle(image, center_x, center_y, undist_zone_radius, work_zone_radius):
+    cv.circle(image, (center_x, center_y), undist_zone_radius, (0, 0, 255), thickness=3)
+    cv.circle(image, (center_x, center_y), work_zone_radius, (0, 0, 255), thickness=3)
+    return image
+
+
 def main():
     log_counter = 1
     log_dir = "log/"
@@ -77,9 +83,10 @@ def main():
         cv.imwrite(log_dir + str(log_counter) + " starting - see no plants.jpg", image)
         exit(0)
 
-    #log
+    # log
     log_img = image.copy()
     log_img = detection.draw_boxes(log_img, plant_boxes)
+    log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
     cv.imwrite(log_dir + str(log_counter) + " starting.jpg", log_img)
     log_counter += 1
 
@@ -154,6 +161,8 @@ def main():
                     # check if no plants detected
                     if len(temp_plant_boxes) < 1:
                         print("No plants detected (plant was in undistorted zone before), trying to move on next item")
+                        temp_img = draw_zones_circle(temp_img, img_x_c, img_y_c, undistorted_zone_radius,
+                                                     working_zone_radius)
                         cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - see no plants.jpg", temp_img)
                         log_counter += 1
                         break
@@ -161,6 +170,7 @@ def main():
                     # log
                     log_img = temp_img.copy()
                     log_img = detection.draw_boxes(log_img, temp_plant_boxes)
+                    log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
                     cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - all.jpg", log_img)
 
                     # get closest box (exactly update current box from main list coordinates after moving closer)
@@ -169,6 +179,7 @@ def main():
                     # log
                     log_img = temp_img.copy()
                     log_img = detection.draw_box(log_img, box)
+                    log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
                     cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - closest.jpg", log_img)
                     log_counter += 1
 
