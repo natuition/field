@@ -66,11 +66,11 @@ def main():
             print("Successfully created the directory %s " % log_dir)
 
     smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
-    camera = adapters.CameraAdapterIMX219_170()
-    time.sleep(2)
     detector = detection.YoloOpenCVDetection()
     smoothie.ext_align_cork_center(config.XY_F_MAX)
     smoothie.wait_for_all_actions_done()
+    camera = adapters.CameraAdapterIMX219_170()
+    time.sleep(5)
 
     image = camera.get_image()
     img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
