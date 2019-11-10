@@ -69,125 +69,126 @@ def main():
     detector = detection.YoloOpenCVDetection()
     smoothie.ext_align_cork_center(config.XY_F_MAX)
     smoothie.wait_for_all_actions_done()
-    camera = adapters.CameraAdapterIMX219_170()
-    time.sleep(5)
 
-    image = camera.get_image()
-    img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
-    plant_boxes = detector.detect(image)
-    plant_boxes = sort_plant_boxes_dist(plant_boxes, config.CORK_CENTER_X, config.CORK_CENTER_Y)
+    with adapters.CameraAdapterIMX219_170() as camera:
+        time.sleep(5)
 
-    # check if no plants detected
-    if len(plant_boxes) < 1:
-        print("No plants detected on view scan, exiting.")
-        cv.imwrite(log_dir + str(log_counter) + " starting - see no plants.jpg", image)
-        exit(0)
+        image = camera.get_image()
+        img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
+        plant_boxes = detector.detect(image)
+        plant_boxes = sort_plant_boxes_dist(plant_boxes, config.CORK_CENTER_X, config.CORK_CENTER_Y)
 
-    # log
-    log_img = image.copy()
-    log_img = detection.draw_boxes(log_img, plant_boxes)
-    log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
-    cv.imwrite(log_dir + str(log_counter) + " starting.jpg", log_img)
-    log_counter += 1
+        # check if no plants detected
+        if len(plant_boxes) < 1:
+            print("No plants detected on view scan, exiting.")
+            cv.imwrite(log_dir + str(log_counter) + " starting - see no plants.jpg", image)
+            exit(0)
 
-    for box in plant_boxes:
-        smoothie.ext_align_cork_center(config.XY_F_MAX)  # camera in real center
-        smoothie.wait_for_all_actions_done()
-        box_x, box_y = box.get_center_points()
+        # log
+        log_img = image.copy()
+        log_img = detection.draw_boxes(log_img, plant_boxes)
+        log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
+        cv.imwrite(log_dir + str(log_counter) + " starting.jpg", log_img)
+        log_counter += 1
 
-        # if inside the working zone
-        if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, working_zone_radius):
-            while True:
-                box_x, box_y = box.get_center_points()
+        for box in plant_boxes:
+            smoothie.ext_align_cork_center(config.XY_F_MAX)  # camera in real center
+            smoothie.wait_for_all_actions_done()
+            box_x, box_y = box.get_center_points()
 
-                # if inside undistorted zone
-                if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, undistorted_zone_radius):
-                    # calculate values to move camera over a plant
-                    sm_x = px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
-                    sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
+            # if inside the working zone
+            if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, working_zone_radius):
+                while True:
+                    box_x, box_y = box.get_center_points()
 
-                    # move camera over a plant
-                    res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
-                    smoothie.wait_for_all_actions_done()
-                    if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move camera over plant, smoothie error occurred:", res)
-                        exit(1)
+                    # if inside undistorted zone
+                    if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, undistorted_zone_radius):
+                        # calculate values to move camera over a plant
+                        sm_x = px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
+                        sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
 
-                    # move cork to the camera position
-                    res = smoothie.custom_move_for(config.XY_F_MAX, Y=57)
-                    smoothie.wait_for_all_actions_done()
-                    if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move cork over plant, smoothie error occurred:", res)
-                        exit(1)
+                        # move camera over a plant
+                        res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            print("Couldn't move camera over plant, smoothie error occurred:", res)
+                            exit(1)
 
-                    # waiting confirmation for extraction (just to make people see how it's going on)
-                    input("Ready to plant extraction, press enter to begin")
+                        # move cork to the camera position
+                        res = smoothie.custom_move_for(config.XY_F_MAX, Y=57)
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            print("Couldn't move cork over plant, smoothie error occurred:", res)
+                            exit(1)
 
-                    # extraction, cork down
-                    res = smoothie.custom_move_for(config.Z_F_MAX, Z=-30)
-                    smoothie.wait_for_all_actions_done()
-                    if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move the extractor down, smoothie error occurred:", res)
-                        exit(1)
+                        # waiting confirmation for extraction (just to make people see how it's going on)
+                        input("Ready to plant extraction, press enter to begin")
 
-                    # extraction, cork up
-                    res = smoothie.ext_cork_up()
-                    smoothie.wait_for_all_actions_done()
-                    if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move the extractor up, smoothie error occurred:", res)
-                        exit(1)
-                    break
+                        # extraction, cork down
+                        res = smoothie.custom_move_for(config.Z_F_MAX, Z=-30)
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            print("Couldn't move the extractor down, smoothie error occurred:", res)
+                            exit(1)
 
-                # if outside undistorted zone but in working zone
-                else:
-                    # calculate values for move camera closer to a plant
-                    sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
-                    sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
-                    # move for a half distance, dist is not < 10
-                    sm_x = int(sm_x / 2) if sm_x / 2 > 10 else 10
-                    sm_y = int(sm_y / 2) if sm_y / 2 > 10 else 10
-
-                    # move camera closer to a plant
-                    res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
-                    smoothie.wait_for_all_actions_done()
-                    if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move to plant, smoothie error occurred:", res)
-                        exit(1)
-
-                    # make new photo and re-detect plants
-                    temp_img = camera.get_image()
-                    temp_plant_boxes = detector.detect(temp_img)
-
-                    # check if no plants detected
-                    if len(temp_plant_boxes) < 1:
-                        print("No plants detected (plant was in undistorted zone before), trying to move on next item")
-                        temp_img = draw_zones_circle(temp_img, img_x_c, img_y_c, undistorted_zone_radius,
-                                                     working_zone_radius)
-                        cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - see no plants.jpg", temp_img)
-                        log_counter += 1
+                        # extraction, cork up
+                        res = smoothie.ext_cork_up()
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            print("Couldn't move the extractor up, smoothie error occurred:", res)
+                            exit(1)
                         break
 
-                    # log
-                    log_img = temp_img.copy()
-                    log_img = detection.draw_boxes(log_img, temp_plant_boxes)
-                    log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
-                    cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - all.jpg", log_img)
+                    # if outside undistorted zone but in working zone
+                    else:
+                        # calculate values for move camera closer to a plant
+                        sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                        sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                        # move for a half distance, dist is not < 10
+                        sm_x = int(sm_x / 2) if sm_x / 2 > 10 else 10
+                        sm_y = int(sm_y / 2) if sm_y / 2 > 10 else 10
 
-                    # get closest box (exactly update current box from main list coordinates after moving closer)
-                    box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
+                        # move camera closer to a plant
+                        res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            print("Couldn't move to plant, smoothie error occurred:", res)
+                            exit(1)
 
-                    # log
-                    log_img = temp_img.copy()
-                    log_img = detection.draw_box(log_img, box)
-                    log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
-                    cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - closest.jpg", log_img)
-                    log_counter += 1
+                        # make new photo and re-detect plants
+                        temp_img = camera.get_image()
+                        temp_plant_boxes = detector.detect(temp_img)
 
-        # if not in working zone
-        else:
-            print("skipped", str(box), "(not in working area)")
+                        # check if no plants detected
+                        if len(temp_plant_boxes) < 1:
+                            print("No plants detected (plant was in undistorted zone before), trying to move on next item")
+                            temp_img = draw_zones_circle(temp_img, img_x_c, img_y_c, undistorted_zone_radius,
+                                                         working_zone_radius)
+                            cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - see no plants.jpg", temp_img)
+                            log_counter += 1
+                            break
 
-    print("Script executing is done.")
+                        # log
+                        log_img = temp_img.copy()
+                        log_img = detection.draw_boxes(log_img, temp_plant_boxes)
+                        log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
+                        cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - all.jpg", log_img)
+
+                        # get closest box (exactly update current box from main list coordinates after moving closer)
+                        box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
+
+                        # log
+                        log_img = temp_img.copy()
+                        log_img = detection.draw_box(log_img, box)
+                        log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
+                        cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - closest.jpg", log_img)
+                        log_counter += 1
+
+            # if not in working zone
+            else:
+                print("skipped", str(box), "(not in working area)")
+
+        print("Script executing is done.")
 
 
 def tools_test():

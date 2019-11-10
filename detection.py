@@ -174,7 +174,7 @@ def _detect_folder(det, image_folder):
             draw_box(img, boxes[i])
 
         file_name = file_path.split("\\")[-1]
-        cv.imwrite(config.OUTPUT_IMAGE_DIR + "Result " + file_name, img)
+        cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + file_name, img)
 
 
 def _detect_single(det):
