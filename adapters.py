@@ -603,7 +603,7 @@ class CameraAdapterIMX219_170:
 
     def get_image(self):
         if self._cap.isOpened():
-            ret_val, image = self._cap.read()
+            image = self._cap.read()
             # rotate for 90 degrees and crop black zones
             return cv.rotate(image, 2)[config.CROP_H_FROM:config.CROP_H_TO, config.CROP_W_FROM:config.CROP_W_TO]
         else:
