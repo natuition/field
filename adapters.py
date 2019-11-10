@@ -459,6 +459,8 @@ class SmoothieAdapter:
                     return response
 
     def ext_calibrate_cork(self):
+        # add exception generation if response != OK
+
         # X axis calibration
         if config.USE_X_AXIS_CALIBRATION:
             self._calibrate_axis(self._x_cur, "X", config.X_MIN, config.X_MAX, config.X_AXIS_CALIBRATION_TO_MAX)

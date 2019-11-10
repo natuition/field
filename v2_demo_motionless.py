@@ -7,7 +7,7 @@ import math
 # circle working area
 working_zone_radius = 850
 # circle undistorted area
-undistorted_zone_radius = 600
+undistorted_zone_radius = 240
 
 
 def px_to_smoohie_value(target_px, center_px, one_mm_in_px):
@@ -71,24 +71,30 @@ def main():
 
                 # if inside undistorted zone
                 if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, undistorted_zone_radius):
-                    # move corkscrew over plant
+                    # calculate values to move camera over a plant
                     sm_x = px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
                     sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
+
+                    # move camera over a plant
                     res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                     smoothie.wait_for_all_actions_done()
-
-                    # check if no movement errors
                     if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move to plant, smoothie error occurred:", res)
+                        print("Couldn't move camera over plant, smoothie error occurred:", res)
+                        exit(1)
+
+                    # move cork to the camera position
+                    res = smoothie.custom_move_for(config.XY_F_MAX, Y=57)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        print("Couldn't move cork over plant, smoothie error occurred:", res)
                         exit(1)
 
                     # waiting confirmation for extraction (just to make people see how it's going on)
                     input("Ready to plant extraction, press enter to begin")
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(config.Z_F_MAX, Z=-60)
+                    res = smoothie.custom_move_for(config.Z_F_MAX, Z=-30)
                     smoothie.wait_for_all_actions_done()
-
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
                         exit(1)
@@ -96,7 +102,6 @@ def main():
                     # extraction, cork up
                     res = smoothie.ext_cork_up()
                     smoothie.wait_for_all_actions_done()
-
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor up, smoothie error occurred:", res)
                         exit(1)
@@ -104,13 +109,16 @@ def main():
 
                 # if outside undistorted zone but in working zone
                 else:
-                    # move camera over plant
+                    # calculate values for move camera closer to a plant
                     sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
                     sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                    # move for a half distance, dist is not < 10
+                    sm_x = int(sm_x / 2) if sm_x / 2 > 10 else 10
+                    sm_y = int(sm_y / 2) if sm_y / 2 > 10 else 10
+
+                    # move camera closer to a plant
                     res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                     smoothie.wait_for_all_actions_done()
-
-                    # check if no movement errors
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move to plant, smoothie error occurred:", res)
                         exit(1)
