@@ -562,6 +562,57 @@ class PiCameraAdapter:
         return image
 
 
+class CameraAdapterIMX219_170_BS1:
+    """Buffer size is set to 1 frame, getting 2 frames per call, return last"""
+
+    def __init__(self,
+                 capture_width=config.CAMERA_W,
+                 capture_height=config.CAMERA_H,
+                 display_width=config.CAMERA_W,
+                 display_height=config.CAMERA_H,
+                 framerate=config.CAMERA_FRAMERATE,
+                 flip_method=config.CAMERA_FLIP_METHOD):
+
+        gst_config = (
+                "nvarguscamerasrc ! "
+                "video/x-raw(memory:NVMM), "
+                "width=(int)%d, height=(int)%d, "
+                "format=(string)NV12, framerate=(fraction)%d/1 ! "
+                "nvvidconv flip-method=%d ! "
+                "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+                "videoconvert ! "
+                "video/x-raw, format=(string)BGR ! appsink"
+                % (
+                    capture_width,
+                    capture_height,
+                    framerate,
+                    flip_method,
+                    display_width,
+                    display_height
+                )
+        )
+        self._cap = cv.VideoCapture(gst_config, cv.CAP_GSTREAMER)
+        self._cap = cv.VideoCapture(cv.CAP_PROP_BUFFERSIZE, 1)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+    def release(self):
+        self._cap.release()
+
+    def get_image(self):
+        if self._cap.isOpened():
+            for i in range(self._cap.get(cv.CAP_PROP_BUFFERSIZE) + 1):
+                ret, image = self._cap.read()
+            # rotate for 90 degrees and crop black zones
+            return cv.rotate(image, 2)[config.CROP_H_FROM:config.CROP_H_TO, config.CROP_W_FROM:config.CROP_W_TO]
+        else:
+            raise RuntimeError("Unable to open camera")
+
+
 class CameraAdapterIMX219_170:
 
     def __init__(self,
