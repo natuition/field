@@ -41,9 +41,11 @@ def main():
         else:
             print("Successfully created the directory %s " % config.OUTPUT_IMG_DIR)
 
-    print("Loading...")
+    print("Loading YOLO...")
     det = detection.YoloOpenCVDetection()
+    print("Loading camera...")
     camera = adapters.CameraAdapterIMX219_170()
+    print("Camera warming up...")
     time.sleep(3)
     print("Loading complete.")
 
@@ -82,6 +84,8 @@ def main():
 
         file_name = file_path.split("\\")[-1]
         cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + file_name, img)
+
+    print("Done!")
 
 
 if __name__ == "__main__":
