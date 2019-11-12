@@ -82,7 +82,7 @@ def main():
             # put results in the input folder
             # cv.imwrite(file_path[:-4] + " - result.jpg", img)
 
-            file_name = file_path.split("\\")[-1]
+            file_name = file_path.split("/")[-1]
             cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + file_name, img)
 
         print("Done!")
