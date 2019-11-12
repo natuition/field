@@ -15,6 +15,7 @@ undistorted_zone_radius = 240
 def px_to_smoohie_value(target_px, center_px, one_mm_in_px):
     """Converts px into mm-s"""
 
+    # returns wrong sign for x because of different 0 position between smoothie and image
     return (center_px - target_px) / one_mm_in_px
 
 
@@ -104,7 +105,7 @@ def main():
                     # if inside undistorted zone
                     if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, undistorted_zone_radius):
                         # calculate values to move camera over a plant
-                        sm_x = px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
+                        sm_x = -px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
                         sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
 
                         # move camera over a plant
@@ -142,7 +143,7 @@ def main():
                     # if outside undistorted zone but in working zone
                     else:
                         # calculate values for move camera closer to a plant
-                        sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                        sm_x = -px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
                         sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
                         # move for a half distance, dist is not < 10
                         sm_x = int(sm_x / 2) if sm_x / 2 > 10 else 10
