@@ -408,14 +408,14 @@ class SmoothieAdapter:
                     self._a_cur.value += smc_a
                 return response
 
-    def nav_turn_wheels_left_max(self, F: int):
-        return self.nav_turn_wheels_to(config.A_MIN, config.A_F_MIN)
+    def nav_turn_wheels_left_max(self, F=config.A_F_MAX):
+        return self.nav_turn_wheels_to(config.A_MIN, F)
 
-    def nav_turn_wheels_right_max(self, F: int):
-        return self.nav_turn_wheels_to(config.A_MAX, config.A_F_MAX)
+    def nav_turn_wheels_right_max(self, F=config.A_F_MAX):
+        return self.nav_turn_wheels_to(config.A_MAX, F)
 
-    def nav_align_wheels_center(self, F: int):
-        return self.nav_turn_wheels_to(config.NAV_TURN_WHEELS_CENTER, config.A_F_MAX)
+    def nav_align_wheels_center(self, F=config.A_F_MAX):
+        return self.nav_turn_wheels_to(config.NAV_TURN_WHEELS_CENTER, F)
 
     def ext_do_extraction(self, F: int):
         with self._sync_locker:
