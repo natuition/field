@@ -217,6 +217,8 @@ class SmoothieAdapter:
                     return error_msg
                 g_code += " C" + str(C)
 
+            g_code += " F" + str(F)
+
             self._smc.write(g_code)
             # "ok\r\n"
             response = self._smc.read_some()
@@ -314,6 +316,8 @@ class SmoothieAdapter:
                     return error_msg
                 smc_c = C - self._c_cur.value
                 g_code += " C" + str(smc_c)
+
+            g_code += " F" + str(F)
 
             self._smc.write(g_code)
             # "ok\r\n"
