@@ -83,9 +83,19 @@ def main():
 
             # check if no plants detected
             if len(plant_boxes) < 1:
-                print("No plants detected on view scan, exiting.")
+                print("No plants detected on view scan, moving forward.")
                 cv.imwrite(log_dir + str(log_counter) + " starting - see no plants.jpg", image)
-                exit(0)
+
+                # move forward for 30 sm
+                res = smoothie.nav_move_forward(16.3, 1000)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
+                    exit(1)
+
+                # each thousand means robot shift forward for 30 sm
+                log_counter += 1000
+                continue
 
             # log
             log_img = image.copy()
