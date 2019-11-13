@@ -7,7 +7,7 @@ import os
 import cv2 as cv
 
 # circle working area
-working_zone_radius = 850
+working_zone_radius = 700
 # circle undistorted area
 undistorted_zone_radius = 240
 
@@ -87,7 +87,7 @@ def main():
                 cv.imwrite(log_dir + str(log_counter) + " starting - see no plants.jpg", image)
 
                 # move forward for 30 sm
-                res = smoothie.nav_move_forward(16.3, 1000)
+                res = smoothie.custom_move_for(1000, B=-16.3)
                 smoothie.wait_for_all_actions_done()
                 if res != smoothie.RESPONSE_OK:
                     print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
@@ -134,9 +134,6 @@ def main():
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move cork over plant, smoothie error occurred:", res)
                                 exit(1)
-
-                            # waiting confirmation for extraction (just to make people see how it's going on)
-                            input("Ready to plant extraction, press enter to begin")
 
                             # extraction, cork down
                             res = smoothie.custom_move_for(config.Z_F_MAX, Z=-30)
@@ -203,7 +200,7 @@ def main():
                     print("skipped", str(box), "(not in working area)")
 
             # move forward for 30 sm
-            res = smoothie.nav_move_forward(16.3, 1000)
+            res = smoothie.custom_move_for(1000, B=-16.3)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
                 print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
