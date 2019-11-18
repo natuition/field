@@ -1,18 +1,20 @@
 from config import config
+import connectors
 import adapters
 
 
 def main():
-    print("Loading smoothie adapter")
-    smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
+    print("Loading smoothie connector")
+    smoothie = connectors.SmoothieConnector(config.SMOOTHIE_HOST)
 
-    print("Turning wheels right")
-    res = smoothie.custom_move_for(1000, A=38)
-    if res != smoothie.RESPONSE_OK:
-        print("Couldn't turn wheels right, smoothie error occurred:", res)
+    print("Turning wheels left")
+    res = smoothie.write("G0 A38 F1000")
+    
+    if res != adapters.SmoothieAdapter.RESPONSE_OK:
+        print("Couldn't turn wheels left, smoothie error occurred:", res)
         exit(1)
 
-    print("Done!")
+    print("Execution done")
 
 
 if __name__ == '__main__':

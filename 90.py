@@ -1,18 +1,20 @@
 from config import config
 import adapters
+import connectors
 
 
 def main():
-    print("Loading smoothie adapter")
-    smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
+    print("Loading smoothie connector")
+    smoothie = connectors.SmoothieConnector(config.SMOOTHIE_HOST)
 
     print("Moving forward")
-    res = smoothie.nav_move_forward(48.9, 1000)
-    if res != smoothie.RESPONSE_OK:
+    res = smoothie.write("G0 B48.9 F1000")
+
+    if res != adapters.SmoothieAdapter.RESPONSE_OK:
         print("Couldn't move forward, smoothie error occurred:", res)
         exit(1)
 
-    print("Done!")
+    print("Execution done")
 
 
 if __name__ == '__main__':
