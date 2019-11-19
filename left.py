@@ -8,8 +8,9 @@ def main():
     smoothie = connectors.SmoothieConnector(config.SMOOTHIE_HOST)
 
     print("Turning wheels left")
-    res = smoothie.write("G0 A38 F1000")
-    
+    smoothie.write("G0 A38 F1000")
+    res = smoothie.read_some()
+
     if res != adapters.SmoothieAdapter.RESPONSE_OK:
         print("Couldn't turn wheels left, smoothie error occurred:", res)
         exit(1)
