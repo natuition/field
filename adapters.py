@@ -468,6 +468,10 @@ class SmoothieAdapter:
     def ext_calibrate_cork(self):
         # add exception generation if response != OK
 
+        # Z axis calibration
+        if config.USE_Z_AXIS_CALIBRATION:
+            self._calibrate_axis(self._z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
+
         # X axis calibration
         if config.USE_X_AXIS_CALIBRATION:
             self._calibrate_axis(self._x_cur, "X", config.X_MIN, config.X_MAX, config.X_AXIS_CALIBRATION_TO_MAX)
@@ -476,9 +480,6 @@ class SmoothieAdapter:
         if config.USE_Y_AXIS_CALIBRATION:
             self._calibrate_axis(self._y_cur, "Y", config.Y_MIN, config.Y_MAX, config.Y_AXIS_CALIBRATION_TO_MAX)
 
-        # Z axis calibration
-        if config.USE_Z_AXIS_CALIBRATION:
-            self._calibrate_axis(self._z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
 
     def ext_cork_up(self):
         # Z axis calibration
