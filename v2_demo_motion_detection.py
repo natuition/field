@@ -5,11 +5,26 @@ import time
 import math
 import os
 import cv2 as cv
+import logging
+import glob
 
-# circle working area
-working_zone_radius = 700
-# circle undistorted area
-undistorted_zone_radius = 240
+# constants
+LOG_DIR = "log/"
+LOG_FILE = str(__file__).split("\\")[-1][:-3] + ".log"
+WORKING_ZONE_RADIUS = 700
+UNDISTORTED_ZONE_RADIUS = 240
+
+logging.basicConfig(format='%(asctime)s > %(module)s.%(funcName)s %(levelname)s: %(message)s (line %(lineno)d)',
+                        datefmt='%I:%M:%S %p',
+                        filename=LOG_DIR + LOG_FILE,
+                        filemode='w',
+                        level=logging.DEBUG)
+
+
+def clear_log_dir():
+    images = glob.glob(LOG_DIR + "*.jpg")
+    for file_path in images:
+        os.remove(file_path)
 
 
 def px_to_smoohie_value(target_px, center_px, one_mm_in_px):
@@ -57,14 +72,16 @@ def draw_zones_circle(image, center_x, center_y, undist_zone_radius, work_zone_r
 
 def main():
     log_counter = 1
-    log_dir = "log/"
-    if not os.path.exists(log_dir):
+    if not os.path.exists(LOG_DIR):
         try:
-            os.mkdir(log_dir)
+            os.mkdir(LOG_DIR)
         except OSError:
-            print("Creation of the directory %s failed" % log_dir)
+            print("Creation of the directory %s failed" % LOG_DIR)
         else:
-            print("Successfully created the directory %s " % log_dir)
+            print("Successfully created the directory %s " % LOG_DIR)
+
+    # remove old images from log dir
+    clear_log_dir()
 
     smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
     detector = detection.YoloOpenCVDetection()
@@ -84,7 +101,7 @@ def main():
             # check if no plants detected
             if len(plant_boxes) < 1:
                 print("No plants detected on view scan, moving forward.")
-                cv.imwrite(log_dir + str(log_counter) + " starting - see no plants.jpg", image)
+                cv.imwrite(LOG_DIR + str(log_counter) + " starting - see no plants.jpg", image)
 
                 # move forward for 30 sm
                 res = smoothie.custom_move_for(1000, B=-16.3)
@@ -100,8 +117,8 @@ def main():
             # log
             log_img = image.copy()
             log_img = detection.draw_boxes(log_img, plant_boxes)
-            log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
-            cv.imwrite(log_dir + str(log_counter) + " starting.jpg", log_img)
+            log_img = draw_zones_circle(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS, WORKING_ZONE_RADIUS)
+            cv.imwrite(LOG_DIR + str(log_counter) + " starting.jpg", log_img)
             log_counter += 1
 
             # loop over all detected plants
@@ -111,12 +128,12 @@ def main():
                 box_x, box_y = box.get_center_points()
 
                 # if inside the working zone
-                if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, working_zone_radius):
+                if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, WORKING_ZONE_RADIUS):
                     while True:
                         box_x, box_y = box.get_center_points()
 
                         # if inside undistorted zone
-                        if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, undistorted_zone_radius):
+                        if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS):
                             # calculate values to move camera over a plant
                             sm_x = -px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
                             sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
@@ -173,17 +190,17 @@ def main():
                             # check if no plants detected
                             if len(temp_plant_boxes) < 1:
                                 print("No plants detected (plant was in undistorted zone before), trying to move on next item")
-                                temp_img = draw_zones_circle(temp_img, img_x_c, img_y_c, undistorted_zone_radius,
-                                                             working_zone_radius)
-                                cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - see no plants.jpg", temp_img)
+                                temp_img = draw_zones_circle(temp_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS,
+                                                             WORKING_ZONE_RADIUS)
+                                cv.imwrite(LOG_DIR + str(log_counter) + " in undistorted branch - see no plants.jpg", temp_img)
                                 log_counter += 1
                                 break
 
                             # log
                             log_img = temp_img.copy()
                             log_img = detection.draw_boxes(log_img, temp_plant_boxes)
-                            log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
-                            cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - all.jpg", log_img)
+                            log_img = draw_zones_circle(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS, WORKING_ZONE_RADIUS)
+                            cv.imwrite(LOG_DIR + str(log_counter) + " in undistorted branch - all.jpg", log_img)
 
                             # get closest box (exactly update current box from main list coordinates after moving closer)
                             box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
@@ -191,8 +208,8 @@ def main():
                             # log
                             log_img = temp_img.copy()
                             log_img = detection.draw_box(log_img, box)
-                            log_img = draw_zones_circle(log_img, img_x_c, img_y_c, undistorted_zone_radius, working_zone_radius)
-                            cv.imwrite(log_dir + str(log_counter) + " in undistorted branch - closest.jpg", log_img)
+                            log_img = draw_zones_circle(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS, WORKING_ZONE_RADIUS)
+                            cv.imwrite(LOG_DIR + str(log_counter) + " in undistorted branch - closest.jpg", log_img)
                             log_counter += 1
 
                 # if not in working zone
