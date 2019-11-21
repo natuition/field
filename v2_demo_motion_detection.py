@@ -7,10 +7,11 @@ import os
 import cv2 as cv
 import logging
 import glob
+import datetime
 
 # paths
 LOG_DIR = "log/"
-LOG_FILE = str(__file__).split("\\")[-1][:-3] + ".log"
+LOG_FILE = str(__file__).split("\\")[-1][:-3] + str(datetime.datetime.now()) + ".log"
 
 # circle zones
 WORKING_ZONE_RADIUS = 700
@@ -107,6 +108,8 @@ def main():
 
         # main loop, detection and motion
         while True:
+            logging.debug("Starting detection and motion main loop iteration")
+
             image = camera.get_image()
             img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
             plant_boxes = detector.detect(image)
@@ -114,28 +117,29 @@ def main():
 
             # check if no plants detected
             if len(plant_boxes) < 1:
-                print("No plants detected on view scan, moving forward.")
-                cv.imwrite(LOG_DIR + str(log_counter) + " starting - see no plants.jpg", image)
+                print("No plants detected on view scan (img " + str(log_counter) + "), moving forward")
+                logging.info("No plants detected on view scan (img " + str(log_counter) + "), moving forward")
+                cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", image)
+                log_counter += 1
 
                 # move forward for 30 sm
                 res = smoothie.custom_move_for(1000, B=-16.3)
                 smoothie.wait_for_all_actions_done()
                 if res != smoothie.RESPONSE_OK:
                     print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
+                    logging.critical("Couldn't move forward (for 30 sm), smoothie error occurred: " + res)
                     exit(1)
-
-                # each thousand means robot shift forward for 30 sm
-                log_counter += 1000
                 continue
-
-            # log
-            log_img = image.copy()
-            log_img = detection.draw_boxes(log_img, plant_boxes)
-            log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                  WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
-
-            cv.imwrite(LOG_DIR + str(log_counter) + " starting.jpg", log_img)
-            log_counter += 1
+            else:
+                print("Found " + str(len(plant_boxes)) + " plants on view scan (img " + str(log_counter) + ")")
+                logging.info("Found " + str(len(plant_boxes)) + " plants on view scan (img " + str(log_counter) + ")")
+                log_img = image.copy()
+                log_img = detection.draw_boxes(log_img, plant_boxes)
+                log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
+                                     WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
+                           log_img)
+                log_counter += 1
 
             # loop over all detected plants
             for box in plant_boxes:
