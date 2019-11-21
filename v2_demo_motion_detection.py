@@ -143,12 +143,15 @@ def main():
 
             # loop over all detected plants
             for box in plant_boxes:
+                logging.debug("Starting loop over plants list iteration")
+
                 smoothie.ext_align_cork_center(config.XY_F_MAX)  # camera in real center
                 smoothie.wait_for_all_actions_done()
                 box_x, box_y = box.get_center_points()
 
                 # if inside the working zone
-                if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, WORKING_ZONE_RADIUS):
+                if is_point_in_rect(box_x, box_y, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
+                                    WORKING_ZONE_Y_MAX):
                     while True:
                         box_x, box_y = box.get_center_points()
 
