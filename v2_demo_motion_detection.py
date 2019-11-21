@@ -192,9 +192,9 @@ def main():
                             # calculate values for move camera closer to a plant
                             sm_x = -px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
                             sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
-                            # move for a half distance, dist is not < 10
-                            sm_x = int(sm_x / 2) if sm_x / 2 > 10 else 10
-                            sm_y = int(sm_y / 2) if sm_y / 2 > 10 else 10
+                            # move for a half distance
+                            sm_x = int(sm_x / 2)
+                            sm_y = int(sm_y / 2)
 
                             # move camera closer to a plant
                             res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
