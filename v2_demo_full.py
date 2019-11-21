@@ -178,8 +178,8 @@ def main():
                             logging.info("Plant is in undistorted zone")
 
                             # calculate values to move camera over a plant
-                            sm_x = -px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
-                            sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
+                            sm_x = -px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                            sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
 
                             print("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
                             logging.debug("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
