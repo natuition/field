@@ -11,7 +11,7 @@ import datetime
 
 # paths
 LOG_DIR = "log/"
-LOG_FILE = str(datetime.datetime.now()) + ".log"
+LOG_FILE = str(str(datetime.datetime.now()).split(".")[:-1]) + ".log"
 
 # circle zones
 WORKING_ZONE_RADIUS = 700
@@ -200,7 +200,7 @@ def main():
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move camera over plant, smoothie error occurred:", res)
-                                logging.critical("Couldn't move camera over plant, smoothie error occurred:", res)
+                                logging.critical("Couldn't move camera over plant, smoothie error occurred: " + str(res))
                                 exit(1)
 
                             # move cork to the camera position
@@ -211,7 +211,7 @@ def main():
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move cork over plant, smoothie error occurred:", res)
-                                logging.critical("Couldn't move cork over plant, smoothie error occurred:", res)
+                                logging.critical("Couldn't move cork over plant, smoothie error occurred: " + str(res))
                                 exit(1)
 
                             # extraction, cork down
@@ -219,6 +219,7 @@ def main():
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move the extractor down, smoothie error occurred:", res)
+                                logging.critical("Couldn't move the extractor down, smoothie error occurred:" + str(res))
                                 exit(1)
 
                             # extraction, cork up
@@ -226,11 +227,15 @@ def main():
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move the extractor up, smoothie error occurred:", res)
+                                logging.critical("Couldn't move the extractor up, smoothie error occurred:" + str(res))
                                 exit(1)
                             break
 
                         # if outside undistorted zone but in working zone
                         else:
+                            print("Plant is outside undistorted zone, moving to")
+                            logging.info("Plant is outside undistorted zone, moving to")
+
                             # calculate values for move camera closer to a plant
                             sm_x = -px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
                             sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
@@ -238,11 +243,15 @@ def main():
                             sm_x = int(sm_x / 2)
                             sm_y = int(sm_y / 2)
 
+                            print("Moving for half distance x=" + str(sm_x) + " y=" + str(sm_y))
+                            logging.info("Moving for half distance x=" + str(sm_x) + " y=" + str(sm_y))
+
                             # move camera closer to a plant
                             res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move to plant, smoothie error occurred:", res)
+                                logging.critical("Couldn't move to plant, smoothie error occurred: " + str(res))
                                 exit(1)
 
                             # make new photo and re-detect plants
@@ -253,6 +262,9 @@ def main():
                             if len(temp_plant_boxes) < 1:
                                 print("No plants detected (plant was in undistorted zone before), trying to move on\
                                     next item")
+                                logging.info("No plants detected (plant was in undistorted zone before), trying to move on\
+                                                                    next item")
+
                                 temp_img = draw_zones(temp_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                                       WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
                                 cv.imwrite(LOG_DIR + str(log_counter) + " in undistorted branch - see no plants.jpg",
@@ -281,16 +293,18 @@ def main():
                 # if not in working zone
                 else:
                     print("skipped", str(box), "(not in working area)")
+                    logging.info("skipped", str(box), "(not in working area)")
 
             # move forward for 30 sm
             res = smoothie.custom_move_for(1000, B=-16.3)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
                 print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
+                logging.critical("Couldn't move forward (for 30 sm), smoothie error occurred: " + str(res))
                 exit(1)
 
             # each thousand means robot shift forward for 30 sm
-            log_counter += 1000
+            log_counter += 1
 
 
 def tools_test():
