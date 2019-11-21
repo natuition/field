@@ -11,7 +11,7 @@ import datetime
 
 # paths
 LOG_DIR = "log/"
-LOG_FILE = str(__file__).split("\\")[-1][:-3] + str(datetime.datetime.now()) + ".log"
+LOG_FILE = str(datetime.datetime.now()) + ".log"
 
 # circle zones
 WORKING_ZONE_RADIUS = 700
@@ -96,6 +96,8 @@ def main():
             print("Successfully created the directory %s " % LOG_DIR)
 
     # remove old images from log dir
+    print("Removing .jpg images from log directory")
+    logging.debug("Removing .jpg images from log directory")
     clear_log_dir()
 
     smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
@@ -104,6 +106,8 @@ def main():
     smoothie.wait_for_all_actions_done()
 
     with adapters.CameraAdapterIMX219_170() as camera:
+        print("Warming up the camera")
+        logging.debug("Warming up the camera")
         time.sleep(5)
 
         # main loop, detection and motion
@@ -149,30 +153,65 @@ def main():
                 smoothie.wait_for_all_actions_done()
                 box_x, box_y = box.get_center_points()
 
+                print("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
+                logging.info("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
+
                 # if inside the working zone
                 if is_point_in_rect(box_x, box_y, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                     WORKING_ZONE_Y_MAX):
+
+                    print("Plant is in working zone")
+                    logging.info("Plant is in working zone")
+
                     while True:
+                        print("Starting extraction loop")
+                        logging.info("Starting extraction loop")
+
                         box_x, box_y = box.get_center_points()
+
+                        print("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
+                        logging.info("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
 
                         # if inside undistorted zone
                         if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS):
+                            print("Plant is in undistorted zone")
+                            logging.info("Plant is in undistorted zone")
+
                             # calculate values to move camera over a plant
                             sm_x = -px_to_smoohie_value(box_x, config.CORK_CENTER_X, config.ONE_MM_IN_PX)
                             sm_y = px_to_smoohie_value(box_y, config.CORK_CENTER_Y, config.ONE_MM_IN_PX)
 
+                            print("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
+                            logging.debug("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
+
+                            ad_cur_coord = smoothie.get_adapter_current_coordinates()
+                            print("Adapter coordinates: " + str(ad_cur_coord))
+                            logging.info("Adapter coordinates: " + str(ad_cur_coord))
+
+                            sm_cur_coord = smoothie.get_smoothie_current_coordinates()
+                            print("Smoothie coordinates: " + str(sm_cur_coord))
+                            logging.info("Smoothie coordinates: " + str(sm_cur_coord))
+
                             # move camera over a plant
+                            print("Moving camera to the plant")
+                            logging.info("Moving camera to the plant")
+
                             res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move camera over plant, smoothie error occurred:", res)
+                                logging.critical("Couldn't move camera over plant, smoothie error occurred:", res)
                                 exit(1)
 
                             # move cork to the camera position
+                            print("Moving cork to the camera position")
+                            logging.info("Moving cork to the camera position")
+
                             res = smoothie.custom_move_for(config.XY_F_MAX, Y=57)
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move cork over plant, smoothie error occurred:", res)
+                                logging.critical("Couldn't move cork over plant, smoothie error occurred:", res)
                                 exit(1)
 
                             # extraction, cork down
