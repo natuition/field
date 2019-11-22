@@ -40,7 +40,7 @@ def px_to_smoohie_value(target_px, center_px, one_mm_in_px):
     """Converts px into mm-s"""
 
     # returns wrong sign for x because of different 0 position between smoothie and image
-    return (center_px - target_px) / one_mm_in_px
+    return (target_px - center_px) / one_mm_in_px
 
 
 def sort_plant_boxes_dist(boxes: list, current_px_x, current_px_y):
@@ -178,8 +178,8 @@ def main():
                             logging.info("Plant is in undistorted zone")
 
                             # calculate values to move camera over a plant
-                            sm_x = -px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
-                            sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                            sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                            sm_y = -px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
 
                             print("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
                             logging.debug("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
@@ -237,8 +237,8 @@ def main():
                             logging.info("Plant is outside undistorted zone, moving to")
 
                             # calculate values for move camera closer to a plant
-                            sm_x = -px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
-                            sm_y = px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                            sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                            sm_y = -px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
                             # move for a half distance
                             sm_x = int(sm_x / 2)
                             sm_y = int(sm_y / 2)
