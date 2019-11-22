@@ -123,7 +123,11 @@ def main():
             if len(plant_boxes) < 1:
                 print("No plants detected on view scan (img " + str(log_counter) + "), moving forward")
                 logging.info("No plants detected on view scan (img " + str(log_counter) + "), moving forward")
-                cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", image)
+                log_img = image.copy()
+                log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
+                                   WORKING_ZONE_Y_MAX,
+                                   img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", log_img)
                 log_counter += 1
 
                 # move forward for 30 sm
@@ -138,9 +142,9 @@ def main():
                 print("Found " + str(len(plant_boxes)) + " plants on view scan (img " + str(log_counter) + ")")
                 logging.info("Found " + str(len(plant_boxes)) + " plants on view scan (img " + str(log_counter) + ")")
                 log_img = image.copy()
-                log_img = detection.draw_boxes(log_img, plant_boxes)
                 log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                      WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                log_img = detection.draw_boxes(log_img, plant_boxes)
                 cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
                            log_img)
                 log_counter += 1
@@ -200,7 +204,8 @@ def main():
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move camera over plant, smoothie error occurred:", res)
-                                logging.critical("Couldn't move camera over plant, smoothie error occurred: " + str(res))
+                                logging.critical(
+                                    "Couldn't move camera over plant, smoothie error occurred: " + str(res))
                                 exit(1)
 
                             # move cork to the camera position
@@ -222,7 +227,8 @@ def main():
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move the extractor down, smoothie error occurred:", res)
-                                logging.critical("Couldn't move the extractor down, smoothie error occurred:" + str(res))
+                                logging.critical(
+                                    "Couldn't move the extractor down, smoothie error occurred:" + str(res))
                                 exit(1)
 
                             # extraction, cork up
@@ -261,39 +267,42 @@ def main():
                                 exit(1)
 
                             # make new photo and re-detect plants
-                            temp_img = camera.get_image()
-                            temp_plant_boxes = detector.detect(temp_img)
+                            image = camera.get_image()
+                            temp_plant_boxes = detector.detect(image)
 
                             # check if no plants detected
                             if len(temp_plant_boxes) < 1:
-                                print("No plants detected (plant was in undistorted zone before), trying to move on\
+                                print("No plants detected (plant was in working zone before), trying to move on\
                                     next item")
-                                logging.info("No plants detected (plant was in undistorted zone before), trying to move on\
+                                logging.info("No plants detected (plant was in working zone before), trying to move on\
                                                                     next item")
 
-                                temp_img = draw_zones(temp_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
+                                log_img = image.copy()
+                                log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN,
+                                                      WORKING_ZONE_X_MAX,
                                                       WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
-                                cv.imwrite(LOG_DIR + str(log_counter) + " in undistorted branch - see no plants.jpg",
-                                           temp_img)
+                                cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - see no plants.jpg",
+                                           log_img)
                                 log_counter += 1
                                 break
 
                             # log
-                            log_img = temp_img.copy()
-                            log_img = detection.draw_boxes(log_img, temp_plant_boxes)
+                            log_img = image.copy()
                             log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                                  WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
-                            cv.imwrite(LOG_DIR + str(log_counter) + " in undistorted branch - all.jpg", log_img)
+                                                 WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                            log_img = detection.draw_boxes(log_img, temp_plant_boxes)
+                            cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - all plants.jpg", log_img)
+                            log_counter += 1
 
                             # get closest box (exactly update current box from main list coordinates after moving closer)
                             box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
 
                             # log
-                            log_img = temp_img.copy()
-                            log_img = detection.draw_box(log_img, box)
+                            log_img = image.copy()
                             log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                                  WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
-                            cv.imwrite(LOG_DIR + str(log_counter) + " in undistorted branch - closest.jpg", log_img)
+                                                 WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                            log_img = detection.draw_box(log_img, box)
+                            cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - closest plant.jpg", log_img)
                             log_counter += 1
 
                 # if not in working zone
@@ -302,15 +311,12 @@ def main():
                     logging.info("skipped " + str(box) + " (not in working area)")
 
             # move forward for 30 sm
-            res = smoothie.custom_move_for(1000, B=-16.3)
+            res = smoothie.custom_move_for(1000, B=-5.43)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
                 print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
                 logging.critical("Couldn't move forward (for 30 sm), smoothie error occurred: " + str(res))
                 exit(1)
-
-            # each thousand means robot shift forward for 30 sm
-            log_counter += 1
 
 
 def tools_test():
