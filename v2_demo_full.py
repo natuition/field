@@ -293,7 +293,7 @@ def main():
                 # if not in working zone
                 else:
                     print("skipped", str(box), "(not in working area)")
-                    logging.info("skipped", str(box), "(not in working area)")
+                    logging.info("skipped " + str(box) + " (not in working area)")
 
             # move forward for 30 sm
             res = smoothie.custom_move_for(1000, B=-16.3)
