@@ -11,7 +11,7 @@ import datetime
 
 # paths
 LOG_DIR = "log/"
-LOG_FILE = str(str(datetime.datetime.now()).split(".")[:-1]) + ".log"
+LOG_FILE = str(str(datetime.datetime.now()).split(".")[:-1])[2:-2] + ".log"
 
 # circle zones
 WORKING_ZONE_RADIUS = 700
