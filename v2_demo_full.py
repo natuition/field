@@ -102,8 +102,6 @@ def main():
 
     smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
     detector = detection.YoloOpenCVDetection()
-    smoothie.ext_align_cork_center(config.XY_F_MAX)
-    smoothie.wait_for_all_actions_done()
 
     with adapters.CameraAdapterIMX219_170() as camera:
         print("Warming up the camera")
@@ -113,6 +111,8 @@ def main():
         # main loop, detection and motion
         while True:
             logging.debug("Starting detection and motion main loop iteration")
+            smoothie.ext_align_cork_center(config.XY_F_MAX)
+            smoothie.wait_for_all_actions_done()
 
             image = camera.get_image()
             img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
@@ -204,8 +204,8 @@ def main():
                                 exit(1)
 
                             # move cork to the camera position
-                            print("Moving cork to the camera position")
-                            logging.info("Moving cork to the camera position")
+                            print("Moving cork to the camera position (y+57)")
+                            logging.info("Moving cork to the camera position (y+57)")
 
                             res = smoothie.custom_move_for(config.XY_F_MAX, Y=57)
                             smoothie.wait_for_all_actions_done()
@@ -215,6 +215,9 @@ def main():
                                 exit(1)
 
                             # extraction, cork down
+                            print("Extracting plant (cork down)")
+                            logging.info("Extracting plant (cork down)")
+
                             res = smoothie.custom_move_for(config.Z_F_MAX, Z=-30)
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
@@ -223,6 +226,9 @@ def main():
                                 exit(1)
 
                             # extraction, cork up
+                            print("Extracting plant (cork up)")
+                            logging.info("Extracting plant (cork up)")
+
                             res = smoothie.ext_cork_up()
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
