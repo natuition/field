@@ -10,8 +10,7 @@ import glob
 import datetime
 
 # paths
-#LOG_DIR = "log/" + str(str(datetime.datetime.now()).split(".")[:-1])[2:-2].replace(":", "-") + "/"
-LOG_DIR = "log/"
+LOG_DIR = "log/" + str(str(datetime.datetime.now()).split(".")[:-1])[2:-2].replace(":", "-") + "/"
 LOG_FILE = "v2_demo_full.log"
 
 # circle zones
@@ -90,7 +89,7 @@ def main():
     log_counter = 1
     if not os.path.exists(LOG_DIR):
         try:
-            os.mkdir(LOG_DIR)
+            os.makedirs(LOG_DIR)
         except OSError:
             print("Creation of the directory %s failed" % LOG_DIR)
         else:
