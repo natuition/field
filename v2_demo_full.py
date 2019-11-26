@@ -10,7 +10,8 @@ import glob
 import datetime
 
 # paths
-LOG_DIR = "log/" + str(str(datetime.datetime.now()).split(".")[:-1])[2:-2].replace(":", "-") + "/"
+#LOG_DIR = "log/" + str(str(datetime.datetime.now()).split(".")[:-1])[2:-2].replace(":", "-") + "/"
+LOG_DIR = "log/"
 LOG_FILE = "v2_demo_full.log"
 
 # circle zones
