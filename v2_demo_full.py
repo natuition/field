@@ -10,7 +10,7 @@ import glob
 import datetime
 
 # paths
-LOG_DIR = "log/" + str(str(datetime.datetime.now()).split(".")[:-1])[2:-2] + "/"
+LOG_DIR = "log/" + str(str(datetime.datetime.now()).split(".")[:-1])[2:-2].replace(":", "-") + "/"
 LOG_FILE = "v2_demo_full.log"
 
 # circle zones
@@ -127,7 +127,7 @@ def main():
                 log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                    WORKING_ZONE_Y_MAX,
                                    img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
-                cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", log_img)
+                #cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", log_img)
                 log_counter += 1
 
                 # move forward for 30 sm
@@ -145,8 +145,8 @@ def main():
                 log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                      WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
                 log_img = detection.draw_boxes(log_img, plant_boxes)
-                cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
-                           log_img)
+                #cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
+                #           log_img)
                 log_counter += 1
 
             # loop over all detected plants
@@ -281,8 +281,8 @@ def main():
                                 log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN,
                                                       WORKING_ZONE_X_MAX,
                                                       WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
-                                cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - see no plants.jpg",
-                                           log_img)
+                                #cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - see no plants.jpg",
+                                #           log_img)
                                 log_counter += 1
                                 break
 
@@ -291,7 +291,7 @@ def main():
                             log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                                  WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
                             log_img = detection.draw_boxes(log_img, temp_plant_boxes)
-                            cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - all plants.jpg", log_img)
+                            #cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - all plants.jpg", log_img)
                             log_counter += 1
 
                             # get closest box (exactly update current box from main list coordinates after moving closer)
@@ -302,7 +302,7 @@ def main():
                             log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                                  WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
                             log_img = detection.draw_box(log_img, box)
-                            cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - closest plant.jpg", log_img)
+                            #cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - closest plant.jpg", log_img)
                             log_counter += 1
 
                 # if not in working zone
