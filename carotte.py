@@ -8,6 +8,7 @@ def main():
 
     print("Aligning cork to center")
     res = smoothie.ext_align_cork_center(config.XY_F_MAX)
+    smoothie.wait_for_all_actions_done()
     if res != smoothie.RESPONSE_OK:
         print("Couldn't align cork to center, smoothie error occurred:", res)
         exit(1)
