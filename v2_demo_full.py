@@ -87,21 +87,33 @@ def draw_zones(image, left, top, right, bottom, circle_center_x, circle_center_y
 
 
 def main():
+    time.sleep(5)
     log_counter = 1
     if not os.path.exists(LOG_DIR):
         try:
             os.mkdir(LOG_DIR)
         except OSError:
             print("Creation of the directory %s failed" % LOG_DIR)
+            logging.error("Creation of the directory %s failed" % LOG_DIR)
         else:
             print("Successfully created the directory %s " % LOG_DIR)
+            logging.info("Successfully created the directory %s " % LOG_DIR)
 
     # remove old images from log dir
     print("Removing .jpg images from log directory")
     logging.debug("Removing .jpg images from log directory")
     clear_log_dir()
 
-    smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
+    while True:
+        try:
+            smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
+            print("Successfully connected to smoothie")
+            logging.info("Successfully connected to smoothie")
+            break
+        except OSError as error:
+            logging.warning(repr(error))
+            print(repr(error))
+
     detector = detection.YoloOpenCVDetection()
 
     with adapters.CameraAdapterIMX219_170() as camera:
