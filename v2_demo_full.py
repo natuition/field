@@ -144,7 +144,7 @@ def main():
                 log_counter += 1
 
                 # move forward for 30 sm
-                res = smoothie.custom_move_for(1000, B=-16.3)
+                res = smoothie.custom_move_for(1000, B=5.43)
                 smoothie.wait_for_all_actions_done()
                 if res != smoothie.RESPONSE_OK:
                     print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
@@ -334,7 +334,7 @@ def main():
                     logging.info("skipped " + str(box) + " (not in working area)")
 
             # move forward for 30 sm
-            res = smoothie.custom_move_for(1000, B=-5.43)
+            res = smoothie.custom_move_for(1000, B=5.43)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
                 print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
