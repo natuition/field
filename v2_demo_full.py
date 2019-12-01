@@ -232,6 +232,11 @@ def main():
                                 logging.critical("Couldn't move cork over plant, smoothie error occurred: " + str(res))
                                 exit(1)
 
+                            # temp debug 1
+                            log_img = camera.get_image()
+                            cv.imwrite(LOG_DIR + str(log_counter) + " extracting (cork in upper position).jpg", log_img)
+                            log_counter += 1
+
                             # extraction, cork down
                             print("Extracting plant (cork down)")
                             logging.info("Extracting plant (cork down)")
@@ -243,6 +248,11 @@ def main():
                                 logging.critical(
                                     "Couldn't move the extractor down, smoothie error occurred:" + str(res))
                                 exit(1)
+
+                            # temp debug 2
+                            log_img = camera.get_image()
+                            cv.imwrite(LOG_DIR + str(log_counter) + " extracting (cork in lower position).jpg", log_img)
+                            log_counter += 1
 
                             # extraction, cork up
                             print("Extracting plant (cork up)")
