@@ -8,9 +8,15 @@ import cv2 as cv
 import logging
 import glob
 import datetime
+import numpy as np
+from matplotlib.patches import Polygon
+
+# for drawing
+import matplotlib.pyplot as plt
+from matplotlib.collections import PatchCollection
 
 # paths
-#LOG_DIR = "log/" + str(str(datetime.datetime.now()).split(".")[:-1])[2:-2].replace(":", "-") + "/"
+# LOG_DIR = "log/" + str(str(datetime.datetime.now()).split(".")[:-1])[2:-2].replace(":", "-") + "/"
 LOG_DIR = "log/"
 LOG_FILE = "v2_demo_full.log"
 
@@ -24,11 +30,30 @@ WORKING_ZONE_X_MAX = 2057
 WORKING_ZONE_Y_MIN = 1040
 WORKING_ZONE_Y_MAX = 1400
 
+# polygon working zone
+# these points are raw pixel coords of polygon which defines robot physical working area
+WORKING_ZONE_POLY_POINTS = [[363, 622], [504, 553], [602, 506], [708, 469], [842, 434], [1021, 407], [1228, 410],
+                            [1435, 443], [1587, 492], [1726, 558], [1855, 618], [1881, 675], [1919, 795], [1942, 926],
+                            [1959, 1066], [1964, 1217], [1964, 1321], [1956, 1372], [1863, 1404], [1747, 1452],
+                            [1592, 1511], [1418, 1552], [1238, 1575], [1082, 1587], [925, 1575], [791, 1557],
+                            [576, 1517], [410, 1458], [318, 1415], [270, 1397], [266, 1284], [274, 1129], [292, 977],
+                            [361, 622]]
+
 logging.basicConfig(format='%(asctime)s > %(module)s.%(funcName)s %(levelname)s: %(message)s (line %(lineno)d)',
                     datefmt='%I:%M:%S %p',
                     filename=LOG_DIR + LOG_FILE,
                     filemode='w',
                     level=logging.DEBUG)
+
+
+def adapt_y_axis_value(value, axis_max_value):
+    """This function converts the value for the Y axis"""
+
+    """The coordinate grid used in OpenCV differs from Matplotlib: if you represent two-dimensional coordinate axes,
+    then OpenCV counts (0) along the y axis "from the top", and Matplotlib starts from the "bottom", so before using 
+    the coordinates along the y axis, you need to change the system accordingly Matplotlib measurements"""
+
+    return axis_max_value - value
 
 
 def clear_log_dir():
@@ -37,7 +62,7 @@ def clear_log_dir():
         os.remove(file_path)
 
 
-def px_to_smoohie_value(target_px, center_px, one_mm_in_px):
+def px_to_smoothie_value(target_px, center_px, one_mm_in_px):
     """Converts px into mm-s"""
 
     # returns wrong sign for x because of different 0 position between smoothie and image
@@ -68,6 +93,10 @@ def is_point_in_rect(point_x, point_y, left, top, right, bottom):
     return point_x >= left and point_x <= right and point_y >= top and point_y <= bottom
 
 
+def is_point_in_poly(point_x, point_y, polygon: Polygon):
+    return polygon.contains_point([point_x, point_y])
+
+
 def is_point_in_circle(point_x, point_y, circle_center_x, circle_center_y, circle_radius):
     """Returns True if (x,y) point in the circle or on it's border, False otherwise"""
 
@@ -86,6 +115,10 @@ def draw_zones(image, left, top, right, bottom, circle_center_x, circle_center_y
     return image
 
 
+def draw_zone_poly(image, np_poly_points):
+    return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
+
+
 def main():
     time.sleep(5)
     log_counter = 1
@@ -98,6 +131,15 @@ def main():
         else:
             print("Successfully created the directory %s " % LOG_DIR)
             logging.info("Successfully created the directory %s " % LOG_DIR)
+
+    # working zone pre-calculations
+    # these points list is changed for usage in matplotlib (is has differences in the coords system)
+    working_zone_points_plt = list(
+        map(lambda item: [item[0], config.CROP_H_TO - config.CROP_H_FROM - item[1]], WORKING_ZONE_POLY_POINTS))
+    working_zone_polygon = Polygon(working_zone_points_plt)
+
+    # these points array is used for drawing zone using OpenCV
+    working_zone_points_cv = np.array(WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
 
     # remove old images from log dir
     print("Removing .jpg images from log directory")
@@ -138,9 +180,8 @@ def main():
                 logging.info("No plants detected on view scan (img " + str(log_counter) + "), moving forward")
                 log_img = image.copy()
                 log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                   WORKING_ZONE_Y_MAX,
-                                   img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
-                #cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", log_img)
+                                     WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                # cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", log_img)
                 log_counter += 1
 
                 # move forward for 30 sm
@@ -158,7 +199,7 @@ def main():
                 log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                      WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
                 log_img = detection.draw_boxes(log_img, plant_boxes)
-                #cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
+                # cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
                 #           log_img)
                 log_counter += 1
 
@@ -174,8 +215,9 @@ def main():
                 logging.info("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
 
                 # if inside the working zone
-                if is_point_in_rect(box_x, box_y, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                    WORKING_ZONE_Y_MAX):
+                # if is_point_in_rect(box_x, box_y, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
+                #                     WORKING_ZONE_Y_MAX):
+                if is_point_in_poly(box_x, box_y, working_zone_polygon):
 
                     print("Plant is in working zone")
                     logging.info("Plant is in working zone")
@@ -195,8 +237,8 @@ def main():
                             logging.info("Plant is in undistorted zone")
 
                             # calculate values to move camera over a plant
-                            sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
-                            sm_y = -px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                            sm_x = px_to_smoothie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                            sm_y = -px_to_smoothie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
 
                             print("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
                             logging.debug("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
@@ -272,8 +314,8 @@ def main():
                             logging.info("Plant is outside undistorted zone, moving to")
 
                             # calculate values for move camera closer to a plant
-                            sm_x = px_to_smoohie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
-                            sm_y = -px_to_smoohie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                            sm_x = px_to_smoothie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                            sm_y = -px_to_smoothie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
                             # move for a half distance
                             sm_x = int(sm_x / 2)
                             sm_y = int(sm_y / 2)
@@ -302,9 +344,9 @@ def main():
 
                                 log_img = image.copy()
                                 log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN,
-                                                      WORKING_ZONE_X_MAX,
-                                                      WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
-                                #cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - see no plants.jpg",
+                                                     WORKING_ZONE_X_MAX, WORKING_ZONE_Y_MAX, img_x_c, img_y_c,
+                                                     UNDISTORTED_ZONE_RADIUS)
+                                # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - see no plants.jpg",
                                 #           log_img)
                                 log_counter += 1
                                 break
@@ -314,7 +356,7 @@ def main():
                             log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                                  WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
                             log_img = detection.draw_boxes(log_img, temp_plant_boxes)
-                            #cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - all plants.jpg", log_img)
+                            # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - all plants.jpg", log_img)
                             log_counter += 1
 
                             # get closest box (exactly update current box from main list coordinates after moving closer)
@@ -325,7 +367,7 @@ def main():
                             log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
                                                  WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
                             log_img = detection.draw_box(log_img, box)
-                            #cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - closest plant.jpg", log_img)
+                            # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - closest plant.jpg", log_img)
                             log_counter += 1
 
                 # if not in working zone
