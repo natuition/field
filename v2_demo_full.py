@@ -166,7 +166,9 @@ def main():
         # main loop, detection and motion
         while True:
             logging.debug("Starting detection and motion main loop iteration")
-            smoothie.ext_align_cork_center(config.XY_F_MAX)
+            # go to scan position
+            # smoothie.ext_align_cork_center(config.XY_F_MAX)
+            smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
             smoothie.wait_for_all_actions_done()
 
             image = camera.get_image()
@@ -207,7 +209,8 @@ def main():
             for box in plant_boxes:
                 logging.debug("Starting loop over plants list iteration")
 
-                smoothie.ext_align_cork_center(config.XY_F_MAX)  # camera in real center
+                # smoothie.ext_align_cork_center(config.XY_F_MAX)  # camera in real center
+                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
                 smoothie.wait_for_all_actions_done()
                 box_x, box_y = box.get_center_points()
 
