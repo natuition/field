@@ -20,6 +20,9 @@ from matplotlib.collections import PatchCollection
 LOG_DIR = "log/"
 LOG_FILE = "v2_demo_full.log"
 
+# distance between camera and cork, mm
+CORK_CAMERA_DISTANCE = 57
+
 # circle zones
 WORKING_ZONE_RADIUS = 700
 UNDISTORTED_ZONE_RADIUS = 240
@@ -31,14 +34,13 @@ WORKING_ZONE_Y_MIN = 1040
 WORKING_ZONE_Y_MAX = 1400
 
 # polygon working zone
-# these points are raw pixel coords of polygon which defines robot physical working area
-WORKING_ZONE_POLY_POINTS = [[363, 622], [504, 553], [602, 506], [708, 469], [842, 434], [1021, 407], [1228, 410],
-                            [1435, 443], [1587, 492], [1726, 558], [1855, 618], [1881, 675], [1919, 795], [1942, 926],
-                            [1959, 1066], [1964, 1217], [1964, 1321], [1956, 1372], [1863, 1404], [1747, 1452],
-                            [1592, 1511], [1418, 1552], [1238, 1575], [1082, 1587], [925, 1575], [791, 1557],
-                            [576, 1517], [410, 1458], [318, 1415], [270, 1397], [266, 1284], [274, 1129], [292, 977],
-                            [361, 622]]
+# these points are raw pixel coordinates of polygon which defines robot physical working area
+WORKING_ZONE_POLY_POINTS = [[387, 618], [504, 553], [602, 506], [708, 469], [842, 434], [1021, 407], [1228, 410],
+                            [1435, 443], [1587, 492], [1726, 558], [1867, 637], [1881, 675], [1919, 795], [1942, 926],
+                            [1954, 1055], [1953, 1176], [1551, 1187], [1145, 1190], [724, 1190], [454, 1188],
+                            [286, 1188], [283, 1082], [296, 979], [318, 874], [351, 753]]
 
+# logging settings
 logging.basicConfig(format='%(asctime)s > %(module)s.%(funcName)s %(levelname)s: %(message)s (line %(lineno)d)',
                     datefmt='%I:%M:%S %p',
                     filename=LOG_DIR + LOG_FILE,
@@ -109,10 +111,9 @@ def draw_zones_circle(image, center_x, center_y, undist_zone_radius, work_zone_r
     return image
 
 
-def draw_zones(image, left, top, right, bottom, circle_center_x, circle_center_y, circle_radius):
-    cv.circle(image, (circle_center_x, circle_center_y), circle_radius, (0, 0, 255), thickness=3)
-    cv.rectangle(image, (left, top), (right, bottom), (0, 0, 255), thickness=3)
-    return image
+def draw_zones(image, circle_center_x, circle_center_y, circle_radius, np_poly_points):
+    image = cv.circle(image, (circle_center_x, circle_center_y), circle_radius, (0, 0, 255), thickness=3)
+    return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
 
 
 def draw_zone_poly(image, np_poly_points):
@@ -133,7 +134,7 @@ def main():
             logging.info("Successfully created the directory %s " % LOG_DIR)
 
     # working zone pre-calculations
-    # these points list is changed for usage in matplotlib (is has differences in the coords system)
+    # these points list is changed for usage in matplotlib (it has differences in the coords system)
     working_zone_points_plt = list(
         map(lambda item: [item[0], config.CROP_H_TO - config.CROP_H_FROM - item[1]], WORKING_ZONE_POLY_POINTS))
     working_zone_polygon = Polygon(working_zone_points_plt)
@@ -146,6 +147,7 @@ def main():
     logging.debug("Removing .jpg images from log directory")
     clear_log_dir()
 
+    # create smoothieboard adapter (API for access and control smoothieboard)
     while True:
         try:
             smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
@@ -174,15 +176,14 @@ def main():
             image = camera.get_image()
             img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
             plant_boxes = detector.detect(image)
-            plant_boxes = sort_plant_boxes_dist(plant_boxes, config.CORK_CENTER_X, config.CORK_CENTER_Y)
+            plant_boxes = sort_plant_boxes_dist(plant_boxes, config.X_MAX / 2, config.Y_MIN)
 
             # check if no plants detected
             if len(plant_boxes) < 1:
                 print("No plants detected on view scan (img " + str(log_counter) + "), moving forward")
                 logging.info("No plants detected on view scan (img " + str(log_counter) + "), moving forward")
                 log_img = image.copy()
-                log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                     WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS, working_zone_points_cv)
                 # cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", log_img)
                 log_counter += 1
 
@@ -198,8 +199,7 @@ def main():
                 print("Found " + str(len(plant_boxes)) + " plants on view scan (img " + str(log_counter) + ")")
                 logging.info("Found " + str(len(plant_boxes)) + " plants on view scan (img " + str(log_counter) + ")")
                 log_img = image.copy()
-                log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                     WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS, working_zone_points_cv)
                 log_img = detection.draw_boxes(log_img, plant_boxes)
                 # cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
                 #           log_img)
@@ -212,16 +212,15 @@ def main():
                 # smoothie.ext_align_cork_center(config.XY_F_MAX)  # camera in real center
                 smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
                 smoothie.wait_for_all_actions_done()
-                box_x, box_y = box.get_center_points()
 
+                """
+                box_x, box_y = box.get_center_points()
                 print("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
                 logging.info("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
+                """
 
-                # if inside the working zone
-                # if is_point_in_rect(box_x, box_y, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                #                     WORKING_ZONE_Y_MAX):
+                # if plant is in working zone and can be reached by cork
                 if is_point_in_poly(box_x, box_y, working_zone_polygon):
-
                     print("Plant is in working zone")
                     logging.info("Plant is in working zone")
 
@@ -231,8 +230,8 @@ def main():
 
                         box_x, box_y = box.get_center_points()
 
-                        print("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
-                        logging.info("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
+                        print("Processing plant in x=" + str(box_x) + " y=" + str(box_y))
+                        logging.info("Processing plant in x=" + str(box_x) + " y=" + str(box_y))
 
                         # if inside undistorted zone
                         if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS):
@@ -242,6 +241,8 @@ def main():
                             # calculate values to move camera over a plant
                             sm_x = px_to_smoothie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
                             sm_y = -px_to_smoothie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                            # swap camera and cork for extraction immediately
+                            sm_y += CORK_CAMERA_DISTANCE
 
                             print("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
                             logging.debug("Calculated smoothie moving coordinates X=" + str(sm_x) + " Y=" + str(sm_y))
@@ -264,17 +265,6 @@ def main():
                                 print("Couldn't move camera over plant, smoothie error occurred:", res)
                                 logging.critical(
                                     "Couldn't move camera over plant, smoothie error occurred: " + str(res))
-                                exit(1)
-
-                            # move cork to the camera position
-                            print("Moving cork to the camera position (y+57)")
-                            logging.info("Moving cork to the camera position (y+57)")
-
-                            res = smoothie.custom_move_for(config.XY_F_MAX, Y=57)
-                            smoothie.wait_for_all_actions_done()
-                            if res != smoothie.RESPONSE_OK:
-                                print("Couldn't move cork over plant, smoothie error occurred:", res)
-                                logging.critical("Couldn't move cork over plant, smoothie error occurred: " + str(res))
                                 exit(1)
 
                             # temp debug 1
@@ -346,9 +336,8 @@ def main():
                                                                     next item")
 
                                 log_img = image.copy()
-                                log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN,
-                                                     WORKING_ZONE_X_MAX, WORKING_ZONE_Y_MAX, img_x_c, img_y_c,
-                                                     UNDISTORTED_ZONE_RADIUS)
+                                log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS,
+                                                     working_zone_points_cv)
                                 # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - see no plants.jpg",
                                 #           log_img)
                                 log_counter += 1
@@ -356,8 +345,8 @@ def main():
 
                             # log
                             log_img = image.copy()
-                            log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                                 WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                            log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS,
+                                                 working_zone_points_cv)
                             log_img = detection.draw_boxes(log_img, temp_plant_boxes)
                             # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - all plants.jpg", log_img)
                             log_counter += 1
@@ -367,8 +356,8 @@ def main():
 
                             # log
                             log_img = image.copy()
-                            log_img = draw_zones(log_img, WORKING_ZONE_X_MIN, WORKING_ZONE_Y_MIN, WORKING_ZONE_X_MAX,
-                                                 WORKING_ZONE_Y_MAX, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                            log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS,
+                                                 working_zone_points_cv)
                             log_img = detection.draw_box(log_img, box)
                             # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - closest plant.jpg", log_img)
                             log_counter += 1
