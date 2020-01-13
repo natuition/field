@@ -361,8 +361,8 @@ def main():
                 smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
                 smoothie.wait_for_all_actions_done()
 
-                """
                 box_x, box_y = box.get_center_points()
+                """
                 print("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
                 logging.info("Processing plant on x=" + str(box_x) + " y=" + str(box_y))
                 """
