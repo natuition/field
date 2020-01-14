@@ -283,9 +283,9 @@ def main():
 
     # working zone pre-calculations
     # these points list is changed for usage in matplotlib (it has differences in the coords system)
-    working_zone_points_plt = list(
-        map(lambda item: [item[0], config.CROP_H_TO - config.CROP_H_FROM - item[1]], WORKING_ZONE_POLY_POINTS))
-    working_zone_polygon = Polygon(working_zone_points_plt)
+    # working_zone_points_plt = list(
+    #    map(lambda item: [item[0], config.CROP_H_TO - config.CROP_H_FROM - item[1]], WORKING_ZONE_POLY_POINTS))
+    working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
 
     # these points array is used for drawing zone using OpenCV
     working_zone_points_cv = np.array(WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
@@ -466,7 +466,7 @@ def main():
                             sm_y = control_point[3]
 
                             debug_text = "Moving to px x=" + str(control_point[0]) + " y=" + str(control_point[1]) + \
-                                         " (control point #" + str(control_point[4] + ")")
+                                         " (control point #" + str(control_point[4]) + ")"
                             print(debug_text)
                             logging.info(debug_text)
 
@@ -520,8 +520,8 @@ def main():
 
                 # if not in working zone
                 else:
-                    print("skipped", str(box), "(not in working area)")
-                    logging.info("skipped " + str(box) + " (not in working area)")
+                    print("Skipped", str(box), "(not in working area)")
+                    logging.info("Skipped " + str(box) + " (not in working area)")
 
             # move forward for 30 sm
             res = smoothie.custom_move_for(1000, B=5.43)
