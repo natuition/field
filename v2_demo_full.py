@@ -332,7 +332,8 @@ def main():
                 logging.info("No plants detected on view scan (img " + str(log_counter) + "), moving forward")
                 log_img = image.copy()
                 log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS, working_zone_points_cv)
-                # cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", log_img)
+                if config.SAVE_DEBUG_IMAGES:
+                    cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see no plants).jpg", log_img)
                 log_counter += 1
 
                 # move forward for 30 sm
@@ -349,8 +350,9 @@ def main():
                 log_img = image.copy()
                 log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS, working_zone_points_cv)
                 log_img = detection.draw_boxes(log_img, plant_boxes)
-                # cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
-                #           log_img)
+                if config.SAVE_DEBUG_IMAGES:
+                    cv.imwrite(LOG_DIR + str(log_counter) + " overview scan (see " + str(len(plant_boxes)) + " plants).jpg",
+                               log_img)
                 log_counter += 1
 
             # loop over all detected plants
@@ -417,7 +419,9 @@ def main():
 
                             # temp debug 1
                             log_img = camera.get_image()
-                            cv.imwrite(LOG_DIR + str(log_counter) + " extracting (cork in upper position).jpg", log_img)
+                            if config.SAVE_DEBUG_IMAGES:
+                                cv.imwrite(LOG_DIR + str(log_counter) + " extracting (cork in upper position).jpg",
+                                           log_img)
                             log_counter += 1
 
                             # extraction, cork down
@@ -434,7 +438,9 @@ def main():
 
                             # temp debug 2
                             log_img = camera.get_image()
-                            cv.imwrite(LOG_DIR + str(log_counter) + " extracting (cork in lower position).jpg", log_img)
+                            if config.SAVE_DEBUG_IMAGES:
+                                cv.imwrite(LOG_DIR + str(log_counter) + " extracting (cork in lower position).jpg",
+                                           log_img)
                             log_counter += 1
 
                             # extraction, cork up
@@ -485,8 +491,9 @@ def main():
                                 log_img = image.copy()
                                 log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS,
                                                      working_zone_points_cv)
-                                # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - see no plants.jpg",
-                                #           log_img)
+                                if config.SAVE_DEBUG_IMAGES:
+                                    cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - see no plants.jpg",
+                                               log_img)
                                 log_counter += 1
                                 break
 
@@ -495,7 +502,8 @@ def main():
                             log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS,
                                                  working_zone_points_cv)
                             log_img = detection.draw_boxes(log_img, temp_plant_boxes)
-                            # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - all plants.jpg", log_img)
+                            if config.SAVE_DEBUG_IMAGES:
+                                cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - all plants.jpg", log_img)
                             log_counter += 1
 
                             # get closest box (exactly update current box from main list coordinates after moving closer)
@@ -506,7 +514,8 @@ def main():
                             log_img = draw_zones(log_img, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS,
                                                  working_zone_points_cv)
                             log_img = detection.draw_box(log_img, box)
-                            # cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - closest plant.jpg", log_img)
+                            if config.SAVE_DEBUG_IMAGES:
+                                cv.imwrite(LOG_DIR + str(log_counter) + " in working zone branch - closest plant.jpg", log_img)
                             log_counter += 1
 
                 # if not in working zone

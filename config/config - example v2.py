@@ -1,6 +1,6 @@
 import cv2 as cv
 
-CONFIG_VERSION = "0.2.5"
+CONFIG_VERSION = "0.2.6"
 
 # ======================================================================================================================
 # SMOOTHIE SETTINGS
@@ -135,6 +135,7 @@ CAMERA_FLIP_METHOD = 0
 CORK_CENTER_X = 1144
 CORK_CENTER_Y = 1590
 ONE_MM_IN_PX = 6
+SAVE_DEBUG_IMAGES = True
 
 WEB_SERVER_HOST = "127.0.0.1"
 WEB_SERVER_PORT = 8080
