@@ -342,7 +342,7 @@ def main():
                 if res != smoothie.RESPONSE_OK:
                     print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
                     logging.critical("Couldn't move forward (for 30 sm), smoothie error occurred: " + res)
-                    exit(1)
+                    # exit(1)
                 continue
             else:
                 print("Found " + str(len(plant_boxes)) + " plants on view scan (img " + str(log_counter) + ")")
@@ -415,7 +415,7 @@ def main():
                                 print("Couldn't move camera over plant, smoothie error occurred:", res)
                                 logging.critical(
                                     "Couldn't move camera over plant, smoothie error occurred: " + str(res))
-                                exit(1)
+                                # exit(1)
 
                             # temp debug 1
                             log_img = camera.get_image()
@@ -434,7 +434,7 @@ def main():
                                 print("Couldn't move the extractor down, smoothie error occurred:", res)
                                 logging.critical(
                                     "Couldn't move the extractor down, smoothie error occurred:" + str(res))
-                                exit(1)
+                                # exit(1)
 
                             # temp debug 2
                             log_img = camera.get_image()
@@ -452,7 +452,7 @@ def main():
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move the extractor up, smoothie error occurred:", res)
                                 logging.critical("Couldn't move the extractor up, smoothie error occurred:" + str(res))
-                                exit(1)
+                                # exit(1)
                             break
 
                         # if outside undistorted zone but in working zone
@@ -476,7 +476,7 @@ def main():
                             if res != smoothie.RESPONSE_OK:
                                 print("Couldn't move to plant, smoothie error occurred:", res)
                                 logging.critical("Couldn't move to plant, smoothie error occurred: " + str(res))
-                                exit(1)
+                                # exit(1)
 
                             # make new photo and re-detect plants
                             image = camera.get_image()
@@ -529,7 +529,7 @@ def main():
             if res != smoothie.RESPONSE_OK:
                 print("Couldn't move forward (for 30 sm), smoothie error occurred:", res)
                 logging.critical("Couldn't move forward (for 30 sm), smoothie error occurred: " + str(res))
-                exit(1)
+                # exit(1)
 
 
 def tools_test():
