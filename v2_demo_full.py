@@ -405,16 +405,16 @@ def main():
                             print("Smoothie coordinates: " + str(sm_cur_coord))
                             logging.info("Smoothie coordinates: " + str(sm_cur_coord))
 
-                            # move camera over a plant
-                            print("Moving camera to the plant")
-                            logging.info("Moving camera to the plant")
+                            # move cork over a plant
+                            print("Moving cork to the plant")
+                            logging.info("Moving cork to the plant")
 
                             res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
-                                print("Couldn't move camera over plant, smoothie error occurred:", res)
+                                print("Couldn't move cork over plant, smoothie error occurred:", res)
                                 logging.critical(
-                                    "Couldn't move camera over plant, smoothie error occurred: " + str(res))
+                                    "Couldn't move cork over plant, smoothie error occurred: " + str(res))
                                 # exit(1)
 
                             # temp debug 1
