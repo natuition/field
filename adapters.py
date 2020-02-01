@@ -667,6 +667,7 @@ class CameraAdapterIMX219_170:
 
 
 class VideoCaptureNoBuffer:
+    """Minimalistic layer for cv2's VideoCapture with buffer cleaning thread ()"""
 
     def __init__(self, *args):
         self._cap = cv.VideoCapture(*args)
