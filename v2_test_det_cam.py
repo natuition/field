@@ -15,15 +15,14 @@ def test_detection():
 
 
 def test_camera():
-    camera = adapters.CameraAdapterIMX219_170()
     i = 0
-
-    while True:
-        image = camera.get_image()
-        _ = image.shape[0]
-        i += 1
-        if i % 100 == 0:
-            print(str(i), "frames read")
+    with adapters.CameraAdapterIMX219_170() as camera:
+        while True:
+            image = camera.get_image()
+            _ = image.shape[0]
+            i += 1
+            if i % 100 == 0:
+                print(str(i), "frames read")
 
 
 def test_both():
