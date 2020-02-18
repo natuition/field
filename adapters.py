@@ -341,7 +341,7 @@ class SmoothieAdapter:
                         self._b_cur.value += smc_b
                 if C is not None:
                     with self._c_cur.get_lock():
-                        self._c_cur.value += smc_z
+                        self._c_cur.value += smc_c
             return response
 
     def nav_move_forward(self, distance, F: int):
@@ -413,12 +413,18 @@ class SmoothieAdapter:
                 return response
 
     def nav_turn_wheels_left_max(self, F=config.A_F_MAX):
+        """Issue - no F checkings for now"""
+
         return self.nav_turn_wheels_to(config.A_MIN, F)
 
     def nav_turn_wheels_right_max(self, F=config.A_F_MAX):
+        """Issue - no F checkings for now"""
+
         return self.nav_turn_wheels_to(config.A_MAX, F)
 
     def nav_align_wheels_center(self, F=config.A_F_MAX):
+        """Issue - no F checkings for now"""
+
         return self.nav_turn_wheels_to(config.NAV_TURN_WHEELS_CENTER, F)
 
     def ext_do_extraction(self, F: int):
@@ -479,7 +485,6 @@ class SmoothieAdapter:
         # Y axis calibration
         if config.USE_Y_AXIS_CALIBRATION:
             self._calibrate_axis(self._y_cur, "Y", config.Y_MIN, config.Y_MAX, config.Y_AXIS_CALIBRATION_TO_MAX)
-
 
     def ext_cork_up(self):
         # Z axis calibration
