@@ -11,8 +11,8 @@ class YoloOpenCVDetection:
     def __init__(self):
         self.classes = self._load_class_names(config.YOLO_CLASSES_FILE)
         self.net = cv.dnn.readNetFromDarknet(config.YOLO_CONFIG_FILE, config.YOLO_WEIGHTS_FILE)
-        self.net.setPreferableBackend(cv.dnn.DNN_BACKEND_OPENCV)
-        self.net.setPreferableTarget(cv.dnn.DNN_TARGET_CPU)
+        self.net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)  # DNN_BACKEND_OPENCV for CPU usage
+        self.net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)  # DNN_TARGET_CPU for CPU usage
 
     def detect(self, image):
         # Create a 4D blob from a frame.
