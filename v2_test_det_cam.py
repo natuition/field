@@ -55,7 +55,7 @@ def test_camera_detection():
 
 
 def test_camera_detection_saving():
-    output_path = "tests_output"
+    output_path = "tests_output/"
     _create_directories(output_path)
     detector = detection.YoloOpenCVDetection()
     i = 1
