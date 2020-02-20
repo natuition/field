@@ -495,6 +495,14 @@ class SmoothieAdapter:
 
     def _calibrate_axis(self, axis_cur: multiprocessing.Value, axis_label, axis_min, axis_max, axis_calibration_to_max):
         with axis_cur.get_lock():
+
+            # stub (G28 isn't reading F value from smoothie config, it uses last received F)
+            if axis_label == "Z":
+                self._smc.write("G0 Z0.1 F1300")
+                response = self._smc.read_some()
+                if response != self.RESPONSE_OK:
+                    return response
+
             if axis_calibration_to_max:
                 self._smc.write("G28 {0}{1}".format(axis_label, config.CALIBRATION_DISTANCE))
                 # "ok\r\n"

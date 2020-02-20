@@ -64,10 +64,10 @@ def input_session_info():
     return travel_distance, travel_step, session_label
 
 
-def move_forward(distance_mm, one_mm_in_smoothie, force, smoothie: adapters.SmoothieAdapter):
+def move_forward(force, distance, smoothie: adapters.SmoothieAdapter):
     """Move forward for a specified distance with specified force"""
 
-    res = smoothie.custom_move_for(force, B=distance_mm * one_mm_in_smoothie)
+    res = smoothie.custom_move_for(force, B=distance)
     smoothie.wait_for_all_actions_done()
     if res != smoothie.RESPONSE_OK:
         log_msg = "Couldn't move forward, smoothie error occurred: " + str(res)
@@ -140,7 +140,7 @@ def gather_data(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapt
     img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
     plant_boxes = detector.detect(image)
 
-    # save image and go forward if no plants detected, get more each plant positions images otherwise
+    # save image once if no plants detected, get more each plant positions images otherwise
     if len(plant_boxes) == 0:
         save_image(WITHOUT_PLANTS_DIR, image, counter, session_label)
         counter += 1
@@ -219,7 +219,7 @@ def main():
 
         for _ in range(0, travel_distance_mm, travel_step_mm):
             counter = gather_data(smoothie, camera, detector, counter, session_label, working_zone_polygon)
-            move_forward(travel_step_mm, ONE_MM_IN_SMOOTHIE, config.B_F_MAX, smoothie)
+            move_forward(1100, -5.2, smoothie)  # F1100, B-5.2 = 30 cm with max speed (B-104 F1900 for min speed 30 cm)
 
         # gather data in the final position
         counter = gather_data(smoothie, camera, detector, counter, session_label, working_zone_polygon)
