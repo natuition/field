@@ -212,7 +212,7 @@ def main():
     smoothie = create_smoothie_connection(config.SMOOTHIE_HOST)
     detector = detection.YoloOpenCVDetection()
     working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
-    with adapters.CameraAdapterIMX219_170 as camera:
+    with adapters.CameraAdapterIMX219_170() as camera:
         time.sleep(2)
         counter = 1
         print("Data gathering started.")
