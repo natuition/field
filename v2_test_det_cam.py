@@ -76,6 +76,8 @@ def test_saving():
 
     for i in range(2000):
         cv.imwrite(output_path + str(datetime.datetime.now()) + ".jpg", image)
+        if i % 100 == 0:
+            print("Saved", str(i), "images")
 
 
 if __name__ == '__main__':
