@@ -69,9 +69,19 @@ def test_camera_detection_saving():
             cv.imwrite(output_path + str(datetime.datetime.now()) + ".jpg", frame)
 
 
+def test_saving():
+    output_path = "tests_output/"
+    _create_directories(output_path)
+    image = cv.imread("1.jpg")
+
+    for i in range(2000):
+        cv.imwrite(output_path + str(datetime.datetime.now()) + ".jpg", image)
+
+
 if __name__ == '__main__':
     # should be called only one of them:
     #test_detection()
     #test_camera()
     #test_camera_detection()
-    test_camera_detection_saving()
+    #test_camera_detection_saving()
+    test_saving()
