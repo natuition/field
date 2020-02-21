@@ -1,26 +1,42 @@
 import adapters
 from config import config
 
-METERS_TO_MOVE = 3
+
+def ask_meters_multiplier():
+    while True:
+        try:
+            meters_multiplier = float(input("Set distance meter multiplier (1 = 1m, 2 = 2m, ...): "))
+            if meters_multiplier <= 0.0001:
+                print("Multiplier should be > 0")
+                continue
+            return meters_multiplier
+        except KeyboardInterrupt:
+            exit()
+        except Exception as e:
+            print(e)
 
 
-def main():
-    smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
-    moving = False
-
+def ask_speed_mode(meters_multiplier):
     # ask for movement speed mode
     while True:
         speed_mode = input("Type l to set low speed, type h to set high speed: ")
         if speed_mode == "l":
-            distance = -314 * METERS_TO_MOVE
+            distance = -314 * meters_multiplier
             force = 1900
-            break
+            return distance, force
         elif speed_mode == "h":
-            distance = -17.4 * METERS_TO_MOVE
+            distance = -17.4 * meters_multiplier
             force = 1100
-            break
+            return distance, force
         else:
             print("Wrong speed mode, can be l or h")
+
+
+def main():
+    smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
+    meters_multiplier = ask_meters_multiplier()
+    distance, force = ask_speed_mode(meters_multiplier)
+    moving = False
 
     # main loop
     while True:
@@ -36,7 +52,7 @@ def main():
         if not moving:
             response = smoothie.custom_move_for(force, B=distance)
             if response == smoothie.RESPONSE_OK:
-                print("Moving forward for", METERS_TO_MOVE, "meters")
+                print("Moving forward for", meters_multiplier, "meters")
             else:
                 print("Couldn't move forward, smoothie error occurred:", response)
                 exit(1)
