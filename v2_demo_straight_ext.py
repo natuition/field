@@ -98,8 +98,10 @@ def min_plant_box_dist(boxes: list, current_px_x, current_px_y):
 def scan_move_continuously(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                            detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, moving_force,
                            sm_moving_distance):
+    print("Moving forward continuously")
     move_forward(moving_force, sm_moving_distance, smoothie)
     # do scans and keep moving until at least one plant detected in working zone
+    print("Starting scanning while moving")
     while True:
         frame = camera.get_image()
         plant_boxes = detector.detect(frame)
