@@ -13,7 +13,7 @@ CONTINUOUS_TRAVEL_DISTANCE_MM = 100 * 1000  # N meters in mm: N * 1000
 CONTINUOUS_TRAVEL_FORCE = 1100
 STEP_DISTANCE_MM = 30  # depends on robot's working zone physical dimensions, don't change that or some of plants will be passed
 STEP_TRAVEL_FORCE = 1900
-ONE_MM_IN_SMOOTHIE = 0.0181  # smoothie command = dist_mm * this
+ONE_MM_IN_SMOOTHIE = 0.0181  # smoothie command = dist_mm * this (ONLY FOR B AXIS!!!)
 CORK_CAMERA_DISTANCE = 57  # distance between camera and cork on the robot, mm
 
 # DON'T TOUCH THIS
@@ -35,10 +35,10 @@ def create_smoothie_connection(smoothie_ip):
             print(repr(error))
 
 
-def move_forward(force, distance, smoothie: adapters.SmoothieAdapter):
+def move_forward(force, sm_distance, smoothie: adapters.SmoothieAdapter):
     """Move forward for a specified distance with specified force"""
 
-    res = smoothie.custom_move_for(force, B=distance)
+    res = smoothie.custom_move_for(force, B=sm_distance)
     if res != smoothie.RESPONSE_OK:
         log_msg = "Couldn't move forward, smoothie error occurred: " + str(res)
         print(log_msg)
@@ -97,8 +97,8 @@ def min_plant_box_dist(boxes: list, current_px_x, current_px_y):
 
 def scan_move_continuously(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                            detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, moving_force,
-                           moving_distance):
-    move_forward(moving_force, moving_distance, smoothie)
+                           sm_moving_distance):
+    move_forward(moving_force, sm_moving_distance, smoothie)
     # do scans and keep moving until at least one plant detected in working zone
     while True:
         frame = camera.get_image()
@@ -196,22 +196,30 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
 
 def main():
+    print("Connecting to smoothie...")
     smoothie = create_smoothie_connection(config.SMOOTHIE_HOST)
+    print("Loading neural network...")
     detector = detection.YoloOpenCVDetection()
     working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
 
+    print("Loading camera...")
     with adapters.CameraAdapterIMX219_170() as camera:
         time.sleep(2)
 
+        print("Moving cork to the view position...")
         # go to the view position (y min, x max / 2)
         smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
         smoothie.wait_for_all_actions_done()
 
+        print("Starting main loop...")
         # main control loop
         while True:
-            plant_boxes = scan_move_continuously(smoothie, camera, detector, working_zone_polygon, CONTINUOUS_TRAVEL_FORCE,
-                                            CONTINUOUS_TRAVEL_DISTANCE_MM * ONE_MM_IN_SMOOTHIE)
+            print("Running in continuous mode")
+            plant_boxes = scan_move_continuously(smoothie, camera, detector, working_zone_polygon,
+                                                 CONTINUOUS_TRAVEL_FORCE, CONTINUOUS_TRAVEL_DISTANCE_MM *
+                                                 ONE_MM_IN_SMOOTHIE)
 
+            print("Switching to step mode")
             # switch to the step mode
             while True:
                 extract_all_plants(smoothie, camera, detector, working_zone_polygon, plant_boxes)
