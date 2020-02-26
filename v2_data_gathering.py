@@ -175,7 +175,9 @@ def gather_data(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapt
                         for x_shift, y_shift in [[sm_x, sm_y],[-20,0],[0,20],[20,0],[20,0],[0,-20],[0,-20],[-20,0],[-20,0]]:
                             response = smoothie.custom_move_for(config.XY_F_MAX, X=x_shift, Y=y_shift)
                             smoothie.wait_for_all_actions_done()
-                            if response:  # skip this photo if couldn't change camera position
+                            # skip this photo if couldn't change camera position
+                            # skipping will affect that plant's other photos positions
+                            if response != smoothie.RESPONSE_OK:
                                 continue
                             image = camera.get_image()
                             save_image(WITH_PLANTS_DIR, image, counter, session_label)
