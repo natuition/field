@@ -4,7 +4,6 @@ import cv2 as cv
 from config import config
 import time
 import datetime
-import os
 from matplotlib.patches import Polygon
 import math
 
@@ -117,14 +116,12 @@ def scan_move_continuously(smoothie: adapters.SmoothieAdapter, camera: adapters.
                     smoothie.halt()
                     smoothie.reset()
                     print("Exiting continuous mode")
-                    return plant_boxes
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
-                       detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, plant_boxes: list):
+                       detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, image, plant_boxes: list):
     """Extract all plants found in current position"""
 
-    image = camera.get_image()
     img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
 
     # loop over all detected plants
@@ -192,8 +189,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # check case if no plants detected
                     if len(temp_plant_boxes) == 0:
-                        print("No plants detected (plant was in working zone before), trying to move on\
-                            next item")
+                        print("No plants detected (plant was in working zone before), trying to move on next item")
                         break
 
                     # get closest box (update current box from main list coordinates after moving closer)
@@ -223,14 +219,20 @@ def main():
         print("Starting main loop, running in continuous movement mode")
         # main control loop
         while True:
-            plant_boxes = scan_move_continuously(smoothie, camera, detector, working_zone_polygon,
+            scan_move_continuously(smoothie, camera, detector, working_zone_polygon,
                                                  CONTINUOUS_TRAVEL_FORCE, CONTINUOUS_TRAVEL_DISTANCE_MM *
                                                  ONE_MM_IN_SMOOTHIE)
 
+            print("Starting plants extraction in step mode")
             # switch to the step mode
             while True:
-                print("Starting plants extraction in step mode")
-                extract_all_plants(smoothie, camera, detector, working_zone_polygon, plant_boxes)
+                frame = camera.get_image()
+                plant_boxes = detector.detect(frame)
+                if len(plant_boxes) == 0:  # start moving continuously if there's no plants left
+                    print("No plants detected - switching to continuous mode")
+                    break
+
+                extract_all_plants(smoothie, camera, detector, working_zone_polygon, frame, plant_boxes)
 
                 # go to the view position (y min, x max / 2)
                 print("Moving camera to the view position")
@@ -240,12 +242,6 @@ def main():
                 print("Moving step forward")
                 move_forward(STEP_TRAVEL_FORCE, STEP_DISTANCE_MM * ONE_MM_IN_SMOOTHIE, smoothie)  # F1100, B-5.2 = 30 cm with max speed (B-104 F1900 for min speed 30 cm)
                 smoothie.wait_for_all_actions_done()
-
-                frame = camera.get_image()
-                plant_boxes = detector.detect(frame)
-                if len(plant_boxes) == 0:  # start moving continuously if there's no plants left
-                    print("No plants detected - switching to continuous mode")
-                    break
 
 
 if __name__ == "__main__":
