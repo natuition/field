@@ -10,9 +10,9 @@ import math
 
 # settings
 CONTINUOUS_TRAVEL_DISTANCE_MM = 100 * 1000  # N meters in mm: N * 1000
-CONTINUOUS_TRAVEL_FORCE = 1100
+CONTINUOUS_TRAVEL_FORCE = 1900
 STEP_DISTANCE_MM = 30  # depends on robot's working zone physical dimensions, don't change that or some of plants will be passed
-STEP_TRAVEL_FORCE = 1900
+STEP_TRAVEL_FORCE = 1100
 ONE_MM_IN_SMOOTHIE = -0.0181  # smoothie command = dist_mm * this (ONLY FOR B AXIS!!!)
 CORK_CAMERA_DISTANCE = 57  # distance between camera and cork on the robot, mm
 
