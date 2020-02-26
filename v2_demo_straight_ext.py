@@ -13,7 +13,7 @@ CONTINUOUS_TRAVEL_DISTANCE_MM = 100 * 1000  # N meters in mm: N * 1000
 CONTINUOUS_TRAVEL_FORCE = 1100
 STEP_DISTANCE_MM = 30  # depends on robot's working zone physical dimensions, don't change that or some of plants will be passed
 STEP_TRAVEL_FORCE = 1900
-ONE_MM_IN_SMOOTHIE = 0.0181  # smoothie command = dist_mm * this (ONLY FOR B AXIS!!!)
+ONE_MM_IN_SMOOTHIE = -0.0181  # smoothie command = dist_mm * this (ONLY FOR B AXIS!!!)
 CORK_CAMERA_DISTANCE = 57  # distance between camera and cork on the robot, mm
 
 # DON'T TOUCH THIS
@@ -102,9 +102,12 @@ def scan_move_continuously(smoothie: adapters.SmoothieAdapter, camera: adapters.
     move_forward(moving_force, sm_moving_distance, smoothie)
     # do scans and keep moving until at least one plant detected in working zone
     print("Starting scanning while moving")
+    counter = 1
     while True:
         frame = camera.get_image()
         plant_boxes = detector.detect(frame)
+        print("Processed", counter, "frames")
+        counter += 1
         if len(plant_boxes) > 0:
             print("Plants found, checking if any is in working zone")
             for plant in plant_boxes:
