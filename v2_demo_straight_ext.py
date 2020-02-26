@@ -104,11 +104,14 @@ def scan_move_continuously(smoothie: adapters.SmoothieAdapter, camera: adapters.
         frame = camera.get_image()
         plant_boxes = detector.detect(frame)
         if len(plant_boxes) > 0:
+            print("Plants found, checking if any is in working zone")
             for plant in plant_boxes:
                 plant_x, plant_y = plant.get_center_points()
                 if is_point_in_poly(plant_x, plant_y, working_zone_polygon):
+                    print("Plant is in working zone found, halting smoothie")
                     smoothie.halt()
                     smoothie.reset()
+                    print("Exiting continuous mode")
                     return plant_boxes
 
 
@@ -135,6 +138,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                 # if plant inside undistorted zone
                 if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS):
+                    print("Plant is in undistorted zone")
                     # calculate values to move camera over a plant
                     sm_x = px_to_smoothie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
                     sm_y = -px_to_smoothie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
@@ -196,44 +200,46 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
 
 def main():
-    print("Connecting to smoothie...")
+    print("Connecting to smoothie")
     smoothie = create_smoothie_connection(config.SMOOTHIE_HOST)
-    print("Loading neural network...")
+    print("Loading neural network")
     detector = detection.YoloOpenCVDetection()
     working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
 
-    print("Loading camera...")
+    print("Loading camera")
     with adapters.CameraAdapterIMX219_170() as camera:
         time.sleep(2)
 
-        print("Moving cork to the view position...")
+        print("Moving camera to the view position")
         # go to the view position (y min, x max / 2)
         smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
         smoothie.wait_for_all_actions_done()
 
-        print("Starting main loop...")
+        print("Starting main loop, running in continuous movement mode")
         # main control loop
         while True:
-            print("Running in continuous mode")
             plant_boxes = scan_move_continuously(smoothie, camera, detector, working_zone_polygon,
                                                  CONTINUOUS_TRAVEL_FORCE, CONTINUOUS_TRAVEL_DISTANCE_MM *
                                                  ONE_MM_IN_SMOOTHIE)
 
-            print("Switching to step mode")
             # switch to the step mode
             while True:
+                print("Starting plants extraction in step mode")
                 extract_all_plants(smoothie, camera, detector, working_zone_polygon, plant_boxes)
 
                 # go to the view position (y min, x max / 2)
+                print("Moving camera to the view position")
                 smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
                 smoothie.wait_for_all_actions_done()
 
+                print("Moving step forward")
                 move_forward(STEP_TRAVEL_FORCE, STEP_DISTANCE_MM * ONE_MM_IN_SMOOTHIE, smoothie)  # F1100, B-5.2 = 30 cm with max speed (B-104 F1900 for min speed 30 cm)
                 smoothie.wait_for_all_actions_done()
 
                 frame = camera.get_image()
                 plant_boxes = detector.detect(frame)
                 if len(plant_boxes) == 0:  # start moving continuously if there's no plants left
+                    print("No plants detected - switching to continuous mode")
                     break
 
 
