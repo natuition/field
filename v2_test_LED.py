@@ -1,10 +1,12 @@
+#from RPi import GPIO
+from Jetson import GPIO
+
 BCM_OUTPUT_PIN = 19
 FREQUENCY_HZ = 100
 
 
 class LEDGPIOAdapter:
     def __init__(self, bcm_output_pin, frequency_hz):
-        from RPi import GPIO
         self._output_pin = bcm_output_pin
         self._frequency = frequency_hz
         GPIO.setwarnings(False)  # do not show any warnings
