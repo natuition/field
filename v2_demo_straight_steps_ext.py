@@ -7,6 +7,7 @@ import datetime
 from matplotlib.patches import Polygon
 import math
 import os
+import numpy as np
 
 # settings
 STEP_DISTANCE_MM = 30  # depends on robot's working zone physical dimensions, don't change that or some of plants will be passed
@@ -15,6 +16,7 @@ ONE_MM_IN_SMOOTHIE = -0.0181  # smoothie command = dist_mm * this (ONLY FOR B AX
 CORK_CAMERA_DISTANCE = 57  # distance between camera and cork on the robot, mm
 IMAGES_OUTPUT_DIR = "debug_output/"
 SAVE_IMAGES = True
+DELAY_BEFORE_TAKING_FRAME = 0.5  # wait for N seconds before next frame captured. Used to avoid blur because of camera latency
 
 # DON'T TOUCH THIS
 WORKING_ZONE_POLY_POINTS = [[387, 618], [504, 553], [602, 506], [708, 469], [842, 434], [1021, 407], [1228, 410], [1435, 443], [1587, 492], [1726, 558], [1867, 637], [1881, 675], [1919, 795], [1942, 926], [1954, 1055], [1953, 1176], [1551, 1187], [1145, 1190], [724, 1190], [454, 1188], [286, 1188], [283, 1082], [296, 979], [318, 874], [351, 753]]
@@ -65,6 +67,18 @@ def get_current_time():
 
     date = str(datetime.datetime.now())
     return date[:date.rindex(".")].replace(":", "-")
+
+
+def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius):
+    """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
+
+    return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, (0, 0, 255), thickness=3)
+
+
+def draw_zone_poly(image, np_poly_points):
+    """Draws received polygon on image. Used for drawing working zone edges on photo"""
+
+    return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
 
 
 def save_image(path_to_save, image, counter, session_label, sep=" "):
@@ -195,6 +209,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 def main():
     create_directories(IMAGES_OUTPUT_DIR)
     working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
+    working_zone_points_cv = np.array(WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     counter = 1
 
     print("Connecting to smoothie")
@@ -215,11 +230,15 @@ def main():
         print("Starting main loop")
         # main control loop
         while True:
+            time.sleep(DELAY_BEFORE_TAKING_FRAME)
             frame = camera.get_image()
             plant_boxes = detector.detect(frame)
 
             # save photo
             if SAVE_IMAGES:
+                img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+                frame = draw_zone_circle(frame, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                frame = draw_zone_poly(frame, working_zone_points_cv)
                 frame = detection.draw_boxes(frame, plant_boxes)
                 save_image(IMAGES_OUTPUT_DIR, frame, counter, "View")
                 counter += 1
