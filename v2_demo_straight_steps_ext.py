@@ -161,7 +161,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=-30)
+                    res = smoothie.custom_move_for(F=1700, Z=-35)
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
