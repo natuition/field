@@ -6,6 +6,8 @@ import time
 import datetime
 from matplotlib.patches import Polygon
 import math
+import os
+import numpy as np
 
 # settings
 CONTINUOUS_TRAVEL_DISTANCE_MM = 100 * 1000  # N meters in mm: N * 1000
@@ -14,11 +16,29 @@ STEP_DISTANCE_MM = 30  # depends on robot's working zone physical dimensions, do
 STEP_TRAVEL_FORCE = 1100
 ONE_MM_IN_SMOOTHIE = -0.0181  # smoothie command = dist_mm * this (ONLY FOR B AXIS!!!)
 CORK_CAMERA_DISTANCE = 57  # distance between camera and cork on the robot, mm
+IMAGES_OUTPUT_DIR = "debug_output/"
+SAVE_IMAGES = True
+DELAY_BEFORE_TAKING_FRAME = 0.5  # wait for N seconds before next frame captured. Used to avoid blur because of camera latency
 
 # DON'T TOUCH THIS
 WORKING_ZONE_POLY_POINTS = [[387, 618], [504, 553], [602, 506], [708, 469], [842, 434], [1021, 407], [1228, 410], [1435, 443], [1587, 492], [1726, 558], [1867, 637], [1881, 675], [1919, 795], [1942, 926], [1954, 1055], [1953, 1176], [1551, 1187], [1145, 1190], [724, 1190], [454, 1188], [286, 1188], [283, 1082], [296, 979], [318, 874], [351, 753]]
 IMAGE_CONTROL_POINTS_MAP = [[1148, 1042, 0, 20, 0], [996, 1042, -20, 20, 1], [851, 1046, -40, 20, 2], [725, 1054, -60, 20, 3], [617, 1061, -80, 20, 4], [529, 1069, -100, 20, 5], [459, 1077, -120, 20, 6], [400, 1085, -140, 20, 7], [357, 1091, -160, 20, 8], [321, 1097, -180, 20, 9], [1146, 897, 0, 40, 10], [999, 899, -20, 40, 11], [859, 905, -40, 40, 12], [734, 919, -60, 40, 13], [629, 934, -80, 40, 14], [540, 950, -100, 40, 15], [470, 964, -120, 40, 16], [409, 980, -140, 40, 17], [363, 994, -160, 40, 18], [329, 1005, -180, 40, 19], [1146, 767, 0, 60, 20], [1006, 770, -20, 60, 21], [872, 778, -40, 60, 22], [750, 796, -60, 60, 23], [647, 817, -80, 60, 24], [558, 839, -100, 60, 25], [487, 861, -120, 60, 26], [426, 880, -140, 60, 27], [379, 901, -160, 60, 28], [343, 919, -180, 60, 29], [1146, 658, 0, 80, 30], [1014, 661, -20, 80, 31], [887, 671, -40, 80, 32], [770, 691, -60, 80, 33], [669, 714, -80, 80, 34], [583, 739, -100, 80, 35], [511, 765, -120, 80, 36], [448, 788, -140, 80, 37], [397, 815, -160, 80, 38], [361, 837, -180, 80, 39], [1145, 567, 0, 100, 40], [1022, 571, -20, 100, 41], [904, 581, -40, 100, 42], [791, 601, -60, 100, 43], [694, 626, -80, 100, 44], [608, 653, -100, 100, 45], [538, 681, -120, 100, 46], [473, 707, -140, 100, 47], [421, 734, -160, 100, 48], [381, 760, -180, 100, 49], [1144, 496, 0, 120, 50], [1030, 499, -20, 120, 51], [919, 509, -40, 120, 52], [814, 528, -60, 120, 53], [720, 551, -80, 120, 54], [637, 577, -100, 120, 55], [566, 607, -120, 120, 56], [500, 634, -140, 120, 57], [441, 667, -160, 120, 58], [403, 693, -180, 120, 59], [1144, 439, 0, 140, 60], [1038, 441, -20, 140, 61], [935, 449, -40, 140, 62], [835, 468, -60, 140, 63], [746, 489, -80, 140, 64], [664, 517, -100, 140, 65], [593, 546, -120, 140, 66], [530, 572, -140, 140, 67], [472, 604, -160, 140, 68], [421, 632, -180, 140, 69], [1298, 1044, 20, 20, 70], [1432, 1048, 40, 20, 71], [1550, 1054, 60, 20, 72], [1647, 1061, 80, 20, 73], [1726, 1078, 100, 20, 74], [1793, 1075, 120, 20, 75], [1847, 1082, 140, 20, 76], [1886, 1087, 160, 20, 77], [1921, 1091, 180, 20, 78], [1292, 901, 20, 40, 79], [1423, 909, 40, 40, 80], [1540, 925, 60, 40, 81], [1636, 929, 80, 40, 82], [1717, 955, 100, 40, 83], [1786, 969, 120, 40, 84], [1839, 831, 140, 40, 85], [1879, 955, 160, 40, 86], [1914, 1005, 180, 40, 87], [1284, 775, 20, 60, 88], [1411, 788, 40, 60, 89], [1525, 806, 60, 60, 90], [1620, 828, 80, 60, 91], [1700, 849, 100, 60, 92], [1770, 868, 120, 60, 93], [1826, 886, 140, 60, 94], [1868, 907, 160, 60, 95], [1903, 924, 180, 60, 96], [1275, 677, 20, 80, 97], [1397, 682, 40, 80, 98], [1506, 703, 60, 80, 99], [1600, 727, 80, 80, 100], [1681, 752, 100, 80, 101], [1750, 776, 120, 80, 102], [1808, 799, 140, 80, 103], [1851, 824, 160, 80, 104], [1887, 845, 180, 80, 105], [1265, 788, 20, 100, 106], [1380, 593, 40, 100, 107], [1486, 615, 60, 100, 108], [1577, 640, 80, 100, 109], [1655, 668, 100, 100, 110], [1727, 694, 120, 100, 111], [1788, 719, 140, 100, 112], [1830, 747, 160, 100, 113], [1868, 773, 180, 100, 114], [1287, 505, 20, 120, 115], [1365, 520, 40, 120, 116], [1453, 541, 60, 120, 117], [1552, 567, 80, 120, 118], [1630, 595, 100, 120, 119], [1700, 621, 120, 120, 120], [1761, 647, 140, 120, 121], [1809, 679, 160, 120, 122], [1843, 705, 180, 120, 123], [1249, 445, 20, 140, 124], [1350, 460, 40, 140, 125], [1444, 480, 60, 140, 126], [1528, 506, 80, 140, 127], [1605, 532, 100, 140, 128], [1674, 557, 120, 140, 129], [1735, 584, 140, 140, 130], [1784, 713, 160, 140, 131], [1821, 635, 180, 140, 132]]
 UNDISTORTED_ZONE_RADIUS = 240
+
+
+def create_directories(*args):
+    """Create two photos output directories: with detected plants, and without them"""
+
+    for path in args:
+        if not os.path.exists(path):
+            try:
+                os.mkdir(path)
+            except OSError:
+                print("Creation of the directory %s failed" % path)
+            else:
+                print("Successfully created the directory %s " % path)
+        else:
+            print("Directory %s is already exists" % path)
 
 
 def create_smoothie_connection(smoothie_ip):
@@ -49,6 +69,18 @@ def get_current_time():
 
     date = str(datetime.datetime.now())
     return date[:date.rindex(".")].replace(":", "-")
+
+
+def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius):
+    """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
+
+    return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, (0, 0, 255), thickness=3)
+
+
+def draw_zone_poly(image, np_poly_points):
+    """Draws received polygon on image. Used for drawing working zone edges on photo"""
+
+    return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
 
 
 def save_image(path_to_save, image, counter, session_label, sep=" "):
@@ -97,11 +129,13 @@ def min_plant_box_dist(boxes: list, current_px_x, current_px_y):
 def scan_move_continuously(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                            detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, moving_force,
                            sm_moving_distance):
+
     print("Moving forward continuously")
     move_forward(moving_force, sm_moving_distance, smoothie)
-    # do scans and keep moving until at least one plant detected in working zone
     print("Starting scanning while moving")
     counter = 1
+
+    # do scans and keep moving until at least one plant detected in working zone
     while True:
         frame = camera.get_image()
         plant_boxes = detector.detect(frame)
@@ -155,7 +189,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=-30)
+                    res = smoothie.custom_move_for(F=1700, Z=-35)
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
@@ -201,11 +235,16 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
 
 def main():
+    create_directories(IMAGES_OUTPUT_DIR)
+    working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
+    working_zone_points_cv = np.array(WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
+    counter = 1
+
     print("Connecting to smoothie")
     smoothie = create_smoothie_connection(config.SMOOTHIE_HOST)
+
     print("Loading neural network")
     detector = detection.YoloOpenCVDetection()
-    working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
 
     print("Loading camera")
     with adapters.CameraAdapterIMX219_170() as camera:
@@ -226,8 +265,19 @@ def main():
             print("Starting plants extraction in step mode")
             # switch to the step mode
             while True:
+                time.sleep(DELAY_BEFORE_TAKING_FRAME)
                 frame = camera.get_image()
                 plant_boxes = detector.detect(frame)
+
+                # save photo
+                if SAVE_IMAGES:
+                    img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+                    frame = draw_zone_circle(frame, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
+                    frame = draw_zone_poly(frame, working_zone_points_cv)
+                    frame = detection.draw_boxes(frame, plant_boxes)
+                    save_image(IMAGES_OUTPUT_DIR, frame, counter, "View")
+                    counter += 1
+
                 if len(plant_boxes) == 0:  # start moving continuously if there's no plants left
                     print("No plants detected - switching to continuous mode")
                     break
