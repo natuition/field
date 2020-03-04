@@ -19,7 +19,7 @@ def main():
 
         print("Extracting, cork down")
         # extraction, cork down
-        res = smoothie.custom_move_for(config.Z_F_MAX, Z=-30)
+        res = smoothie.custom_move_for(F=1700, Z=-35)
         smoothie.wait_for_all_actions_done()
         print(res)
 
