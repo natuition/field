@@ -14,7 +14,8 @@ STEP_DISTANCE_MM = 30  # depends on robot's working zone physical dimensions, do
 STEP_TRAVEL_FORCE = 1100
 ONE_MM_IN_SMOOTHIE = -0.0181  # smoothie command = dist_mm * this (ONLY FOR B AXIS!!!)
 CORK_CAMERA_DISTANCE = 57  # distance between camera and cork on the robot, mm
-IMAGES_OUTPUT_DIR = "debug_output/"
+IMAGES_OUTPUT_DIR_BOXES = "debug_output_boxes/"
+IMAGES_OUTPUT_DIR_CLEAN = "debug_output_clean/"
 SAVE_IMAGES = True
 DELAY_BEFORE_TAKING_FRAME = 0.5  # wait for N seconds before next frame captured. Used to avoid blur because of camera latency
 
@@ -207,7 +208,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
 
 def main():
-    create_directories(IMAGES_OUTPUT_DIR)
+    create_directories(IMAGES_OUTPUT_DIR_BOXES)
     working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     counter = 1
@@ -237,10 +238,11 @@ def main():
             # save photo
             if SAVE_IMAGES:
                 img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+                save_image(IMAGES_OUTPUT_DIR_CLEAN, frame, counter, "View Clean")
                 frame = draw_zone_circle(frame, img_x_c, img_y_c, UNDISTORTED_ZONE_RADIUS)
                 frame = draw_zone_poly(frame, working_zone_points_cv)
                 frame = detection.draw_boxes(frame, plant_boxes)
-                save_image(IMAGES_OUTPUT_DIR, frame, counter, "View")
+                save_image(IMAGES_OUTPUT_DIR_BOXES, frame, counter, "View Boxes")
                 counter += 1
 
             if len(plant_boxes) == 0:
