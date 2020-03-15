@@ -16,6 +16,7 @@ ONE_MM_IN_SMOOTHIE = -0.0181  # smoothie command = dist_mm * this (ONLY FOR B AX
 CORK_CAMERA_DISTANCE = 57  # distance between camera and cork on the robot, mm
 IMAGES_OUTPUT_DIR_BOXES = "debug_output_boxes/"
 IMAGES_OUTPUT_DIR_CLEAN = "debug_output_clean/"
+IMAGES_OUTPUT_DIR_HOLES = "debug_output_holes/"
 SAVE_IMAGES = True
 DELAY_BEFORE_TAKING_FRAME = 0.5  # wait for N seconds before next frame captured. Used to avoid blur because of camera latency
 
@@ -126,7 +127,8 @@ def min_plant_box_dist(boxes: list, current_px_x, current_px_y):
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
-                       detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, image, plant_boxes: list):
+                       detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, image, plant_boxes: list,
+                       counter):
     """Extract all plants found in current position"""
 
     img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
@@ -174,6 +176,10 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor up, smoothie error occurred:", res)
                         exit(1)
+
+                    # do photo after extraction
+                    image = camera.get_image()
+                    save_image(IMAGES_OUTPUT_DIR_HOLES, image, counter, "After extraction")
                     break
 
                 # if outside undistorted zone but in working zone
@@ -208,7 +214,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
 
 def main():
-    create_directories(IMAGES_OUTPUT_DIR_BOXES)
+    create_directories(IMAGES_OUTPUT_DIR_BOXES, IMAGES_OUTPUT_DIR_CLEAN, IMAGES_OUTPUT_DIR_HOLES)
     working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     counter = 1
@@ -249,7 +255,7 @@ def main():
                 print("No plants detected")
             else:
                 print("Detected", len(plant_boxes), "plants")
-                extract_all_plants(smoothie, camera, detector, working_zone_polygon, frame, plant_boxes)
+                extract_all_plants(smoothie, camera, detector, working_zone_polygon, frame, plant_boxes, counter)
                 print("Moving camera to the view position")
                 # go to the view position (y min, x max / 2)
                 smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
