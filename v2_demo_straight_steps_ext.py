@@ -164,7 +164,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=-35)
+                    res = smoothie.custom_move_for(F=1700, Z=-42)
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
@@ -177,9 +177,43 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         print("Couldn't move the extractor up, smoothie error occurred:", res)
                         exit(1)
 
-                    # do photo after extraction
+                    # do photo after extraction (same counter for each robot's BODY position)
                     image = camera.get_image()
                     save_image(IMAGES_OUTPUT_DIR_HOLES, image, counter, "After extraction")
+                    # break
+
+                    # Daisy additional corners extraction test
+                    if box.get_name() == "Daisy":
+                        box_x_half, box_y_half = box.get_sizes()
+                        box_x_half, box_y_half = int(box_x_half / 2), int(box_y_half / 2)
+
+                        for x_shift, y_shift in [[-box_x_half, box_y_half], [0, -box_y_half * 2], [box_x_half * 2, 0],
+                                                 [0, box_y_half * 2]]:
+                            response = smoothie.custom_move_for(config.XY_F_MAX, X=x_shift, Y=y_shift)
+                            smoothie.wait_for_all_actions_done()
+                            # skip this photo if couldn't change camera position
+                            # skipping will affect that plant's other photos positions
+                            if response != smoothie.RESPONSE_OK:
+                                print("Aborting movement to the corner:", response)
+                                break
+
+                            # extraction, cork down
+                            res = smoothie.custom_move_for(F=1700, Z=-42)
+                            smoothie.wait_for_all_actions_done()
+                            if res != smoothie.RESPONSE_OK:
+                                print("Couldn't move the extractor down, smoothie error occurred:", res)
+                                break
+
+                            # extraction, cork up
+                            res = smoothie.ext_cork_up()
+                            smoothie.wait_for_all_actions_done()
+                            if res != smoothie.RESPONSE_OK:
+                                print("Couldn't move the extractor up, smoothie error occurred:", res)
+                                exit(1)
+
+                            # do photo after extraction (same counter for each robot's BODY position)
+                            image = camera.get_image()
+                            save_image(IMAGES_OUTPUT_DIR_HOLES, image, counter, "After extraction (Daisy)")
                     break
 
                 # if outside undistorted zone but in working zone
