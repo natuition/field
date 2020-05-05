@@ -7,6 +7,8 @@ import datetime
 import os
 from matplotlib.patches import Polygon
 import math
+import serial
+import pyvesc
 
 # paths
 WITH_PLANTS_DIR = "with plants/"
@@ -15,6 +17,10 @@ WITHOUT_PLANTS_DIR = "without plants/"
 # settings
 ONE_SMOOTHIE_IN_MM = 55.248618
 ONE_MM_IN_SMOOTHIE = 0.0181  # smoothie command = mm dist * this
+VESC_SER_PORT = "/dev/ttyACM0"
+VESC_SER_BAUD_RATE = 115200
+VESC_SER_TIMEOUT = 0
+VESC_RPM = 5000
 
 # DON'T TOUCH THIS
 WORKING_ZONE_POLY_POINTS = [[387, 618], [504, 553], [602, 506], [708, 469], [842, 434], [1021, 407], [1228, 410], [1435, 443], [1587, 492], [1726, 558], [1867, 637], [1881, 675], [1919, 795], [1942, 926], [1954, 1055], [1953, 1176], [1551, 1187], [1145, 1190], [724, 1190], [454, 1188], [286, 1188], [283, 1082], [296, 979], [318, 874], [351, 753]]
@@ -64,8 +70,8 @@ def input_session_info():
     return travel_distance, travel_step, session_label
 
 
-def move_forward(force, distance, smoothie: adapters.SmoothieAdapter):
-    """Move forward for a specified distance with specified force"""
+def move_forward_smoothie(force, distance, smoothie: adapters.SmoothieAdapter):
+    """Move forward for a specified distance with specified force using smoothieboard"""
 
     res = smoothie.custom_move_for(force, B=distance)
     smoothie.wait_for_all_actions_done()
@@ -73,6 +79,31 @@ def move_forward(force, distance, smoothie: adapters.SmoothieAdapter):
         log_msg = "Couldn't move forward, smoothie error occurred: " + str(res)
         print(log_msg)
         exit(1)
+
+
+def move_forward_vesc(rpm, move_secs, alive_freq, check_freq, ser):
+    """Move forward with specified motor RPM for specified time using vesc.
+
+    alive_freq determines "keep working" signal sending frequency
+    check_freq determines frequency of checking the need to stop"""
+
+    stop_time = next_alive_time = time.time()
+
+    # start moving with defined RPM
+    ser.write(pyvesc.encode(pyvesc.SetRPM(rpm)))
+
+    while True:
+        # let vesc know that we're not dead and keep moving
+        if time.time() > next_alive_time:
+            next_alive_time = time.time() + alive_freq
+            ser.write(pyvesc.encode(pyvesc.SetAlive))
+
+        # stop moving
+        if time.time() - stop_time > move_secs:
+            ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
+            break
+
+        time.sleep(check_freq)
 
 
 def get_current_time():
@@ -172,7 +203,8 @@ def gather_data(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapt
                         sm_y = -px_to_smoothie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
 
                         # try to get images over a plant and for 8 sides (left right top bot and diagonals)
-                        for x_shift, y_shift in [[sm_x, sm_y],[-20,0],[0,20],[20,0],[20,0],[0,-20],[0,-20],[-20,0],[-20,0]]:
+                        # for x_shift, y_shift in [[sm_x, sm_y],[-20,0],[0,20],[20,0],[20,0],[0,-20],[0,-20],[-20,0],[-20,0]]:  # do 8 additional photos around plant
+                        for x_shift, y_shift in [[sm_x, sm_y]]:  # only one photo right over plant
                             response = smoothie.custom_move_for(config.XY_F_MAX, X=x_shift, Y=y_shift)
                             smoothie.wait_for_all_actions_done()
                             # skip this photo if couldn't change camera position
@@ -214,19 +246,23 @@ def main():
     smoothie = create_smoothie_connection(config.SMOOTHIE_HOST)
     detector = detection.YoloOpenCVDetection()
     working_zone_polygon = Polygon(WORKING_ZONE_POLY_POINTS)
+
     with adapters.CameraAdapterIMX219_170() as camera:
         time.sleep(2)
         counter = 1
-        print("Data gathering started.")
 
-        for _ in range(0, travel_distance_mm, travel_step_mm):
+        with serial.Serial(VESC_SER_PORT, baudrate=VESC_SER_BAUD_RATE, timeout=VESC_SER_TIMEOUT) as ser:
+            print("Data gathering started.")
+
+            for _ in range(0, travel_distance_mm, travel_step_mm):
+                counter = gather_data(smoothie, camera, detector, counter, session_label, working_zone_polygon)
+                # move_forward_smoothie(1100, -5.2, smoothie)  # F1100, B-5.2 = 30 cm with max speed (B-104 F1900 for min speed 30 cm)  # for smoothie moving forward control
+                move_forward_vesc(VESC_RPM, 2, 0.5, 0.01, ser)
+
+            # gather data in the final position
             counter = gather_data(smoothie, camera, detector, counter, session_label, working_zone_polygon)
-            move_forward(1100, -5.2, smoothie)  # F1100, B-5.2 = 30 cm with max speed (B-104 F1900 for min speed 30 cm)
 
-        # gather data in the final position
-        counter = gather_data(smoothie, camera, detector, counter, session_label, working_zone_polygon)
-
-        print("Data gathering done.", str(counter - 1), "images collected at this session.")
+            print("Data gathering done.", str(counter - 1), "images collected at this session.")
 
 
 if __name__ == "__main__":
