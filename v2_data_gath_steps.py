@@ -10,6 +10,13 @@ import math
 import serial
 import pyvesc
 
+# Vesc settings
+VESC_SER_PORT = "/dev/ttyACM0"
+VESC_SER_BAUD_RATE = 115200
+VESC_SER_TIMEOUT = 0
+VESC_RPM = -5000
+VESC_MOVING_TIME = 2  # seconds
+
 # paths
 WITH_PLANTS_DIR = "with plants/"
 WITHOUT_PLANTS_DIR = "without plants/"
@@ -17,10 +24,6 @@ WITHOUT_PLANTS_DIR = "without plants/"
 # settings
 ONE_SMOOTHIE_IN_MM = 55.248618
 ONE_MM_IN_SMOOTHIE = 0.0181  # smoothie command = mm dist * this
-VESC_SER_PORT = "/dev/ttyACM0"
-VESC_SER_BAUD_RATE = 115200
-VESC_SER_TIMEOUT = 0
-VESC_RPM = -5000
 
 # DON'T TOUCH THIS
 WORKING_ZONE_POLY_POINTS = [[387, 618], [504, 553], [602, 506], [708, 469], [842, 434], [1021, 407], [1228, 410], [1435, 443], [1587, 492], [1726, 558], [1867, 637], [1881, 675], [1919, 795], [1942, 926], [1954, 1055], [1953, 1176], [1551, 1187], [1145, 1190], [724, 1190], [454, 1188], [286, 1188], [283, 1082], [296, 979], [318, 874], [351, 753]]
@@ -257,7 +260,7 @@ def main():
             for _ in range(0, travel_distance_mm, travel_step_mm):
                 counter = gather_data(smoothie, camera, detector, counter, session_label, working_zone_polygon)
                 # move_forward_smoothie(1100, -5.2, smoothie)  # F1100, B-5.2 = 30 cm with max speed (B-104 F1900 for min speed 30 cm)  # for smoothie moving forward control
-                move_forward_vesc(VESC_RPM, 2, 0.5, 0.01, ser)
+                move_forward_vesc(VESC_RPM, VESC_MOVING_TIME, 0.5, 0.01, ser)
 
             # gather data in the final position
             counter = gather_data(smoothie, camera, detector, counter, session_label, working_zone_polygon)
