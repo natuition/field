@@ -8,6 +8,8 @@ import cv2 as cv
 import math
 import queue
 import threading
+import serial
+import pyvesc
 
 
 class SmoothieAdapter:
@@ -712,47 +714,74 @@ class VideoCaptureNoBuffer:
         return self._queue.get()
 
 
-class CompassAdapter:
+class VescAdapter:
+    """Provides navigation engines (forward/backward) control using vesc"""
 
-    def __init__(self):
-        import smbus
-        self._register_a = 0  # Address of Configuration register A
-        self._register_b = 0x01  # Address of configuration register B
-        self._register_mode = 0x02  # Address of mode register
-        self._x_axis_h = 0x03  # Address of X-axis MSB data register
-        self._z_axis_h = 0x05  # Address of Z-axis MSB data register
-        self._y_axis_h = 0x07  # Address of Y-axis MSB data register
-        self._bus = smbus.SMBus(1)  # or bus = smbus.SMBus(0) for older version boards
+    def __init__(self, rpm, moving_time, alive_freq, check_freq, ser_port, ser_baudrate):
+        self._ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
 
-        # write to Configuration Register A
-        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_a, 0x70)
-        # Write to Configuration Register B for gain
-        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_b, 0xa0)
-        # Write to mode Register for selecting mode
-        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_mode, 0)
+        self._rpm = rpm
+        self._moving_time = moving_time
+        self._alive_freq = alive_freq
+        self._check_freq = check_freq
+        self._stop_time = self._next_alive_time = None
+        self._allow_movement = False
+        self._keep_th_reading = True
 
-    def _read_raw_data(self, address):
-        # Read raw 16-bit value
-        high = self._bus.read_byte_data(config.COMPASS_DEVICE_ADDRESS, address)
-        low = self._bus.read_byte_data(config.COMPASS_DEVICE_ADDRESS, address + 1)
+        self._ser.flushInput()
+        self._ser.flushOutput()
+        self._thread = threading.Thread(target=self._move_th, daemon=True)  # maybe shouldn't be daemon
+        self._thread.start()
 
-        # concatenate higher and lower value
-        value = ((high << 8) | low)
+    def _move_th(self):
+        try:
+            while self._keep_th_reading:
+                if self._allow_movement:
+                    if time.time() > self._next_alive_time:
+                        self._next_alive_time = time.time() + self._alive_freq
+                        self._ser.write(pyvesc.encode(pyvesc.SetAlive))
 
-        # get signed value from module
-        return value - 65536 if value > 32768 else value
+                    if time.time() - self._stop_time > self._moving_time:
+                        self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
+                        self._allow_movement = False
+                time.sleep(self._check_freq)
+        except serial.SerialException as ex:
+            print(ex)
 
-    def get_heading_angle(self):
-        x = self._read_raw_data(self._x_axis_h)
-        y = self._read_raw_data(self._y_axis_h)
-        heading = math.atan2(y, x) + config.COMPASS_DECLINATION
+    def __enter__(self):
+        return self
 
-        # Due to declination check for > 360 degree
-        if heading > 2 * math.pi:
-            heading -= 2 * math.pi
-        # check for sign
-        if heading < 0:
-            heading += 2 * math.pi
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
+        self._keep_th_reading = False
+        self._ser.close()
 
-        # convert into angle
-        return int(heading * 180 / math.pi)
+    def start_moving(self):
+        self._stop_time = self._next_alive_time = time.time()
+        self._ser.write(pyvesc.encode(pyvesc.SetRPM(self._rpm)))
+        self._allow_movement = True
+
+    def stop_moving(self):
+        self._allow_movement = False
+        self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
+
+    def wait_for_stop(self):
+        while True:
+            if not self._allow_movement:
+                return
+            time.sleep(self._check_freq)
+
+    def set_rpm(self, rpm):
+        self._rpm = rpm
+
+    def set_moving_time(self, moving_time):
+        self._moving_time = moving_time
+
+    def set_alive_freq(self, alive_freq):
+        self._alive_freq = alive_freq
+
+    def set_check_freq(self, check_freq):
+        self._check_freq = check_freq
+
+    def is_movement_allowed(self):
+        return self._allow_movement

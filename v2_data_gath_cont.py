@@ -10,9 +10,20 @@ import os
 import queue
 import threading
 
+# Vesc settings
+VESC_PORT = "/dev/ttyACM0"
+VESC_BAUDRATE = 115200
+# VESC_RPM = -5000
+# VESC_MOV_TIME = 30  # seconds to move forward
+VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when moving
+VESC_CHECK_FREQ = 0.01  # freq of checking need to stop
+
+
 # Paths
-CLEAN_OUTPUT_PATH = "blur_test_output_clean/"
-BOXES_OUTPUT_PATH = "blur_test_output_boxes/"
+NO_PLANTS_OUTPUT_PATH = "no plants detected/"
+WITH_PLANTS_OUTPUT_PATH = "with plants detected/"
+DRAWN_BOXES_OUTPUT_PATH = "with boxes drawn/"
+SAVE_WITH_BOXES = False  # if True: will save images with boxes drawn in the separate dir
 
 # Camera settings
 ISP_DIGITAL_GAIN_RANGE_FROM = 8
@@ -160,36 +171,6 @@ def create_directories(*args):
             print("Directory %s is already exists" % path)
 
 
-def ask_meters_multiplier():
-    while True:
-        try:
-            meters_multiplier = float(input("Set distance meter multiplier (1 = 1m, 2 = 2m, ...): "))
-            if meters_multiplier <= 0.0001:
-                print("Multiplier should be > 0")
-                continue
-            return meters_multiplier
-        except KeyboardInterrupt:
-            exit()
-        except Exception as e:
-            print(e)
-
-
-def ask_speed_mode(meters_multiplier):
-    # ask for movement speed mode
-    while True:
-        speed_mode = input("Type l to set low speed, type h to set high speed: ")
-        if speed_mode == "l":
-            distance = -314 * meters_multiplier
-            force = 1900
-            return distance, force
-        elif speed_mode == "h":
-            distance = -17.4 * meters_multiplier
-            force = 1100
-            return distance, force
-        else:
-            print("Wrong speed mode, can be l or h")
-
-
 def get_current_time():
     """Returns formatted string with current time (YYYY-MM-DD HH-MM-SS)"""
 
@@ -207,11 +188,11 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
 def main():
     #meters_multiplier = ask_meters_multiplier()
     #distance, force = ask_speed_mode(meters_multiplier)
-    distance = float(input("Set moving distance (B): "))
-    force = int(input("Set moving force (F): "))
+    rpm = float(input("Set RPM: "))
+    moving_time = float(input("Set moving time (seconds): "))
 
     print("Initializing detector...")
-    create_directories(CLEAN_OUTPUT_PATH, BOXES_OUTPUT_PATH)
+    create_directories(WITH_PLANTS_OUTPUT_PATH, NO_PLANTS_OUTPUT_PATH, DRAWN_BOXES_OUTPUT_PATH)
     detector = detection.YoloOpenCVDetection()
 
     print("Initializing smoothie...")
@@ -232,37 +213,39 @@ def main():
             EXPOSURE_TIME_RANGE_TO,
             AE_LOCK
     ) as camera:
+
         time.sleep(2)
-
+        counter = 1
         try:
-            response = smoothie.custom_move_for(force, B=distance)
-            if response == smoothie.RESPONSE_OK:
-                print("Moving forward B=", distance)
-            else:
-                print("Couldn't move forward, smoothie error occurred:", response, "\nType enter to exit.")
-                input()
-                exit(1)
+            with adapters.VescAdapter(rpm, moving_time, VESC_ALIVE_FREQ, VESC_CHECK_FREQ, VESC_PORT, VESC_BAUDRATE) as vesc_engine:
+                # start moving forward
+                vesc_engine.start_moving()
 
-            # get and save images until keyboard interrupt
-            counter = 1
-            print("Starting to take photos...")
-            while True:
-                frame = camera.get_image()
-                save_image(CLEAN_OUTPUT_PATH, frame, counter, "Clean")
-                counter += 1
-                plants = detector.detect(frame)
-                detection.draw_boxes(frame, plants)
-                save_image(BOXES_OUTPUT_PATH, frame, counter, "With Boxes")
-                counter += 1
-                if counter % 100 == 0:
-                    print("Saved", counter, "photos")
+                # get and save images until keyboard interrupt
+                print("Starting to take photos...")
+                while vesc_engine.is_movement_allowed():
+                    frame = camera.get_image()
+                    plants = detector.detect(frame)
+
+                    # sort and save photo
+                    if len(plants) > 0:
+                        save_image(WITH_PLANTS_OUTPUT_PATH, frame, counter, "With plants")
+                        if SAVE_WITH_BOXES:
+                            detection.draw_boxes(frame, plants)
+                            save_image(DRAWN_BOXES_OUTPUT_PATH, frame, counter, "With boxes")
+                    else:
+                        save_image(NO_PLANTS_OUTPUT_PATH, frame, counter, "No plants")
+                    counter += 1
+
+                    if counter % 100 == 0:
+                        print("Saved", counter, "photos")
         except KeyboardInterrupt:
-            print("Halting smoothie...")
-            smoothie.halt()
-            print("Resetting smoothie...")
-            smoothie.reset()
-            print("Done.")
+            vesc_engine.stop_moving()
+            print("Stopped by a keyboard interrupt (Ctrl + C)")
+            print("Saved", counter, "photos")
             exit(0)
+    print("Saved", counter, "photos")
+    print("Done!")
 
 
 if __name__ == '__main__':
