@@ -64,6 +64,8 @@ class GPSComputing:
                 flag = -1
             elif d < 0:
                 flag = 1
+            else:
+                flag = 0
 
         return perpendicular, flag
 

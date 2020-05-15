@@ -35,13 +35,11 @@ GPS_POSITIONS_TO_KEEP = 1000
 
 
 def load_coordinates(file_path):
-    if not os.path.exists(file_path):
-        raise ValueError("File does not exists: " + file_path)
-
     positions_list = []
     with open(file_path) as file:
         for line in file:
-            positions_list.append(list(map(float, line.split(" "))))
+            if line != "":
+                positions_list.append(list(map(float, line.split(" "))))
     return positions_list
 
 
