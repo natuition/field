@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import connectors
 import multiprocessing
 import time
@@ -28,6 +26,12 @@ class SmoothieAdapter:
         self._c_cur = multiprocessing.Value("d", 0)
         self.switch_to_relative()
         self.ext_calibrate_cork()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._smc.disconnect()
 
     def get_connector(self):
         """Only for debug!"""
@@ -714,6 +718,75 @@ class VideoCaptureNoBuffer:
         return self._queue.get()
 
 
+class CompassOldAdapter:
+    """Provides to the robot's on-board compass (some old card, the first one, not sure about model)"""
+
+    def __init__(self):
+        import smbus
+        self._register_a = 0  # Address of Configuration register A
+        self._register_b = 0x01  # Address of configuration register B
+        self._register_mode = 0x02  # Address of mode register
+        self._x_axis_h = 0x03  # Address of X-axis MSB data register
+        self._z_axis_h = 0x05  # Address of Z-axis MSB data register
+        self._y_axis_h = 0x07  # Address of Y-axis MSB data register
+        self._bus = smbus.SMBus(1)  # or bus = smbus.SMBus(0) for older version boards
+
+        # write to Configuration Register A
+        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_a, 0x70)
+        # Write to Configuration Register B for gain
+        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_b, 0xa0)
+        # Write to mode Register for selecting mode
+        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_mode, 0)
+
+    def _read_raw_data(self, address):
+        """Reads raw data from compass"""
+
+        # Read raw 16-bit value
+        high = self._bus.read_byte_data(config.COMPASS_DEVICE_ADDRESS, address)
+        low = self._bus.read_byte_data(config.COMPASS_DEVICE_ADDRESS, address + 1)
+
+        # concatenate higher and lower value
+        value = ((high << 8) | low)
+
+        # get signed value from module
+        return value - 65536 if value > 32768 else value
+
+    def get_heading_angle(self):
+        """Returns current heading angle in degrees"""
+
+        x = self._read_raw_data(self._x_axis_h)
+        y = self._read_raw_data(self._y_axis_h)
+        heading = math.atan2(y, x) + config.COMPASS_DECLINATION
+
+        # Due to declination check for > 360 degree
+        if heading > 2 * math.pi:
+            heading -= 2 * math.pi
+        # check for sign
+        if heading < 0:
+            heading += 2 * math.pi
+
+        # convert into angle
+        return int(heading * 180 / math.pi)
+
+
+class CompassBNO055Adapter:
+    """Provides access to the robot's on-board compass"""
+
+    def __init__(self):
+        import adafruit_bno055
+        from busio import I2C
+        import board
+
+        self._i2c = I2C(board.SCL, board.SDA)
+        self._sensor = adafruit_bno055.BNO055(self._i2c)
+        # turn on "compass mode"
+        self._sensor.mode = adafruit_bno055.COMPASS_MODE
+        # sensor.mode = adafruit_bno055.M4G_MODE
+
+    def get_euler_angle(self):
+        return self._sensor.euler
+
+
 class VescAdapter:
     """Provides navigation engines (forward/backward) control using vesc"""
 
@@ -726,16 +799,26 @@ class VescAdapter:
         self._check_freq = check_freq
         self._stop_time = self._next_alive_time = None
         self._allow_movement = False
-        self._keep_th_reading = True
+        self._keep_thread_alive = True
 
         self._ser.flushInput()
         self._ser.flushOutput()
-        self._thread = threading.Thread(target=self._move_th, daemon=True)  # maybe shouldn't be daemon
-        self._thread.start()
+        self._movement_ctrl_th = threading.Thread(target=self._movement_ctrl_th_tf, daemon=True)
+        self._movement_ctrl_th.start()
 
-    def _move_th(self):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
+        self._keep_thread_alive = False
+        self._ser.close()
+
+    def _movement_ctrl_th_tf(self):
+        """Target function of movement control thread. Responsive for navigation engines work (forward/backward)"""
+
         try:
-            while self._keep_th_reading:
+            while self._keep_thread_alive:
                 if self._allow_movement:
                     if time.time() > self._next_alive_time:
                         self._next_alive_time = time.time() + self._alive_freq
@@ -747,14 +830,6 @@ class VescAdapter:
                 time.sleep(self._check_freq)
         except serial.SerialException as ex:
             print(ex)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
-        self._keep_th_reading = False
-        self._ser.close()
 
     def start_moving(self):
         self._stop_time = self._next_alive_time = time.time()
@@ -785,3 +860,96 @@ class VescAdapter:
 
     def is_movement_allowed(self):
         return self._allow_movement
+
+
+class GPSUblockAdapter:
+    """Provides access to the robot's on-board GPS navigator (UBLOCK card)
+
+    NOTE: This is very early version."""
+
+    def __init__(self, ser_port, ser_baudrate, last_pos_count):
+        if last_pos_count < 1:
+            raise ValueError("last_pos_count shouldn't be less than 1")
+
+        self._last_pos_count = last_pos_count
+        self._last_pos_container = []
+        self._sync_locker = multiprocessing.RLock()
+
+        self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate)
+        self._USBNMEA_OUT()
+
+        self._keep_thread_alive = True
+        self._reader_thread = threading.Thread(target=self._reader_thread_tf, daemon=True)
+        self._reader_thread.start()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._keep_thread_alive = False
+        self._serial.close()
+
+    def get_last_position(self):
+        if len(self._last_pos_container) > 0:
+            with self._sync_locker:
+                position = self._last_pos_container[-1].copy()
+                return position
+
+    def get_last_positions_list(self):
+        if len(self._last_pos_container) > 0:
+            with self._sync_locker:
+                positions = self._last_pos_container.copy()
+                return positions
+
+    def get_stored_pos_count(self):
+        return len(self._last_pos_container)
+
+    def _reader_thread_tf(self):
+        try:
+            while self._keep_thread_alive:
+                position = self._read_from_gps()
+                with self._sync_locker:
+                    if len(self._last_pos_container) == self._last_pos_count:
+                        self._last_pos_container.pop(0)
+                    self._last_pos_container.append(position)
+        except serial.SerialException as ex:
+            print(ex)
+
+    def _read_from_gps(self):
+        """Returns GPS coordinates of the current position"""
+
+        while True:
+            data = str(self._serial.readline())
+
+            """
+            if len(data) == 3:
+                print("None GNGGA or RTCM threads")
+            """
+
+            if "GNGGA" in data:
+                # print(data)  # debug
+                data = data.split(",")
+                lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
+                return [lati, longi]  # , float(data[11])  # alti
+
+    def _D2M2(self, Lat, NS, Lon, EW):
+        """Traduce NMEA format ddmmss to ddmmmm"""
+
+        Latdd = float(Lat[:2])
+        Latmmmmm = float(Lat[2:])
+        Latddmmmm = Latdd + (Latmmmmm / 60.0)
+        if NS == 'S':
+            Latddmmmm = -Latddmmmm
+
+        Londd = float(Lon[:3])
+        Lonmmmmm = float(Lon[3:])
+        Londdmmmm = Londd + (Lonmmmmm / 60.0)
+        if EW == 'W':
+            Londdmmmm = -Londdmmmm
+        return round(Latddmmmm, 7), round(Londdmmmm, 7)
+
+    def _USBNMEA_OUT(self):
+        """Start sending NMEA out on USB port at 19200 baud"""
+
+        Matrame = "B5 62 06 00 14 00 03 00 00 00 00 00 00 00 00 00 00 00 23 00 03 00 00 00 00 00 43 AE"
+        self._serial.write(bytearray.fromhex(Matrame))

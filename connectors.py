@@ -11,6 +11,12 @@ class SmoothieConnector:
         self._tn = telnetlib.Telnet(self._host)
         self._tn.read_until(b"Smoothie command shell\r\n")
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
+
     def get_telnet(self):
         return self._tn
 
