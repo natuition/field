@@ -1,7 +1,6 @@
 import adapters
 import navigation
 from config import config
-import os
 import time
 
 
@@ -16,7 +15,8 @@ COURSE_ADJ_SMC_VAL = 3  # nav wheels turn value when trying to get back to the c
 
 
 # Paths settings
-FIELD_GPS_POINTS_FILE = "field.txt"
+INPUT_GPS_FIELD_FILE = "field.txt"
+OUTPUT_GPS_HISTORY_FILE = "gps_history.txt"
 
 
 # Vesc settings
@@ -43,10 +43,18 @@ def load_coordinates(file_path):
     return positions_list
 
 
+def save_gps_coordinates(points: list, file_name):
+    with open(file_name, "w") as file:
+        for point in points:
+            str_point = str(point[0]) + " " + str(point[1]) + "\n"
+            file.write(str_point)
+
+
 def main():
+    points_history = []
     try:
         # load gps points; for now it should have only two positions: path starting and ending point
-        field_gps_coords = load_coordinates(FIELD_GPS_POINTS_FILE)
+        field_gps_coords = load_coordinates(INPUT_GPS_FIELD_FILE)
         nav = navigation.GPSComputing()
 
         print("Initializing...", end=" ")
@@ -64,6 +72,7 @@ def main():
                     # main navigation control loop
                     while True:
                         cur_pos = gps.get_last_position()
+                        points_history.append(cur_pos)
                         # check if arrived
                         # TO DO: it won't work if deviation > course destination diff, as robot will be far away on some
                         # side and will never get too close to the path ending point
@@ -105,10 +114,11 @@ def main():
                                 # TO DO: check abs(COURSE_ADJ_SMC_VAL - nav_wheels_position) and set bigger or
                                 # lesser turning value
                                 smoothie.nav_align_wheels_center(config.A_F_MAX)
+        print("Done!")
     except KeyboardInterrupt:
         print("Stopped by a keyboard interrupt (Ctrl + C)")
-        exit(0)
-    print("Done!")
+    finally:
+        save_gps_coordinates(points_history, OUTPUT_GPS_HISTORY_FILE)
 
 
 if __name__ == '__main__':
