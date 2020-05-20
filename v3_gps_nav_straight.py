@@ -48,7 +48,7 @@ def main():
                         if str(cur_pos) == prev_point:
                             continue
                         prev_point = str(cur_pos)
-                        points_history.append(cur_pos)
+                        points_history.append(cur_pos.copy())
                         # check if arrived
                         # TO DO: it won't work if deviation > course destination diff, as robot will be far away on some
                         # side and will never get too close to the path ending point
