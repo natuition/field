@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.0"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.1"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -9,11 +9,11 @@ CONFIG_VERSION = "0.3.0"  # still have some obsolete keys
 # ======================================================================================================================
 # max distance in mm-s of robot's deviation from planned moving vector
 # if dev. is bigger than this - robot will turn to it's planned moving vector
-COURSE_SIDE_DEVIATION_MAX = 40  # max allowed robot's deviation from course im mm-s (threshold)
+COURSE_SIDE_DEVIATION_MAX = 50  # max allowed robot's deviation from course im mm-s (threshold)
 # distance to stop in mm-s between robot and path ending point
 # (its a good idea to keep this value greater than allowed course deviation)
-COURSE_DESTINATION_DIFF = 50
-COURSE_ADJ_SMC_VAL = 3  # nav wheels turn value when trying to get back to the course (SHOULD BE POSITIVE VALUE!)
+COURSE_DESTINATION_DIFF = 70
+COURSE_ADJ_SMC_VAL = 7  # nav wheels turn value when trying to get back to the course (SHOULD BE POSITIVE VALUE!)
 
 
 # ======================================================================================================================
@@ -100,18 +100,7 @@ NAV_TURN_WHEELS_CENTER = 0
 
 
 # ======================================================================================================================
-# PATHS
-# ======================================================================================================================
-HIST_DATABASE_PATH = "database\\database.npy"
-PATTERNS_DATASET_DIR = "database\\images"
-QUERY_IMAGE_PATH = "input\\prise8.jpg"
-OUTPUT_IMAGE_DIR = "output\\"
-OUTPUT_IMAGE_NAME = "prise2 - AOI"
-OUTPUT_IMAGE_EXTENSION = ".jpg"
-
-
-# ======================================================================================================================
-# YOLO DETECTION CONFIG
+# YOLO DETECTION SETTINGS
 # ======================================================================================================================
 CONFIDENCE_THRESHOLD = 0.25    # Confidence threshold
 NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
@@ -125,7 +114,7 @@ YOLO_CLASSES_FILE = "yolo/classes.names"
 
 
 # ======================================================================================================================
-# APP CONFIG
+# CAMERA SETTINGS
 # ======================================================================================================================
 USE_PI_CAMERA = True
 CAMERA_W = 3280
@@ -139,11 +128,29 @@ CAMERA_FLIP_METHOD = 0
 CORK_CENTER_X = 1144
 CORK_CENTER_Y = 1590
 ONE_MM_IN_PX = 6
+
+
+# ======================================================================================================================
+# APP SETTINGS
+# ======================================================================================================================
 SAVE_DEBUG_IMAGES = True
 
+
+# ======================================================================================================================
+# OBSOLETTE SETTINGS
+# ======================================================================================================================
 WEB_SERVER_HOST = "127.0.0.1"
 WEB_SERVER_PORT = 8080
 
 STREAM_SERVER_HOST = "192.168.8.100"
 STREAM_SERVER_PORT_HTTP = 8082
 STREAM_SERVER_PORT_WS = 8084
+
+
+# ======================================================================================================================
+# OLD PATHS
+# ======================================================================================================================
+QUERY_IMAGE_PATH = "input\\prise8.jpg"
+OUTPUT_IMAGE_DIR = "output\\"
+OUTPUT_IMAGE_NAME = "prise2 - AOI"
+OUTPUT_IMAGE_EXTENSION = ".jpg"
