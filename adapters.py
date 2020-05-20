@@ -890,16 +890,18 @@ class GPSUblockAdapter:
         self._serial.close()
 
     def get_last_position(self):
-        if len(self._last_pos_container) > 0:
-            with self._sync_locker:
-                position = self._last_pos_container[-1].copy()
-                return position
+        while len(self._last_pos_container) < 1:
+            pass
+        with self._sync_locker:
+            position = self._last_pos_container[-1].copy()  # var may be need for context manager
+            return position
 
     def get_last_positions_list(self):
-        if len(self._last_pos_container) > 0:
-            with self._sync_locker:
-                positions = self._last_pos_container.copy()
-                return positions
+        while len(self._last_pos_container) < 1:
+            pass
+        with self._sync_locker:
+            positions = self._last_pos_container.copy()  # var may be need for context manager
+            return positions
 
     def get_stored_pos_count(self):
         return len(self._last_pos_container)

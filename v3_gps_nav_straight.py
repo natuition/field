@@ -52,6 +52,7 @@ def save_gps_coordinates(points: list, file_name):
 
 def main():
     points_history = []
+    prev_point = None
     try:
         # load gps points; for now it should have only two positions: path starting and ending point
         field_gps_coords = load_coordinates(INPUT_GPS_FIELD_FILE)
@@ -70,8 +71,12 @@ def main():
                         time.sleep(0.05)
 
                     # main navigation control loop
+                    # TO DO: this loop is working much faster than gps, need to evaluate sleep time or waiting for new P
                     while True:
                         cur_pos = gps.get_last_position()
+                        if str(cur_pos) == prev_point:
+                            continue
+                        prev_point = str(cur_pos)
                         points_history.append(cur_pos)
                         # check if arrived
                         # TO DO: it won't work if deviation > course destination diff, as robot will be far away on some
