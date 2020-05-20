@@ -52,7 +52,11 @@ def main():
                         # check if arrived
                         # TO DO: it won't work if deviation > course destination diff, as robot will be far away on some
                         # side and will never get too close to the path ending point
-                        if nav.get_distance(cur_pos, field_gps_coords[1]) <= config.COURSE_DESTINATION_DIFF:
+                        distance = nav.get_distance(cur_pos, field_gps_coords[1])
+
+                        print("Distance to B:", distance)
+
+                        if distance <= config.COURSE_DESTINATION_DIFF:
                             vesc_engine.stop_moving()
                             print("Arrived (allowed destination distance difference", config.COURSE_DESTINATION_DIFF,
                                   "mm)")
@@ -61,6 +65,10 @@ def main():
                         # check for course deviation. if deviation is bigger than a threshold
                         deviation, side = nav.get_deviation(field_gps_coords[0], field_gps_coords[1], cur_pos)
                         nav_wheels_position = smoothie.get_adapter_current_coordinates()["A"]
+
+                        print("A:", field_gps_coords[0], "B:", field_gps_coords[1], "Cur:", cur_pos)
+                        print("Deviation:", deviation, "side flag:", side)
+
                         if deviation > config.COURSE_SIDE_DEVIATION_MAX:
                             # deviation to the left side
                             if side == -1:
