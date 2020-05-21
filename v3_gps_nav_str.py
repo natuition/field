@@ -45,9 +45,9 @@ def main():
                     # TO DO: this loop is working much faster than gps, need to evaluate sleep time or waiting for new P
                     while True:
                         cur_pos = gps.get_last_position()
-                        if str(cur_pos) == prev_point:
-                            continue
-                        prev_point = str(cur_pos)
+                        # if str(cur_pos) == prev_point:
+                        #    continue
+                        # prev_point = str(cur_pos)
                         points_history.append(cur_pos.copy())
                         # check if arrived
                         # TO DO: it won't work if deviation > course destination diff, as robot will be far away on some
