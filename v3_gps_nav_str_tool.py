@@ -40,15 +40,15 @@ def ask_for_ab_points(gps: adapters.GPSUblockAdapter):
     while gps.get_stored_pos_count() == 0:
         time.sleep(0.05)
 
-    input("Press enter to save point A")
-    time.sleep(sleep_time)
-    point_a = gps.get_last_position()
-    print("Point A saved.")
     input("Press enter to save point B")
     time.sleep(sleep_time)
     point_b = gps.get_last_position()
     print("Point B saved.")
-    return [point_b, point_a]
+    input("Press enter to save point A")
+    time.sleep(sleep_time)
+    point_a = gps.get_last_position()
+    print("Point A saved.")
+    return [point_a, point_b]
 
 
 def main():
@@ -73,7 +73,7 @@ def main():
                     # main navigation control loop
                     # TO DO: this loop is working much faster than gps, need to evaluate sleep time or waiting for new P
                     while True:
-                        time.sleep(0.2)
+                        time.sleep(0.5)
                         cur_pos = gps.get_last_position()
                         # if str(cur_pos) == prev_point:
                         #    continue
@@ -96,8 +96,9 @@ def main():
                         deviation, side = nav.get_deviation(field_gps_coords[0], field_gps_coords[1], cur_pos)
                         nav_wheels_position = smoothie.get_adapter_current_coordinates()["A"]
 
+                        side_text = "(left)" if side == -1 else "(right)" if side == 1 else "(center)"
                         print("A:", field_gps_coords[0], "B:", field_gps_coords[1], "Cur:", cur_pos)
-                        print("Deviation:", deviation, "side flag:", side)
+                        print("Deviation:", deviation, "side flag:", side, side_text)
 
                         if deviation > config.COURSE_SIDE_DEVIATION_MAX:
                             # deviation to the left side
@@ -107,7 +108,10 @@ def main():
                                 if not (-config.COURSE_ADJ_SMC_VAL - 0.001 < nav_wheels_position < -config.COURSE_ADJ_SMC_VAL + 0.001):
                                     # TO DO: check abs(COURSE_ADJ_SMC_VAL - nav_wheels_position) and set bigger or
                                     # lesser turning value
+                                    print("Turning wheels left", -config.COURSE_ADJ_SMC_VAL)
                                     smoothie.nav_turn_wheels_to(-config.COURSE_ADJ_SMC_VAL, config.A_F_MAX)
+                                else:
+                                    print("Wheels already at left side:", nav_wheels_position)
                             # deviation to the right side
                             elif side == 1:
                                 # if not turned wheels yet
@@ -115,7 +119,10 @@ def main():
                                 if not (config.COURSE_ADJ_SMC_VAL - 0.001 < nav_wheels_position < config.COURSE_ADJ_SMC_VAL + 0.001):
                                     # TO DO: check abs(COURSE_ADJ_SMC_VAL - nav_wheels_position) and set bigger or
                                     # lesser turning value
+                                    print("Turning wheels right:", config.COURSE_ADJ_SMC_VAL)
                                     smoothie.nav_turn_wheels_to(config.COURSE_ADJ_SMC_VAL, config.A_F_MAX)
+                                else:
+                                    print("Wheels already at right side:", nav_wheels_position)
                             # it's an error if deviation is big but side flag is telling us that we're on moving vector
                             else:
                                 print("Abnormal state: deviation =", deviation, "at", side,
@@ -128,7 +135,11 @@ def main():
                             if not (-0.001 < nav_wheels_position < 0.001):
                                 # TO DO: check abs(COURSE_ADJ_SMC_VAL - nav_wheels_position) and set bigger or
                                 # lesser turning value
+                                print("Turning wheels to center")
                                 smoothie.nav_align_wheels_center(config.A_F_MAX)
+                            else:
+                                print("Wheels already at center:", nav_wheels_position)
+                        print()
         print("Done!")
     except KeyboardInterrupt:
         print("Stopped by a keyboard interrupt (Ctrl + C)")
