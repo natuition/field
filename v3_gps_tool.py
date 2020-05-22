@@ -14,7 +14,7 @@ def save_gps_coordinates(points: list, file_name):
 
 
 def main():
-    with adapters.GPSUblockAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+    with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
         while gps.get_stored_pos_count() == 0:
             pass
 

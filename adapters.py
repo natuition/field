@@ -862,10 +862,8 @@ class VescAdapter:
         return self._allow_movement
 
 
-class GPSUblockAdapter:
-    """Provides access to the robot's on-board GPS navigator (UBLOCK card)
-
-    NOTE: This is very early version."""
+class GPSUbloxAdapter:
+    """Provides access to the robot's on-board GPS navigator (UBLOX card)"""
 
     def __init__(self, ser_port, ser_baudrate, last_pos_count):
         if last_pos_count < 1:

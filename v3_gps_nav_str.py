@@ -32,8 +32,8 @@ def main():
         with adapters.SmoothieAdapter(config.SMOOTHIE_HOST) as smoothie:
             with adapters.VescAdapter(config.VESC_RPM, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                       config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE) as vesc_engine:
-                with adapters.GPSUblockAdapter(config.GPS_PORT, config.GPS_BAUDRATE,
-                                               config.GPS_POSITIONS_TO_KEEP) as gps:
+                with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE,
+                                              config.GPS_POSITIONS_TO_KEEP) as gps:
                     print("done.")
                     # start moving forward
                     vesc_engine.start_moving()

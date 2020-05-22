@@ -31,7 +31,7 @@ def get_current_time():
     return date[:date.rindex(".")].replace(":", "-")
 
 
-def ask_for_ab_points(gps: adapters.GPSUblockAdapter):
+def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
     """Ask user for moving vector AB points"""
 
     # TO DO: remove time.sleep when blocking gps.get_fresh_position function will be done
@@ -61,8 +61,8 @@ def main():
         with adapters.SmoothieAdapter(config.SMOOTHIE_HOST) as smoothie:
             with adapters.VescAdapter(config.VESC_RPM, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                       config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE) as vesc_engine:
-                with adapters.GPSUblockAdapter(config.GPS_PORT, config.GPS_BAUDRATE,
-                                               config.GPS_POSITIONS_TO_KEEP) as gps:
+                with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE,
+                                              config.GPS_POSITIONS_TO_KEEP) as gps:
                     print("done.")
                     field_gps_coords = ask_for_ab_points(gps)
                     save_gps_coordinates(field_gps_coords, "field " + get_current_time() + ".txt")
@@ -98,7 +98,8 @@ def main():
 
                         side_text = "(left)" if side == -1 else "(right)" if side == 1 else "(center)"
                         print("A:", field_gps_coords[0], "B:", field_gps_coords[1], "Cur:", cur_pos)
-                        print("Deviation:", deviation, "side flag:", side, side_text)
+                        print("Deviation:", deviation, "Max dev.:", config.COURSE_SIDE_DEVIATION_MAX, "side flag:",
+                              side, side_text)
 
                         if deviation > config.COURSE_SIDE_DEVIATION_MAX:
                             # deviation to the left side
