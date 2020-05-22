@@ -920,13 +920,10 @@ class GPSUbloxAdapter:
 
         while True:
             data = str(self._serial.readline())
-
-            """
-            if len(data) == 3:
-                print("None GNGGA or RTCM threads")
-            """
-
-            if "GNGGA" in data:
+            # if len(data) == 3:
+            #    print("None GNGGA or RTCM threads")
+            if "GNGGA" in data and ",,," not in data:
+                # bad string with no position data
                 # print(data)  # debug
                 data = data.split(",")
                 lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
