@@ -887,7 +887,26 @@ class GPSUbloxAdapter:
         self._keep_thread_alive = False
         self._serial.close()
 
+    def get_fresh_position(self):
+        """Waits for new fresh position from gps and returns it, blocking until new position received (position
+        should not be equal to previous, blocking otherwise until not equal position received).
+        Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
+        features)"""
+
+        while len(self._last_pos_container) < 1:
+            pass
+        with self._sync_locker:
+            prev_pos = str(self.get_last_position())
+        while True:
+            with self._sync_locker:
+                cur_pos = self.get_last_position()
+            if str(cur_pos) != prev_pos:
+                return cur_pos
+
     def get_last_position(self):
+        """Waits until at least one position is stored, returns last saved position copy at the moment of call
+        (reference type safe)"""
+
         while len(self._last_pos_container) < 1:
             pass
         with self._sync_locker:
@@ -895,10 +914,15 @@ class GPSUbloxAdapter:
             return position
 
     def get_last_positions_list(self):
+        """Waits until at least one position is stored, returns list of last saved positions copies at the moment of
+        call (reference type safe)"""
+
+        positions = []
         while len(self._last_pos_container) < 1:
             pass
         with self._sync_locker:
-            positions = self._last_pos_container.copy()  # var may be need for context manager
+            for position in self._last_pos_container:
+                positions.append(position.copy())
             return positions
 
     def get_stored_pos_count(self):
