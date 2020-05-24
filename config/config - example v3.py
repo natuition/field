@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.1"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.2"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -95,7 +95,8 @@ B_F_MAX = 1000
 C_F_MIN = 1
 C_F_MAX = 1000
 
-ONE_MM_IN_SMOOTHIE = 0.338  # for B axis! # 0.404 for new wheels
+A_ONE_DEGREE_IN_SMOOTHIE = 2  # for A axis
+B_ONE_MM_IN_SMOOTHIE = 0.338  # for B axis # 0.404 for new wheels
 NAV_TURN_WHEELS_CENTER = 0
 
 

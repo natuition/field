@@ -36,7 +36,7 @@ def main():
         image = pca.get_image()
         cv.imwrite(output_dir + str(datetime.datetime.now()) + sep + str(B) + sep + label + ".jpg", image)
 
-        sma.nav_move_forward(int(offset * config.ONE_MM_IN_SMOOTHIE), config.B_F_MAX)
+        sma.nav_move_forward(int(offset * config.B_ONE_MM_IN_SMOOTHIE), config.B_F_MAX)
 
         sma.wait_for_all_actions_done()
         # time.sleep(2) # if function above is not working properly
