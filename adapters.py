@@ -869,6 +869,7 @@ class GPSUbloxAdapter:
         if last_pos_count < 1:
             raise ValueError("last_pos_count shouldn't be less than 1")
 
+        self._position_is_fresh = False
         self._last_pos_count = last_pos_count
         self._last_pos_container = []
         self._sync_locker = multiprocessing.RLock()
@@ -888,20 +889,19 @@ class GPSUbloxAdapter:
         self._serial.close()
 
     def get_fresh_position(self):
-        """Waits for new fresh position from gps and returns it, blocking until new position received (position
-        should not be equal to previous, blocking otherwise until not equal position received).
+        """Waits for new fresh position from gps and returns it, blocking until new position received.
         Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
         features)"""
 
         while len(self._last_pos_container) < 1:
             pass
         with self._sync_locker:
-            prev_pos = str(self.get_last_position())
+            self._position_is_fresh = False
         while True:
             with self._sync_locker:
-                cur_pos = self.get_last_position()
-            if str(cur_pos) != prev_pos:
-                return cur_pos
+                if not self._position_is_fresh:
+                    continue
+            return self.get_last_position()
 
     def get_last_position(self):
         """Waits until at least one position is stored, returns last saved position copy at the moment of call
@@ -936,6 +936,7 @@ class GPSUbloxAdapter:
                     if len(self._last_pos_container) == self._last_pos_count:
                         self._last_pos_container.pop(0)
                     self._last_pos_container.append(position)
+                    self._position_is_fresh = True
         except serial.SerialException as ex:
             print(ex)
 
