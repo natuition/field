@@ -65,13 +65,17 @@ def main():
     try:
         nav = navigation.GPSComputing()
 
-        print("Initializing...", end=" ")
+        print("Initializing...")
         with adapters.SmoothieAdapter(config.SMOOTHIE_HOST) as smoothie:
             with adapters.VescAdapter(config.VESC_RPM, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                       config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE) as vesc_engine:
                 with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE,
                                               config.GPS_POSITIONS_TO_KEEP) as gps:
-                    print("done.")
+                    response = smoothie.set_current_coordinates(A=0)
+                    if response != smoothie.RESPONSE_OK:
+                        print("Failed to set A=0 on smoothie (turning wheels init position), response message:\n",
+                              response)
+                    print("Initializing done.")
 
                     # get route (field) and save it
                     field_gps_coords = ask_for_ab_points(gps)
