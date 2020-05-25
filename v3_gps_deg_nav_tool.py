@@ -121,9 +121,16 @@ def main():
                         print("Prev:", prev_point, "Cur:", cur_pos, "A:", field_gps_coords[0], "B:", field_gps_coords[1])
 
                         angle = nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])  # or vice versa, depends on computing function
-                        wheels_angle_sm = -(angle * config.A_ONE_DEGREE_IN_SMOOTHIE)  # smoothie -V = left, V = right
+                        wheels_angle_sm = angle * config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -V = left, V = right
                         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
                         sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
+
+                        if wheels_angle_sm > config.A_MAX:
+                            print("Wheels turn value changed from", wheels_angle_sm, "to config.A_MAX =", config.A_MAX)
+                            wheels_angle_sm = config.A_MAX
+                        elif wheels_angle_sm < config.A_MIN:
+                            print("Wheels turn value changed from", wheels_angle_sm, "to config.A_MIN =", config.A_MIN)
+                            wheels_angle_sm = config.A_MIN
 
                         """
                         print("A:", field_gps_coords[0], "B:", field_gps_coords[1], "Prev:", prev_point, "Cur:",
@@ -132,7 +139,7 @@ def main():
                         """
                         print("Adapter wheels pos (target):", ad_wheels_pos, "Smoothie wheels pos (current)",
                               sm_wheels_pos, "\n")
-                        print("Angle:", angle, "Smoothie B value:", wheels_angle_sm)
+                        print("Angle:", angle, "Sending B value to smoothie:", wheels_angle_sm)
 
                         prev_point = cur_pos
                         smoothie.nav_turn_wheels_to(wheels_angle_sm, config.A_F_MAX)
