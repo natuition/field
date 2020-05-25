@@ -7,6 +7,64 @@ class GPSComputing:
     Class containing methods for handling GPS-coordinates
     """
 
+    def _get_azimuth(self, point_1, point_2):
+        """
+        Method for determining the azimuth - the angle between the north direction and the direction from the start point
+        to the endpoint
+        :param point_1: coordinates of the starting point (latitude, longitude)
+        :param point_2: coordinates of the endpoint (latitude, longitude)
+        :return: azimuth in degrees
+        """
+
+        # in radians
+        lat1 = math.radians(point_1[0])
+        lat2 = math.radians(point_2[0])
+        long1 = math.radians(point_1[1])
+        long2 = math.radians(point_2[1])
+        # cosines and sines of latitudes and difference of longitudes
+        cos_lat1 = math.cos(lat1)
+        cos_lat2 = math.cos(lat2)
+        sin_lat1 = math.sin(lat1)
+        sin_lat2 = math.sin(lat2)
+        delta = long2 - long1
+        cdelta = math.cos(delta)
+        sdelta = math.sin(delta)
+
+        # calculation of the initial azimuth
+        x = (cos_lat1 * sin_lat2) - (sin_lat1 * cos_lat2 * cdelta)
+        y = sdelta * cos_lat2
+        z = math.degrees(math.atan(-y / x))
+
+        if (x < 0):
+            z = z + 180.
+
+        z2 = (z + 180.) % 360. - 180.
+
+        z2 = - math.radians(z2)
+        anglerad2 = z2 - ((2 * math.pi) * math.floor((z2 / (2 * math.pi))))
+        angledeg = (anglerad2 * 180.) / math.pi
+        return angledeg
+
+    def get_angle(self, point_1, point_2, point_3, point_4):
+        """
+        Method for finding the angle between two vectors represented by points (GPS coordinates)
+        :param point_1: starting point of the first vector
+        :param point_2: endpoint of the first vector
+        :param point_3: starting point of the second vector
+        :param point_4: endpoint of the second vector
+        :return: angle between two vectors in degrees
+        """
+
+        azimuth_1 = self._get_azimuth(point_1, point_2)
+        azimuth_2 = self._get_azimuth(point_3, point_4)
+        if azimuth_1 >= azimuth_2:
+            angle = azimuth_1 - azimuth_2
+        else:
+            angle = azimuth_2 - azimuth_1
+        if angle >= 180:
+            angle = 360. - angle
+        return angle
+
     def get_distance(self, point_1, point_2):
         """
         Function for finding the distance between two GPS-points
