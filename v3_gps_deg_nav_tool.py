@@ -62,8 +62,6 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 
 def main():
     points_history = []
-    prev_point = None
-    prev_maneuer_time = None
     try:
         nav = navigation.GPSComputing()
 
@@ -81,11 +79,11 @@ def main():
 
                     # start moving forward
                     input("Press enter to start moving")
-                    prev_maneuer_time = time.time()
+                    prev_maneuver_time = time.time()
+                    prev_point = gps.get_fresh_position()
                     vesc_engine.start_moving()
 
                     # main navigation control loop
-                    # TO DO: this loop is working much faster than gps, need to evaluate sleep time or waiting for new P
                     while True:
                         cur_pos = gps.get_fresh_position()
                         points_history.append(cur_pos.copy())
@@ -108,8 +106,10 @@ def main():
                             break
 
                         # do maneuvers not more often than specified value
-                        if time.time() - prev_maneuer_time < MANEUVERS_DELAY_MIN:
+                        cur_time = time.time()
+                        if cur_time - prev_maneuver_time < MANEUVERS_DELAY_MIN:
                             continue
+                        prev_maneuver_time = cur_time
 
                         # check for course deviation. if deviation is bigger than a threshold
                         """
@@ -117,6 +117,9 @@ def main():
                         rar = nav.get_corner(SOUTH_POINT, NORTH_POINT, prev_point, cur_pos)
                         angle = PID * ras - rar
                         """
+
+                        print("Prev:", prev_point, "Cur:", cur_pos, "A:", field_gps_coords[0], "B:", field_gps_coords[1])
+
                         angle = nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])  # or vice versa, depends on computing function
                         wheels_angle_sm = -(angle * config.A_ONE_DEGREE_IN_SMOOTHIE)  # smoothie -V = left, V = right
                         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
@@ -127,10 +130,9 @@ def main():
                               cur_pos)
                         print("PID:", PID, "RAS:", ras, "RAR:", rar, "Computed degrees:", angle, "Sending to smoothie:", wheels_angle_sm)
                         """
-
-                        print("Prev:", prev_point, "Cur:", cur_pos, "A:", field_gps_coords[0], "B:", field_gps_coords[1])
                         print("Adapter wheels pos (target):", ad_wheels_pos, "Smoothie wheels pos (current)",
                               sm_wheels_pos, "\n")
+                        print("Angle:", angle, "Smoothie B value:", wheels_angle_sm)
 
                         prev_point = cur_pos
                         smoothie.nav_turn_wheels_to(wheels_angle_sm, config.A_F_MAX)
