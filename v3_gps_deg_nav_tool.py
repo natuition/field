@@ -8,10 +8,6 @@ import time
 import datetime
 
 
-# Settings
-PID = 1  # wheels turning degrees multiplier
-MANEUVERS_DELAY_MIN = 2  # seconds
-
 # old way
 NORTH_POINT = [90.0000, 0.0000]
 SOUTH_POINT = [-90.0000, 0.0000]
@@ -111,7 +107,7 @@ def main():
 
                         # do maneuvers not more often than specified value
                         cur_time = time.time()
-                        if cur_time - prev_maneuver_time < MANEUVERS_DELAY_MIN:
+                        if cur_time - prev_maneuver_time < config.MANEUVERS_FREQUENCY:
                             continue
                         prev_maneuver_time = cur_time
 
@@ -124,7 +120,7 @@ def main():
 
                         print("Prev:", prev_point, "Cur:", cur_pos, "A:", field_gps_coords[0], "B:", field_gps_coords[1])
 
-                        angle = nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])  # or vice versa, depends on computing function
+                        angle = config.PID * nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])  # or vice versa, depends on computing function
                         wheels_angle_sm = angle * config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -V = left, V = right
                         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
                         sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]

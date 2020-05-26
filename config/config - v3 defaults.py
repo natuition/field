@@ -1,12 +1,14 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.2"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.3"  # still have some obsolete keys
 
 
 # ======================================================================================================================
 # NAVIGATION ROUTING SETTINGS
 # ======================================================================================================================
+PID = 0.1  # wheels turning degrees multiplier
+MANEUVERS_FREQUENCY = 2  # seconds
 # max distance in mm-s of robot's deviation from planned moving vector
 # if dev. is bigger than this - robot will turn to it's planned moving vector
 COURSE_SIDE_DEVIATION_MAX = 50  # max allowed robot's deviation from course im mm-s (threshold)
