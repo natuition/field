@@ -1,9 +1,8 @@
-"""Creates two gps points AB and saves them into the file (specified in config)"""
+"""Creates gps points and saves them into the file (file name is specified in the config)"""
 
 
 from config import config
 import adapters
-import time
 
 
 def save_gps_coordinates(points: list, file_name):
@@ -15,21 +14,18 @@ def save_gps_coordinates(points: list, file_name):
 
 def main():
     with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
-        while gps.get_stored_pos_count() == 0:
-            pass
+        i = 1
+        points = []
 
-        input("Press enter to save point A")
-        time.sleep(1)
-        point_a = gps.get_last_position()
-        print("Point A saved.")
+        while True:
+            cmd = input("Press enter to save point " + str(i) + ", type anything to exit.")
+            if cmd != "":
+                break
+            point = gps.get_fresh_position()
+            points.append(point)
+            print("Point", i, "saved.\n")
 
-        input("Press enter to save point B")
-        time.sleep(1)
-        point_b = gps.get_last_position()
-        print("Point B saved.")
-
-        save_gps_coordinates([point_a, point_b], config.INPUT_GPS_FIELD_FILE)
-
+        save_gps_coordinates(points, config.INPUT_GPS_FIELD_FILE)
         print("Done!")
 
 
