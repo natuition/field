@@ -1,12 +1,15 @@
 """Creates two gps points AB and saves them into the file (specified in config), then moves from B to A point."""
-
+import os
 
 import adapters
 import navigation
+from SensorProcessing import SensorProcessing
 from config import config
 import time
 import datetime
 
+
+from socketForRTK.Client import Client
 
 # old way
 NORTH_POINT = [90.0000, 0.0000]
@@ -58,8 +61,20 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 
 def main():
     points_history = []
+
+    path = os.path.abspath(os.getcwd())
+    sP = SensorProcessing(path, 0)
+    sP.startServer()
+
+    client = Client(4000)
+    if not client.connectionToServer():
+        print("Connection refused for Server RTK.")
+
+    sP.startSession()
+
     try:
         nav = navigation.GPSComputing()
+
 
         print("Initializing...")
         with adapters.SmoothieAdapter(config.SMOOTHIE_HOST) as smoothie:
@@ -87,6 +102,8 @@ def main():
                     while True:
                         cur_pos = gps.get_fresh_position()
                         points_history.append(cur_pos.copy())
+                        if not client.sendData("{};{}".format(cur_pos.copy()[0], cur_pos.copy()[1])):
+                            print("[Client] Connection closed !")
 
                         if str(cur_pos) == str(prev_point):
                             print("Got the same position, added to history, but have to skip calculations")
@@ -147,6 +164,9 @@ def main():
     except KeyboardInterrupt:
         print("Stopped by a keyboard interrupt (Ctrl + C)")
     finally:
+        sP.endSession()
+        client.closeConnection()
+        sP.stopServer()
         save_gps_coordinates(points_history, "gps_history " + get_current_time() + ".txt")
 
 
