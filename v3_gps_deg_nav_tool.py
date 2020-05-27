@@ -4,12 +4,13 @@
 import os
 import adapters
 import navigation
-from SensorProcessing import SensorProcessing
 from config import config
 import time
 import datetime
+"""
+from SensorProcessing import SensorProcessing
 from socketForRTK.Client import Client
-
+"""
 
 # old way
 NORTH_POINT = [90.0000, 0.0000]
@@ -63,6 +64,7 @@ def main():
     used_points_history = []
     adapter_points_history = []
 
+    """
     path = os.path.abspath(os.getcwd())
     sP = SensorProcessing(path, 0)
     sP.startServer()
@@ -72,6 +74,7 @@ def main():
         print("Connection refused for Server RTK.")
 
     sP.startSession()
+    """
 
     try:
         nav = navigation.GPSComputing()
@@ -110,8 +113,11 @@ def main():
                     while True:
                         cur_pos = gps.get_fresh_position()
                         used_points_history.append(cur_pos.copy())
+
+                        """
                         if not client.sendData("{};{}".format(cur_pos.copy()[0], cur_pos.copy()[1])):
                             print("[Client] Connection closed !")
+                        """
 
                         if str(cur_pos) == str(prev_point):
                             print("Got the same position, added to history, but have to skip calculations")
@@ -175,9 +181,11 @@ def main():
     finally:
         save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")
         save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
+        """
         sP.endSession()
         client.closeConnection()
         sP.stopServer()
+        """
 
 
 if __name__ == '__main__':
