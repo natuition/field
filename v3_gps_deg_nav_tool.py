@@ -1,15 +1,15 @@
 """Creates two gps points AB and saves them into the file (specified in config), then moves from B to A point."""
-import os
 
+
+import os
 import adapters
 import navigation
 from SensorProcessing import SensorProcessing
 from config import config
 import time
 import datetime
-
-
 from socketForRTK.Client import Client
+
 
 # old way
 NORTH_POINT = [90.0000, 0.0000]
@@ -60,7 +60,8 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 
 
 def main():
-    points_history = []
+    used_points_history = []
+    adapter_points_history = []
 
     path = os.path.abspath(os.getcwd())
     sP = SensorProcessing(path, 0)
@@ -89,8 +90,15 @@ def main():
                     print("Initializing done.")
 
                     # get route (field) and save it
-                    field_gps_coords = ask_for_ab_points(gps)
-                    save_gps_coordinates(field_gps_coords, "field " + get_current_time() + ".txt")
+                    command = input("Enter 1 to create and save field.txt points file, 2 to load existing file: ")
+                    if command == "1":
+                        field_gps_coords = ask_for_ab_points(gps)
+                        save_gps_coordinates(field_gps_coords, "field " + get_current_time() + ".txt")
+                    elif command == "2":
+                        field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)
+                    else:
+                        print("Wrong command, exiting.")
+                        exit(1)
 
                     # start moving forward
                     input("Press enter to start moving")
@@ -101,7 +109,7 @@ def main():
                     # main navigation control loop
                     while True:
                         cur_pos = gps.get_fresh_position()
-                        points_history.append(cur_pos.copy())
+                        used_points_history.append(cur_pos.copy())
                         if not client.sendData("{};{}".format(cur_pos.copy()[0], cur_pos.copy()[1])):
                             print("[Client] Connection closed !")
 
@@ -160,14 +168,16 @@ def main():
 
                         prev_point = cur_pos
                         smoothie.nav_turn_wheels_to(wheels_angle_sm, config.A_F_MAX)
+                    adapter_points_history = gps.get_last_positions_list()
         print("Done!")
     except KeyboardInterrupt:
         print("Stopped by a keyboard interrupt (Ctrl + C)")
     finally:
+        save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")
+        save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
         sP.endSession()
         client.closeConnection()
         sP.stopServer()
-        save_gps_coordinates(points_history, "gps_history " + get_current_time() + ".txt")
 
 
 if __name__ == '__main__':
