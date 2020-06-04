@@ -1,16 +1,17 @@
 """Creates two gps points AB and saves them into the file (specified in config), then moves from B to A point."""
 
-
 import os
 import adapters
 import navigation
 from config import config
 import time
 import datetime
-#"""
+import utility
+# """
 from SensorProcessing import SensorProcessing
 from socketForRTK.Client import Client
-#"""
+# """
+
 
 # old way
 NORTH_POINT = [90.0000, 0.0000]
@@ -63,8 +64,9 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 def main():
     used_points_history = []
     adapter_points_history = []
+    logger = utility.Logger("console " + get_current_time() + ".txt")
 
-    #"""
+    # """
     path = os.path.abspath(os.getcwd())
     sP = SensorProcessing(path, 0)
     sP.startServer()
@@ -72,15 +74,20 @@ def main():
     client = Client(4000)
     time.sleep(1)
     if not client.connectionToServer():
-        print("Connection refused for Server RTK.")
+        msg = "Connection refused for Server RTK."
+        print(msg)
+        logger.write(msg + "\n")
 
     sP.startSession()
-    #"""
+    # """
 
     try:
         nav = navigation.GPSComputing()
 
-        print("Initializing...")
+        msg = "Initializing..."
+        print(msg)
+        logger.write(msg + "\n")
+
         with adapters.SmoothieAdapter(config.SMOOTHIE_HOST) as smoothie:
             with adapters.VescAdapter(config.VESC_RPM, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                       config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE) as vesc_engine:
@@ -90,23 +97,33 @@ def main():
                     # set smoothie's A axis to 0 (nav turn wheels)
                     response = smoothie.set_current_coordinates(A=0)
                     if response != smoothie.RESPONSE_OK:
-                        print("Failed to set A=0 on smoothie (turning wheels init position), response message:\n",
-                              response)
-                    print("Initializing done.")
+                        msg = "Failed to set A=0 on smoothie (turning wheels init position), response message:\n" + response
+                        print(msg)
+                        logger.write(msg + "\n")
+                    msg = "Initializing done."
+                    print(msg)
+                    logger.write(msg + "\n")
 
                     # get route (field) and save it
-                    command = input("Enter 1 to create and save field.txt points file, 2 to load existing file: ")
+                    msg = "Enter 1 to create and save field.txt points file, 2 to load existing file: "
+                    command = input(msg)
+                    msg += command
+                    logger.write(msg + "\n")
                     if command == "1":
                         field_gps_coords = ask_for_ab_points(gps)
                         save_gps_coordinates(field_gps_coords, "field " + get_current_time() + ".txt")
                     elif command == "2":
                         field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)
                     else:
-                        print("Wrong command, exiting.")
+                        msg = "Wrong command, exiting."
+                        print(msg)
+                        logger.write(msg + "\n")
                         exit(1)
 
                     # start moving forward
-                    input("Press enter to start moving")
+                    msg = "Press enter to start moving"
+                    input(msg)
+                    logger.write(msg + "\n")
                     prev_maneuver_time = time.time()
                     prev_point = gps.get_fresh_position()
                     vesc_engine.start_moving()
@@ -116,13 +133,17 @@ def main():
                         cur_pos = gps.get_fresh_position()
                         used_points_history.append(cur_pos.copy())
 
-                        #"""
+                        # """
                         if not client.sendData("{};{}".format(cur_pos.copy()[0], cur_pos.copy()[1])):
-                            print("[Client] Connection closed !")
-                        #"""
+                            msg = "[Client] Connection closed !"
+                            print(msg)
+                            logger.write(msg + "\n")
+                        # """
 
                         if str(cur_pos) == str(prev_point):
-                            print("Got the same position, added to history, but have to skip calculations")
+                            msg = "Got the same position, added to history, calculations skipped"
+                            print(msg)
+                            logger.write(msg + "\n")
                             continue
 
                         # check if arrived
@@ -130,12 +151,16 @@ def main():
                         # side and will never get too close to the path ending point
                         distance = nav.get_distance(cur_pos, field_gps_coords[1])
 
-                        print("Distance to B:", distance)
+                        msg = "Distance to B: " + distance
+                        print(msg)
+                        logger.write(msg + "\n")
 
                         if distance <= config.COURSE_DESTINATION_DIFF:
                             vesc_engine.stop_moving()
-                            print("Arrived (allowed destination distance difference", config.COURSE_DESTINATION_DIFF,
-                                  "mm)")
+                            msg = "Arrived (allowed destination distance difference " + config.COURSE_DESTINATION_DIFF\
+                                  + " mm)"
+                            print(msg)
+                            logger.write(msg + "\n")
                             break
 
                         # do maneuvers not more often than specified value
@@ -146,48 +171,84 @@ def main():
 
                         # check for course deviation. if deviation is bigger than a threshold
                         """
+                        # old
                         ras = nav.get_corner(SOUTH_POINT, NORTH_POINT, cur_pos, field_gps_coords[1])
                         rar = nav.get_corner(SOUTH_POINT, NORTH_POINT, prev_point, cur_pos)
                         angle = PID * ras - rar
                         """
 
-                        print("Prev:", prev_point, "Cur:", cur_pos, "A:", field_gps_coords[0], "B:", field_gps_coords[1])
+                        msg = "Timestamp: " + str(cur_time)
+                        print(msg)
+                        logger.write(msg + "\n")
 
-                        angle = config.PID * nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])  # or vice versa, depends on computing function
-                        wheels_angle_sm = angle * config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -V = left, V = right
+                        msg = "Prev: " + prev_point + " Cur: " + cur_pos + " A: " + str(field_gps_coords[0]) + " B: " +\
+                              str(field_gps_coords[1])
+                        print(msg)
+                        logger.write(msg + "\n")
+
+                        # TO DO: or vice versa, depends on computing function
+                        angle = nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])
+                        angle_pid = angle * config.PID
+                        wheels_angle_sm = angle_pid * config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -V == left, V == right
                         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
                         sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
 
                         if wheels_angle_sm > config.A_MAX:
-                            print("Wheels turn value changed from", wheels_angle_sm, "to config.A_MAX =", config.A_MAX)
+                            msg = "Wheels turn value changed from " + wheels_angle_sm + " to config.A_MAX = " +\
+                                  config.A_MAX
+                            print(msg)
+                            logger.write(msg + "\n")
                             wheels_angle_sm = config.A_MAX
                         elif wheels_angle_sm < config.A_MIN:
-                            print("Wheels turn value changed from", wheels_angle_sm, "to config.A_MIN =", config.A_MIN)
+                            msg = "Wheels turn value changed from " + wheels_angle_sm + " to config.A_MIN = " +\
+                                  config.A_MIN
+                            print(msg)
+                            logger.write(msg + "\n")
                             wheels_angle_sm = config.A_MIN
 
                         """
+                        # old
                         print("A:", field_gps_coords[0], "B:", field_gps_coords[1], "Prev:", prev_point, "Cur:",
                               cur_pos)
                         print("PID:", PID, "RAS:", ras, "RAR:", rar, "Computed degrees:", angle, "Sending to smoothie:", wheels_angle_sm)
                         """
-                        print("Adapter wheels pos (target):", ad_wheels_pos, "Smoothie wheels pos (current)",
-                              sm_wheels_pos, "\n")
-                        print("Angle:", angle, "Sending B value to smoothie:", wheels_angle_sm)
+
+                        msg = "Adapter wheels pos (target): " + ad_wheels_pos + " Smoothie wheels pos (current) " +\
+                              sm_wheels_pos
+                        print(msg)
+                        logger.write(msg + "\n")
+                        msg = "Angle: " + angle + " Angle * PID: " + angle_pid + " Sending B value to smoothie: " +\
+                              wheels_angle_sm
+                        print(msg)
+                        logger.write(msg + "\n")
+
+                        # next block indent
+                        print()
+                        logger.write("\n")
 
                         prev_point = cur_pos
                         smoothie.nav_turn_wheels_to(wheels_angle_sm, config.A_F_MAX)
                     adapter_points_history = gps.get_last_positions_list()
-        print("Done!")
+        msg = "Done!"
+        print(msg)
+        logger.write(msg + "\n")
     except KeyboardInterrupt:
-        print("Stopped by a keyboard interrupt (Ctrl + C)")
+        msg = "Stopped by a keyboard interrupt (Ctrl + C)"
+        print(msg)
+        logger.write(msg + "\n")
+    except Exception as ex:
+        msg = "Exception occurred: " + str(ex)
+        print(msg)
+        logger.write(msg)
     finally:
+        logger.close()
         save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")
         save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
-        #"""
+        # """
         sP.endSession()
         client.closeConnection()
         sP.stopServer()
-        #"""
+        # """
 
 
 if __name__ == '__main__':
