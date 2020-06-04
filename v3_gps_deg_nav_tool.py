@@ -44,19 +44,11 @@ def get_current_time():
 def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
     """Ask user for moving vector AB points"""
 
-    # TO DO: remove time.sleep when blocking gps.get_fresh_position function will be done
-    sleep_time = 1
-    # wait for gps
-    while gps.get_stored_pos_count() == 0:
-        time.sleep(0.05)
-
     input("Press enter to save point B")
-    time.sleep(sleep_time)
-    point_b = gps.get_last_position()
+    point_b = gps.get_fresh_position()
     print("Point B saved.")
     input("Press enter to save point A")
-    time.sleep(sleep_time)
-    point_a = gps.get_last_position()
+    point_a = gps.get_fresh_position()
     print("Point A saved.")
     return [point_a, point_b]
 
@@ -109,9 +101,42 @@ def main():
                     command = input(msg)
                     msg += command
                     logger.write(msg + "\n")
+
+                    # pick from gps
                     if command == "1":
-                        field_gps_coords = ask_for_ab_points(gps)
+                        msg = "Press enter to save point B"
+                        input(msg)
+                        logger.write(msg)
+                        point_b = gps.get_fresh_position()
+                        msg = "Point B saved."
+                        print(msg)
+                        logger.write(msg)
+
+                        # ask info for moving to next point and move there
+                        rpm = 11000
+                        msg = "RPM = " + str(rpm) + "; set moving time (seconds; will start moving immediately): "
+                        moving_time = input(msg)
+                        msg += moving_time
+                        moving_time = float(moving_time)
+
+                        vesc_engine.set_rpm(11000)
+                        vesc_engine.set_moving_time(moving_time)
+                        vesc_engine.start_moving()
+                        vesc_engine.wait_for_stop()
+                        vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
+                        vesc_engine.set_rpm(config.VESC_RPM)
+
+                        msg = "Press enter to save point A"
+                        input(msg)
+                        logger.write(msg)
+                        point_a = gps.get_fresh_position()
+                        msg = "Point A saved."
+                        print(msg)
+                        logger.write(msg)
+
+                        field_gps_coords = [point_a, point_b]
                         save_gps_coordinates(field_gps_coords, "field " + get_current_time() + ".txt")
+                    # load from file
                     elif command == "2":
                         field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)
                     else:
@@ -241,9 +266,19 @@ def main():
         print(msg)
         logger.write(msg)
     finally:
+        if len(used_points_history) > 0:
+            save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")
+        else:
+            msg = "used_gps_history list has 0 elements!"
+            print(msg)
+            logger.write(msg)
+        if len(adapter_points_history) > 0:
+            save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
+        else:
+            msg = "adapter_gps_history list has 0 elements!"
+            print(msg)
+            logger.write(msg)
         logger.close()
-        save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")
-        save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
         # """
         sP.endSession()
         client.closeConnection()
