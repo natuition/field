@@ -70,6 +70,7 @@ def main():
     sP.startServer()
 
     client = Client(4000)
+    time.sleep(1)
     if not client.connectionToServer():
         print("Connection refused for Server RTK.")
 
