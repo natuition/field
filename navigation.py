@@ -63,6 +63,12 @@ class GPSComputing:
             angle = azimuth_2 - azimuth_1
         if angle >= 180:
             angle = 360. - angle
+
+        location = (point_4[0] - point_1[0]) * (point_2[1] - point_1[1]) - \
+                   (point_4[1] - point_1[1]) * (point_2[0] - point_1[0])
+        if location > 0:
+            angle *= -1
+
         return angle
 
     def get_distance(self, point_1, point_2):
@@ -114,7 +120,8 @@ class GPSComputing:
             perpendicular = 0
             flag = 0
         else:
-            perpendicular = 2 / start_stop * (per * (per - start_stop) * (per - point_start) * (per - point_stop)) ** 0.5
+            perpendicular = 2 / start_stop * (
+                        per * (per - start_stop) * (per - point_start) * (per - point_stop)) ** 0.5
 
             d = (deviation_point[0] - start_point[0]) * (stop_point[1] - start_point[1]) - \
                 (deviation_point[1] - start_point[1]) * (stop_point[0] - start_point[0])
@@ -215,7 +222,7 @@ class GPSComputing:
         """
 
         corner_points = []
-        points = [gps_points[len(gps_points)-2]] + [gps_points[len(gps_points)-1]] + gps_points
+        points = [gps_points[len(gps_points) - 2]] + [gps_points[len(gps_points) - 1]] + gps_points
         low_level = 180
         high_level = 180
         while True:
@@ -229,23 +236,20 @@ class GPSComputing:
                 high_level += 5
             corner_points = []
             for i in range(1, len(points) - 1):
-                    a = [points[i-1][1], points[i-1][0]]
-                    b = [points[i][1], points[i][0]]
-                    c = [points[i+1][1], points[i+1][0]]
-                    if i == len(points) - 2:
-                        d = [points[2][1], points[2][0]]
-                    else:
-                        d = [points[i+2][1], points[i+2][0]]
+                a = [points[i - 1][1], points[i - 1][0]]
+                b = [points[i][1], points[i][0]]
+                c = [points[i + 1][1], points[i + 1][0]]
+                if i == len(points) - 2:
+                    d = [points[2][1], points[2][0]]
+                else:
+                    d = [points[i + 2][1], points[i + 2][0]]
 
-                    vector_ba = [(a[0] - b[0]), (a[1] - b[1])]
-                    vector_bc = [(c[0] - b[0]), (c[1] - b[1])]
-                    angle_abc = self._get_angle(vector_ba, vector_bc)
+                angle_abc = self.get_angle(b, a, b, c)
 
-                    if angle_abc < low_level or angle_abc > high_level:
-                        vector_bd = [(d[0] - b[0]), (d[1] - b[1])]
-                        angle_abd = self._get_angle(vector_ba, vector_bd)
-                        if angle_abd < low_level or angle_abc > high_level:
-                            corner_points.append([b[1], b[0]])
+                if angle_abc < low_level or angle_abc > high_level:
+                    angle_abd = self.get_angle(b, a, b, d)
+                    if angle_abd < low_level or angle_abc > high_level:
+                        corner_points.append([b[1], b[0]])
         return self._corner_sort(corner_points)
 
     def _get_angle(self, vector_1, vector_2):
@@ -256,7 +260,7 @@ class GPSComputing:
         :return: angle between two vectors (in degrees)
         """
 
-        cos_angle = (vector_1[0] * vector_2[0] + vector_1[1] * vector_2[1]) /\
+        cos_angle = (vector_1[0] * vector_2[0] + vector_1[1] * vector_2[1]) / \
                     ((vector_1[0] ** 2 + vector_1[1] ** 2) ** 0.5 * (vector_2[0] ** 2 + vector_2[1] ** 2) ** 0.5)
         cos_angle = round(cos_angle, 5)
         angle = math.acos(cos_angle)
