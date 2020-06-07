@@ -58,6 +58,7 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 def main():
     used_points_history = []
     adapter_points_history = []
+    raw_angles_history = []
     logger = utility.Logger("console " + get_current_time() + ".txt")
 
     # """
@@ -206,7 +207,13 @@ def main():
                         logger.write(msg + "\n")
 
                         raw_angle = nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])
+                        if len(raw_angles_history) >= config.WINDOW:
+                            raw_angles_history.pop(0)
+                        raw_angles_history.append(raw_angle)
+
                         angle_kp = raw_angle * config.KP
+                        # angle_kp = raw_angle * config.KP + sum(raw_angles_history) * config.KI
+
                         target_angle_sm = angle_kp * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
                         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
                         sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
@@ -222,7 +229,7 @@ def main():
                                 config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND +
                                 config.A_ONE_DEGREE_IN_SMOOTHIE) + " due to exceeding degrees per tick allowed range."
                             print(msg)
-                            logger.write(msg)
+                            logger.write(msg + "\n")
                             order_angle_sm = config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
                                           config.A_ONE_DEGREE_IN_SMOOTHIE
                         elif order_angle_sm < -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
@@ -231,7 +238,7 @@ def main():
                                     config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
                                     config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
                             print(msg)
-                            logger.write(msg)
+                            logger.write(msg + "\n")
                             order_angle_sm = -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
                                             config.A_ONE_DEGREE_IN_SMOOTHIE)
 

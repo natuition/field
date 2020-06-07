@@ -7,7 +7,8 @@ CONFIG_VERSION = "0.3.4"  # still have some obsolete keys
 # ======================================================================================================================
 # NAVIGATION ROUTING SETTINGS
 # ======================================================================================================================
-KP = 0.1  # wheels turning degrees multiplier
+KP = 0.2  # wheels turning degrees multiplier
+KI = 0.02
 MANEUVERS_FREQUENCY = 2  # seconds
 # max distance in mm-s of robot's deviation from planned moving vector
 # if dev. is bigger than this - robot will turn to it's planned moving vector
@@ -16,6 +17,7 @@ COURSE_SIDE_DEVIATION_MAX = 50  # max allowed robot's deviation from course im m
 # (its a good idea to keep this value greater than allowed course deviation)
 COURSE_DESTINATION_DIFF = 70
 COURSE_ADJ_SMC_VAL = 7  # nav wheels turn value when trying to get back to the course (SHOULD BE POSITIVE VALUE!)
+WINDOW = 10
 
 
 # ======================================================================================================================
