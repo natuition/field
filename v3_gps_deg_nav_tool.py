@@ -7,6 +7,7 @@ from config import config
 import time
 import datetime
 import utility
+import traceback
 # """
 from SensorProcessing import SensorProcessing
 from socketForRTK.Client import Client
@@ -218,6 +219,7 @@ def main():
                         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
                         sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
 
+                        # TO DO: not working yet as moving TO abs 4, need work in relative with checks
                         if wheels_angle_sm > config.A_MAX:
                             msg = "Wheels turn value changed from " + wheels_angle_sm + " to config.A_MAX = " +\
                                   config.A_MAX
@@ -252,7 +254,11 @@ def main():
                         logger.write("\n")
 
                         prev_point = cur_pos
-                        smoothie.nav_turn_wheels_to(wheels_angle_sm, config.A_F_MAX)
+                        response = smoothie.nav_turn_wheels_to(wheels_angle_sm, config.A_F_MAX)
+
+                        msg = "Smoothie response: " + response
+                        print(msg)
+                        logger.write(msg)
                     adapter_points_history = gps.get_last_positions_list()
         msg = "Done!"
         print(msg)
@@ -261,8 +267,8 @@ def main():
         msg = "Stopped by a keyboard interrupt (Ctrl + C)"
         print(msg)
         logger.write(msg + "\n")
-    except Exception as ex:
-        msg = "Exception occurred: " + str(ex)
+    except Exception:
+        msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger.write(msg)
     finally:

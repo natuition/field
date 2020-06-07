@@ -61,7 +61,7 @@ class GPSComputing:
             angle = azimuth_1 - azimuth_2
         else:
             angle = azimuth_2 - azimuth_1
-        if angle >= 180:
+        if angle >= 180:  # TO DO: check if it's possible to get value less than 0 and what will happen if so?
             angle = 360. - angle
 
         location = (point_4[0] - point_1[0]) * (point_2[1] - point_1[1]) - \

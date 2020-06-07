@@ -938,7 +938,7 @@ class GPSUbloxAdapter:
                     self._last_pos_container.append(position)
                     self._position_is_fresh = True
         except serial.SerialException as ex:
-            print(ex)
+            print("Ublox reading error:", ex)
 
     def _read_from_gps(self):
         """Returns GPS coordinates of the current position"""
