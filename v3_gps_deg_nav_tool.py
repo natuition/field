@@ -11,6 +11,7 @@ import traceback
 # """
 from SensorProcessing import SensorProcessing
 from socketForRTK.Client import Client
+
 # """
 
 
@@ -183,7 +184,7 @@ def main():
 
                         if distance <= config.COURSE_DESTINATION_DIFF:
                             vesc_engine.stop_moving()
-                            msg = "Arrived (allowed destination distance difference " + config.COURSE_DESTINATION_DIFF\
+                            msg = "Arrived (allowed destination distance difference " + config.COURSE_DESTINATION_DIFF \
                                   + " mm)"
                             print(msg)
                             logger.write(msg + "\n")
@@ -195,70 +196,82 @@ def main():
                             continue
                         prev_maneuver_time = cur_time
 
-                        # check for course deviation. if deviation is bigger than a threshold
-                        """
-                        # old
-                        ras = nav.get_corner(SOUTH_POINT, NORTH_POINT, cur_pos, field_gps_coords[1])
-                        rar = nav.get_corner(SOUTH_POINT, NORTH_POINT, prev_point, cur_pos)
-                        angle = PID * ras - rar
-                        """
-
                         msg = "Timestamp: " + str(cur_time)
                         print(msg)
                         logger.write(msg + "\n")
 
-                        msg = "Prev: " + prev_point + " Cur: " + cur_pos + " A: " + str(field_gps_coords[0]) + " B: " +\
+                        msg = "Prev: " + prev_point + " Cur: " + cur_pos + " A: " + str(field_gps_coords[0]) + " B: " + \
                               str(field_gps_coords[1])
                         print(msg)
                         logger.write(msg + "\n")
 
-                        # TO DO: or vice versa, depends on computing function
-                        angle = nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])
-                        angle_pid = angle * config.PID
-                        wheels_angle_sm = angle_pid * config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -V == left, V == right
+                        raw_angle = nav.get_angle(prev_point, cur_pos, cur_pos, field_gps_coords[1])
+                        angle_kp = raw_angle * config.KP
+                        target_angle_sm = angle_kp * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
                         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
                         sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
 
-                        # TO DO: not working yet as moving TO abs 4, need work in relative with checks
-                        if wheels_angle_sm > config.A_MAX:
-                            msg = "Wheels turn value changed from " + wheels_angle_sm + " to config.A_MAX = " +\
-                                  config.A_MAX
+                        # compute order angle (smoothie can't turn for huge values immediately also as cancel movement,
+                        # so we need to do nav. actions in steps)
+                        order_angle_sm = target_angle_sm - ad_wheels_pos
+
+                        # check for out of update frequency and smoothie execution speed (for nav wheels)
+                        if order_angle_sm > config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
+                                config.A_ONE_DEGREE_IN_SMOOTHIE:
+                            msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(
+                                config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND +
+                                config.A_ONE_DEGREE_IN_SMOOTHIE) + " due to exceeding degrees per tick allowed range."
+                            print(msg)
+                            logger.write(msg)
+                            order_angle_sm = config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
+                                          config.A_ONE_DEGREE_IN_SMOOTHIE
+                        elif order_angle_sm < -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
+                                             config.A_ONE_DEGREE_IN_SMOOTHIE):
+                            msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(-(
+                                    config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
+                                    config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
+                            print(msg)
+                            logger.write(msg)
+                            order_angle_sm = -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
+                                            config.A_ONE_DEGREE_IN_SMOOTHIE)
+
+                        # convert to global coordinates
+                        order_angle_sm += ad_wheels_pos
+
+                        # checking for out of smoothie supported range
+                        if order_angle_sm > config.A_MAX:
+                            msg = "Global order angle changed from " + order_angle_sm + " to config.A_MAX = " + \
+                                  config.A_MAX + " due to exceeding smoothie allowed values range."
                             print(msg)
                             logger.write(msg + "\n")
-                            wheels_angle_sm = config.A_MAX
-                        elif wheels_angle_sm < config.A_MIN:
-                            msg = "Wheels turn value changed from " + wheels_angle_sm + " to config.A_MIN = " +\
-                                  config.A_MIN
+                            order_angle_sm = config.A_MAX
+                        elif order_angle_sm < config.A_MIN:
+                            msg = "Global order angle changed from " + order_angle_sm + " to config.A_MIN = " + \
+                                  config.A_MIN + " due to exceeding smoothie allowed values range."
                             print(msg)
                             logger.write(msg + "\n")
-                            wheels_angle_sm = config.A_MIN
+                            order_angle_sm = config.A_MIN
 
-                        """
-                        # old
-                        print("A:", field_gps_coords[0], "B:", field_gps_coords[1], "Prev:", prev_point, "Cur:",
-                              cur_pos)
-                        print("PID:", PID, "RAS:", ras, "RAR:", rar, "Computed degrees:", angle, "Sending to smoothie:", wheels_angle_sm)
-                        """
-
-                        msg = "Adapter wheels pos (target): " + ad_wheels_pos + " Smoothie wheels pos (current) " +\
+                        msg = "Adapter wheels pos (target): " + ad_wheels_pos + " Smoothie wheels pos (current): " + \
                               sm_wheels_pos
                         print(msg)
                         logger.write(msg + "\n")
-                        msg = "Angle: " + angle + " Angle * PID: " + angle_pid + " Sending B value to smoothie: " +\
-                              wheels_angle_sm
+                        msg = "KP: " + config.KP + " Raw angle: " + raw_angle + " Angle * KP: " + angle_kp + \
+                              " Smoothie target angle: " + target_angle_sm + " Smoothie absolute order angle: " + \
+                              order_angle_sm
                         print(msg)
                         logger.write(msg + "\n")
 
-                        # next block indent
-                        print()
-                        logger.write("\n")
-
                         prev_point = cur_pos
-                        response = smoothie.nav_turn_wheels_to(wheels_angle_sm, config.A_F_MAX)
+                        response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
 
                         msg = "Smoothie response: " + response
                         print(msg)
                         logger.write(msg)
+
+                        # next tick indent
+                        print()
+                        logger.write("\n")
                     adapter_points_history = gps.get_last_positions_list()
         msg = "Done!"
         print(msg)

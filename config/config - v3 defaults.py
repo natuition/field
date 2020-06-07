@@ -1,13 +1,13 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.3"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.4"  # still have some obsolete keys
 
 
 # ======================================================================================================================
 # NAVIGATION ROUTING SETTINGS
 # ======================================================================================================================
-PID = 0.1  # wheels turning degrees multiplier
+KP = 0.1  # wheels turning degrees multiplier
 MANEUVERS_FREQUENCY = 2  # seconds
 # max distance in mm-s of robot's deviation from planned moving vector
 # if dev. is bigger than this - robot will turn to it's planned moving vector
@@ -97,8 +97,9 @@ B_F_MAX = 1000
 C_F_MIN = 1
 C_F_MAX = 1000
 
-A_ONE_DEGREE_IN_SMOOTHIE = 2  # for A axis
-B_ONE_MM_IN_SMOOTHIE = 0.338  # for B axis # 0.404 for new wheels
+A_ONE_DEGREE_IN_SMOOTHIE = 2  # A axis
+A_DEGREES_PER_SECOND = 1  # A axis
+B_ONE_MM_IN_SMOOTHIE = 0.338  # B axis # 0.404 for new wheels # obsolete
 NAV_TURN_WHEELS_CENTER = 0
 
 
