@@ -178,14 +178,14 @@ def main():
                         # side and will never get too close to the path ending point
                         distance = nav.get_distance(cur_pos, field_gps_coords[1])
 
-                        msg = "Distance to B: " + distance
+                        msg = "Distance to B: " + str(distance)
                         print(msg)
                         logger.write(msg + "\n")
 
                         if distance <= config.COURSE_DESTINATION_DIFF:
                             vesc_engine.stop_moving()
-                            msg = "Arrived (allowed destination distance difference " + config.COURSE_DESTINATION_DIFF \
-                                  + " mm)"
+                            msg = "Arrived (allowed destination distance difference " + \
+                                  str(config.COURSE_DESTINATION_DIFF) + " mm)"
                             print(msg)
                             logger.write(msg + "\n")
                             break
@@ -200,8 +200,8 @@ def main():
                         print(msg)
                         logger.write(msg + "\n")
 
-                        msg = "Prev: " + prev_point + " Cur: " + cur_pos + " A: " + str(field_gps_coords[0]) + " B: " + \
-                              str(field_gps_coords[1])
+                        msg = "Prev: " + str(prev_point) + " Cur: " + str(cur_pos) + " A: " + str(field_gps_coords[0]) \
+                              + " B: " + str(field_gps_coords[1])
                         print(msg)
                         logger.write(msg + "\n")
 
@@ -240,25 +240,25 @@ def main():
 
                         # checking for out of smoothie supported range
                         if order_angle_sm > config.A_MAX:
-                            msg = "Global order angle changed from " + order_angle_sm + " to config.A_MAX = " + \
-                                  config.A_MAX + " due to exceeding smoothie allowed values range."
+                            msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MAX = " + \
+                                  str(config.A_MAX) + " due to exceeding smoothie allowed values range."
                             print(msg)
                             logger.write(msg + "\n")
                             order_angle_sm = config.A_MAX
                         elif order_angle_sm < config.A_MIN:
-                            msg = "Global order angle changed from " + order_angle_sm + " to config.A_MIN = " + \
-                                  config.A_MIN + " due to exceeding smoothie allowed values range."
+                            msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MIN = " + \
+                                  str(config.A_MIN) + " due to exceeding smoothie allowed values range."
                             print(msg)
                             logger.write(msg + "\n")
                             order_angle_sm = config.A_MIN
 
-                        msg = "Adapter wheels pos (target): " + ad_wheels_pos + " Smoothie wheels pos (current): " + \
-                              sm_wheels_pos
+                        msg = "Adapter wheels pos (target): " + str(ad_wheels_pos) + " Smoothie wheels pos (current): "\
+                              + str(sm_wheels_pos)
                         print(msg)
                         logger.write(msg + "\n")
-                        msg = "KP: " + config.KP + " Raw angle: " + raw_angle + " Angle * KP: " + angle_kp + \
-                              " Smoothie target angle: " + target_angle_sm + " Smoothie absolute order angle: " + \
-                              order_angle_sm
+                        msg = "KP: " + str(config.KP) + " Raw angle: " + str(raw_angle) + " Angle * KP: " + \
+                              str(angle_kp) + " Smoothie target angle: " + str(target_angle_sm) + \
+                              " Smoothie absolute order angle: " + str(order_angle_sm)
                         print(msg)
                         logger.write(msg + "\n")
 
