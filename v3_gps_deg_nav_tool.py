@@ -14,6 +14,9 @@ from socketForRTK.Client import Client
 
 # """
 
+USE_SPEED_LIMIT = False
+DECREASE_SPEED_TRESHOLD = 19000  # millimeters
+
 
 # old way
 NORTH_POINT = [90.0000, 0.0000]
@@ -178,6 +181,13 @@ def main():
                         # TO DO: it won't work if deviation > course destination diff, as robot will be far away on some
                         # side and will never get too close to the path ending point
                         distance = nav.get_distance(cur_pos, field_gps_coords[1])
+
+                        # reduce speed if near the target point
+                        if USE_SPEED_LIMIT:
+                            if distance <= DECREASE_SPEED_TRESHOLD:
+                                vesc_engine.apply_rpm(int(config.VESC_RPM / 2))
+                            else:
+                                vesc_engine.apply_rpm(config.VESC_RPM)
 
                         msg = "Distance to B: " + str(distance)
                         print(msg)

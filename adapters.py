@@ -846,6 +846,11 @@ class VescAdapter:
                 return
             time.sleep(self._check_freq)
 
+    def apply_rpm(self, rpm):
+        if self._rpm != rpm:
+            self._rpm = rpm
+            self._ser.write(pyvesc.encode(pyvesc.SetRPM(self._rpm)))
+
     def set_rpm(self, rpm):
         self._rpm = rpm
 
@@ -951,7 +956,10 @@ class GPSUbloxAdapter:
                 # bad string with no position data
                 # print(data)  # debug
                 data = data.split(",")
-                lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
+                try:
+                    lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
+                except ValueError:
+                    continue
                 return [lati, longi]  # , float(data[11])  # alti
 
     def _D2M2(self, Lat, NS, Lon, EW):
