@@ -264,7 +264,7 @@ def main():
                               + str(sm_wheels_pos)
                         print(msg)
                         logger.write(msg + "\n")
-                        msg = "KI: " + str(config.KI) + "Sum angles: " + sum_angles + " Sum angles history: " + \
+                        msg = "KI: " + str(config.KI) + "Sum angles: " + str(sum_angles) + " Sum angles history: " + \
                               str(raw_angles_history)
                         print(msg)
                         logger.write(msg)
