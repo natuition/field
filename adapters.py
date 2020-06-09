@@ -33,6 +33,9 @@ class SmoothieAdapter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._smc.disconnect()
 
+    def disconnect(self):
+        self._smc.disconnect()
+
     def get_connector(self):
         """Only for debug!"""
 
@@ -814,6 +817,11 @@ class VescAdapter:
         self._keep_thread_alive = False
         self._ser.close()
 
+    def disconnect(self):
+        self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
+        self._keep_thread_alive = False
+        self._ser.close()
+
     def _movement_ctrl_th_tf(self):
         """Target function of movement control thread. Responsive for navigation engines work (forward/backward)"""
 
@@ -890,6 +898,10 @@ class GPSUbloxAdapter:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self._keep_thread_alive = False
+        self._serial.close()
+
+    def disconnect(self):
         self._keep_thread_alive = False
         self._serial.close()
 

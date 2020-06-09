@@ -18,6 +18,11 @@ COURSE_SIDE_DEVIATION_MAX = 50  # max allowed robot's deviation from course im m
 COURSE_DESTINATION_DIFF = 70
 COURSE_ADJ_SMC_VAL = 7  # nav wheels turn value when trying to get back to the course (SHOULD BE POSITIVE VALUE!)
 WINDOW = 10
+# AB moving vector used as A----A1--B, where A1 is point when robot starts moving to next point.
+# this determines A1-B distance
+MANEUVER_START_DISTANCE = 3000
+USE_SPEED_LIMIT = True  # when distance to target point is less than specified in the config
+DECREASE_SPEED_TRESHOLD = 19000  # millimeters
 
 
 # ======================================================================================================================
