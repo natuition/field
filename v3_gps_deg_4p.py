@@ -10,6 +10,7 @@ import utility
 import traceback
 import SensorProcessing
 import socketForRTK
+from socketForRTK.Client import Client
 
 
 def load_coordinates(file_path):
@@ -49,7 +50,7 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 
 def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters.GPSUbloxAdapter,
                   vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, logger: utility.Logger,
-                  client: socketForRTK.Client.Client, nav: navigation.GPSComputing):
+                  client, nav: navigation.GPSComputing):
     """
     Moves to given point.
 
@@ -238,12 +239,6 @@ def main():
             logger.write(msg + "\n")
         msg = "Initializing done."
         print(msg)
-        logger.write(msg + "\n")
-
-        # get route (field) and save it
-        msg = "Enter 1 to create and save field.txt points file, 2 to load existing file: "
-        command = input(msg)
-        msg += command
         logger.write(msg + "\n")
 
         # pick from gps
