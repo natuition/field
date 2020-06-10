@@ -50,7 +50,7 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 
 def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters.GPSUbloxAdapter,
                   vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, logger: utility.Logger,
-                  client, nav: navigation.GPSComputing):
+                  client, nav: navigation.GPSComputing, raw_angles_history: list):
     """
     Moves to given point.
 
@@ -63,9 +63,10 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
     :param client:
     :param nav:
     :return:
+    :param raw_angles_history:
     """
 
-    raw_angles_history = []
+    # raw_angles_history = []
 
     prev_maneuver_time = time.time()
     prev_point = gps.get_fresh_position()
@@ -125,15 +126,29 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         logger.write(msg + "\n")
 
         raw_angle = nav.get_angle(prev_point, cur_pos, cur_pos, coords_from_to[1])
+
+        # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
             raw_angles_history.pop(0)
         raw_angles_history.append(raw_angle)
 
-        # angle_kp = raw_angle * config.KP
         sum_angles = sum(raw_angles_history)
-        angle_kp = raw_angle * config.KP + sum_angles * config.KI
+        if sum_angles > config.SUM_ANGLES_HISTORY_MAX:
+            msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
+                  str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(config.SUM_ANGLES_HISTORY_MAX)
+            print(msg)
+            logger.write(msg)
+            sum_angles = config.SUM_ANGLES_HISTORY_MAX
+        elif sum_angles < -config.SUM_ANGLES_HISTORY_MAX:
+            msg = "Sum angles " + str(sum_angles) + " is less than min allowed value " + \
+                  str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(-config.SUM_ANGLES_HISTORY_MAX)
+            print(msg)
+            logger.write(msg)
+            sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
-        target_angle_sm = angle_kp * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
+        angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
+
+        target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
         sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
 
@@ -186,8 +201,8 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
               str(raw_angles_history)
         print(msg)
         logger.write(msg + "\n")
-        msg = "KP: " + str(config.KP) + " Raw angle: " + str(raw_angle) + " Angle * KP: " + \
-              str(angle_kp) + " Smoothie target angle: " + str(target_angle_sm) + \
+        msg = "KP: " + str(config.KP) + " Raw angle: " + str(raw_angle) + " Angle * KP + sum(angles) * KI: " + \
+              str(angle_kp_ki) + " Smoothie target angle: " + str(target_angle_sm) + \
               " Smoothie absolute order angle: " + str(order_angle_sm)
         print(msg)
         logger.write(msg + "\n")
@@ -207,6 +222,7 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
 def main():
     nav = navigation.GPSComputing()
     used_points_history = []
+    raw_angles_history = []
     logger = utility.Logger("console " + get_current_time() + ".txt")
 
     # QGIS and sensor data transmitting
@@ -287,7 +303,8 @@ def main():
 
             # move to X2
             from_to = [current_vector[0], point_x2]
-            move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger, client, nav)
+            move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger, client, nav,
+                          raw_angles_history)
 
             # TO DO: BUG - we checking YZ to be less than maneuver dist but robot will be in Y1, not in Y, so it's not
             # correct. Maybe config.MANEUVER_START_DISTANCE should be multiplied by 2 when checking that vector size is
