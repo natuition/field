@@ -264,6 +264,7 @@ def main():
             print(msg)
             logger.write(msg)
         field_gps_coords.append(field_gps_coords[0].copy())  # this makes robot move back to starting point (point A)
+        field_gps_coords.append(field_gps_coords[1].copy())
 
         # start moving forward
         msg = "Press enter to start moving"
