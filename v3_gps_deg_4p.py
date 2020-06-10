@@ -338,7 +338,8 @@ def main():
 
             # move to Y1
             from_to = [current_vector[0], point_y1]
-            move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger, client, nav)
+            move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger, client, nav,
+                          raw_angles_history)
 
         msg = "Done!"
         print(msg)
