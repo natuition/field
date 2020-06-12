@@ -100,7 +100,7 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         if side != 1:  # TODO: maybe should use both side and distance checking methods at once
             vesc_engine.stop_moving()
             # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-            msg = "Arrived."
+            msg = "Arrived to " + str(coords_from_to[1])
             print(msg)
             logger.write(msg + "\n")
             break
