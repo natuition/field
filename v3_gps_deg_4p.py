@@ -67,9 +67,9 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
     """
 
     # raw_angles_history = []
-
+    stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
     prev_maneuver_time = time.time()
-    prev_point = gps.get_fresh_position()
+    prev_point = gps.get_fresh_position()  # TODO: maybe it's ok to get last position instead of waiting for fresh
     vesc_engine.start_moving()
 
     # main navigation control loop
@@ -95,17 +95,20 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         logger.write(msg + "\n")
 
         # check if arrived
-        if distance <= config.COURSE_DESTINATION_DIFF:
+        _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
+        # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
+        if side != 1:  # TODO: maybe should use both side and distance checking methods at once
             vesc_engine.stop_moving()
-            msg = "Arrived (allowed destination distance difference " + \
-                  str(config.COURSE_DESTINATION_DIFF) + " mm)"
+            # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
+            msg = "Arrived."
             print(msg)
             logger.write(msg + "\n")
             break
 
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
-            if distance <= config.DECREASE_SPEED_TRESHOLD:
+            distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
+            if distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD:
                 vesc_engine.apply_rpm(int(config.VESC_RPM / 2))
             else:
                 vesc_engine.apply_rpm(config.VESC_RPM)
