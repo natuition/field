@@ -66,7 +66,7 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
     :return:
     """
 
-    # raw_angles_history = []
+    raw_angles_history = []
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
     prev_maneuver_time = time.time()
     prev_point = gps.get_fresh_position()  # TODO: maybe it's ok to get last position instead of waiting for fresh

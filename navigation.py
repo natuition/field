@@ -62,23 +62,26 @@ class GPSComputing:
         cos_lat2 = math.cos(lat2)
         sin_lat1 = math.sin(lat1)
         sin_lat2 = math.sin(lat2)
+
         delta = long2 - long1
         cdelta = math.cos(delta)
         sdelta = math.sin(delta)
 
         # calculation of the initial azimuth
         x = (cos_lat1 * sin_lat2) - (sin_lat1 * cos_lat2 * cdelta)
+        if x == 0:
+            x += 0.000000000000000000000001
         y = sdelta * cos_lat2
         z = math.degrees(math.atan(-y / x))
 
-        if (x < 0):
+        if x < 0:
             z = z + 180.
 
         z2 = (z + 180.) % 360. - 180.
 
         z2 = - math.radians(z2)
-        anglerad2 = z2 - ((2 * math.pi) * math.floor((z2 / (2 * math.pi))))
-        angledeg = (anglerad2 * 180.) / math.pi
+        anglerad2 = z2 - (2 * math.pi) * math.floor(z2 / (2 * math.pi))
+        angledeg = math.degrees(anglerad2)
         return angledeg
 
     def get_angle(self, point_1, point_2, point_3, point_4):
