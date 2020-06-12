@@ -140,13 +140,13 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
             msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
                   str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(config.SUM_ANGLES_HISTORY_MAX)
             print(msg)
-            logger.write(msg)
+            logger.write(msg + "\n")
             sum_angles = config.SUM_ANGLES_HISTORY_MAX
         elif sum_angles < -config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is less than min allowed value " + \
                   str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(-config.SUM_ANGLES_HISTORY_MAX)
             print(msg)
-            logger.write(msg)
+            logger.write(msg + "\n")
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
@@ -212,13 +212,9 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         prev_point = cur_pos
         response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
 
-        msg = "Smoothie response: " + response
+        msg = "Smoothie response: " + response + "\n"
         print(msg)
-        logger.write(msg)
-
-        # next tick indent
-        print()
-        logger.write("\n")
+        logger.write(msg + "\n\n")
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -416,16 +412,22 @@ def main():
         if len(field_gps_coords) != 4:
             msg = "Expected 4 gps points in " + config.INPUT_GPS_FIELD_FILE + ", got " + str(len(field_gps_coords))
             print(msg)
-            logger.write(msg)
+            logger.write(msg + "\n")
             exit(1)
 
         # generate path points
         path_points = build_path(field_gps_coords, nav, logger)
+        if len(path_points) > 0:
+            save_gps_coordinates(path_points, "generated_path " + get_current_time() + ".txt")
+        else:
+            msg = "List of path points is empty, saving canceled."
+            print(msg)
+            logger.write(msg + "\n")
         if len(path_points) < 2:
             msg = "Expected at least 2 points in path, got " + str(len(path_points)) + \
                   " instead (1st point is starting point)."
             print(msg)
-            logger.write(msg)
+            logger.write(msg + "\n")
             exit(1)
 
         # ask permission to start moving
@@ -440,7 +442,7 @@ def main():
 
             msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
             print(msg)
-            logger.write(msg)
+            logger.write(msg + "\n")
 
             move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger, client, nav,
                           raw_angles_history)
@@ -455,7 +457,7 @@ def main():
     except Exception:
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
-        logger.write(msg)
+        logger.write(msg + "\n")
     finally:
         # save log data
         if len(used_points_history) > 0:
@@ -463,7 +465,7 @@ def main():
         else:
             msg = "used_gps_history list has 0 elements!"
             print(msg)
-            logger.write(msg)
+            logger.write(msg + "\n")
 
         adapter_points_history = gps.get_last_positions_list()
         if len(adapter_points_history) > 0:
@@ -471,7 +473,7 @@ def main():
         else:
             msg = "adapter_gps_history list has 0 elements!"
             print(msg)
-            logger.write(msg)
+            logger.write(msg + "\n")
 
         # close log and hardware connections
         logger.close()
