@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.5"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.6"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -24,6 +24,8 @@ MANEUVER_START_DISTANCE = 3000
 USE_SPEED_LIMIT = True  # when distance to target point is less than specified in the config
 DECREASE_SPEED_TRESHOLD = 19000  # millimeters
 SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history), should be positive here, in config
+# distance between sides of spiral robot movements, expected to be equal to working area width, may be any positive val
+SPIRAL_SIDES_INTERVAL = 457
 
 
 # ======================================================================================================================
