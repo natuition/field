@@ -7,6 +7,42 @@ class GPSComputing:
     Class containing methods for handling GPS-coordinates
     """
 
+    def get_coordinate(self, point_1, point_2, angle, distance):
+        """
+        Returns the coordinates of a point that is in 'angle' degrees and at 'distance' distance from a given vector
+        :param point_1: start point of a known vector [lat, long]
+        :param point_2: endpoint of a known vector [lat, long]
+        :param angle: angle between a known vector and an unknown point (in degrees)
+        :param distance: distance between starting point and unknown point (in millimeters)
+        :return: coordinates of an unknown point [lat, long]
+        """
+
+        azimuth_1 = self._get_azimuth(point_1, point_2)
+        if azimuth_1 > 180:
+            azimuth_1 -= 360
+        azimuth2 = azimuth_1 - angle
+        if azimuth2 < -180:
+            azimuth2 += 360
+        elif azimuth2 > 180:
+            azimuth2 -= 360
+        azimuth2 = math.radians(azimuth2)
+
+        lat_point2 = math.radians(point_1[0])
+        long_point2 = math.radians(point_1[1])
+        distance = math.radians(distance / 111195101.17748393)
+
+        sin_lat = math.sin(lat_point2) * math.cos(distance) + math.cos(lat_point2) * math.sin(distance) * math.cos(
+            azimuth2)
+        lat = math.degrees(math.asin(sin_lat))
+
+        tg_long = (math.sin(distance) * math.sin(azimuth2)) / (math.cos(lat_point2) * math.cos(distance) - (
+                    math.sin(lat_point2) * math.sin(distance) * math.sin(azimuth2)))
+        long = math.atan(tg_long)
+        long = math.degrees(long + long_point2)
+
+        coord = [lat, long]
+        return coord
+
     def _get_azimuth(self, point_1, point_2):
         """
         Method for determining the azimuth - the angle between the north direction and the direction from the start point
@@ -57,18 +93,19 @@ class GPSComputing:
 
         azimuth_1 = self._get_azimuth(point_1, point_2)
         azimuth_2 = self._get_azimuth(point_3, point_4)
-        if azimuth_1 >= azimuth_2:
-            angle = azimuth_1 - azimuth_2
-        else:
-            angle = azimuth_2 - azimuth_1
-        if angle >= 180:  # TO DO: check if it's possible to get value less than 0 and what will happen if so?
-            angle = 360. - angle
+        if azimuth_1 > 180:
+            azimuth_1 -= 360
+        if azimuth_2 > 180:
+            azimuth_2 -= 360
 
-        location = (point_4[0] - point_1[0]) * (point_2[1] - point_1[1]) - \
-                   (point_4[1] - point_1[1]) * (point_2[0] - point_1[0])
-        if location > 0:
-            angle *= -1
+        angle = azimuth_1 - azimuth_2
 
+        if angle < -180:
+            angle += 360
+        elif angle > 180:
+            angle -= 360
+
+        angle *= -1
         return angle
 
     def get_distance(self, point_1, point_2):
