@@ -11,6 +11,7 @@ import traceback
 import SensorProcessing
 import socketForRTK
 from socketForRTK.Client import Client
+import csv
 
 
 def load_coordinates(file_path):
@@ -50,7 +51,7 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 
 def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters.GPSUbloxAdapter,
                   vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, logger: utility.Logger,
-                  client, nav: navigation.GPSComputing, raw_angles_history: list):
+                  client, nav: navigation.GPSComputing, raw_angles_history: list, report_writer):
     """
     Moves to given point.
 
@@ -215,6 +216,8 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         msg = "Smoothie response: " + response + "\n"
         print(msg)
         logger.write(msg + "\n\n")
+
+        vesc_engine.pick_sensors_data(report_writer)
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -400,6 +403,11 @@ def main():
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
 
+        # sensors picking
+        report_file = open('report.csv', 'w', newline='')
+        report_writer = csv.DictWriter(report_file, fieldnames=vesc_engine.REPORT_FIELDNAMES)
+        report_writer.writeheader()
+
         # set smoothie's A axis to 0 (nav turn wheels)
         response = smoothie.set_current_coordinates(A=0)
         if response != smoothie.RESPONSE_OK:
@@ -445,7 +453,7 @@ def main():
             logger.write(msg + "\n")
 
             move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger, client, nav,
-                          raw_angles_history)
+                          raw_angles_history, report_writer)
 
         msg = "Done!"
         print(msg)
@@ -477,6 +485,7 @@ def main():
 
         # close log and hardware connections
         logger.close()
+        report_file.close()
         smoothie.disconnect()
         vesc_engine.disconnect()
         gps.disconnect()
