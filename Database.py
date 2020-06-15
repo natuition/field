@@ -167,6 +167,8 @@ class Database:
 		coordinate = self.server.getLocation()
 		coordinateLat = coordinate['latitude']
 		coordinateLong = coordinate['longitude']
+		# if coordinateLat == 0 and coordinateLong == 0:  # TODO: possible fix (request was denied because of broken commits)
+		# 	return
 		idResultat = None
 		vector_robot_direction = None
 		sql2 = None
