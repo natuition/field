@@ -8,15 +8,19 @@ import math
 
 class YoloOpenCVDetection:
 
-    def __init__(self):
-        self.classes = self._load_class_names(config.YOLO_CLASSES_FILE)
-        self.net = cv.dnn.readNetFromDarknet(config.YOLO_CONFIG_FILE, config.YOLO_WEIGHTS_FILE)
+    def __init__(self, yolo_classes_path, yolo_config_path, yolo_weights_path, input_size, confidence_threshold,
+                 nms_threshold):
+        self._input_size = input_size
+        self._confidence_threshold = confidence_threshold
+        self._nms_threshold = nms_threshold  # non-max suppression
+        self.classes = self._load_class_names(yolo_classes_path)
+        self.net = cv.dnn.readNetFromDarknet(yolo_config_path, yolo_weights_path)
         self.net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)  # DNN_BACKEND_OPENCV for CPU usage
         self.net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)  # DNN_TARGET_CPU for CPU usage
 
     def detect(self, image):
         # Create a 4D blob from a frame.
-        blob = cv.dnn.blobFromImage(image, 1 / 255, config.INPUT_SIZE, [0, 0, 0], 1, crop=False)
+        blob = cv.dnn.blobFromImage(image, 1 / 255, self._input_size, [0, 0, 0], 1, crop=False)
 
         # Sets the input to the network
         self.net.setInput(blob)
@@ -56,7 +60,7 @@ class YoloOpenCVDetection:
                 #     print(detection[4], " - ", scores[class_id], " - th : ", conf_threshold)
                 #     print(detection)
 
-                if confidence > config.CONFIDENCE_THRESHOLD:
+                if confidence > self._confidence_threshold:
                     center_x = int(detection[0] * frame_width)
                     center_y = int(detection[1] * frame_height)
                     width = int(detection[2] * frame_width)
@@ -68,15 +72,12 @@ class YoloOpenCVDetection:
                     boxes.append([left, top, width, height])
 
         # Perform non maximum suppression to eliminate redundant overlapping boxes with lower confidences.
-        indices = cv.dnn.NMSBoxes(boxes, confidences, config.CONFIDENCE_THRESHOLD, config.NMS_THRESHOLD)
+        indices = cv.dnn.NMSBoxes(boxes, confidences, self._confidence_threshold, self._nms_threshold)
 
         for i in indices:
             i = i[0]
             box = boxes[i]
-            left = box[0]
-            top = box[1]
-            width = box[2]
-            height = box[3]
+            left, top, width, height = box[0], box[1], box[2], box[3]
             final_plant_boxes.append(DetectedPlantBox(left, top, left + width, top + height, classes, class_ids[i],
                                                       confidences[i]))
         return final_plant_boxes
