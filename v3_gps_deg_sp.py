@@ -50,8 +50,9 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 
 
 def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters.GPSUbloxAdapter,
-                  vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, logger: utility.Logger,
-                  client, nav: navigation.GPSComputing, raw_angles_history: list, report_writer):
+                  vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, logger_full: utility.Logger,
+                  client, nav: navigation.GPSComputing, raw_angles_history: list, report_writer, report_field_names,
+                  logger_table: utility.Logger):
     """
     Moves to given point.
 
@@ -60,7 +61,7 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
     :param gps:
     :param vesc_engine:
     :param smoothie:
-    :param logger:
+    :param logger_full:
     :param client:
     :param nav:
     :param raw_angles_history:
@@ -82,19 +83,19 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         if not client.sendData("{};{}".format(cur_pos[0], cur_pos[1])):
             msg = "[Client] Connection closed !"
             print(msg)
-            logger.write(msg + "\n")
+            logger_full.write(msg + "\n")
 
         if str(cur_pos) == str(prev_point):
             msg = "Got the same position, added to history, calculations skipped. Am I stuck?"
             print(msg)
-            logger.write(msg + "\n")
+            logger_full.write(msg + "\n")
             continue
 
         distance = nav.get_distance(cur_pos, coords_from_to[1])
 
         msg = "Distance to B: " + str(distance)
-        print(msg)
-        logger.write(msg + "\n")
+        # print(msg)
+        logger_full.write(msg + "\n")
 
         # check if arrived
         _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
@@ -103,8 +104,8 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
             vesc_engine.stop_moving()
             # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
             msg = "Arrived to " + str(coords_from_to[1])
-            print(msg)
-            logger.write(msg + "\n")
+            # print(msg)
+            logger_full.write(msg + "\n")
             break
 
         # reduce speed if near the target point
@@ -122,13 +123,13 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         prev_maneuver_time = cur_time
 
         msg = "Timestamp: " + str(cur_time)
-        print(msg)
-        logger.write(msg + "\n")
+        # print(msg)
+        logger_full.write(msg + "\n")
 
         msg = "Prev: " + str(prev_point) + " Cur: " + str(cur_pos) + " A: " + str(coords_from_to[0]) \
               + " B: " + str(coords_from_to[1])
-        print(msg)
-        logger.write(msg + "\n")
+        # print(msg)
+        logger_full.write(msg + "\n")
 
         raw_angle = nav.get_angle(prev_point, cur_pos, cur_pos, coords_from_to[1])
 
@@ -141,14 +142,14 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         if sum_angles > config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
                   str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(config.SUM_ANGLES_HISTORY_MAX)
-            print(msg)
-            logger.write(msg + "\n")
+            # print(msg)
+            logger_full.write(msg + "\n")
             sum_angles = config.SUM_ANGLES_HISTORY_MAX
         elif sum_angles < -config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is less than min allowed value " + \
                   str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(-config.SUM_ANGLES_HISTORY_MAX)
-            print(msg)
-            logger.write(msg + "\n")
+            # print(msg)
+            logger_full.write(msg + "\n")
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
@@ -166,8 +167,8 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
             msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(
                 config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND +
                 config.A_ONE_DEGREE_IN_SMOOTHIE) + " due to exceeding degrees per tick allowed range."
-            print(msg)
-            logger.write(msg + "\n")
+            # print(msg)
+            logger_full.write(msg + "\n")
             order_angle_sm = config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
                              config.A_ONE_DEGREE_IN_SMOOTHIE
         elif order_angle_sm < -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
@@ -175,8 +176,8 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
             msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(-(
                     config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
                     config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
-            print(msg)
-            logger.write(msg + "\n")
+            # print(msg)
+            logger_full.write(msg + "\n")
             order_angle_sm = -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
                                config.A_ONE_DEGREE_IN_SMOOTHIE)
 
@@ -187,38 +188,50 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         if order_angle_sm > config.A_MAX:
             msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MAX = " + \
                   str(config.A_MAX) + " due to exceeding smoothie allowed values range."
-            print(msg)
-            logger.write(msg + "\n")
+            # print(msg)
+            logger_full.write(msg + "\n")
             order_angle_sm = config.A_MAX
         elif order_angle_sm < config.A_MIN:
             msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MIN = " + \
                   str(config.A_MIN) + " due to exceeding smoothie allowed values range."
-            print(msg)
-            logger.write(msg + "\n")
+            # print(msg)
+            logger_full.write(msg + "\n")
             order_angle_sm = config.A_MIN
 
-        msg = "Adapter wheels pos (target): " + str(ad_wheels_pos) + " Smoothie wheels pos (current): " \
-              + str(sm_wheels_pos)
+        raw_angle = round(raw_angle, 2)
+        angle_kp_ki = round(angle_kp_ki, 2)
+        order_angle_sm = round(order_angle_sm, 2)
+        sum_angles = round(sum_angles, 2)
+        distance = round(distance, 2)
+        ad_wheels_pos = round(ad_wheels_pos, 2)
+        sm_wheels_pos = round(sm_wheels_pos, 2)
+        gps_quality = cur_pos[2]
+
+        msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(8) + str(sm_wheels_pos).ljust(9)
         print(msg)
-        logger.write(msg + "\n")
-        msg = "KI: " + str(config.KI) + " Sum angles: " + str(sum_angles) + " Sum angles history: " + \
-              str(raw_angles_history)
-        print(msg)
-        logger.write(msg + "\n")
-        msg = "KP: " + str(config.KP) + " Raw angle: " + str(raw_angle) + " Angle * KP + sum(angles) * KI: " + \
-              str(angle_kp_ki) + " Smoothie target angle: " + str(target_angle_sm) + \
-              " Smoothie absolute order angle: " + str(order_angle_sm)
-        print(msg)
-        logger.write(msg + "\n")
+        logger_full.write(msg + "\n")
+
+        # load sensors data to csv
+        s = ","
+        msg = str(gps_quality) + s + str(raw_angle) + s + str(angle_kp_ki) + s + str(order_angle_sm) + s + \
+              str(sum_angles) + s + str(distance) + s + str(ad_wheels_pos) + s + str(sm_wheels_pos)
+        vesc_data = vesc_engine.pick_sensors_data(report_field_names)
+        if vesc_data is not None:
+            msg += s
+            for key in vesc_data:
+                msg += str(vesc_data[key]) + s
+            msg = msg[:-1]
+        logger_table.write(msg + "\n")
 
         prev_point = cur_pos
         response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
 
-        msg = "Smoothie response: " + response + "\n"
-        print(msg)
-        logger.write(msg + "\n\n")
+        if response != smoothie.RESPONSE_OK:
+            msg = "Smoothie response is not ok: " + response + "\n"
+            print(msg)
+            logger_full.write(msg + "\n\n")
 
-        vesc_engine.pick_sensors_data(report_writer)
+        # vesc_engine.pick_sensors_data(report_writer, report_field_names)
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -240,7 +253,7 @@ def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComput
         msg = "No place for maneuvers; config start maneuver distance is (that will be multiplied by 2): " + \
               str(config.MANEUVER_START_DISTANCE) + " current moving vector distance is: " + str(cur_vec_dist) + \
             " Given points are: " + str(point_a) + " " + str(point_b)
-        print(msg)
+        # print(msg)
         logger.write(msg + "\n")
         return None, None
 
@@ -268,7 +281,7 @@ def compute_x2_spiral(point_a: list, point_b: list, nav: navigation.GPSComputing
               str(config.MANEUVER_START_DISTANCE) + " Config spiral interval: " + str(config.SPIRAL_SIDES_INTERVAL) + \
               " Current moving vector distance is: " + str(cur_vec_dist) + " Given points are: " + str(point_a) + \
               " " + str(point_b)
-        print(msg)
+        # print(msg)
         logger.write(msg + "\n")
         return None
     return nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.MANEUVER_START_DISTANCE -
@@ -292,7 +305,7 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
         msg = "No place for maneuvers; Config spiral interval (that will be multiplied by 2): " + \
               str(config.SPIRAL_SIDES_INTERVAL) + " Current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
-        print(msg)
+        # print(msg)
         logger.write(msg + "\n")
         return None
 
@@ -380,7 +393,15 @@ def main():
     nav = navigation.GPSComputing()
     used_points_history = []
     raw_angles_history = []
-    logger = utility.Logger("console " + get_current_time() + ".txt")
+    logger_full = utility.Logger("full log " + get_current_time() + ".txt")
+    logger_table = utility.Logger("table log " + get_current_time() + ".csv")
+
+    # sensors picking
+    report_field_names = ['elapsed_time', 'temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
+                          'avg_input_current', 'rpm', 'input_voltage']
+    report_file = open('report.csv', 'w', newline='')
+    report_writer = csv.DictWriter(report_file, fieldnames=report_field_names)
+    report_writer.writeheader()
 
     # QGIS and sensor data transmitting
     path = os.path.abspath(os.getcwd())
@@ -391,58 +412,62 @@ def main():
     if not client.connectionToServer():
         msg = "Connection refused for Server RTK."
         print(msg)
-        logger.write(msg + "\n")
+        logger_full.write(msg + "\n")
     sensor_processor.startSession()
 
     try:
         msg = "Initializing..."
         print(msg)
-        logger.write(msg + "\n")
+        logger_full.write(msg + "\n")
 
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
         vesc_engine = adapters.VescAdapter(int(config.VESC_RPM / 2), config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
 
-        # sensors picking
-        report_file = open('report.csv', 'w', newline='')
-        report_writer = csv.DictWriter(report_file, fieldnames=vesc_engine.REPORT_FIELDNAMES)
-        report_writer.writeheader()
-
         # set smoothie's A axis to 0 (nav turn wheels)
         response = smoothie.set_current_coordinates(A=0)
         if response != smoothie.RESPONSE_OK:
             msg = "Failed to set A=0 on smoothie (turning wheels init position), response message:\n" + response
             print(msg)
-            logger.write(msg + "\n")
+            logger_full.write(msg + "\n")
 
         # load field coordinates
         field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
         if len(field_gps_coords) != 4:
             msg = "Expected 4 gps points in " + config.INPUT_GPS_FIELD_FILE + ", got " + str(len(field_gps_coords))
             print(msg)
-            logger.write(msg + "\n")
+            logger_full.write(msg + "\n")
             exit(1)
 
         # generate path points
-        path_points = build_path(field_gps_coords, nav, logger)
+        path_points = build_path(field_gps_coords, nav, logger_full)
         if len(path_points) > 0:
             save_gps_coordinates(path_points, "generated_path " + get_current_time() + ".txt")
         else:
             msg = "List of path points is empty, saving canceled."
             print(msg)
-            logger.write(msg + "\n")
+            logger_full.write(msg + "\n")
         if len(path_points) < 2:
             msg = "Expected at least 2 points in path, got " + str(len(path_points)) + \
                   " instead (1st point is starting point)."
             print(msg)
-            logger.write(msg + "\n")
+            logger_full.write(msg + "\n")
             exit(1)
 
         # ask permission to start moving
         msg = "Initializing done. Press enter to start moving."
         input(msg)
-        logger.write(msg + "\n")
+        logger_full.write(msg + "\n")
+
+        msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|'
+        print(msg)
+        logger_full.write(msg + "\n")
+        msg = 'GpsQ,Raw ang,Res ang,Ord ang,Sum ang,Distance,Adapter,Smoothie,'
+        for field_name in report_field_names:
+            msg += field_name + ","
+        msg = msg[:-1]
+        logger_table.write(msg + "\n")
 
         # path points visiting loop
         for i in range(1, len(path_points)):
@@ -450,23 +475,23 @@ def main():
             from_to_dist = nav.get_distance(from_to[0], from_to[1])
 
             msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
-            print(msg)
-            logger.write(msg + "\n")
+            # print(msg)
+            logger_full.write(msg + "\n")
 
-            move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger, client, nav,
-                          raw_angles_history, report_writer)
+            move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger_full, client, nav,
+                          raw_angles_history, report_writer, report_field_names, logger_table)
 
         msg = "Done!"
         print(msg)
-        logger.write(msg + "\n")
+        logger_full.write(msg + "\n")
     except KeyboardInterrupt:
         msg = "Stopped by a keyboard interrupt (Ctrl + C)"
         print(msg)
-        logger.write(msg + "\n")
+        logger_full.write(msg + "\n")
     except Exception:
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
-        logger.write(msg + "\n")
+        logger_full.write(msg + "\n")
     finally:
         # save log data
         if len(used_points_history) > 0:
@@ -474,7 +499,7 @@ def main():
         else:
             msg = "used_gps_history list has 0 elements!"
             print(msg)
-            logger.write(msg + "\n")
+            logger_full.write(msg + "\n")
 
         adapter_points_history = gps.get_last_positions_list()
         if len(adapter_points_history) > 0:
@@ -482,10 +507,11 @@ def main():
         else:
             msg = "adapter_gps_history list has 0 elements!"
             print(msg)
-            logger.write(msg + "\n")
+            logger_full.write(msg + "\n")
 
         # close log and hardware connections
-        logger.close()
+        logger_full.close()
+        logger_table.close()
         report_file.close()
         smoothie.disconnect()
         vesc_engine.disconnect()

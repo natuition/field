@@ -53,7 +53,7 @@ class Server(threading.Thread):
 						self.location['latitude'] = float(location[0])
 						self.location['longitude'] = float(location[1])
 						# A enlever
-						print("[Server] {}.".format(self.location))
+						#print("[Server] {}.".format(self.location))
 			except socket.timeout:
 				continue
 			except:

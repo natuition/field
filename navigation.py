@@ -119,7 +119,7 @@ class GPSComputing:
         :return: distance between point_1 and point_2 in millimeters
         """
 
-        distance = haversine(point_1, point_2)
+        distance = haversine(point_1[:2], point_2[:2])
         distance *= 1000000
         return distance
 

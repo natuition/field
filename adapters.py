@@ -793,8 +793,6 @@ class VescAdapter:
     """Provides navigation engines (forward/backward) control using vesc"""
 
     def __init__(self, rpm, moving_time, alive_freq, check_freq, ser_port, ser_baudrate):
-        self.REPORT_FIELDNAMES = ['elapsed_time', 'temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
-                                  'avg_input_current', 'rpm', 'input_voltage']
         self.start_cycle_time = time.time()
 
         self._ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
@@ -877,8 +875,12 @@ class VescAdapter:
     def is_movement_allowed(self):
         return self._allow_movement
 
-    def pick_sensors_data(self, report_writer):
+    """
+    # writes vesc info into csv file
+    def pick_sensors_data(self, report_writer, report_field_names):
         in_buf = b''
+
+        self._ser.write(pyvesc.encode_request(pyvesc.GetValues))
 
         while True:
             while self._ser.in_waiting > 0:
@@ -892,13 +894,35 @@ class VescAdapter:
 
             if isinstance(response, pyvesc.GetValues):
                 report_row = {'elapsed_time': int(time.time() - self.start_cycle_time)}
-                for field_name in self.REPORT_FIELDNAMES[1:]:
+                for field_name in report_field_names[1:]:
                     report_row[field_name] = getattr(response, field_name)
 
-                print(f'temp_fet_filtered: {response.temp_fet_filtered}, temp_motor_filtered: {response.temp_motor_filtered}, avg_motor_current: {response.avg_motor_current}, avg_input_current: {response.avg_input_current}, rpm: {response.rpm}, input_voltage: {response.input_voltage}')
+                # print(f'temp_fet_filtered: {response.temp_fet_filtered}, temp_motor_filtered: {response.temp_motor_filtered}, avg_motor_current: {response.avg_motor_current}, avg_input_current: {response.avg_input_current}, rpm: {response.rpm}, input_voltage: {response.input_voltage}')
                 report_writer.writerow(report_row)
             else:
                 print('Strange incoming message received')
+    """
+    def pick_sensors_data(self, report_field_names):
+        self._ser.write(pyvesc.encode_request(pyvesc.GetValues))
+        in_buf = b''
+        while self._ser.in_waiting > 0:
+            in_buf += self._ser.read(self._ser.in_waiting)
+
+        if len(in_buf) == 0:
+            return None
+        response, consumed = pyvesc.decode(in_buf)
+        if consumed == 0:
+            return None
+        in_buf = in_buf[consumed:]
+
+        if isinstance(response, pyvesc.GetValues):
+            # report_row = {'elapsed_time': int(time.time() - self.start_cycle_time)}
+            report_row = {}
+            for field_name in report_field_names[1:]:
+                report_row[field_name] = getattr(response, field_name)
+            return report_row
+        else:
+            print('Strange incoming message received')
 
 
 class GPSUbloxAdapter:
@@ -998,7 +1022,8 @@ class GPSUbloxAdapter:
                     lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
                 except ValueError:
                     continue
-                return [lati, longi]  # , float(data[11])  # alti
+                point_quality = data[6]
+                return [lati, longi, point_quality]  # , float(data[11])  # alti
 
     def _D2M2(self, Lat, NS, Lon, EW):
         """Traduce NMEA format ddmmss to ddmmmm"""
