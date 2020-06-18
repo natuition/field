@@ -161,57 +161,58 @@ def draw_boxes(image, boxes: list):
     return image
 
 
-def _detect_folder(det, image_folder):
-    images = glob.glob(image_folder + "*.jpg")
+def detect_all_in_directory(detector: YoloOpenCVDetection, input_dir, output_dir):
+    paths_to_images = glob.glob(input_dir + "*.jpg")
     counter = 1
-    for file_path in images:
-        print("Processing " + str(counter) + " of " + str(len(images)) + " images")
+    for image_path in paths_to_images:
+        print("Processing", counter, "of", len(paths_to_images), "images")
         counter += 1
-
-        img = cv.imread(file_path)
-        boxes = det.detect(img)
-
-        for i in range(len(boxes)):
-            draw_box(img, boxes[i])
-
-        file_name = file_path.split("\\")[-1]
-        cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + file_name, img)
+        detect_single(detector, image_path, output_dir)
 
 
-def _detect_single(det):
-    img = cv.imread(config.INPUT_IMG_DIR + config.INPUT_IMG_FILE)
-    boxes = det.detect(img)
+def detect_single(detector: YoloOpenCVDetection, input_full_path, output_dir):
+    img = cv.imread(input_full_path)
+    boxes = detector.detect(img)
+    draw_boxes(img, boxes)
+    file_name = input_full_path.split("\\")[-1]
+    cv.imwrite(output_dir + file_name, img)
 
-    for i in range(len(boxes)):
-        draw_box(img, boxes[i])
 
-    cv.imwrite(config.OUTPUT_IMG_DIR + "Result " + config.INPUT_IMG_FILE, img)
+def _create_directories(*args):
+    """Creates directories, receives any args count, each arg is separate dir"""
+
+    for path in args:
+        if not os.path.exists(path):
+            try:
+                os.mkdir(path)
+            except OSError:
+                print("Creation of the directory %s failed" % path)
+            else:
+                print("Successfully created the directory %s " % path)
+        else:
+            print("Directory %s is already exists" % path)
 
 
 def _test():
-    # check if input folder exists
-    if not os.path.exists(config.INPUT_IMG_DIR):
-        try:
-            os.mkdir(config.INPUT_IMG_DIR)
-        except OSError:
-            print("Creation of the directory %s failed" % config.INPUT_IMG_DIR)
-            exit()
-        else:
-            print("Successfully created the directory %s " % config.INPUT_IMG_DIR)
+    precise_input_dir = "precise input/"
+    precise_output_dir = "precise ouput/"
+    periphery_input_dir = "periphery input/"
+    periphery_output_dir = "periphery ouput/"
 
-    # check if input folder exists
-    if not os.path.exists(config.OUTPUT_IMG_DIR):
-        try:
-            os.mkdir(config.OUTPUT_IMG_DIR)
-        except OSError:
-            print("Creation of the directory %s failed" % config.OUTPUT_IMG_DIR)
-            exit()
-        else:
-            print("Successfully created the directory %s " % config.OUTPUT_IMG_DIR)
+    _create_directories(precise_input_dir, precise_output_dir, periphery_input_dir, periphery_output_dir)
 
-    det = YoloOpenCVDetection()
-    # _detect_single(det)
-    _detect_folder(det, config.INPUT_IMG_DIR)
+    periphery_detector = YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
+                                                       config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
+                                                       config.PERIPHERY_CONFIDENCE_THRESHOLD,
+                                                       config.PERIPHERY_NMS_THRESHOLD)
+    precise_detector = YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
+                                                     config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
+                                                     config.PRECISE_CONFIDENCE_THRESHOLD,
+                                                     config.PRECISE_NMS_THRESHOLD)
+
+    detect_all_in_directory(precise_detector, precise_input_dir, precise_output_dir)
+    detect_all_in_directory(periphery_detector, periphery_input_dir, periphery_output_dir)
+    print("Done!")
 
 
 if __name__ == '__main__':

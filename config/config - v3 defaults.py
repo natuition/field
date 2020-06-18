@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.7"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.8"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -114,17 +114,25 @@ NAV_TURN_WHEELS_CENTER = 0
 
 
 # ======================================================================================================================
-# YOLO DETECTION SETTINGS
+# YOLO PERIPHERY NETWORK SETTINGS
 # ======================================================================================================================
-CONFIDENCE_THRESHOLD = 0.25    # Confidence threshold
-NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
-INPUT_SIZE = (416, 416)
-OUTPUT_IMG_DIR = "output/"
-INPUT_IMG_DIR = "input/"
-INPUT_IMG_FILE = "10.jpg"
-YOLO_CONFIG_FILE = "yolo/yolov3_plantain_inference.cfg"
-YOLO_WEIGHTS_FILE = "yolo/yolov3_plantain_final.weights"
-YOLO_CLASSES_FILE = "yolo/classes.names"
+PERIPHERY_CONFIDENCE_THRESHOLD = 0.25    # Confidence threshold
+PERIPHERY_NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
+PERIPHERY_INPUT_SIZE = (608, 608)
+PERIPHERY_CONFIG_FILE = "yolo/periphery_config.cfg"
+PERIPHERY_WEIGHTS_FILE = "yolo/periphery_weights.weights"
+PERIPHERY_CLASSES_FILE = "yolo/periphery_classes.names"
+
+
+# ======================================================================================================================
+# YOLO PRECISE NETWORK SETTINGS
+# ======================================================================================================================
+PRECISE_CONFIDENCE_THRESHOLD = 0.25    # Confidence threshold
+PRECISE_NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
+PRECISE_INPUT_SIZE = (608, 608)
+PRECISE_CONFIG_FILE = "yolo/precise_config.cfg"
+PRECISE_WEIGHTS_FILE = "yolo/precise_weights.weights"
+PRECISE_CLASSES_FILE = "yolo/precise_classes.names"
 
 
 # ======================================================================================================================
