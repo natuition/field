@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.6"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.7"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -130,7 +130,6 @@ YOLO_CLASSES_FILE = "yolo/classes.names"
 # ======================================================================================================================
 # CAMERA SETTINGS
 # ======================================================================================================================
-USE_PI_CAMERA = True
 CAMERA_W = 3280
 CAMERA_H = 2464
 CROP_W_FROM = 0
@@ -142,6 +141,14 @@ CAMERA_FLIP_METHOD = 0
 CORK_CENTER_X = 1144
 CORK_CENTER_Y = 1590
 ONE_MM_IN_PX = 6
+ISP_DIGITAL_GAIN_RANGE_FROM = 8
+ISP_DIGITAL_GAIN_RANGE_TO = 8
+GAIN_RANGE_FROM = 4
+GAIN_RANGE_TO = 4
+EXPOSURE_TIME_RANGE_FROM = 55000
+EXPOSURE_TIME_RANGE_TO = 55000
+AE_LOCK = True
+CV_ROTATE_CODE = 2
 
 
 # ======================================================================================================================

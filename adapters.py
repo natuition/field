@@ -588,6 +588,8 @@ class PiCameraAdapter:
         return image
 
 
+'''
+# test
 class CameraAdapterIMX219_170_BS1:
     """Buffer size is set to 1 frame, getting 2 frames per call, return last"""
 
@@ -639,6 +641,7 @@ class CameraAdapterIMX219_170_BS1:
             raise RuntimeError("Unable to open camera")
 
 
+# old with no shutter, gain and rest camera control
 class CameraAdapterIMX219_170:
 
     def __init__(self,
@@ -683,6 +686,86 @@ class CameraAdapterIMX219_170:
             image = self._cap.read()
             # rotate for 90 degrees and crop black zones
             return cv.rotate(image, 2)[config.CROP_H_FROM:config.CROP_H_TO, config.CROP_W_FROM:config.CROP_W_TO]
+        else:
+            raise RuntimeError("Unable to open camera")
+'''
+
+
+class CameraAdapterIMX219_170:
+
+    def __init__(self,
+                 crop_w_from,
+                 crop_w_to,
+                 crop_h_from,
+                 crop_h_to,
+                 cv_rotate_code,
+                 ispdigitalgainrange_from,
+                 ispdigitalgainrange_to,
+                 gainrange_from,
+                 gainrange_to,
+                 exposuretimerange_from,
+                 exposuretimerange_to,
+                 aelock,
+                 capture_width,
+                 capture_height,
+                 display_width,
+                 display_height,
+                 framerate,
+                 nvidia_flip_method):
+
+        self._crop_w_from = crop_w_from
+        self._crop_w_to = crop_w_to
+        self._crop_h_from = crop_h_from
+        self._crop_h_to = crop_h_to
+        self._cv_rotate_code = cv_rotate_code
+        aelock = "aelock=true " if aelock else ""
+        # ispdigitalgainrange="14.72 14.72" gainrange="14.72 14.72" exposuretimerange="55000 55000" aelock=true
+        gst_config = (
+                "nvarguscamerasrc "
+                "ispdigitalgainrange=\"%.2f %.2f\" "
+                "gainrange=\"%.2f %.2f\" "
+                "exposuretimerange=\"%d %d\" "
+                "%s"
+                "! "
+                "video/x-raw(memory:NVMM), "
+                "width=(int)%d, height=(int)%d, "
+                "format=(string)NV12, framerate=(fraction)%d/1 ! "
+                "nvvidconv flip-method=%d ! "
+                "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+                "videoconvert ! "
+                "video/x-raw, format=(string)BGR ! appsink"
+                % (
+                    ispdigitalgainrange_from,
+                    ispdigitalgainrange_to,
+                    gainrange_from,
+                    gainrange_to,
+                    exposuretimerange_from,
+                    exposuretimerange_to,
+                    aelock,
+                    capture_width,
+                    capture_height,
+                    framerate,
+                    nvidia_flip_method,
+                    display_width,
+                    display_height
+                )
+        )
+        self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+    def release(self):
+        self._cap.release()
+
+    def get_image(self):
+        if self._cap.isOpened():
+            image = self._cap.read()
+            # rotate for 90 degrees and crop black zones
+            return cv.rotate(image, self._cv_rotate_code)[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
         else:
             raise RuntimeError("Unable to open camera")
 
