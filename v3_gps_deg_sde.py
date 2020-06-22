@@ -144,7 +144,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=-35)
+                    res = smoothie.custom_move_for(F=1700, Z=-35)  # TODO: calculation -Z depending on box size
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
@@ -154,9 +154,43 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     res = smoothie.ext_cork_up()
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move the extractor up, smoothie error occurred:", res,
-                              "emergency exit as I don't want break corkscrew.")
+                        msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
+                              "emergency exit as I don't want break corkscrew."
+                        print(msg)
                         exit(1)
+
+                    # Daisy additional corners extraction
+                    if box.get_name() == "Daisy":  # TODO: need to create flexible extraction method choosing (maybe dict of functions)
+                        box_x_half, box_y_half = box.get_sizes()
+                        box_x_half, box_y_half = int(box_x_half / 2 / config.ONE_MM_IN_PX), \
+                                                 int(box_y_half / 2 / config.ONE_MM_IN_PX)
+
+                        for x_shift, y_shift in [[-box_x_half, box_y_half], [0, -box_y_half * 2], [box_x_half * 2, 0],
+                                                 [0, box_y_half * 2]]:
+                            # move to the corner
+                            response = smoothie.custom_move_for(config.XY_F_MAX, X=x_shift, Y=y_shift)
+                            smoothie.wait_for_all_actions_done()
+                            if response != smoothie.RESPONSE_OK:
+                                msg = "Aborting movement to the corner (couldn't reach): " + response
+                                print(msg)
+                                break
+
+                            # extraction, cork down
+                            res = smoothie.custom_move_for(F=1700, Z=-42)  # TODO: calculation -Z depending on box size
+                            smoothie.wait_for_all_actions_done()
+                            if res != smoothie.RESPONSE_OK:
+                                msg = "Couldn't move the extractor down, smoothie error occurred: " + res
+                                print(msg)
+                                break
+
+                            # extraction, cork up
+                            res = smoothie.ext_cork_up()
+                            smoothie.wait_for_all_actions_done()
+                            if res != smoothie.RESPONSE_OK:
+                                msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
+                                      "emergency exit as I don't want break corkscrew."
+                                print(msg)
+                                exit(1)
                     break
 
                 # if outside undistorted zone but in working zone
@@ -600,6 +634,7 @@ def main():
             exit(1)
 
         # load and connect to everything
+        print("Loading camera...")
         camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                                   config.CROP_H_TO, config.CV_ROTATE_CODE,
                                                   config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
@@ -607,17 +642,22 @@ def main():
                                                   config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
                                                   config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_H,
                                                   config.CAMERA_W, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD)
+        print("Loading periphery detector...")
         periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                                            config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
                                                            config.PERIPHERY_CONFIDENCE_THRESHOLD,
                                                            config.PERIPHERY_NMS_THRESHOLD)
+        print("Loading precise detector...")
         precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
                                                          config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
                                                          config.PRECISE_CONFIDENCE_THRESHOLD,
                                                          config.PRECISE_NMS_THRESHOLD)
+        print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
+        print("Loading vesc...")
         vesc_engine = adapters.VescAdapter(int(config.VESC_RPM / 2), config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
+        print("Loading gps...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
 
         # set smoothie's A axis to 0 (nav turn wheels)
@@ -685,7 +725,7 @@ def main():
         # close log and hardware connections
         logger_full.close()
         logger_table.close()
-        report_file.close()
+        report_file.close()  # TODO: not used anymore, remove this
         camera.release()
         smoothie.disconnect()
         vesc_engine.disconnect()
