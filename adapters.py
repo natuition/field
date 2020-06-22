@@ -958,33 +958,6 @@ class VescAdapter:
     def is_movement_allowed(self):
         return self._allow_movement
 
-    """
-    # writes vesc info into csv file
-    def pick_sensors_data(self, report_writer, report_field_names):
-        in_buf = b''
-
-        self._ser.write(pyvesc.encode_request(pyvesc.GetValues))
-
-        while True:
-            while self._ser.in_waiting > 0:
-                in_buf += self._ser.read(self._ser.in_waiting)
-            if len(in_buf) == 0:
-                break
-            (response, consumed) = pyvesc.decode(in_buf)
-            if consumed == 0:
-                break
-            in_buf = in_buf[consumed:]
-
-            if isinstance(response, pyvesc.GetValues):
-                report_row = {'elapsed_time': int(time.time() - self.start_cycle_time)}
-                for field_name in report_field_names[1:]:
-                    report_row[field_name] = getattr(response, field_name)
-
-                # print(f'temp_fet_filtered: {response.temp_fet_filtered}, temp_motor_filtered: {response.temp_motor_filtered}, avg_motor_current: {response.avg_motor_current}, avg_input_current: {response.avg_input_current}, rpm: {response.rpm}, input_voltage: {response.input_voltage}')
-                report_writer.writerow(report_row)
-            else:
-                print('Strange incoming message received')
-    """
     def pick_sensors_data(self, report_field_names):
         self._ser.write(pyvesc.encode_request(pyvesc.GetValues))
         in_buf = b''

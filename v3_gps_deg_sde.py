@@ -477,8 +477,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             print(msg)
             logger_full.write(msg + "\n\n")
 
-        # vesc_engine.pick_sensors_data(report_writer, report_field_names)
-
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
     """
@@ -648,9 +646,6 @@ def main():
     # sensors picking
     report_field_names = ['elapsed_time', 'temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
                           'avg_input_current', 'rpm', 'input_voltage']
-    report_file = open('report.csv', 'w', newline='')
-    report_writer = csv.DictWriter(report_file, fieldnames=report_field_names)
-    report_writer.writeheader()
 
     # QGIS and sensor data transmitting
     path = os.path.abspath(os.getcwd())
@@ -785,7 +780,6 @@ def main():
         # close log and hardware connections
         logger_full.close()
         logger_table.close()
-        report_file.close()  # TODO: not used anymore, remove this
         camera.release()
         smoothie.disconnect()
         vesc_engine.disconnect()
