@@ -15,6 +15,23 @@ import csv
 import detection
 from matplotlib.patches import Polygon
 import math
+import cv2 as cv
+import numpy as np
+
+
+def create_directories(*args):
+    """Creates directories, receives any args count, each arg is separate dir"""
+
+    for path in args:
+        if not os.path.exists(path):
+            try:
+                os.mkdir(path)
+            except OSError:
+                print("Creation of the directory %s failed" % path)
+            else:
+                print("Successfully created the directory %s " % path)
+        else:
+            print("Directory %s is already exists" % path)
 
 
 def load_coordinates(file_path):
@@ -105,12 +122,42 @@ def any_plant_in_working_zone(plant_boxes: list, working_zone_polygon: Polygon):
     return False
 
 
+def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius):
+    """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
+
+    return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, (0, 0, 255), thickness=3)
+
+
+def draw_zone_poly(image, np_poly_points):
+    """Draws received polygon on image. Used for drawing working zone edges on photo"""
+
+    return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
+
+
+def save_image(path_to_save, image, counter, session_label, sep=" "):
+    """
+    Assembles image file name and saves received image under this name to specified directory.
+    Counter and session label may be passed if was set to None.
+    """
+
+    session_label = session_label + sep if session_label else ""
+    counter = sep + str(counter) if counter or counter == 0 else ""
+    cv.imwrite(path_to_save + session_label + get_current_time() + counter + ".jpg", image)
+
+
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
-                       precise_det: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, image,
-                       plant_boxes: list):
+                       precise_det: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
+                       plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir):
     """Extract all plants found in current position"""
 
-    img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
+    img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+
+    # debug image saving
+    if config.SAVE_DEBUG_IMAGES:
+        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+        frame = draw_zone_poly(frame, working_zone_points_cv)
+        frame = detection.draw_boxes(frame, plant_boxes)
+        save_image(img_output_dir, frame, None, None)
 
     # loop over all detected plants
     for box in plant_boxes:
@@ -207,13 +254,20 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # make new photo and re-detect plants
-                    image = camera.get_image()
-                    temp_plant_boxes = precise_det.detect(image)
+                    frame = camera.get_image()
+                    temp_plant_boxes = precise_det.detect(frame)
 
                     # check case if no plants detected
                     if len(temp_plant_boxes) == 0:
                         print("No plants detected (plant was in working zone before), trying to move on next item")
                         break
+
+                    # debug image saving
+                    if config.SAVE_DEBUG_IMAGES:
+                        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+                        frame = draw_zone_poly(frame, working_zone_points_cv)
+                        frame = detection.draw_boxes(frame, temp_plant_boxes)
+                        save_image(img_output_dir, frame, None, None)
 
                     # get closest box (update current box from main list coordinates after moving closer)
                     box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
@@ -227,7 +281,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                               periphery_det: detection.YoloOpenCVDetection, precise_det: detection.YoloOpenCVDetection,
                               client, logger_full: utility.Logger, logger_table: utility.Logger, report_field_names,
-                              used_points_history: list, nav: navigation.GPSComputing, working_zone_polygon):
+                              used_points_history: list, nav: navigation.GPSComputing, working_zone_polygon,
+                              undistorted_zone_radius, working_zone_points_cv, img_output_dir):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -262,7 +317,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         # stop and extract all plants if there any in working zone
         if len(plants_boxes) > 0 and any_plant_in_working_zone(plants_boxes, working_zone_polygon):
             vesc_engine.stop_moving()
-            extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes)
+            extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
+                               undistorted_zone_radius, working_zone_points_cv, img_output_dir)
             vesc_engine.start_moving()
 
         # navigation control
@@ -580,7 +636,10 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
 
 
 def main():
+    create_directories(config.DEBUG_IMAGES_PATH)
+
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
+    working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     nav = navigation.GPSComputing()
     used_points_history = []
     logger_full = utility.Logger("full log " + get_current_time() + ".txt")
@@ -692,7 +751,8 @@ def main():
 
             move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
                                       client, logger_full, logger_table, report_field_names, used_points_history, nav,
-                                      working_zone_polygon)
+                                      working_zone_polygon, config.UNDISTORTED_ZONE_RADIUS, working_zone_points_cv,
+                                      config.DEBUG_IMAGES_PATH)
 
         msg = "Done!"
         print(msg)
