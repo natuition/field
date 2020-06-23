@@ -274,10 +274,13 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # get closest box (update current box from main list coordinates after moving closer)
                     box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
-
         # if not in working zone
         else:
             print("Skipped", str(box), "(not in working area)")
+
+    # set camera back to the view position
+    smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
+    smoothie.wait_for_all_actions_done()
 
 
 def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapter, vesc_engine: adapters.VescAdapter,
@@ -320,6 +323,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         # stop and extract all plants if there any in working zone
         if len(plants_boxes) > 0 and any_plant_in_working_zone(plants_boxes, working_zone_polygon):
             vesc_engine.stop_moving()
+            # TODO: robot is not stopping instantly
+            # TODO: rescan after we stopped?
             extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                undistorted_zone_radius, working_zone_points_cv, img_output_dir)
             vesc_engine.start_moving()
@@ -778,6 +783,10 @@ def main():
             msg = "Failed to set A=0 on smoothie (turning wheels init position), response message:\n" + response
             print(msg)
             logger_full.write(msg + "\n")
+
+        # set camera to the view position
+        smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
+        smoothie.wait_for_all_actions_done()
 
         # ask permission to start moving
         msg = "Initializing done. Press enter to start moving."
