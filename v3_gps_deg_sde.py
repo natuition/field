@@ -18,6 +18,9 @@ import math
 import cv2 as cv
 import numpy as np
 
+if config.RECEIVE_FIELD_FROM_RTK:
+    import robotEN_JET
+
 
 def create_directories(*args):
     """Creates directories, receives any args count, each arg is separate dir"""
@@ -534,7 +537,7 @@ def compute_x2_spiral(point_a: list, point_b: list, nav: navigation.GPSComputing
 
 def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
     """
-
+    Computes spiral interval points x1, x2
     :param point_a:
     :param point_b:
     :param nav:
@@ -633,6 +636,44 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
 
+def compute_x1_x2(point_a, point_b, distance, nav: navigation.GPSComputing):
+    """
+    Computes and returns two points on given vector [A, B], where vector [A, X1] = distance, vector [X2, B] = distance
+    :param point_a:
+    :param point_b:
+    :param distance:
+    :param nav:
+    :return:
+    """
+
+    ab_dist = nav.get_distance(point_a, point_b)
+
+    if ab_dist < distance:
+        raise ValueError("Size of AB vector (" + str(ab_dist) + ") should be greater than a given distance: " +
+                         str(distance))
+
+    x1 = nav.get_point_on_vector(point_a, point_b, distance)
+    x2 = nav.get_point_on_vector(point_a, point_b, ab_dist - distance)
+    return x1, x2
+
+
+def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputing):
+    """
+    Reduces given ABCD field for given distance from each side, returns new ABCD field
+    :param abcd_points:
+    :param reduce_size:
+    :param nav:
+    :return:
+    """
+
+    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
+    b1_dist, b2_dist = compute_x1_x2(b, c, reduce_size, nav)
+    d1_dist, d2_dist = compute_x1_x2(d, a, reduce_size, nav)
+    a_new, b_new = compute_x1_x2(d2_dist, b1_dist, reduce_size, nav)
+    c_new, d_new = compute_x1_x2(b2_dist, d1_dist, reduce_size, nav)
+    return [a_new, b_new, c_new, d_new]
+
+
 def main():
     create_directories(config.DEBUG_IMAGES_PATH)
 
@@ -665,12 +706,29 @@ def main():
         logger_full.write(msg + "\n")
 
         # load field coordinates
-        field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
-        if len(field_gps_coords) != 4:
-            msg = "Expected 4 gps points in " + config.INPUT_GPS_FIELD_FILE + ", got " + str(len(field_gps_coords))
-            print(msg)
-            logger_full.write(msg + "\n")
-            exit(1)
+        if config.RECEIVE_FIELD_FROM_RTK:
+            try:
+                field_gps_coords = load_coordinates(robotEN_JET.CURRENT_FIELD_PATH)
+            except AttributeError:
+                msg = "Couldn't get field file name from RTK script as it is wasn't assigned there."
+                print(msg)
+                logger_full.write(msg + "\n")
+                exit(1)
+            if len(field_gps_coords) < 5:
+                msg = "Expected at least 4 gps points in " + robotEN_JET.CURRENT_FIELD_PATH + ", got " + \
+                      str(len(field_gps_coords))
+                print(msg)
+                logger_full.write(msg + "\n")
+                exit(1)
+            field_gps_coords = nav.corner_points(field_gps_coords)
+        else:
+            field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+            if len(field_gps_coords) != 4:
+                msg = "Expected 4 gps points in " + config.INPUT_GPS_FIELD_FILE + ", got " + str(len(field_gps_coords))
+                print(msg)
+                logger_full.write(msg + "\n")
+                exit(1)
+        field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
 
         # generate path points
         path_points = build_path(field_gps_coords, nav, logger_full)
