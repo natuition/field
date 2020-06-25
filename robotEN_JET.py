@@ -432,7 +432,7 @@ if verb == 1:
     print("***** Compare position to file *****")
     print("Find a position ? ", flagPositionfunded)
 
-exit()
+# exit()
 
 if flagPositionfunded == 1:
     if verb == 1:
@@ -440,7 +440,7 @@ if flagPositionfunded == 1:
     configBaseFix(Latknown, Lonknown, Heigknown)
     time.sleep(1)
     enabNMEA_OUT_RTCM_IN()
-    input("Attente")
+    # input("Attente")
     #  Checking RTCM threads
     if verb == 1:
         print("Checking RTCM received from beacon")

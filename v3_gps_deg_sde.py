@@ -322,11 +322,16 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         # stop and extract all plants if there any in working zone
         if len(plants_boxes) > 0 and any_plant_in_working_zone(plants_boxes, working_zone_polygon):
-            vesc_engine.stop_moving()
-            # TODO: robot is not stopping instantly
-            # TODO: rescan after we stopped?
-            extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
-                               undistorted_zone_radius, working_zone_points_cv, img_output_dir)
+            vesc_engine.stop_moving()  # TODO: robot is not stopping instantly (maybe add here some engines backward force and sleep time for camera?)
+
+            # rescan after we stopped
+            frame = camera.get_image()
+            plants_boxes = periphery_det.detect(frame)
+
+            # do extractions if there still any plants in working zone
+            if len(plants_boxes) > 0 and any_plant_in_working_zone(plants_boxes, working_zone_polygon):
+                extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
+                                   undistorted_zone_radius, working_zone_points_cv, img_output_dir)
             vesc_engine.start_moving()
 
         # navigation control
