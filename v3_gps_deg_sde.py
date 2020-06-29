@@ -11,7 +11,6 @@ import traceback
 import SensorProcessing
 import socketForRTK
 from socketForRTK.Client import Client
-import csv
 import detection
 from matplotlib.patches import Polygon
 import math
@@ -808,6 +807,8 @@ def main():
         logger_table.write(msg + "\n")
 
         # path points visiting loop
+        msg = "Generated " + str(len(path_points)) + " points."
+        logger_full.write(msg + "\n")
         for i in range(1, len(path_points)):
             from_to = [path_points[i - 1], path_points[i]]
             from_to_dist = nav.get_distance(from_to[0], from_to[1])
@@ -821,7 +822,7 @@ def main():
                                       working_zone_polygon, config.UNDISTORTED_ZONE_RADIUS, working_zone_points_cv,
                                       config.DEBUG_IMAGES_PATH)
 
-        msg = "Done!"
+        msg = "Work is done."
         print(msg)
         logger_full.write(msg + "\n")
     except KeyboardInterrupt:
@@ -861,6 +862,8 @@ def main():
         sensor_processor.endSession()
         client.closeConnection()
         sensor_processor.stopServer()
+
+        print("Safe disable is done.")
 
 
 if __name__ == '__main__':
