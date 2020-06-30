@@ -972,9 +972,8 @@ class VescAdapter:
         in_buf = in_buf[consumed:]
 
         if isinstance(response, pyvesc.GetValues):
-            # report_row = {'elapsed_time': int(time.time() - self.start_cycle_time)}
             report_row = {}
-            for field_name in report_field_names[1:]:
+            for field_name in report_field_names:
                 report_row[field_name] = getattr(response, field_name)
             return report_row
         else:

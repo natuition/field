@@ -142,9 +142,9 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
     Counter and session label may be passed if was set to None.
     """
 
-    session_label = session_label + sep if session_label else ""
+    session_label = sep + session_label if session_label else ""
     counter = sep + str(counter) if counter or counter == 0 else ""
-    cv.imwrite(path_to_save + session_label + get_current_time() + counter + ".jpg", image)
+    cv.imwrite(path_to_save + get_current_time() + session_label + counter + ".jpg", image)
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
@@ -153,13 +153,6 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
     """Extract all plants found in current position"""
 
     img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
-
-    # debug image saving
-    if config.SAVE_DEBUG_IMAGES:
-        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
-        frame = draw_zone_poly(frame, working_zone_points_cv)
-        frame = detection.draw_boxes(frame, plant_boxes)
-        save_image(img_output_dir, frame, None, None)
 
     # loop over all detected plants
     for box in plant_boxes:
@@ -193,7 +186,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=-35)  # TODO: calculation -Z depending on box size
+                    res = smoothie.custom_move_for(F=1700, Z=-42)  # TODO: calculation -Z depending on box size
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
@@ -269,7 +262,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
                         frame = draw_zone_poly(frame, working_zone_points_cv)
                         frame = detection.draw_boxes(frame, temp_plant_boxes)
-                        save_image(img_output_dir, frame, None, None)
+                        save_image(img_output_dir, frame, None, "(extraction specify)")
 
                     # get closest box (update current box from main list coordinates after moving closer)
                     box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
@@ -319,6 +312,14 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         frame = camera.get_image()
         plants_boxes = periphery_det.detect(frame)
 
+        # debug image saving
+        if config.SAVE_DEBUG_IMAGES:
+            img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+            frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+            frame = draw_zone_poly(frame, working_zone_points_cv)
+            frame = detection.draw_boxes(frame, plants_boxes)
+            save_image(img_output_dir, frame, None, "(view scan)")
+
         # stop and extract all plants if there any in working zone
         if len(plants_boxes) > 0 and any_plant_in_working_zone(plants_boxes, working_zone_polygon):
             vesc_engine.stop_moving()  # TODO: robot is not stopping instantly (maybe add here some engines backward force and sleep time for camera?)
@@ -326,6 +327,14 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             # rescan after we stopped
             frame = camera.get_image()
             plants_boxes = periphery_det.detect(frame)
+
+            # debug image saving
+            if config.SAVE_DEBUG_IMAGES:
+                img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+                frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+                frame = draw_zone_poly(frame, working_zone_points_cv)
+                frame = detection.draw_boxes(frame, plants_boxes)
+                save_image(img_output_dir, frame, None, "(view scan after vesc stop)")
 
             # do extractions if there still any plants in working zone
             if len(plants_boxes) > 0 and any_plant_in_working_zone(plants_boxes, working_zone_polygon):
@@ -694,7 +703,7 @@ def main():
     logger_table = utility.Logger("table log " + get_current_time() + ".csv")
 
     # sensors picking
-    report_field_names = ['elapsed_time', 'temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
+    report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
                           'avg_input_current', 'rpm', 'input_voltage']
 
     # QGIS and sensor data transmitting
