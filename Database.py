@@ -36,6 +36,26 @@ class Database:
 		self.server = Server(int(serveurPort))
 		self.lastCoordinate = None
 
+		# Empty the qgis table from the database each time the robot is launched.
+		sql = 'DELETE FROM qgis;'
+		conn = None
+		try:
+			# connect to the PostgreSQL database
+			conn = psycopg2.connect(dbname=self.dbName, user=self.user, host=self.host, password=self.password)
+			cur = conn.cursor()
+			# execute the INSERT statement
+			cur.execute(sql)
+			# commit the changes to the database
+			conn.commit()
+			# close communication with the database
+			cur.close()
+		except(Exception, psycopg2.DatabaseError) as error:
+			print("[Database]")
+			print(error)
+		finally:
+			if conn is not None:
+				conn.close()
+
 	def insertRobot(self, serialNumber):
 
 		"""
