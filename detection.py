@@ -4,19 +4,20 @@ import os
 from config import config
 import glob
 import math
+import platform
 
 
 class YoloOpenCVDetection:
 
     def __init__(self, yolo_classes_path, yolo_config_path, yolo_weights_path, input_size, confidence_threshold,
-                 nms_threshold):
+                 nms_threshold, backend, target):
         self._input_size = input_size
         self._confidence_threshold = confidence_threshold
         self._nms_threshold = nms_threshold  # non-max suppression
         self.classes = self._load_class_names(yolo_classes_path)
         self.net = cv.dnn.readNetFromDarknet(yolo_config_path, yolo_weights_path)
-        self.net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)  # DNN_BACKEND_OPENCV for CPU usage
-        self.net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)  # DNN_TARGET_CPU for CPU usage
+        self.net.setPreferableBackend(backend)  # DNN_BACKEND_OPENCV for CPU usage
+        self.net.setPreferableTarget(target)  # DNN_TARGET_CPU for CPU usage
 
     def detect(self, image):
         # Create a 4D blob from a frame.
@@ -102,7 +103,7 @@ class DetectedPlantBox:
         self._confidence = confidence
 
     def __str__(self):
-        return "Plant Box L=" + str(self._left) + " T=" + str(self._top) + " R=" + str(self._right) + " B=" +\
+        return "Plant Box L=" + str(self._left) + " T=" + str(self._top) + " R=" + str(self._right) + " B=" + \
                str(self._bottom) + " X=" + str(self._center_x) + " Y=" + str(self._center_y)
 
     def get_box_points(self):
@@ -174,7 +175,8 @@ def detect_single(detector: YoloOpenCVDetection, input_full_path, output_dir):
     img = cv.imread(input_full_path)
     boxes = detector.detect(img)
     draw_boxes(img, boxes)
-    file_name = input_full_path.split("\\")[-1]
+    slash = "\\" if platform.system() == "Windows" else "/"
+    file_name = input_full_path.split(slash)[-1]
     cv.imwrite(output_dir + file_name, img)
 
 
@@ -202,13 +204,14 @@ def _test():
     _create_directories(precise_input_dir, precise_output_dir, periphery_input_dir, periphery_output_dir)
 
     periphery_detector = YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
-                                                       config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
-                                                       config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                                       config.PERIPHERY_NMS_THRESHOLD)
+                                             config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
+                                             config.PERIPHERY_CONFIDENCE_THRESHOLD,
+                                             config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
+                                             config.PERIPHERY_DNN_TARGET)
     precise_detector = YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
-                                                     config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
-                                                     config.PRECISE_CONFIDENCE_THRESHOLD,
-                                                     config.PRECISE_NMS_THRESHOLD)
+                                           config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
+                                           config.PRECISE_CONFIDENCE_THRESHOLD, config.PRECISE_NMS_THRESHOLD,
+                                           config.PRECISE_DNN_BACKEND,config.PRECISE_DNN_TARGET)
 
     detect_all_in_directory(precise_detector, precise_input_dir, precise_output_dir)
     detect_all_in_directory(periphery_detector, periphery_input_dir, periphery_output_dir)

@@ -297,6 +297,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     :param used_points_history:
     :param nav:
     :param working_zone_polygon:
+    :param undistorted_zone_radius:
+    :param working_zone_points_cv:
+    :param img_output_dir:
     :return:
     """
 
@@ -776,12 +779,14 @@ def main():
         periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                                            config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
                                                            config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                                           config.PERIPHERY_NMS_THRESHOLD)
+                                                           config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
+                                                           config.PERIPHERY_DNN_TARGET)
         print("Loading precise detector...")
         precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
                                                          config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
                                                          config.PRECISE_CONFIDENCE_THRESHOLD,
-                                                         config.PRECISE_NMS_THRESHOLD)
+                                                         config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
+                                                         config.PRECISE_DNN_TARGET)
         print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
         print("Loading vesc...")

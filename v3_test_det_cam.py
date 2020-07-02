@@ -23,10 +23,19 @@ def _create_directories(*args):
 
 
 def test_detection():
+    print("Loading detector...")
+
     detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                              config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
-                                             config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                             config.PERIPHERY_NMS_THRESHOLD)
+                                             config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD,
+                                             config.PERIPHERY_DNN_BACKEND, config.PERIPHERY_DNN_TARGET)
+    
+    """
+    detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
+                                             config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
+                                             config.PRECISE_CONFIDENCE_THRESHOLD, config.PRECISE_NMS_THRESHOLD
+                                             config.PRECISE_DNN_BACKEND, config.PRECISE_DNN_TARGET)
+    """
     img = cv.imread("1.jpg")
     i = 1
 
@@ -52,7 +61,7 @@ def test_camera():
         print("Test started, info will be shown for each 100 taken frames")
         while True:
             prev_time = time.time()
-            frame = camera.get_image()
+            _ = camera.get_image()
             cur_time = time.time()
             time_list.append(cur_time - prev_time)
             i += 1
@@ -66,8 +75,8 @@ def test_camera():
 def test_camera_detection():
     detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                              config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
-                                             config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                             config.PERIPHERY_NMS_THRESHOLD)
+                                             config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD,
+                                             config.PERIPHERY_DNN_BACKEND, config.PERIPHERY_DNN_TARGET)
     i = 1
 
     with adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
@@ -96,8 +105,8 @@ def test_camera_detection_saving():
     _create_directories(output_path)
     detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                              config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
-                                             config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                             config.PERIPHERY_NMS_THRESHOLD)
+                                             config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD,
+                                             config.PERIPHERY_DNN_BACKEND, config.PERIPHERY_DNN_TARGET)
     i = 1
 
     with adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
@@ -144,8 +153,8 @@ def test_saving(images_to_save):
 
 if __name__ == '__main__':
     # should be called only one of them:
-    # test_detection()
+    test_detection()
     # test_camera()
     # test_camera_detection()
     # test_camera_detection_saving()
-    test_saving(images_to_save=2000)
+    # test_saving(images_to_save=2000)
