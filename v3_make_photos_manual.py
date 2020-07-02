@@ -1,3 +1,4 @@
+from config import config
 import adapters
 import cv2 as cv
 import datetime
@@ -31,28 +32,32 @@ def main():
             print("Successfully created the directory %s " % output_dir)
 
     print("Loading...")
-    with adapters.CameraAdapterIMX219_170() as camera:
+    with adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                          config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                          config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                          config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                          config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                          config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                          config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD) \
+            as camera:
+
         time.sleep(2)
         print("Loading complete.")
-
-        draw_markup = input(
-            "Type t to draw markup points on images, type empty string (just hit enter key) to leave images clean: ")
-        draw_markup = True if draw_markup == "t" else False
-
+        draw_markup = input("Draw markup points on images? (y/n): ")
+        draw_markup = True if draw_markup.lower() == "y" else False
         label = input("Please type label, which should be added to photos: ")
-
         sep = " "
         counter = 1
 
         while True:
-            action = input("Type empty string (just hit enter key) to get an image, type anything to stop: ")
+            action = input("Hit enter to get an image, type anything to stop: ")
             if action != "":
                 break
 
-            image = camera.get_image()
+            frame = camera.get_image()
             if draw_markup:
-                image = markup_5_points(image)
-            cv.imwrite(output_dir + label + sep + str(counter) + sep + str(datetime.datetime.now()) + ".jpg", image)
+                frame = markup_5_points(frame)
+            cv.imwrite(output_dir + label + sep + str(counter) + sep + str(datetime.datetime.now()) + ".jpg", frame)
             counter += 1
 
         print("Done.")
