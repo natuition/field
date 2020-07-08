@@ -129,7 +129,7 @@ class SmoothieAdapter:
 
     def get_smoothie_current_coordinates(self):
         with self._sync_locker:
-            self._smc.write("M114.2")
+            self._smc.write("M114.1")
             """
             Answers:
             M114:   'ok C: X:2.0240 Y:0.0000 Z:0.0000\r\n'
@@ -142,9 +142,9 @@ class SmoothieAdapter:
             return {
                 "X": float(response[0][2:]),
                 "Y": float(response[1][2:]),
-                "Z": float(response[2][2:]),
-                "A": float(response[3][2:]),
-                "B": float(response[4][2:])
+                "Z": float(response[2][2:])
+                # "A": float(response[3][2:]),
+                # "B": float(response[4][2:])
             }
 
     def compare_coordinates(self, coordinates_a, coordinates_b, precision=1e-10):
