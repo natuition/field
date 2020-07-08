@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.12"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.13"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -34,6 +34,7 @@ SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history)
 # distance between sides of spiral robot movements, expected to be equal to working area width, may be any positive val
 SPIRAL_SIDES_INTERVAL = 457
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
+PREV_CUR_POINT_MIN_DIST = 100  # pass by cur points dist between them and prev point is lesser than this, mms
 
 
 # ======================================================================================================================
@@ -184,6 +185,7 @@ UNDISTORTED_ZONE_RADIUS = 240
 SAVE_DEBUG_IMAGES = True
 DEBUG_IMAGES_PATH = "debug_images/"
 RECEIVE_FIELD_FROM_RTK = True
+SLOW_MODE_MIN_TIME = 3  # seconds
 
 
 # ======================================================================================================================
