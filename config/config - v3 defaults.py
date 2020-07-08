@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.11"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.12"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -48,7 +48,8 @@ OUTPUT_GPS_HISTORY_FILE = "gps_history.txt"
 # ======================================================================================================================
 VESC_PORT = "/dev/ttyACM0"
 VESC_BAUDRATE = 115200
-VESC_RPM = -2500
+VESC_RPM_FAST = -5600
+VESC_RPM_SLOW = -2800
 VESC_MOVING_TIME = float("inf")
 VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when moving
 VESC_CHECK_FREQ = 0.01  # freq of checking need to stop
@@ -69,18 +70,21 @@ SMOOTHIE_HOST = "169.254.232.224"
 
 # EXTRACTION
 X_MIN = 0
-X_MAX = 457
+X_MAX = 186.34951456310679611650485436893
 Y_MIN = 0
-Y_MAX = 225
+Y_MAX = 91.747572815533980582524271844661
 Z_MIN = 0
 Z_MAX = 100
 
 XY_F_MIN = 1
-XY_F_MAX = 1000
+XY_F_MAX = 1000  # TODO: obsolete, need to update
 Z_F_MIN = 1
-Z_F_MAX = 1000
+Z_F_MAX = 1000  # TODO: obsolete, need to update
 
-EXTRACTION_Z = 100
+XY_COEFFICIENT_TO_MM = 0.40776699029126213592233009708738
+Z_COEFFICIENT_TO_MM = 1
+
+EXTRACTION_Z = 100  # TODO: obsolete and not used, need to update
 
 # CALIBRATION
 USE_X_AXIS_CALIBRATION = False
@@ -103,9 +107,9 @@ AFTER_CALIBRATION_AXIS_OFFSET = 0
 # NAVIGATION
 A_MIN = -38
 A_MAX = 38
-B_MIN = float("inf")
+B_MIN = -float("inf")
 B_MAX = float("inf")
-C_MIN = float("inf")
+C_MIN = -float("inf")
 C_MAX = float("inf")
 
 A_F_MIN = 1
@@ -117,7 +121,6 @@ C_F_MAX = 1000
 
 A_ONE_DEGREE_IN_SMOOTHIE = 2  # A axis
 A_DEGREES_PER_SECOND = 1  # A axis
-B_ONE_MM_IN_SMOOTHIE = 0.338  # B axis # 0.404 for new wheels # obsolete
 NAV_TURN_WHEELS_CENTER = 0
 
 

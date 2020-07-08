@@ -307,7 +307,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
     prev_maneuver_time = time.time()
     prev_point = gps.get_last_position()
-    vesc_engine.apply_rpm(int(config.VESC_RPM / 2))
+    vesc_engine.apply_rpm(int(config.VESC_RPM_SLOW))
     vesc_engine.start_moving()
 
     # main navigation control loop
@@ -382,9 +382,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if config.USE_SPEED_LIMIT:
             distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
             if distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD:
-                vesc_engine.apply_rpm(int(config.VESC_RPM / 2))
+                vesc_engine.apply_rpm(int(config.VESC_RPM_SLOW))
             else:
-                vesc_engine.apply_rpm(config.VESC_RPM)
+                vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
         # do maneuvers not more often than specified value
         cur_time = time.time()
@@ -790,7 +790,7 @@ def main():
         print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
         print("Loading vesc...")
-        vesc_engine = adapters.VescAdapter(int(config.VESC_RPM / 2), config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
+        vesc_engine = adapters.VescAdapter(int(config.VESC_RPM_SLOW), config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         print("Loading gps...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
@@ -850,7 +850,7 @@ def main():
     finally:
         # save log data
         if len(used_points_history) > 0:
-            save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")
+            save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")  # TODO: don't accumulate a lot of points - write each of them to file as soon as they come
         else:
             msg = "used_gps_history list has 0 elements!"
             print(msg)
@@ -858,7 +858,7 @@ def main():
 
         adapter_points_history = gps.get_last_positions_list()
         if len(adapter_points_history) > 0:
-            save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
+            save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")  # TODO: reduce history positions to 1 to save RAM
         else:
             msg = "adapter_gps_history list has 0 elements!"
             print(msg)
