@@ -884,7 +884,7 @@ def main():
         msg = "Stopped by a keyboard interrupt (Ctrl + C)"
         print(msg)
         logger_full.write(msg + "\n")
-    except Exception:
+    except:
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
@@ -892,7 +892,7 @@ def main():
         # try emergency stop
         try:
             vesc_engine.stop_moving()
-        finally:
+        except:
             pass
 
         # save log data
