@@ -15,8 +15,8 @@ class SmoothieAdapter:
     RESPONSE_ALARM_LOCK = 'error:Alarm lock\n'
 
     def __init__(self, smoothie_host):
-        self._sync_locker = multiprocessing.RLock()
         self._smc = connectors.SmoothieConnector(smoothie_host)
+        self._sync_locker = multiprocessing.RLock()
         self._x_cur = multiprocessing.Value("d", 0)
         self._y_cur = multiprocessing.Value("d", 0)
         self._z_cur = multiprocessing.Value("d", 0)
@@ -79,9 +79,9 @@ class SmoothieAdapter:
             g_code = "G92"
 
             if X is not None:
-                g_code += " X" + str(X)
+                g_code += " X" + str(X * config.XY_COEFFICIENT_TO_MM)
             if Y is not None:
-                g_code += " Y" + str(Y)
+                g_code += " Y" + str(Y * config.XY_COEFFICIENT_TO_MM)
             if Z is not None:
                 g_code += " Z" + str(Z)
             if A is not None:
@@ -92,7 +92,6 @@ class SmoothieAdapter:
                 g_code += " C" + str(C)
 
             self._smc.write(g_code)
-            # "ok\r\n"
             response = self._smc.read_some()
 
             if response == self.RESPONSE_OK:
@@ -121,25 +120,29 @@ class SmoothieAdapter:
                 # "C": self._c_cur.value
             }
 
-    def get_smoothie_current_coordinates(self):
+    def get_smoothie_current_coordinates(self, convert_to_mms=True):
+        """
+        
+        :param convert_to_mms: 
+        :return: 
+        """
+        """
+        Answers:
+        M114:   'ok C: X:2.0240 Y:0.0000 Z:0.0000\r\n'
+        M114.1  'ok WCS: X:2.0250 Y:0.0000 Z:0.0000\r\n'
+        M114.2  'ok MCS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+        M114.3  'ok APOS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+        M114.4  'ok MP: X:2.0240 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
+        """
+
         with self._sync_locker:
             self._smc.write("M114.2")
-            """
-            Answers:
-            M114:   'ok C: X:2.0240 Y:0.0000 Z:0.0000\r\n'
-            M114.1  'ok WCS: X:2.0250 Y:0.0000 Z:0.0000\r\n'
-            M114.2  'ok MCS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
-            M114.3  'ok APOS: X:2.0250 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
-            M114.4  'ok MP: X:2.0240 Y:0.0000 Z:0.0000 A:0.0000 B:0.0000\r\n'
-            """
-            response = (self._smc.read_some() + self._smc.read_eager()).split(" ")[2:]
-            return {
-                "X": float(response[0][2:]),
-                "Y": float(response[1][2:]),
-                "Z": float(response[2][2:]),
-                "A": float(response[3][2:]),
-                "B": float(response[4][2:])
-            }
+            response, coordinates = (self._smc.read_some() + self._smc.read_eager())[:-2].split(" ")[2:], {}
+            for coord in response:
+                coordinates[coord[0]] = float(coord[2:])
+                if convert_to_mms and coord[0] in ["X", "Y"]:
+                    coordinates[coord[0]] /= config.XY_COEFFICIENT_TO_MM
+            return coordinates
 
     def compare_coordinates(self, coordinates_a, coordinates_b, precision=1e-10):
         if type(coordinates_a) != dict or type(coordinates_b) != dict:
@@ -155,35 +158,37 @@ class SmoothieAdapter:
     def custom_move_for(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement by some value(s)"""
 
-        if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
-            raise TypeError("at least one axis shouldn't be None")
-        if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
-            raise TypeError("incorrect axis coordinates value(s) type(s)")
-        if not self._check_arg_types([int], F):
-            raise TypeError("incorrect force F value type")
-
         with self._sync_locker:
+            if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
+                raise TypeError("at least one axis shouldn't be None")
+            if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
+                raise TypeError("incorrect axis coordinates value(s) type(s)")
+            if not self._check_arg_types([int], F):
+                raise TypeError("incorrect force F value type")
+
             g_code = "G0"
 
             if X is not None:
-                X *= config.XY_COEFFICIENT_TO_MM
                 error_msg = self.validate_value(0, F, "F", config.XY_F_MIN, config.XY_F_MAX, "XY_F_MIN", "XY_F_MAX")
                 if error_msg:
                     return error_msg
-                error_msg = self.validate_value(self._x_cur.value, X, "X", config.X_MIN, config.X_MAX, "X_MIN", "X_MAX")
+                error_msg = self.validate_value(self._x_cur.value * config.XY_COEFFICIENT_TO_MM,
+                                                X * config.XY_COEFFICIENT_TO_MM, "X", config.X_MIN, config.X_MAX,
+                                                "X_MIN", "X_MAX")
                 if error_msg:
                     return error_msg
-                g_code += " X" + str(X)
+                g_code += " X" + str(X * config.XY_COEFFICIENT_TO_MM)
 
             if Y is not None:
-                Y *= config.XY_COEFFICIENT_TO_MM
                 error_msg = self.validate_value(0, F, "F", config.XY_F_MIN, config.XY_F_MAX, "XY_F_MIN", "XY_F_MAX")
                 if error_msg:
                     return error_msg
-                error_msg = self.validate_value(self._y_cur.value, Y, "Y", config.Y_MIN, config.Y_MAX, "Y_MIN", "Y_MAX")
+                error_msg = self.validate_value(self._y_cur.value * config.XY_COEFFICIENT_TO_MM,
+                                                Y * config.XY_COEFFICIENT_TO_MM, "Y", config.Y_MIN, config.Y_MAX,
+                                                "Y_MIN", "Y_MAX")
                 if error_msg:
                     return error_msg
-                g_code += " Y" + str(Y)
+                g_code += " Y" + str(Y * config.XY_COEFFICIENT_TO_MM)
 
             if Z is not None:
                 error_msg = self.validate_value(0, F, "F", config.Z_F_MIN, config.Z_F_MAX, "Z_F_MIN", "Z_F_MAX")
@@ -224,7 +229,6 @@ class SmoothieAdapter:
             g_code += " F" + str(F)
 
             self._smc.write(g_code)
-            # "ok\r\n"
             response = self._smc.read_some()
 
             if response == self.RESPONSE_OK:
@@ -245,37 +249,37 @@ class SmoothieAdapter:
     def custom_move_to(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement to the specified position"""
 
-        if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
-            raise TypeError("at least one axis shouldn't be None")
-        if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
-            raise TypeError("incorrect axis coordinates value(s) type(s)")
-        if not self._check_arg_types([int], F):
-            raise TypeError("incorrect force F value type")
-
         with self._sync_locker:
+            if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
+                raise TypeError("at least one axis shouldn't be None")
+            if not self._check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
+                raise TypeError("incorrect axis coordinates value(s) type(s)")
+            if not self._check_arg_types([int], F):
+                raise TypeError("incorrect force F value type")
+
             g_code = "G0"
 
             if X is not None:
-                X *= config.XY_COEFFICIENT_TO_MM
                 error_msg = self.validate_value(0, F, "F", config.XY_F_MIN, config.XY_F_MAX, "XY_F_MIN", "XY_F_MAX")
                 if error_msg:
                     return error_msg
-                error_msg = self.validate_value(0, X, "X", config.X_MIN, config.X_MAX, "X_MIN", "X_MAX")
+                error_msg = self.validate_value(0, X * config.XY_COEFFICIENT_TO_MM, "X", config.X_MIN, config.X_MAX,
+                                                "X_MIN", "X_MAX")
                 if error_msg:
                     return error_msg
                 smc_x = X - self._x_cur.value
-                g_code += " X" + str(smc_x)
+                g_code += " X" + str(smc_x * config.XY_COEFFICIENT_TO_MM)
 
             if Y is not None:
-                Y *= config.XY_COEFFICIENT_TO_MM
                 error_msg = self.validate_value(0, F, "F", config.XY_F_MIN, config.XY_F_MAX, "XY_F_MIN", "XY_F_MAX")
                 if error_msg:
                     return error_msg
-                error_msg = self.validate_value(0, Y, "Y", config.Y_MIN, config.Y_MAX, "Y_MIN", "Y_MAX")
+                error_msg = self.validate_value(0, Y * config.XY_COEFFICIENT_TO_MM, "Y", config.Y_MIN, config.Y_MAX,
+                                                "Y_MIN", "Y_MAX")
                 if error_msg:
                     return error_msg
                 smc_y = Y - self._y_cur.value
-                g_code += " Y" + str(smc_y)
+                g_code += " Y" + str(smc_y * config.XY_COEFFICIENT_TO_MM)
 
             if Z is not None:
                 error_msg = self.validate_value(0, F, "F", config.Z_F_MIN, config.Z_F_MAX, "Z_F_MIN", "Z_F_MAX")
@@ -320,7 +324,6 @@ class SmoothieAdapter:
             g_code += " F" + str(F)
 
             self._smc.write(g_code)
-            # "ok\r\n"
             response = self._smc.read_some()
 
             if response == self.RESPONSE_OK:
@@ -344,12 +347,12 @@ class SmoothieAdapter:
                 raise TypeError("incorrect axis coordinates value type")
             if not self._check_arg_types([int], F):
                 raise TypeError("incorrect force F value type")
+
             error_msg = self.validate_value(0, F, "F", config.B_F_MIN, config.B_F_MAX, "B_F_MIN", "B_F_MAX")
             if error_msg:
-                raise ValueError(error_msg)
+                return error_msg
 
             self._smc.write("G0 B{0} F{1}".format(distance, F))
-            # "ok\r\n"
             response = self._smc.read_some()
             if response == self.RESPONSE_OK:
                 self._b_cur.value += distance
@@ -366,16 +369,14 @@ class SmoothieAdapter:
             if not self._check_arg_types([int], F):
                 raise TypeError("incorrect force F value type")
 
-            error_msg = self.validate_value(self._a_cur.value, value, "A", config.A_MIN, config.A_MAX, "A_MIN",
-                                            "A_MAX")
+            error_msg = self.validate_value(self._a_cur.value, value, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
             if error_msg:
-                raise ValueError(error_msg)
+                return error_msg
             error_msg = self.validate_value(0, F, "F", config.A_F_MIN, config.A_F_MAX, "A_F_MIN", "A_F_MAX")
             if error_msg:
-                raise ValueError(error_msg)
+                return error_msg
 
             self._smc.write("G0 A{0} F{1}".format(value, F))
-            # "ok\r\n"
             response = self._smc.read_some()
             if response == self.RESPONSE_OK:
                 self._a_cur.value += value
@@ -390,36 +391,29 @@ class SmoothieAdapter:
 
             error_msg = self.validate_value(0, destination, "A", config.A_MIN, config.A_MAX, "A_MIN", "A_MAX")
             if error_msg:
-                raise ValueError(error_msg)
+                return error_msg
             error_msg = self.validate_value(0, F, "F", config.A_F_MIN, config.A_F_MAX, "A_F_MIN", "A_F_MAX")
             if error_msg:
-                raise ValueError(error_msg)
+                return error_msg
 
             smc_a = destination - self._a_cur.value
             self._smc.write("G0 A{0} F{1}".format(smc_a, F))
-            # "ok\r\n"
             response = self._smc.read_some()
             if response == self.RESPONSE_OK:
                 self._a_cur.value += smc_a
             return response
 
-    def nav_turn_wheels_left_max(self, F=config.A_F_MAX):
-        """Issue - no F checks for now"""
-
+    def nav_turn_wheels_left_max(self, F: int):
         return self.nav_turn_wheels_to(config.A_MIN, F)
 
-    def nav_turn_wheels_right_max(self, F=config.A_F_MAX):
-        """Issue - no F checks for now"""
-
+    def nav_turn_wheels_right_max(self, F: int):
         return self.nav_turn_wheels_to(config.A_MAX, F)
 
-    def nav_align_wheels_center(self, F=config.A_F_MAX):
-        """Issue - no F checks for now"""
-
+    def nav_align_wheels_center(self, F: int):
         return self.nav_turn_wheels_to(config.NAV_TURN_WHEELS_CENTER, F)
 
     def ext_do_extraction(self, F: int):
-        raise NotImplemented("This code is obsolete.")
+        raise NotImplemented("This code is need update.")
 
         """
         with self._sync_locker:
@@ -428,12 +422,11 @@ class SmoothieAdapter:
 
             error_msg = self.validate_value(0, F, "F", config.Z_F_MIN, config.Z_F_MAX, "Z_F_MIN", "Z_F_MAX")
             if error_msg:
-                raise ValueError(error_msg)
+                return error_msg
 
             for dist in [str(-config.EXTRACTION_Z), str(config.EXTRACTION_Z)]:
                 g_code = "G0 Z" + dist + " F" + str(config.Z_F_MAX)
                 self._smc.write(g_code)
-                # "ok\r\n"
                 response = self._smc.read_some()
                 if response == self.RESPONSE_OK:
                     self._z_cur.value += config.EXTRACTION_Z
@@ -449,23 +442,21 @@ class SmoothieAdapter:
 
             error_msg = self.validate_value(0, F, "F", config.XY_F_MIN, config.XY_F_MAX, "XY_F_MIN", "XY_F_MAX")
             if error_msg:
-                raise ValueError(error_msg)
+                return error_msg
 
             # calc cork center coords and xy movement values for smoothie g-code
             center_x, center_y = config.X_MAX / 2, config.Y_MAX / 2
-            smc_x, smc_y = center_x - self._x_cur.value, center_y - self._y_cur.value
-            g_code = "G0 X" + str(smc_x) + " Y" + str(smc_y) + " F" + str(config.XY_F_MAX)
+            smc_x, smc_y = center_x - self._x_cur.value * config.XY_COEFFICIENT_TO_MM, center_y - self._y_cur.value * config.XY_COEFFICIENT_TO_MM
+            g_code = "G0 X" + str(smc_x) + " Y" + str(smc_y) + " F" + str(F)
+
             self._smc.write(g_code)
-            # "ok\r\n"
             response = self._smc.read_some()
             if response == self.RESPONSE_OK:
-                self._x_cur.value += smc_x
-                self._y_cur.value += smc_y
+                self._x_cur.value += smc_x / config.XY_COEFFICIENT_TO_MM
+                self._y_cur.value += smc_y / config.XY_COEFFICIENT_TO_MM
             return response
 
     def ext_calibrate_cork(self):
-        # TODO: what if response != OK ?
-
         # Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
             res = self._calibrate_axis(self._z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
@@ -485,15 +476,17 @@ class SmoothieAdapter:
                 raise RuntimeError("Couldn't calibrate Y axis, smoothie response:\n" + res)
 
     def ext_cork_up(self):
-        # Z axis calibration
+        # cork up is done by Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
             return self._calibrate_axis(self._z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
         else:
-            raise RuntimeError("picking up corkscrew with stoppers usage requires Z axis calibration permission")
+            raise RuntimeError("picking up corkscrew with stoppers usage requires Z axis calibration permission in config")
 
     def _calibrate_axis(self, axis_cur: multiprocessing.Value, axis_label, axis_min, axis_max, axis_calibration_to_max):
-        with self._sync_locker:  # TODO: need to implement outer axix_cur var if removing multiprocessing.Value in future
-            # stub (G28 isn't reading F value from smoothie config, it uses last received F)
+        # TODO: need to implement outer axix_cur var if removing multiprocessing.Value in future
+
+        with self._sync_locker:
+            # TODO: stub (G28 isn't reading F value from smoothie config, it uses last received F)
             if axis_label == "Z":
                 self._smc.write("G0 Z0.1 F1300")
                 response = self._smc.read_some()
@@ -502,24 +495,27 @@ class SmoothieAdapter:
 
             if axis_calibration_to_max:
                 self._smc.write("G28 {0}{1}".format(axis_label, config.CALIBRATION_DISTANCE))
-                # "ok\r\n"
                 response = self._smc.read_some()
                 if response == self.RESPONSE_OK:
+                    sm_val = axis_max
+                    if axis_label in ["X", "Y"] and axis_max != 0:
+                        axis_max /= config.XY_COEFFICIENT_TO_MM
                     axis_cur.value = axis_max
                 else:
                     return response
             else:
                 self._smc.write("G28 {0}{1}".format(axis_label, -config.CALIBRATION_DISTANCE))
-                # "ok\r\n"
                 response = self._smc.read_some()
                 if response == self.RESPONSE_OK:
+                    sm_val = axis_min
+                    if axis_label in ["X", "Y"] and axis_min != 0:
+                        axis_min /= config.XY_COEFFICIENT_TO_MM
                     axis_cur.value = axis_min
                 else:
                     return response
 
             # set fresh current coordinates on smoothie too
-            self._smc.write("G92 {0}{1}".format(axis_label, axis_cur.value))
-            # "ok\r\n"
+            self._smc.write("G92 {0}{1}".format(axis_label, sm_val))
             return self._smc.read_some()
 
     def _check_arg_types(self, types: list, *args):
@@ -538,7 +534,7 @@ class SmoothieAdapter:
     @staticmethod
     def validate_value(cur_value, value, key_label, key_min, key_max, key_min_label, key_max_label):
         """Returns None if value is ok, error message otherwise.
-
+        Receives smoothie values (may be not in mms)
         For force F current_value must be 0"""
 
         if cur_value + value > key_max:
