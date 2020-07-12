@@ -166,8 +166,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
     # loop over all detected plants
     for box in plant_boxes:
         # go to the view position
-        smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX * config.XY_COEFFICIENT_TO_MM / 2,
-                                Y=config.Y_MIN * config.XY_COEFFICIENT_TO_MM)
+        smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
         smoothie.wait_for_all_actions_done()
 
         box_x, box_y = box.get_center_points()
@@ -281,8 +280,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
             print("Skipped", str(box), "(not in working area)")
 
     # set camera back to the Y min
-    smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX * config.XY_COEFFICIENT_TO_MM / 2,
-                            Y=config.Y_MIN * config.XY_COEFFICIENT_TO_MM)
+    smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
     smoothie.wait_for_all_actions_done()
 
 
@@ -328,8 +326,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     prev_pos = gps.get_last_position()
 
     # set camera to the Y min
-    smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX * config.XY_COEFFICIENT_TO_MM / 2,
-                            Y=config.Y_MIN * config.XY_COEFFICIENT_TO_MM)
+    smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
     smoothie.wait_for_all_actions_done()
 
     # main navigation control loop
@@ -338,7 +335,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         frame = camera.get_image()
         plants_boxes = periphery_det.detect(frame)
         debug_save_image(img_output_dir, "(periphery view scan M=" + str(current_working_mode) + ")", frame,
-                         plants_boxes, undistorted_zone_radius, working_zone_polygon)
+                         plants_boxes, undistorted_zone_radius, view_zone_points_cv)
 
         # slow mode
         if current_working_mode == working_mode_slow:
@@ -349,7 +346,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 plants_boxes = precise_det.detect(frame)
 
                 debug_save_image(img_output_dir, "(precise view scan M=1)", frame, plants_boxes, undistorted_zone_radius,
-                                 working_zone_polygon)
+                                 working_zone_points_cv)
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
@@ -357,8 +354,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             elif not any_plant_in_zone(plants_boxes, view_zone_polygon) and \
                     time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                 # set camera to the Y max
-                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX * config.XY_COEFFICIENT_TO_MM / 2,
-                                        Y=config.Y_MAX * config.XY_COEFFICIENT_TO_MM)
+                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                        Y=config.Y_MAX / config.XY_COEFFICIENT_TO_MM)
                 current_working_mode = working_mode_switching
             vesc_engine.start_moving()
 
@@ -367,8 +364,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if any_plant_in_zone(plants_boxes, view_zone_polygon):
                 vesc_engine.stop_moving()
                 # set camera to the Y min
-                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX * config.XY_COEFFICIENT_TO_MM / 2,
-                                        Y=config.Y_MIN * config.XY_COEFFICIENT_TO_MM)
+                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                        Y=config.Y_MIN)
                 smoothie.wait_for_all_actions_done()
                 current_working_mode = working_mode_slow
                 slow_mode_time = time.time()
@@ -382,8 +379,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if any_plant_in_zone(plants_boxes, view_zone_polygon):
                 vesc_engine.stop_moving()
                 # set camera to the Y min
-                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX * config.XY_COEFFICIENT_TO_MM / 2,
-                                        Y=config.Y_MIN * config.XY_COEFFICIENT_TO_MM)
+                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                        Y=config.Y_MIN)
                 smoothie.wait_for_all_actions_done()
                 current_working_mode = working_mode_slow
                 slow_mode_time = time.time()
