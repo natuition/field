@@ -16,6 +16,7 @@ from matplotlib.patches import Polygon
 import math
 import cv2 as cv
 import numpy as np
+import stubs
 
 if config.RECEIVE_FIELD_FROM_RTK:
     import robotEN_JET
@@ -839,6 +840,7 @@ def main():
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         print("Loading gps...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        # gps = stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
 
         # set smoothie's A axis to 0 (nav turn wheels)
         response = smoothie.set_current_coordinates(A=0)
@@ -895,7 +897,11 @@ def main():
         except:
             pass
 
+        print("Releasing camera...")
+        camera.release()
+
         # save log data
+        print("Saving positions histories...")
         if len(used_points_history) > 0:
             save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")  # TODO: don't accumulate a lot of points - write each of them to file as soon as they come
         else:
@@ -912,14 +918,17 @@ def main():
             logger_full.write(msg + "\n")
 
         # close log and hardware connections
+        print("Closing loggers...")
         logger_full.close()
         logger_table.close()
-        camera.release()
+
+        print("Disconnecting hardware...")
         smoothie.disconnect()
         vesc_engine.disconnect()
         gps.disconnect()
 
         # close transmitting connections
+        print("Closing transmitters...")
         sensor_processor.endSession()
         client.closeConnection()
         sensor_processor.stopServer()
