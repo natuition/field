@@ -165,7 +165,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
     # loop over all detected plants
     for box in plant_boxes:
-        # go to the view position
+        # go to the extraction position Y min
         smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
         smoothie.wait_for_all_actions_done()
 
@@ -332,21 +332,35 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     # main navigation control loop
     while True:
         # EXTRACTION CONTROL
+        start_t = time.time()
         frame = camera.get_image()
+        frame_t = time.time()
+
         plants_boxes = periphery_det.detect(frame)
+        per_det_t = time.time()
+
         debug_save_image(img_output_dir, "(periphery view scan M=" + str(current_working_mode) + ")", frame,
                          plants_boxes, undistorted_zone_radius, view_zone_points_cv)
+        msg = "View frame time: " + str(frame_t - start_t) + "\t\tPer. det. time: " + str(per_det_t - frame_t)
+        logger_full.write(msg + "\n")
 
         # slow mode
         if current_working_mode == working_mode_slow:
             if any_plant_in_zone(plants_boxes, working_zone_polygon):
                 vesc_engine.stop_moving()
                 time.sleep(0.2)
+
+                start_work_t = time.time()
                 frame = camera.get_image()
+                frame_t = time.time()
+
                 plants_boxes = precise_det.detect(frame)
+                pre_det_t = time.time()
 
                 debug_save_image(img_output_dir, "(precise view scan M=1)", frame, plants_boxes, undistorted_zone_radius,
                                  working_zone_points_cv)
+                msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. time: " + str(pre_det_t - frame_t)
+                logger_full.write(msg + "\n")
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
@@ -543,10 +557,13 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         prev_pos = cur_pos
         response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
 
-        if response != smoothie.RESPONSE_OK:
-            msg = "Smoothie response is not ok: " + response + "\n"
+        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+            msg = "Smoothie response is not ok: " + response
             print(msg)
-            logger_full.write(msg + "\n\n")
+            logger_full.write(msg + "\n")
+
+        msg = "Full tick time: " + str(time.time() - start_t)
+        logger_full.write(msg + "\n\n")
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
