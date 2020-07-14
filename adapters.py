@@ -954,15 +954,13 @@ class VescAdapter:
         response, consumed = pyvesc.decode(in_buf)
         if consumed == 0:
             return None
-        in_buf = in_buf[consumed:]
 
         if isinstance(response, pyvesc.GetValues):
             report_row = {}
             for field_name in report_field_names:
                 report_row[field_name] = getattr(response, field_name)
             return report_row
-        else:
-            print('Strange incoming message received')
+        return None
 
 
 class GPSUbloxAdapter:

@@ -405,6 +405,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
         # NAVIGATION CONTROL
+        nav_start_t = time.time()
         cur_pos = gps.get_last_position()
 
         if str(cur_pos) == str(prev_pos):
@@ -452,10 +453,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if cur_time - prev_maneuver_time < config.MANEUVERS_FREQUENCY:
             continue
         prev_maneuver_time = cur_time
-
-        msg = "Timestamp: " + str(cur_time)
-        # print(msg)
-        logger_full.write(msg + "\n")
 
         msg = "Prev: " + str(prev_pos) + " Cur: " + str(cur_pos) + " A: " + str(coords_from_to[0]) \
               + " B: " + str(coords_from_to[1])
@@ -562,7 +559,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             print(msg)
             logger_full.write(msg + "\n")
 
-        msg = "Full tick time: " + str(time.time() - start_t)
+        msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
 
