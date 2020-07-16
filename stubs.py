@@ -125,6 +125,9 @@ class SmoothieAdapterStub:
     def set_current_coordinates(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
         return self.RESPONSE_OK
 
+    def nav_turn_wheels_to(self, *args):
+        return self.RESPONSE_OK
+
 
 class Client():
     """
