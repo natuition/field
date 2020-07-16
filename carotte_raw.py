@@ -4,7 +4,7 @@ import connectors
 
 def main():
     print("Loading smoothie connector")
-    smoothie = connectors.SmoothieConnector(config.SMOOTHIE_HOST)
+    smoothie = connectors.SmoothieV11TelnetConnector(config.SMOOTHIE_HOST)
 
     print("Calibrating Z")
     smoothie.write("G28 Z1000")

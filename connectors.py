@@ -1,10 +1,9 @@
-#!/usr/bin/env python
-
 import telnetlib
+import serial
 import time
 
 
-class SmoothieConnector:
+class SmoothieV11TelnetConnector:
 
     def __init__(self, host: str):
         self._host = host
@@ -18,6 +17,8 @@ class SmoothieConnector:
         self.disconnect()
 
     def get_telnet(self):
+        """Only for debug!"""
+
         return self._tn
 
     def disconnect(self):
@@ -30,6 +31,7 @@ class SmoothieConnector:
             raise TypeError("invalid command type: should be str, received " + type(command).__name__)
         if command == "":
             raise ValueError("invalid command value: should not be an empty string")
+
         self._tn.write(command.encode("ascii") + b"\n")
 
     def read_until(self, value: str, timeout=None):
@@ -48,19 +50,33 @@ class SmoothieConnector:
     def read_eager(self):
         return self._tn.read_eager().decode()
 
-    def read_very_eager(self):
-        return self._tn.read_very_eager().decode()
 
+class SmoothieV11SerialConnector:
+    def __init__(self, port: str):
+        self._port = port
+        self._ser = serial.Serial(port)
 
-def _test():
-    g_code = "G0 X20 F200"
-    host = "192.168.2.222"
-    sc = SmoothieConnector(host)
+    def __enter__(self):
+        return self
 
-    ###
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
 
-    print("Done.")
+    def disconnect(self):
+        self._ser.close()
 
+    def get_serial(self):
+        """Only for debug!"""
 
-if __name__ == "__main__":
-    _test()
+        return self._ser
+
+    def write(self, command: str):
+        if type(command) != str:
+            raise TypeError("invalid command type: should be str, received " + type(command).__name__)
+        if command == "":
+            raise ValueError("invalid command value: should not be an empty string")
+
+        self._ser.write(command.encode("ascii") + b"\n")
+
+    def read_some(self):
+        return self._ser.readline().decode()

@@ -5,7 +5,7 @@ import adapters
 
 def main():
     print("Loading smoothie connector")
-    smoothie = connectors.SmoothieConnector(config.SMOOTHIE_HOST)
+    smoothie = connectors.SmoothieV11TelnetConnector(config.SMOOTHIE_HOST)
 
     print("Turning wheels left")
     smoothie.write("G0 A38 F1000")

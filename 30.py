@@ -5,7 +5,7 @@ import connectors
 
 def main():
     print("Loading smoothie connector")
-    smoothie = connectors.SmoothieConnector(config.SMOOTHIE_HOST)
+    smoothie = connectors.SmoothieV11TelnetConnector(config.SMOOTHIE_HOST)
 
     print("Moving forward")
     smoothie.write("G0 B16.3 F1000")

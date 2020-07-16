@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.13"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.14"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -67,7 +67,8 @@ GPS_POSITIONS_TO_KEEP = 1000
 # ======================================================================================================================
 # SMOOTHIE SETTINGS
 # ======================================================================================================================
-SMOOTHIE_HOST = "169.254.232.224"
+SMOOTHIE_HOST = "169.254.232.224"  # smoothie's ip address for telnet or port for usb serial connector
+SMOOTHIE_BACKEND = 2  # 1 = telnet, 2 = serial
 
 # EXTRACTION
 X_MIN = 0

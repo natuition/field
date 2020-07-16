@@ -12,10 +12,20 @@ import pyvesc
 
 class SmoothieAdapter:
     RESPONSE_OK = "ok\r\n"
-    RESPONSE_ALARM_LOCK = 'error:Alarm lock\n'
+    RESPONSE_ALARM_LOCK = "error:Alarm lock\n"
+    RESPONSE_HALT = "!!\r\n"
 
     def __init__(self, smoothie_host):
-        self._smc = connectors.SmoothieConnector(smoothie_host)
+        if type(smoothie_host) is not str:
+            raise TypeError("invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
+
+        if config.SMOOTHIE_BACKEND == 1:
+            self._smc = connectors.SmoothieV11TelnetConnector(smoothie_host)
+        elif config.SMOOTHIE_BACKEND == 2:
+            self._smc = connectors.SmoothieV11SerialConnector(smoothie_host)
+        else:
+            raise ValueError("wrong config.SMOOTHIE_BACKEND value: " + str(smoothie_host))
+
         self._sync_locker = multiprocessing.RLock()
         self._x_cur = multiprocessing.Value("d", 0)
         self._y_cur = multiprocessing.Value("d", 0)
@@ -40,11 +50,6 @@ class SmoothieAdapter:
 
         return self._smc
 
-    def try_get_response(self):
-        """Only for debug!"""
-
-        return self._smc.read_eager()
-
     def wait_for_all_actions_done(self):
         with self._sync_locker:
             self._smc.write("M400")
@@ -55,13 +60,13 @@ class SmoothieAdapter:
         with self._sync_locker:
             self._smc.write("M112")
             # "ok Emergency Stop Requested - reset or M999 required to exit HALT state\r\n"
-            return self._smc.read_some() + self._smc.read_eager()
+            return self._smc.read_some() + self._smc.read_some() if self._smc is connectors.SmoothieV11TelnetConnector else self._smc.read_some()
 
     def reset(self):
         with self._sync_locker:
             self._smc.write("M999")
             # "WARNING: After HALT you should HOME as position is currently unknown\nok\n"
-            return self._smc.read_some() + self._smc.read_eager()
+            return self._smc.read_some() + self._smc.read_some()
 
     def switch_to_relative(self):
         with self._sync_locker:
@@ -137,7 +142,7 @@ class SmoothieAdapter:
 
         with self._sync_locker:
             self._smc.write("M114.2")
-            response, coordinates = (self._smc.read_some() + self._smc.read_eager())[:-2].split(" ")[2:], {}
+            response, coordinates = (self._smc.read_some() + self._smc.read_some() if self._smc is connectors.SmoothieV11TelnetConnector else self._smc.read_some())[:-2].split(" ")[2:], {}
             for coord in response:
                 coordinates[coord[0]] = float(coord[2:])
                 if convert_to_mms and coord[0] in ["X", "Y"]:
