@@ -326,7 +326,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     prev_pos = gps.get_last_position()
 
     # set camera to the Y min
-    smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+    if res != smoothie.RESPONSE_OK:
+        msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
+        logger_full.write(msg + "\n")
     smoothie.wait_for_all_actions_done()
 
     # main navigation control loop
@@ -340,7 +343,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         per_det_t = time.time()
 
         debug_save_image(img_output_dir, "(periphery view scan M=" + str(current_working_mode) + ")", frame,
-                         plants_boxes, undistorted_zone_radius, view_zone_points_cv)
+                         plants_boxes, undistorted_zone_radius,
+                         working_zone_points_cv if current_working_mode == 1 else view_zone_points_cv)
         msg = "View frame time: " + str(frame_t - start_t) + "\t\tPer. det. time: " + str(per_det_t - frame_t)
         logger_full.write(msg + "\n")
 
@@ -368,8 +372,11 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             elif not any_plant_in_zone(plants_boxes, view_zone_polygon) and \
                     time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                 # set camera to the Y max
-                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
-                                        Y=config.Y_MAX / config.XY_COEFFICIENT_TO_MM)
+                res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                              Y=config.Y_MAX / config.XY_COEFFICIENT_TO_MM)
+                if res != smoothie.RESPONSE_OK:
+                    msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y max, smoothie response:\n" + res
+                    logger_full.write(msg + "\n")
                 current_working_mode = working_mode_switching
             vesc_engine.start_moving()
 
@@ -378,12 +385,15 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if any_plant_in_zone(plants_boxes, view_zone_polygon):
                 vesc_engine.stop_moving()
                 # set camera to the Y min
-                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
-                                        Y=config.Y_MIN)
+                res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                              Y=config.Y_MIN)
+                if res != smoothie.RESPONSE_OK:
+                    msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
+                    logger_full.write(msg + "\n")
                 smoothie.wait_for_all_actions_done()
                 current_working_mode = working_mode_slow
                 slow_mode_time = time.time()
-            elif smoothie.get_smoothie_current_coordinates()["Y"] + 1 > config.Y_MAX:
+            elif smoothie.get_smoothie_current_coordinates(False)["Y"] + config.XY_COEFFICIENT_TO_MM * 20 > config.Y_MAX:
                 current_working_mode = working_mode_fast
                 if not close_to_end:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST)
@@ -393,8 +403,11 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if any_plant_in_zone(plants_boxes, view_zone_polygon):
                 vesc_engine.stop_moving()
                 # set camera to the Y min
-                smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
-                                        Y=config.Y_MIN)
+                res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                              Y=config.Y_MIN)
+                if res != smoothie.RESPONSE_OK:
+                    msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
+                    logger_full.write(msg + "\n")
                 smoothie.wait_for_all_actions_done()
                 current_working_mode = working_mode_slow
                 slow_mode_time = time.time()
