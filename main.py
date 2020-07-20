@@ -811,6 +811,10 @@ def main():
                 print(msg)
                 logger_full.write(msg + "\n")
                 exit(1)
+            except FileNotFoundError:
+                msg = "Couldn't not find " + robotEN_JET.CURRENT_FIELD_PATH + " file."
+                logger_full.write(msg + "\n")
+                exit(1)
             if len(field_gps_coords) < 5:
                 msg = "Expected at least 4 gps points in " + robotEN_JET.CURRENT_FIELD_PATH + ", got " + \
                       str(len(field_gps_coords))
@@ -902,7 +906,7 @@ def main():
 
             msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
             # print(msg)
-            logger_full.write(msg + "\n")
+            logger_full.write(msg + "\n\n")
 
             move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
                                       client, logger_full, logger_table, report_field_names, used_points_history,
@@ -913,7 +917,7 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
     except KeyboardInterrupt:
-        msg = "Stopped by a keyboard interrupt (Ctrl + C)"
+        msg = "Stopped by a keyboard interrupt (Ctrl + C)\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
     except:

@@ -14,6 +14,7 @@ class SmoothieAdapter:
     RESPONSE_OK = "ok\r\n"
     RESPONSE_ALARM_LOCK = "error:Alarm lock\n"
     RESPONSE_HALT = "!!\r\n"
+    RESPONSE_WTF = "ok - ignored\n"
 
     def __init__(self, smoothie_host):
         if type(smoothie_host) is not str:
@@ -142,7 +143,7 @@ class SmoothieAdapter:
 
         with self._sync_locker:
             self._smc.write("M114.2")
-            response, coordinates = (self._smc.read_some() + self._smc.read_some() if self._smc is connectors.SmoothieV11TelnetConnector else self._smc.read_some())[:-2].split(" ")[2:], {}
+            response, coordinates = (self._smc.read_some() + self._smc.read_some() if type(self._smc) is connectors.SmoothieV11TelnetConnector else self._smc.read_some())[:-2].split(" ")[2:], {}
             for coord in response:
                 coordinates[coord[0]] = float(coord[2:])
                 if convert_to_mms and coord[0] in ["X", "Y"]:
@@ -929,7 +930,7 @@ class VescAdapter:
             time.sleep(self._check_freq)
 
     def apply_rpm(self, rpm):
-        if self._rpm != rpm:
+        if self._rpm != rpm:  # TODO: bug to fix: if rpm was set by set_rpm - it won't be applied on vesc
             self._rpm = rpm
             self._ser.write(pyvesc.encode(pyvesc.SetRPM(self._rpm)))
 
