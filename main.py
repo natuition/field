@@ -858,14 +858,6 @@ def main():
             exit(1)
 
         # load and connect to everything
-        print("Loading camera...")
-        camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
-                                                  config.CROP_H_TO, config.CV_ROTATE_CODE,
-                                                  config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
-                                                  config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                                  config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
-                                                  config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
-                                                  config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD)
         print("Loading periphery detector...")
         periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                                            config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
@@ -886,6 +878,14 @@ def main():
         print("Loading gps...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
         # gps = stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        print("Loading camera...")
+        camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                                  config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                                  config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                                  config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                                  config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                                  config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                                  config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD)
 
         # set smoothie's A axis to 0 (nav turn wheels)
         response = smoothie.set_current_coordinates(A=0)
