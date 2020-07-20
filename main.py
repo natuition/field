@@ -19,7 +19,8 @@ import numpy as np
 import stubs
 
 if config.RECEIVE_FIELD_FROM_RTK:
-    import robotEN_JET
+    # import robotEN_JET as rtk
+    import robotEN_JETSON as rtk
 
 
 def create_directories(*args):
@@ -804,31 +805,41 @@ def main():
 
         # load field coordinates
         if config.RECEIVE_FIELD_FROM_RTK:
+            msg = "Loading field coordinates from RTK"
+            logger_full.write(msg + "\n")
+
             try:
-                field_gps_coords = load_coordinates(robotEN_JET.CURRENT_FIELD_PATH)
+                field_gps_coords = load_coordinates(rtk.CURRENT_FIELD_PATH)
             except AttributeError:
                 msg = "Couldn't get field file name from RTK script as it is wasn't assigned there."
                 print(msg)
                 logger_full.write(msg + "\n")
                 exit(1)
             except FileNotFoundError:
-                msg = "Couldn't not find " + robotEN_JET.CURRENT_FIELD_PATH + " file."
+                msg = "Couldn't not find " + rtk.CURRENT_FIELD_PATH + " file."
+                print(msg)
                 logger_full.write(msg + "\n")
                 exit(1)
             if len(field_gps_coords) < 5:
-                msg = "Expected at least 4 gps points in " + robotEN_JET.CURRENT_FIELD_PATH + ", got " + \
+                msg = "Expected at least 4 gps points in " + rtk.CURRENT_FIELD_PATH + ", got " + \
                       str(len(field_gps_coords))
                 print(msg)
                 logger_full.write(msg + "\n")
                 exit(1)
-            field_gps_coords = nav.corner_points(field_gps_coords)
+            field_gps_coords = nav.corner_points(field_gps_coords, config.FILTER_MAX_DIST, config.FILTER_MIN_DIST)
         else:
+            msg = "Loading " + config.INPUT_GPS_FIELD_FILE
+            logger_full.write(msg + "\n")
+
             field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
-            if len(field_gps_coords) != 4:
-                msg = "Expected 4 gps points in " + config.INPUT_GPS_FIELD_FILE + ", got " + str(len(field_gps_coords))
-                print(msg)
-                logger_full.write(msg + "\n")
-                exit(1)
+
+        # check field corner points count
+        if len(field_gps_coords) != 4:
+            msg = "Expected 4 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(field_gps_coords)
+            print(msg)
+            logger_full.write(msg + "\n")
+            exit(1)
+
         field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
 
         # generate path points

@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.14"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.15"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -35,6 +35,8 @@ SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history)
 SPIRAL_SIDES_INTERVAL = 457
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
 PREV_CUR_POINT_MIN_DIST = 100  # pass by cur points dist between them and prev point is lesser than this, mms
+FILTER_MAX_DIST = 5000  # maximum allowable distance between consecutive points (in millimeters)
+FILTER_MIN_DIST = 600  # minimum allowable distance between consecutive points (in millimeters)
 
 
 # ======================================================================================================================

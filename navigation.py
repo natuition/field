@@ -1,5 +1,7 @@
 import math
 from haversine import haversine
+import numpy as np
+from scipy.spatial import ConvexHull
 
 
 class GPSComputing:
@@ -254,7 +256,7 @@ class GPSComputing:
         list_point = [[list_lat[i], list_long[i]] for i in range(0, len(list_long))]
         return list_point
 
-    def corner_points(self, gps_points):
+    def corner_points_old(self, gps_points):
         """
         Function for finding corner points of a quadrangle in a given list of GPS points
         :param gps_points: list of GPS-points
@@ -289,6 +291,80 @@ class GPSComputing:
                 if angle_abc < low_level or angle_abc > high_level:
                     angle_abd = self.get_angle(b, a, b, d)
                     if angle_abd < low_level or angle_abc > high_level:
+                        corner_points.append([b[1], b[0]])
+        return self._corner_sort(corner_points)
+
+    def corner_points(self, gps_points, filter_max_dist, filter_min_dist):
+        """
+        Function for filtering and finding corner points of a quadrangle in a given list of GPS points
+        :param gps_points: list of GPS-points
+        :param filter_max_dist: maximum allowable distance between consecutive points (in millimeters)
+        :param filter_min_dist: minimum allowable distance between consecutive points (in millimeters)
+        :return: list of sorted corner GPS-points
+        """
+
+        gps_points = [gps_points[len(gps_points) - 1]] + gps_points
+        i = 0
+        while i < (len(gps_points) - 1):
+            distance = self.get_distance(gps_points[i], gps_points[i + 1])
+            if distance >= filter_max_dist or distance <= filter_min_dist:
+                gps_points.remove(gps_points[i])
+            else:
+                i += 1
+
+        temp_points = np.array(gps_points, dtype=np.float)
+        hull = ConvexHull(temp_points)
+        hull_indices = np.unique(hull.simplices.flat)
+        hull_pts = temp_points[hull_indices, :]
+        filter_points = hull_pts.tolist()
+
+        while True:
+            length = len(filter_points)
+            corners = self._test_corner(filter_points)
+            for i in range(len(corners)):
+                if i == len(corners) - 1:
+                    distance = self.get_distance(corners[i], corners[0])
+                else:
+                    distance = self.get_distance(corners[i], corners[i + 1])
+                if distance < 5000:
+                    filter_points.remove(corners[i])
+
+            if len(filter_points) == length:
+                break
+        return corners
+
+    def _test_corner(self, gps_points):
+        """
+        Function for finding corner points of a quadrangle in a given list of GPS points
+        :param gps_points: list of GPS-points
+        :return: list of sorted corner GPS-points
+        """
+
+        corner_points = []
+        points = [gps_points[len(gps_points) - 2]] + [gps_points[len(gps_points) - 1]] + gps_points
+        level = 150
+        while True:
+            if len(corner_points) == 4:
+                break
+            elif len(corner_points) < 4:
+                level += 1
+            elif len(corner_points) > 4:
+                level -= 1
+            corner_points = []
+            for i in range(1, len(points) - 1):
+                a = [points[i - 1][1], points[i - 1][0]]
+                b = [points[i][1], points[i][0]]
+                c = [points[i + 1][1], points[i + 1][0]]
+                if i == len(points) - 2:
+                    d = [points[2][1], points[2][0]]
+                else:
+                    d = [points[i + 2][1], points[i + 2][0]]
+
+                angle_abc = abs(self.get_angle(b, a, b, c))
+
+                if angle_abc < level:
+                    angle_abd = abs(self.get_angle(b, a, b, d))
+                    if angle_abd < level:
                         corner_points.append([b[1], b[0]])
         return self._corner_sort(corner_points)
 
