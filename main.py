@@ -196,7 +196,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=-42)  # TODO: calculation -Z depending on box size
+                    res = smoothie.custom_move_for(F=1700, Z=-50)  # TODO: calculation -Z depending on box size
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
@@ -228,7 +228,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                                 break
 
                             # extraction, cork down
-                            res = smoothie.custom_move_for(F=1700, Z=-42)  # TODO: calculation -Z depending on box size
+                            res = smoothie.custom_move_for(F=1700, Z=-50)  # TODO: calculation -Z depending on box size
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 msg = "Couldn't move the extractor down, smoothie error occurred: " + res
@@ -378,6 +378,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 if res != smoothie.RESPONSE_OK:
                     msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y max, smoothie response:\n" + res
                     logger_full.write(msg + "\n")
+                smoothie.wait_for_all_actions_done()
                 current_working_mode = working_mode_switching
             vesc_engine.start_moving()
 
