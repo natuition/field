@@ -397,7 +397,7 @@ def main():
     logger_table = utility.Logger("table log " + get_current_time() + ".csv")
 
     # sensors picking
-    report_field_names = ['elapsed_time', 'temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
+    report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
                           'avg_input_current', 'rpm', 'input_voltage']
     report_file = open('report.csv', 'w', newline='')
     report_writer = csv.DictWriter(report_file, fieldnames=report_field_names)
