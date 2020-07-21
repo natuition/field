@@ -1,5 +1,9 @@
 """Spiral movement over given by ABCD points area"""
 
+import numpy as np
+from matplotlib.patches import Polygon
+import detection
+import cv2 as cv
 import os
 import adapters
 import navigation
@@ -12,6 +16,54 @@ import SensorProcessing
 import socketForRTK
 from socketForRTK.Client import Client
 import csv
+
+
+def create_directories(*args):
+    """Creates directories, receives any args count, each arg is separate dir"""
+
+    for path in args:
+        if not os.path.exists(path):
+            try:
+                os.mkdir(path)
+            except OSError:
+                print("Creation of the directory %s failed" % path)
+            else:
+                print("Successfully created the directory %s " % path)
+        else:
+            print("Directory %s is already exists" % path)
+
+
+def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius):
+    """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
+
+    return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, (0, 0, 255), thickness=3)
+
+
+def draw_zone_poly(image, np_poly_points):
+    """Draws received polygon on image. Used for drawing working zone edges on photo"""
+
+    return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
+
+
+def save_image(path_to_save, image, counter, session_label, sep=" "):
+    """
+    Assembles image file name and saves received image under this name to specified directory.
+    Counter and session label may be passed if was set to None.
+    """
+
+    session_label = sep + session_label if session_label else ""
+    counter = sep + str(counter) if counter or counter == 0 else ""
+    cv.imwrite(path_to_save + get_current_time() + session_label + counter + ".jpg", image)
+
+
+def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
+    # debug image saving
+    if config.SAVE_DEBUG_IMAGES:
+        # img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+        # frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+        frame = draw_zone_poly(frame, poly_zone_points_cv)
+        frame = detection.draw_boxes(frame, plants_boxes)
+        save_image(img_output_dir, frame, None, label)
 
 
 def load_coordinates(file_path):
@@ -52,7 +104,8 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
 def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters.GPSUbloxAdapter,
                   vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, logger_full: utility.Logger,
                   client, nav: navigation.GPSComputing, raw_angles_history: list, report_writer, report_field_names,
-                  logger_table: utility.Logger):
+                  logger_table: utility.Logger, periphery_detector: detection.YoloOpenCVDetection,
+                  camera: adapters.CameraAdapterIMX219_170, working_zone_points_cv):
     """
     Moves to given point.
 
@@ -77,6 +130,15 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
 
     # main navigation control loop
     while True:
+        # DETECTION
+        frame = camera.get_image()
+        plants_boxes = periphery_detector.detect(frame)
+        if len(plants_boxes) > 0:
+            if config.SAVE_DEBUG_IMAGES:
+                debug_save_image(config.DEBUG_IMAGES_PATH, "", frame, plants_boxes, config.UNDISTORTED_ZONE_RADIUS,
+                                 working_zone_points_cv)
+
+        # NAVIGATION
         cur_pos = gps.get_fresh_position()
         used_points_history.append(cur_pos.copy())
 
@@ -388,6 +450,13 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
 
 
 def main():
+    create_directories(config.DEBUG_IMAGES_PATH)
+
+    working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
+    working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
+    view_zone_polygon = Polygon(config.VIEW_ZONE_POLY_POINTS)
+    view_zone_points_cv = np.array(config.VIEW_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
+
     nav = navigation.GPSComputing()
     used_points_history = []
     raw_angles_history = []
@@ -418,10 +487,27 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
 
+        print("Loading periphery detector...")
+        periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
+                                                           config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
+                                                           config.PERIPHERY_CONFIDENCE_THRESHOLD,
+                                                           config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
+                                                           config.PERIPHERY_DNN_TARGET)
+        print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
+        print("Loading vesc...")
         vesc_engine = adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
+        print("Loading GPS...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        print("Loading camera...")
+        camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                                  config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                                  config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                                  config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                                  config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                                  config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                                  config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD)
 
         # set smoothie's A axis to 0 (nav turn wheels)
         response = smoothie.set_current_coordinates(A=0)
@@ -477,7 +563,8 @@ def main():
             logger_full.write(msg + "\n")
 
             move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger_full, client, nav,
-                          raw_angles_history, report_writer, report_field_names, logger_table)
+                          raw_angles_history, report_writer, report_field_names, logger_table, periphery_detector,
+                          camera, working_zone_polygon)
 
         msg = "Done!"
         print(msg)
@@ -491,6 +578,18 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
     finally:
+        try:
+            print("Stopping movement...")
+            vesc_engine.stop_moving()
+        except:
+            pass
+
+        try:
+            print("Releasing camera...")
+            camera.release()
+        except:
+            pass
+
         # save log data
         if len(used_points_history) > 0:
             save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")
