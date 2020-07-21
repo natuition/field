@@ -72,7 +72,7 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
     prev_maneuver_time = time.time()
     prev_point = gps.get_fresh_position()  # TODO: maybe it's ok to get last position instead of waiting for fresh
-    vesc_engine.apply_rpm(int(config.VESC_RPM / 2))
+    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
     vesc_engine.start_moving()
 
     # main navigation control loop
@@ -112,9 +112,9 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         if config.USE_SPEED_LIMIT:
             distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
             if distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD:
-                vesc_engine.apply_rpm(int(config.VESC_RPM / 2))
+                vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
             else:
-                vesc_engine.apply_rpm(config.VESC_RPM)
+                vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
         # do maneuvers not more often than specified value
         cur_time = time.time()
@@ -421,7 +421,7 @@ def main():
         logger_full.write(msg + "\n")
 
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
-        vesc_engine = adapters.VescAdapter(int(config.VESC_RPM / 2), config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
+        vesc_engine = adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
 
