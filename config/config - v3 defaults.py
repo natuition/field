@@ -88,7 +88,7 @@ Z_F_MAX = 1000  # TODO: obsolete, need to update
 XY_COEFFICIENT_TO_MM = 0.40776699029126213592233009708738
 Z_COEFFICIENT_TO_MM = 1  # not used yet
 
-EXTRACTION_Z = 100  # TODO: obsolete and not used, need to update
+EXTRACTION_Z = -50  # value that passed to smoothie when doing plant extration
 
 # CALIBRATION
 USE_X_AXIS_CALIBRATION = False

@@ -16,9 +16,11 @@ from matplotlib.patches import Polygon
 import math
 import cv2 as cv
 import numpy as np
+import stubs
 
 if config.RECEIVE_FIELD_FROM_RTK:
-    import robotEN_JET
+    # import robotEN_JET as rtk
+    import robotEN_JETSON as rtk
 
 
 def create_directories(*args):
@@ -107,19 +109,17 @@ def min_plant_box_dist(boxes: list, current_px_x, current_px_y):
     return min(boxes, key=lambda box: box.get_distance_from(current_px_x, current_px_y))
 
 
-def any_plant_in_working_zone(plant_boxes: list, working_zone_polygon: Polygon):
+def any_plant_in_zone(plant_boxes: list, zone_polygon: Polygon):
     """
     Returns True if at least one plant box center is in given polygon, False otherwise.
     :param plant_boxes:
-    :param working_zone_polygon:
+    :param zone_polygon:
     :return:
     """
 
-    if len(plant_boxes) == 0:
-        return False
     for box in plant_boxes:
         box_x, box_y = box.get_center_points()
-        if is_point_in_poly(box_x, box_y, working_zone_polygon):
+        if is_point_in_poly(box_x, box_y, zone_polygon):
             return True
     return False
 
@@ -147,6 +147,16 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
     cv.imwrite(path_to_save + get_current_time() + session_label + counter + ".jpg", image)
 
 
+def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
+    # debug image saving
+    if config.SAVE_DEBUG_IMAGES:
+        img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+        frame = draw_zone_poly(frame, poly_zone_points_cv)
+        frame = detection.draw_boxes(frame, plants_boxes)
+        save_image(img_output_dir, frame, None, label)
+
+
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                        precise_det: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
                        plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir):
@@ -156,8 +166,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
     # loop over all detected plants
     for box in plant_boxes:
-        # go to the view position
-        smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
+        # go to the extraction position Y min
+        smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
         smoothie.wait_for_all_actions_done()
 
         box_x, box_y = box.get_center_points()
@@ -186,7 +196,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=-42)  # TODO: calculation -Z depending on box size
+                    res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
@@ -218,7 +228,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                                 break
 
                             # extraction, cork down
-                            res = smoothie.custom_move_for(F=1700, Z=-42)  # TODO: calculation -Z depending on box size
+                            res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 msg = "Couldn't move the extractor down, smoothie error occurred: " + res
@@ -270,8 +280,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
         else:
             print("Skipped", str(box), "(not in working area)")
 
-    # set camera back to the view position
-    smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
+    # set camera back to the Y min
+    smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
     smoothie.wait_for_all_actions_done()
 
 
@@ -279,8 +289,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                               periphery_det: detection.YoloOpenCVDetection, precise_det: detection.YoloOpenCVDetection,
                               client, logger_full: utility.Logger, logger_table: utility.Logger, report_field_names,
-                              used_points_history: list, nav: navigation.GPSComputing, working_zone_polygon,
-                              undistorted_zone_radius, working_zone_points_cv, img_output_dir):
+                              used_points_history: list, undistorted_zone_radius, working_zone_polygon,
+                              working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
+                              nav: navigation.GPSComputing):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -306,49 +317,60 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     raw_angles_history = []
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
     prev_maneuver_time = time.time()
-    prev_point = gps.get_last_position()
-    vesc_engine.apply_rpm(int(config.VESC_RPM_SLOW))
-    vesc_engine.start_moving()
+    prev_pos = gps.get_last_position()
+
+    # set camera to the Y min
+    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+    if res != smoothie.RESPONSE_OK:
+        msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
+        logger_full.write(msg + "\n")
+    smoothie.wait_for_all_actions_done()
 
     # main navigation control loop
     while True:
-        frame = camera.get_image()
-        plants_boxes = periphery_det.detect(frame)
+        # EXTRACTION CONTROL
+        if not vesc_engine.is_movement_allowed():
+            # check if need to wait for camera
+            time_passed_after_stop = time.time() - vesc_engine.get_last_stop_time()
+            if time_passed_after_stop < 0.2:
+                time.sleep(0.2 - time_passed_after_stop)
 
-        # debug image saving
-        if config.SAVE_DEBUG_IMAGES:
-            img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
-            frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
-            frame = draw_zone_poly(frame, working_zone_points_cv)
-            frame = detection.draw_boxes(frame, plants_boxes)
-            save_image(img_output_dir, frame, None, "(view scan)")
-
-        # stop and extract all plants if there any in working zone
-        if len(plants_boxes) > 0 and any_plant_in_working_zone(plants_boxes, working_zone_polygon):
-            vesc_engine.stop_moving()  # TODO: robot is not stopping instantly (maybe add here some engines backward force and sleep time for camera?)
-
-            # rescan after we stopped
+            start_t = time.time()
             frame = camera.get_image()
+            frame_t = time.time()
+
             plants_boxes = periphery_det.detect(frame)
+            per_det_t = time.time()
 
-            # debug image saving
-            if config.SAVE_DEBUG_IMAGES:
-                img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
-                frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
-                frame = draw_zone_poly(frame, working_zone_points_cv)
-                frame = detection.draw_boxes(frame, plants_boxes)
-                save_image(img_output_dir, frame, None, "(view scan after vesc stop)")
+            debug_save_image(img_output_dir, "(periphery view scan)", frame, plants_boxes, undistorted_zone_radius,
+                             working_zone_points_cv)
+            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPer. det. time: " + str(per_det_t - frame_t)
+            logger_full.write(msg + "\n")
 
-            # do extractions if there still any plants in working zone
-            if len(plants_boxes) > 0 and any_plant_in_working_zone(plants_boxes, working_zone_polygon):
-                extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
-                                   undistorted_zone_radius, working_zone_points_cv, img_output_dir)
+            if any_plant_in_zone(plants_boxes, working_zone_polygon):
+                start_work_t = time.time()
+                frame = camera.get_image()
+                frame_t = time.time()
+
+                plants_boxes = precise_det.detect(frame)
+                pre_det_t = time.time()
+
+                debug_save_image(img_output_dir, "(precise view scan)", frame, plants_boxes, undistorted_zone_radius,
+                                 working_zone_points_cv)
+                msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. time: " + str(pre_det_t - frame_t)
+                logger_full.write(msg + "\n")
+
+                if any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
+                                       undistorted_zone_radius, working_zone_points_cv, img_output_dir)
+
             vesc_engine.start_moving()
 
-        # navigation control
+        # NAVIGATION CONTROL
+        nav_start_t = time.time()
         cur_pos = gps.get_last_position()
 
-        if str(cur_pos) == str(prev_point):
+        if str(cur_pos) == str(prev_pos):
             # msg = "Got the same position, added to history, calculations skipped. Am I stuck?"
             # print(msg)
             # logger_full.write(msg + "\n")
@@ -378,13 +400,15 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             logger_full.write(msg + "\n")
             break
 
+        # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
+        # (too close points in the same position can produce false huge angles)
+        if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
+            continue
+
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
             distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
-            if distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD:
-                vesc_engine.apply_rpm(int(config.VESC_RPM_SLOW))
-            else:
-                vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+            close_to_end = distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD
 
         # do maneuvers not more often than specified value
         cur_time = time.time()
@@ -392,16 +416,12 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             continue
         prev_maneuver_time = cur_time
 
-        msg = "Timestamp: " + str(cur_time)
-        # print(msg)
-        logger_full.write(msg + "\n")
-
-        msg = "Prev: " + str(prev_point) + " Cur: " + str(cur_pos) + " A: " + str(coords_from_to[0]) \
+        msg = "Prev: " + str(prev_pos) + " Cur: " + str(cur_pos) + " A: " + str(coords_from_to[0]) \
               + " B: " + str(coords_from_to[1])
         # print(msg)
         logger_full.write(msg + "\n")
 
-        raw_angle = nav.get_angle(prev_point, cur_pos, cur_pos, coords_from_to[1])
+        raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
 
         # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
@@ -493,13 +513,16 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             msg = msg[:-1]
         logger_table.write(msg + "\n")
 
-        prev_point = cur_pos
+        prev_pos = cur_pos
         response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
 
-        if response != smoothie.RESPONSE_OK:
-            msg = "Smoothie response is not ok: " + response + "\n"
+        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+            msg = "Smoothie response is not ok: " + response
             print(msg)
-            logger_full.write(msg + "\n\n")
+            logger_full.write(msg + "\n")
+
+        msg = "Nav calc time: " + str(time.time() - nav_start_t)
+        logger_full.write(msg + "\n\n")
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -700,6 +723,8 @@ def main():
 
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
+    view_zone_polygon = Polygon(config.VIEW_ZONE_POLY_POINTS)
+    view_zone_points_cv = np.array(config.VIEW_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     nav = navigation.GPSComputing()
     used_points_history = []
     logger_full = utility.Logger("full log " + get_current_time() + ".txt")
@@ -728,27 +753,41 @@ def main():
 
         # load field coordinates
         if config.RECEIVE_FIELD_FROM_RTK:
+            msg = "Loading field coordinates from RTK"
+            logger_full.write(msg + "\n")
+
             try:
-                field_gps_coords = load_coordinates(robotEN_JET.CURRENT_FIELD_PATH)
+                field_gps_coords = load_coordinates(rtk.CURRENT_FIELD_PATH)
             except AttributeError:
                 msg = "Couldn't get field file name from RTK script as it is wasn't assigned there."
                 print(msg)
                 logger_full.write(msg + "\n")
                 exit(1)
+            except FileNotFoundError:
+                msg = "Couldn't not find " + rtk.CURRENT_FIELD_PATH + " file."
+                print(msg)
+                logger_full.write(msg + "\n")
+                exit(1)
             if len(field_gps_coords) < 5:
-                msg = "Expected at least 4 gps points in " + robotEN_JET.CURRENT_FIELD_PATH + ", got " + \
+                msg = "Expected at least 4 gps points in " + rtk.CURRENT_FIELD_PATH + ", got " + \
                       str(len(field_gps_coords))
                 print(msg)
                 logger_full.write(msg + "\n")
                 exit(1)
-            field_gps_coords = nav.corner_points(field_gps_coords)
+            field_gps_coords = nav.corner_points(field_gps_coords, config.FILTER_MAX_DIST, config.FILTER_MIN_DIST)
         else:
+            msg = "Loading " + config.INPUT_GPS_FIELD_FILE
+            logger_full.write(msg + "\n")
+
             field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
-            if len(field_gps_coords) != 4:
-                msg = "Expected 4 gps points in " + config.INPUT_GPS_FIELD_FILE + ", got " + str(len(field_gps_coords))
-                print(msg)
-                logger_full.write(msg + "\n")
-                exit(1)
+
+        # check field corner points count
+        if len(field_gps_coords) != 4:
+            msg = "Expected 4 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(field_gps_coords)
+            print(msg)
+            logger_full.write(msg + "\n")
+            exit(1)
+
         field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
 
         # generate path points
@@ -767,14 +806,6 @@ def main():
             exit(1)
 
         # load and connect to everything
-        print("Loading camera...")
-        camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
-                                                  config.CROP_H_TO, config.CV_ROTATE_CODE,
-                                                  config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
-                                                  config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                                  config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
-                                                  config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
-                                                  config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD)
         print("Loading periphery detector...")
         periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                                            config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
@@ -790,10 +821,19 @@ def main():
         print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
         print("Loading vesc...")
-        vesc_engine = adapters.VescAdapter(int(config.VESC_RPM_SLOW), config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
+        vesc_engine = adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         print("Loading gps...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        # gps = stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        print("Loading camera...")
+        camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                                  config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                                  config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                                  config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                                  config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                                  config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                                  config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD)
 
         # set smoothie's A axis to 0 (nav turn wheels)
         response = smoothie.set_current_coordinates(A=0)
@@ -801,10 +841,6 @@ def main():
             msg = "Failed to set A=0 on smoothie (turning wheels init position), response message:\n" + response
             print(msg)
             logger_full.write(msg + "\n")
-
-        # set camera to the view position
-        smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2, Y=config.Y_MIN)
-        smoothie.wait_for_all_actions_done()
 
         # ask permission to start moving
         msg = "Initializing done. Press enter to start moving."
@@ -829,26 +865,36 @@ def main():
 
             msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
             # print(msg)
-            logger_full.write(msg + "\n")
+            logger_full.write(msg + "\n\n")
 
             move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
-                                      client, logger_full, logger_table, report_field_names, used_points_history, nav,
-                                      working_zone_polygon, config.UNDISTORTED_ZONE_RADIUS, working_zone_points_cv,
-                                      config.DEBUG_IMAGES_PATH)
+                                      client, logger_full, logger_table, report_field_names, used_points_history,
+                                      config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon, working_zone_points_cv,
+                                      view_zone_polygon, view_zone_points_cv, config.DEBUG_IMAGES_PATH, nav)
 
         msg = "Work is done."
         print(msg)
         logger_full.write(msg + "\n")
     except KeyboardInterrupt:
-        msg = "Stopped by a keyboard interrupt (Ctrl + C)"
+        msg = "Stopped by a keyboard interrupt (Ctrl + C)\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-    except Exception:
+    except:
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
     finally:
+        # try emergency stop
+        try:
+            vesc_engine.stop_moving()
+        except:
+            pass
+
+        print("Releasing camera...")
+        camera.release()
+
         # save log data
+        print("Saving positions histories...")
         if len(used_points_history) > 0:
             save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")  # TODO: don't accumulate a lot of points - write each of them to file as soon as they come
         else:
@@ -856,23 +902,26 @@ def main():
             print(msg)
             logger_full.write(msg + "\n")
 
-        adapter_points_history = gps.get_last_positions_list()
+        adapter_points_history = gps.get_last_positions_list()  # TODO: reduce history positions to 1 to save RAM
         if len(adapter_points_history) > 0:
-            save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")  # TODO: reduce history positions to 1 to save RAM
+            save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
         else:
             msg = "adapter_gps_history list has 0 elements!"
             print(msg)
             logger_full.write(msg + "\n")
 
         # close log and hardware connections
+        print("Closing loggers...")
         logger_full.close()
         logger_table.close()
-        camera.release()
+
+        print("Disconnecting hardware...")
         smoothie.disconnect()
         vesc_engine.disconnect()
         gps.disconnect()
 
         # close transmitting connections
+        print("Closing transmitters...")
         sensor_processor.endSession()
         client.closeConnection()
         sensor_processor.stopServer()

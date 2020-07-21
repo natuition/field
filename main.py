@@ -196,7 +196,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=-50)  # TODO: calculation -Z depending on box size
+                    res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         print("Couldn't move the extractor down, smoothie error occurred:", res)
@@ -228,7 +228,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                                 break
 
                             # extraction, cork down
-                            res = smoothie.custom_move_for(F=1700, Z=-50)  # TODO: calculation -Z depending on box size
+                            res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 msg = "Couldn't move the extractor down, smoothie error occurred: " + res
@@ -558,7 +558,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         s = ","
         msg = str(gps_quality) + s + str(raw_angle) + s + str(angle_kp_ki) + s + str(order_angle_sm) + s + \
               str(sum_angles) + s + str(distance) + s + str(ad_wheels_pos) + s + str(sm_wheels_pos)
-        vesc_data = vesc_engine.pick_sensors_data(report_field_names)
+        vesc_data = vesc_engine.get_sensors_data(report_field_names)
         if vesc_data is not None:
             msg += s
             for key in vesc_data:
@@ -874,7 +874,7 @@ def main():
         print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
         print("Loading vesc...")
-        vesc_engine = adapters.VescAdapter(int(config.VESC_RPM_SLOW), config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
+        vesc_engine = adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         print("Loading gps...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)

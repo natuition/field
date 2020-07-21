@@ -875,9 +875,10 @@ class VescAdapter:
         self._moving_time = moving_time
         self._alive_freq = alive_freq
         self._check_freq = check_freq
-        self._stop_time = self._next_alive_time = None
+        self._start_time = self._next_alive_time = None
         self._allow_movement = False
         self._keep_thread_alive = True
+        self._last_stop_time = 0
 
         self._ser.flushInput()
         self._ser.flushOutput()
@@ -907,15 +908,16 @@ class VescAdapter:
                         self._next_alive_time = time.time() + self._alive_freq
                         self._ser.write(pyvesc.encode(pyvesc.SetAlive))
 
-                    if time.time() - self._stop_time > self._moving_time:
+                    if time.time() - self._start_time > self._moving_time:
                         self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
+                        self._last_stop_time = time.time()
                         self._allow_movement = False
                 time.sleep(self._check_freq)
         except serial.SerialException as ex:
             print(ex)
 
     def start_moving(self):
-        self._stop_time = self._next_alive_time = time.time()
+        self._start_time = self._next_alive_time = time.time()
         self._ser.write(pyvesc.encode(pyvesc.SetRPM(self._rpm)))
         self._allow_movement = True
 
@@ -924,9 +926,7 @@ class VescAdapter:
         self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
 
     def wait_for_stop(self):
-        while True:
-            if not self._allow_movement:
-                return
+        while self._allow_movement:
             time.sleep(self._check_freq)
 
     def apply_rpm(self, rpm):
@@ -949,7 +949,10 @@ class VescAdapter:
     def is_movement_allowed(self):
         return self._allow_movement
 
-    def pick_sensors_data(self, report_field_names):
+    def get_last_stop_time(self):
+        return self._last_stop_time
+
+    def get_sensors_data(self, report_field_names):
         self._ser.write(pyvesc.encode_request(pyvesc.GetValues))
         in_buf = b''
         while self._ser.in_waiting > 0:

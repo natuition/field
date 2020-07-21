@@ -215,7 +215,7 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
         s = ","
         msg = str(gps_quality) + s + str(raw_angle) + s + str(angle_kp_ki) + s + str(order_angle_sm) + s + \
               str(sum_angles) + s + str(distance) + s + str(ad_wheels_pos) + s + str(sm_wheels_pos)
-        vesc_data = vesc_engine.pick_sensors_data(report_field_names)
+        vesc_data = vesc_engine.get_sensors_data(report_field_names)
         if vesc_data is not None:
             msg += s
             for key in vesc_data:
