@@ -72,7 +72,7 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
     prev_maneuver_time = time.time()
     prev_point = gps.get_fresh_position()  # TODO: maybe it's ok to get last position instead of waiting for fresh
-    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+    vesc_engine.set_rpm(config.VESC_RPM_SLOW)
     vesc_engine.start_moving()
 
     # main navigation control loop
@@ -230,8 +230,6 @@ def move_to_point(coords_from_to: list, used_points_history: list, gps: adapters
             msg = "Smoothie response is not ok: " + response + "\n"
             print(msg)
             logger_full.write(msg + "\n\n")
-
-        # vesc_engine.pick_sensors_data(report_writer, report_field_names)
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
