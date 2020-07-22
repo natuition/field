@@ -159,8 +159,12 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                        precise_det: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
-                       plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir):
+                       plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir,
+                       logger_full: utility.Logger):
     """Extract all plants found in current position"""
+
+    msg = "Extracting " + str(len(plant_boxes)) + " plants"
+    logger_full.write(msg + "\n")
 
     img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
 
@@ -180,7 +184,9 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                 # if plant inside undistorted zone
                 if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, config.UNDISTORTED_ZONE_RADIUS):
-                    print("Plant is in undistorted zone")
+                    msg = "Plant " + str(box) + " is in undistorted zone"
+                    logger_full.write(msg + "\n")
+
                     # calculate values to move camera over a plant
                     sm_x = px_to_smoothie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
                     sm_y = -px_to_smoothie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
@@ -192,14 +198,16 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move cork over plant, smoothie error occurred:", res)
+                        msg = "Couldn't move cork over plant, smoothie error occurred:\n" + res
+                        logger_full.write(msg + "\n")
                         break
 
                     # extraction, cork down
                     res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move the extractor down, smoothie error occurred:", res)
+                        msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
+                        logger_full.write(msg + "\n")
                         break
 
                     # extraction, cork up
@@ -208,10 +216,11 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     if res != smoothie.RESPONSE_OK:
                         msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
                               "emergency exit as I don't want break corkscrew."
-                        print(msg)
+                        logger_full.write(msg + "\n")
                         exit(1)
 
                     # Daisy additional corners extraction
+                    """
                     if box.get_name() == "Daisy":  # TODO: need to create flexible extraction method choosing (maybe dict of functions)
                         box_x_half, box_y_half = box.get_sizes()
                         box_x_half, box_y_half = int(box_x_half / 2 / config.ONE_MM_IN_PX), \
@@ -243,10 +252,14 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                                       "emergency exit as I don't want break corkscrew."
                                 print(msg)
                                 exit(1)
+                        """
                     break
 
                 # if outside undistorted zone but in working zone
                 else:
+                    msg = "Plant is in working zone, trying to get closer"
+                    logger_full.write(msg + "\n")
+
                     # calculate values for move camera closer to a plant
                     control_point = get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
                     sm_x, sm_y = control_point[2], control_point[3]
@@ -255,7 +268,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
-                        print("Couldn't move to plant, smoothie error occurred:", res)
+                        msg = "Couldn't move camera closer to plant, smoothie error occurred:\n" + res
+                        logger_full.write(msg + "\n")
                         break
 
                     # make new photo and re-detect plants
@@ -264,7 +278,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # check case if no plants detected
                     if len(temp_plant_boxes) == 0:
-                        print("No plants detected (plant was in working zone before), trying to move on next item")
+                        msg = "No plants detected (plant was in working zone before), trying to move on next item"
+                        logger_full.write(msg + "\n")
                         break
 
                     # debug image saving
@@ -278,7 +293,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
         # if not in working zone
         else:
-            print("Skipped", str(box), "(not in working area)")
+            msg = "Skipped " + str(box) + " (not in working area)"
+            logger_full.write(msg + "\n")
 
     # set camera back to the Y min
     smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
@@ -362,7 +378,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
-                                       undistorted_zone_radius, working_zone_points_cv, img_output_dir)
+                                       undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
 
             vesc_engine.start_moving()
 
