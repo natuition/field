@@ -569,7 +569,7 @@ def main():
 
             move_to_point(from_to, used_points_history, gps, vesc_engine, smoothie, logger_full, client, nav,
                           raw_angles_history, report_writer, report_field_names, logger_table, periphery_detector,
-                          camera, working_zone_polygon)
+                          camera, working_zone_points_cv)
 
         msg = "Done!"
         print(msg)
