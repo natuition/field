@@ -22,10 +22,6 @@ if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
     import robotEN_JETSON as rtk
 
-# TODO: TEMP!!!
-config.VESC_MOVING_TIME = float("inf")
-config.VESC_RPM_SLOW = -1400
-
 
 def create_directories(*args):
     """Creates directories, receives any args count, each arg is separate dir"""

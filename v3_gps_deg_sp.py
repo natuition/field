@@ -17,6 +17,11 @@ import socketForRTK
 from socketForRTK.Client import Client
 import csv
 
+# TODO: TEMP!!!
+config.VESC_RPM_FAST = -11200
+config.VESC_RPM_SLOW = -5600
+config.VESC_MOVING_TIME = float("inf")
+
 
 def create_directories(*args):
     """Creates directories, receives any args count, each arg is separate dir"""
@@ -59,8 +64,8 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
-        # img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
-        # frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+        img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
         frame = draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, None, label)
