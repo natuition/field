@@ -364,7 +364,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             logger_full.write(msg + "\n")
 
             if any_plant_in_zone(plants_boxes, working_zone_polygon):
-                """
                 start_work_t = time.time()
                 frame = camera.get_image()
                 frame_t = time.time()
@@ -378,9 +377,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 logger_full.write(msg + "\n")
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
-                """
-                extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
-                                   undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
+                    extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
+                                       undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
 
             vesc_engine.start_moving()
 
