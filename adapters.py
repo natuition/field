@@ -34,8 +34,14 @@ class SmoothieAdapter:
         self._a_cur = multiprocessing.Value("d", 0)
         self._b_cur = multiprocessing.Value("d", 0)
         self._c_cur = multiprocessing.Value("d", 0)
-        self.switch_to_relative()
-        self.ext_calibrate_cork()
+
+        res = self.switch_to_relative()
+        if res != self.RESPONSE_OK:
+            print("G91:", res)  # TODO: what if so?
+
+        res = self.ext_calibrate_cork()
+        if res != self.RESPONSE_OK:
+            print("Cork calibration:", res)  # TODO: what if so??
 
     def __enter__(self):
         return self
