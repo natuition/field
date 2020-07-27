@@ -39,8 +39,8 @@ class SmoothieAdapter:
         if res != self.RESPONSE_OK:
             print("G91:", res)  # TODO: what if so?
 
-        """
         res = self.ext_calibrate_cork()
+        """
         if res != self.RESPONSE_OK:
             print("Cork calibration:", res)  # TODO: what if so??
         """
