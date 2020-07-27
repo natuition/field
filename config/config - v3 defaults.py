@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.15"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.16"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -70,6 +70,7 @@ GPS_POSITIONS_TO_KEEP = 1000
 # SMOOTHIE SETTINGS
 # ======================================================================================================================
 SMOOTHIE_HOST = "169.254.232.224"  # smoothie's ip address for telnet or port for usb serial connector
+SMOOTHIE_BAUDRATE = 115200
 SMOOTHIE_BACKEND = 2  # 1 = telnet, 2 = serial
 
 # EXTRACTION
@@ -168,12 +169,12 @@ CAMERA_FLIP_METHOD = 0
 CORK_CENTER_X = 1144
 CORK_CENTER_Y = 1590
 ONE_MM_IN_PX = 6
-ISP_DIGITAL_GAIN_RANGE_FROM = 8
-ISP_DIGITAL_GAIN_RANGE_TO = 8
+ISP_DIGITAL_GAIN_RANGE_FROM = 4
+ISP_DIGITAL_GAIN_RANGE_TO = 4
 GAIN_RANGE_FROM = 4
 GAIN_RANGE_TO = 4
-EXPOSURE_TIME_RANGE_FROM = 55000
-EXPOSURE_TIME_RANGE_TO = 55000
+EXPOSURE_TIME_RANGE_FROM = 660000
+EXPOSURE_TIME_RANGE_TO = 660000
 AE_LOCK = True
 CV_ROTATE_CODE = 2
 VIEW_ZONE_POLY_POINTS = [[387, 618], [439, 510], [556, 433], [670, 375], [808, 319], [982, 285], [1143, 279], [1293, 294], [1501, 339], [1635, 395], [1766, 473], [1816, 550], [1867, 637], [1881, 675], [1919, 795], [1942, 926], [1959, 1066], [1964, 1217], [1957, 1321], [1949, 1393], [1874, 1425], [1802, 1457], [1692, 1498], [1555, 1537], [1410, 1567], [1219, 1589], [1081, 1590], [944, 1590], [804, 1575], [679, 1552], [569, 1525], [423, 1475], [330, 1431], [277, 1399], [273, 1289], [279, 1131], [297, 976], [343, 780]]

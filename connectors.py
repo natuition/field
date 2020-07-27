@@ -52,9 +52,11 @@ class SmoothieV11TelnetConnector:
 
 
 class SmoothieV11SerialConnector:
-    def __init__(self, port: str):
+    def __init__(self, port: str, baudrate: int):
         self._port = port
-        self._ser = serial.Serial(port)
+        self._ser = serial.Serial(port, baudrate)
+        self._ser.flushInput()
+        self._ser.flushOutput()
 
     def __enter__(self):
         return self

@@ -23,7 +23,7 @@ class SmoothieAdapter:
         if config.SMOOTHIE_BACKEND == 1:
             self._smc = connectors.SmoothieV11TelnetConnector(smoothie_host)
         elif config.SMOOTHIE_BACKEND == 2:
-            self._smc = connectors.SmoothieV11SerialConnector(smoothie_host)
+            self._smc = connectors.SmoothieV11SerialConnector(smoothie_host, config.SMOOTHIE_BAUDRATE)
         else:
             raise ValueError("wrong config.SMOOTHIE_BACKEND value: " + str(smoothie_host))
 
@@ -39,9 +39,11 @@ class SmoothieAdapter:
         if res != self.RESPONSE_OK:
             print("G91:", res)  # TODO: what if so?
 
+        """
         res = self.ext_calibrate_cork()
         if res != self.RESPONSE_OK:
             print("Cork calibration:", res)  # TODO: what if so??
+        """
 
     def __enter__(self):
         return self
@@ -469,6 +471,8 @@ class SmoothieAdapter:
             return response
 
     def ext_calibrate_cork(self):
+        # TODO: what to do if calibration response is none?
+
         # Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
             res = self._calibrate_axis(self._z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
