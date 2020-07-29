@@ -8,9 +8,11 @@ import time
 import datetime
 import utility
 import traceback
+"""
 import SensorProcessing
 import socketForRTK
 from socketForRTK.Client import Client
+"""
 import detection
 from matplotlib.patches import Polygon
 import math
@@ -346,6 +348,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     while True:
         # EXTRACTION CONTROL
         if not vesc_engine.is_movement_allowed():
+            """
             # check if need to wait for camera
             time_passed_after_stop = time.time() - vesc_engine.get_last_stop_time()
             if time_passed_after_stop < 0.2:
@@ -379,7 +382,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                        undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
-
+            """
+            time.sleep(0.5)
             vesc_engine.start_moving()
 
         # NAVIGATION CONTROL
@@ -394,10 +398,12 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         used_points_history.append(cur_pos.copy())
 
+        """
         if not client.sendData("{};{}".format(cur_pos[0], cur_pos[1])):
             msg = "[Client] Connection closed !"
             print(msg)
             logger_full.write(msg + "\n")
+        """
 
         distance = nav.get_distance(cur_pos, coords_from_to[1])
 
@@ -750,6 +756,7 @@ def main():
     report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
                           'avg_input_current', 'rpm', 'input_voltage']
 
+    """
     # QGIS and sensor data transmitting
     path = os.path.abspath(os.getcwd())
     sensor_processor = SensorProcessing.SensorProcessing(path, 0)
@@ -761,6 +768,7 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
     sensor_processor.startSession()
+    """
 
     try:
         msg = "Initializing..."
@@ -883,6 +891,7 @@ def main():
             # print(msg)
             logger_full.write(msg + "\n\n")
 
+            client = None
             move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
                                       client, logger_full, logger_table, report_field_names, used_points_history,
                                       config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon, working_zone_points_cv,
@@ -936,11 +945,13 @@ def main():
         vesc_engine.disconnect()
         gps.disconnect()
 
+        """
         # close transmitting connections
         print("Closing transmitters...")
         sensor_processor.endSession()
         client.closeConnection()
         sensor_processor.stopServer()
+        """
 
         print("Safe disable is done.")
 
