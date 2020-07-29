@@ -276,18 +276,18 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     frame = camera.get_image()
                     temp_plant_boxes = precise_det.detect(frame)
 
-                    # check case if no plants detected
-                    if len(temp_plant_boxes) == 0:
-                        msg = "No plants detected (plant was in working zone before), trying to move on next item"
-                        logger_full.write(msg + "\n")
-                        break
-
                     # debug image saving
                     if config.SAVE_DEBUG_IMAGES:
                         frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
                         frame = draw_zone_poly(frame, working_zone_points_cv)
                         frame = detection.draw_boxes(frame, temp_plant_boxes)
                         save_image(img_output_dir, frame, None, "(extraction specify)")
+
+                    # check case if no plants detected
+                    if len(temp_plant_boxes) == 0:
+                        msg = "No plants detected (plant was in working zone before), trying to move on next item"
+                        logger_full.write(msg + "\n")
+                        break
 
                     # get closest box (update current box from main list coordinates after moving closer)
                     box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
