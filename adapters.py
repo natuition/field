@@ -494,6 +494,12 @@ class SmoothieAdapter:
     def ext_cork_up(self):
         # cork up is done by Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
+            # TODO: stub (G28 isn't reading F value from smoothie config, it uses last received F)
+            self._smc.write("G0 Z0.1 F1300")
+            response = self._smc.read_some()
+            if response != self.RESPONSE_OK:
+                return response
+
             return self._calibrate_axis(self._z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
         else:
             raise RuntimeError("picking up corkscrew with stoppers usage requires Z axis calibration permission in config")
@@ -554,11 +560,11 @@ class SmoothieAdapter:
         For force F current_value must be 0"""
 
         if cur_value + value > key_max:
-            return "Value {0} for {1} goes beyond max acceptable range of {3} = {2}, " \
-                .format(value, key_label, key_max, key_max_label)
+            return "Value {0} for {1} goes beyond max acceptable range of {3} = {2}, as current value is {4}" \
+                .format(value, key_label, key_max, key_max_label, cur_value)
         if cur_value + value < key_min:
-            return "Value {0} for {1} goes beyond min acceptable range of {3} = {2}, " \
-                .format(value, key_label, key_min, key_min_label)
+            return "Value {0} for {1} goes beyond min acceptable range of {3} = {2}, as current value is {4}" \
+                .format(value, key_label, key_min, key_min_label, cur_value)
         return None
 
 

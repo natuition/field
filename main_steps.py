@@ -401,10 +401,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         distance = nav.get_distance(cur_pos, coords_from_to[1])
 
-        msg = "Distance to B: " + str(distance)
-        # print(msg)
-        logger_full.write(msg + "\n")
-
         # check if arrived
         _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
         # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
@@ -431,6 +427,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if cur_time - prev_maneuver_time < config.MANEUVERS_FREQUENCY:
             continue
         prev_maneuver_time = cur_time
+
+        msg = "Distance to B: " + str(distance)
+        # print(msg)
+        logger_full.write(msg + "\n")
 
         msg = "Prev: " + str(prev_pos) + " Cur: " + str(cur_pos) + " A: " + str(coords_from_to[0]) \
               + " B: " + str(coords_from_to[1])
