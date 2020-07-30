@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.3.16"  # still have some obsolete keys
+CONFIG_VERSION = "0.3.17"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -90,6 +90,7 @@ XY_COEFFICIENT_TO_MM = 0.40776699029126213592233009708738
 Z_COEFFICIENT_TO_MM = 1  # not used yet
 
 EXTRACTION_Z = -50  # value that passed to smoothie when doing plant extration
+EXTRACTION_Z_F = 1700  # force value that passed to smoothie when doing plant extration
 
 # CALIBRATION
 USE_X_AXIS_CALIBRATION = False
@@ -190,6 +191,7 @@ SAVE_DEBUG_IMAGES = True
 DEBUG_IMAGES_PATH = "debug_images/"
 RECEIVE_FIELD_FROM_RTK = True
 SLOW_MODE_MIN_TIME = 3  # seconds
+EXTRACTION_TUNING_MAX_COUNT = 3
 
 
 # ======================================================================================================================

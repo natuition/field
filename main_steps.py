@@ -19,6 +19,7 @@ import math
 import cv2 as cv
 import numpy as np
 import stubs
+import extraction
 
 if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
@@ -181,7 +182,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
         # if plant is in working zone (can be reached by cork)
         if is_point_in_poly(box_x, box_y, working_zone_polygon):
             # extraction loop
-            while True:
+            for _ in range(config.EXTRACTION_TUNING_MAX_COUNT):
                 box_x, box_y = box.get_center_points()
 
                 # if plant inside undistorted zone
@@ -204,57 +205,17 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         logger_full.write(msg + "\n")
                         break
 
-                    # extraction, cork down
-                    res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
-                    smoothie.wait_for_all_actions_done()
+                    # extraction
+                    if hasattr(extraction.ExtractionMethods, box.get_name()):
+                        res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(smoothie, box)
+                    else:
+                        res, cork_is_stuck = getattr(extraction.ExtractionMethods,
+                                                     extraction.ExtractionMethods.DEFAULT_METHOD)(smoothie, box)
                     if res != smoothie.RESPONSE_OK:
-                        msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
-                        logger_full.write(msg + "\n")
+                        logger_full.write(res + "\n")
+                        if cork_is_stuck:  # danger flag is True if smoothie couldn't pick up cork
+                            exit(1)
                         break
-
-                    # extraction, cork up
-                    res = smoothie.ext_cork_up()
-                    smoothie.wait_for_all_actions_done()
-                    if res != smoothie.RESPONSE_OK:
-                        msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
-                              "emergency exit as I don't want break corkscrew."
-                        logger_full.write(msg + "\n")
-                        exit(1)
-
-                    # Daisy additional corners extraction
-                    """
-                    if box.get_name() == "Daisy":  # TODO: need to create flexible extraction method choosing (maybe dict of functions)
-                        box_x_half, box_y_half = box.get_sizes()
-                        box_x_half, box_y_half = int(box_x_half / 2 / config.ONE_MM_IN_PX), \
-                                                 int(box_y_half / 2 / config.ONE_MM_IN_PX)
-
-                        for x_shift, y_shift in [[-box_x_half, box_y_half], [0, -box_y_half * 2], [box_x_half * 2, 0],
-                                                 [0, box_y_half * 2]]:
-                            # move to the corner
-                            response = smoothie.custom_move_for(config.XY_F_MAX, X=x_shift, Y=y_shift)
-                            smoothie.wait_for_all_actions_done()
-                            if response != smoothie.RESPONSE_OK:
-                                msg = "Aborting movement to the corner (couldn't reach): " + response
-                                print(msg)
-                                break
-
-                            # extraction, cork down
-                            res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
-                            smoothie.wait_for_all_actions_done()
-                            if res != smoothie.RESPONSE_OK:
-                                msg = "Couldn't move the extractor down, smoothie error occurred: " + res
-                                print(msg)
-                                break
-
-                            # extraction, cork up
-                            res = smoothie.ext_cork_up()
-                            smoothie.wait_for_all_actions_done()
-                            if res != smoothie.RESPONSE_OK:
-                                msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
-                                      "emergency exit as I don't want break corkscrew."
-                                print(msg)
-                                exit(1)
-                        """
                     break
 
                 # if outside undistorted zone but in working zone
