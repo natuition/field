@@ -309,7 +309,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     while True:
         # EXTRACTION CONTROL
         if not vesc_engine.is_movement_allowed():
-            """
             # check if need to wait for camera
             time_passed_after_stop = time.time() - vesc_engine.get_last_stop_time()
             if time_passed_after_stop < 0.2:
@@ -343,8 +342,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                        undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
-            """
-            time.sleep(0.5)
+            # time.sleep(0.5)  # if we're not using extractions
             vesc_engine.start_moving()
 
         # NAVIGATION CONTROL
