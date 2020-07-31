@@ -44,7 +44,7 @@ def main():
         time.sleep(2)
         print("Loading complete.")
         draw_markup = input("Draw markup points on images? (y/n): ")
-        draw_markup = True if draw_markup.lower() == "y" else False
+        draw_markup = draw_markup.lower() == "y"
         label = input("Please type label, which should be added to photos: ")
         sep = " "
         counter = 1
