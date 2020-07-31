@@ -355,7 +355,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             # logger_full.write(msg + "\n")
             continue
 
-        used_points_history.append(cur_pos.copy())
+        if str(used_points_history[-1]) != str(cur_pos):
+            used_points_history.append(cur_pos.copy())
 
         """
         if not client.sendData("{};{}".format(cur_pos[0], cur_pos[1])):
