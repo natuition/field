@@ -674,18 +674,38 @@ class CameraAdapterIMX219_170_BS1:
             return cv.rotate(image, 2)[config.CROP_H_FROM:config.CROP_H_TO, config.CROP_W_FROM:config.CROP_W_TO]
         else:
             raise RuntimeError("Unable to open camera")
+'''
 
 
 # old with no shutter, gain and rest camera control
-class CameraAdapterIMX219_170:
+class CameraAdapterIMX219_170_Auto:
 
     def __init__(self,
-                 capture_width=config.CAMERA_W,
-                 capture_height=config.CAMERA_H,
-                 display_width=config.CAMERA_W,
-                 display_height=config.CAMERA_H,
-                 framerate=config.CAMERA_FRAMERATE,
-                 flip_method=config.CAMERA_FLIP_METHOD):
+                 crop_w_from,
+                 crop_w_to,
+                 crop_h_from,
+                 crop_h_to,
+                 cv_rotate_code,
+                 ispdigitalgainrange_from,
+                 ispdigitalgainrange_to,
+                 gainrange_from,
+                 gainrange_to,
+                 exposuretimerange_from,
+                 exposuretimerange_to,
+                 aelock,
+                 capture_width,
+                 capture_height,
+                 display_width,
+                 display_height,
+                 framerate,
+                 nvidia_flip_method):
+
+        self._crop_w_from = crop_w_from
+        self._crop_w_to = crop_w_to
+        self._crop_h_from = crop_h_from
+        self._crop_h_to = crop_h_to
+        self._cv_rotate_code = cv_rotate_code
+        aelock = "aelock=true " if aelock else ""
 
         gst_config = (
                 "nvarguscamerasrc ! "
@@ -700,7 +720,7 @@ class CameraAdapterIMX219_170:
                     capture_width,
                     capture_height,
                     framerate,
-                    flip_method,
+                    nvidia_flip_method,
                     display_width,
                     display_height
                 )
@@ -719,11 +739,15 @@ class CameraAdapterIMX219_170:
     def get_image(self):
         if self._cap.isOpened():
             image = self._cap.read()
-            # rotate for 90 degrees and crop black zones
-            return cv.rotate(image, 2)[config.CROP_H_FROM:config.CROP_H_TO, config.CROP_W_FROM:config.CROP_W_TO]
+            if config.CV_APPLY_ROTATION:
+                image = cv.rotate(image, self._cv_rotate_code)
+            # crop black zones
+            if config.APPLY_IMAGE_CROPPING:
+                image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
+            return image
+
         else:
             raise RuntimeError("Unable to open camera")
-'''
 
 
 class CameraAdapterIMX219_170:
@@ -799,9 +823,9 @@ class CameraAdapterIMX219_170:
     def get_image(self):
         if self._cap.isOpened():
             image = self._cap.read()
-            # rotate for 90 degrees and crop black zones
             if config.CV_APPLY_ROTATION:
                 image = cv.rotate(image, self._cv_rotate_code)
+            # crop black zones
             if config.APPLY_IMAGE_CROPPING:
                 image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
             return image
