@@ -433,7 +433,6 @@ class SmoothieAdapter:
         """
 
         with self._sync_locker:
-            # TODO: are we sure we want to send A F max???
             res = self.custom_move_for(F=config.A_F_MAX, A=config.A_MAX)
             self.wait_for_all_actions_done()
             if res != self.RESPONSE_OK:
@@ -444,15 +443,7 @@ class SmoothieAdapter:
             if res != self.RESPONSE_OK:
                 return res
 
-            res = self.set_current_coordinates(A=config.A_MIN)
-            if res != self.RESPONSE_OK:
-                return res
-
-            # TODO: deadlock is possible? align method also uses sync locker (put this out of with's scope if deadlock)
-            res = self.nav_align_wheels_center(config.A_F_MAX)
-            if res == self.RESPONSE_OK:
-                self._a_cur.value = config.NAV_TURN_WHEELS_CENTER
-            return res
+            return self.set_current_coordinates(A=config.A_MIN)
 
     def ext_do_extraction(self, F: int):
         raise NotImplemented("This code is need update.")
