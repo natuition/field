@@ -169,8 +169,6 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
     msg = "Extracting " + str(len(plant_boxes)) + " plants"
     logger_full.write(msg + "\n")
 
-    img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
-
     # loop over all detected plants
     for box in plant_boxes:
         # go to the extraction position Y min
@@ -186,13 +184,13 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                 box_x, box_y = box.get_center_points()
 
                 # if plant inside undistorted zone
-                if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, config.UNDISTORTED_ZONE_RADIUS):
+                if is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                     msg = "Plant " + str(box) + " is in undistorted zone"
                     logger_full.write(msg + "\n")
 
                     # calculate values to move camera over a plant
-                    sm_x = px_to_smoothie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
-                    sm_y = -px_to_smoothie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
+                    sm_x = px_to_smoothie_value(box_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
+                    sm_y = -px_to_smoothie_value(box_y, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
                     # swap camera and cork for extraction immediately
                     sm_x += config.CORK_TO_CAMERA_DISTANCE_X
                     sm_y += config.CORK_TO_CAMERA_DISTANCE_Y
@@ -214,6 +212,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     if res != smoothie.RESPONSE_OK:
                         logger_full.write(res + "\n")
                         if cork_is_stuck:  # danger flag is True if smoothie couldn't pick up cork
+                            msg = "Cork is stuck! Emergency stopping."
+                            logger_full.write(msg + "\n")
                             exit(1)
                         break
                     break
@@ -241,7 +241,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # debug image saving
                     if config.SAVE_DEBUG_IMAGES:
-                        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+                        frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
                         frame = draw_zone_poly(frame, working_zone_points_cv)
                         frame = detection.draw_boxes(frame, temp_plant_boxes)
                         save_image(img_output_dir, frame, None, "(extraction specify)")
@@ -253,7 +253,10 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # get closest box (update current box from main list coordinates after moving closer)
-                    box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
+                    box = min_plant_box_dist(temp_plant_boxes, config.SCENE_CENTER_X, config.SCENE_CENTER_Y)
+            else:
+                msg = "Too much extraction attempts, trying to extract next plant if there is."
+                logger_full.write(msg)
         # if not in working zone
         else:
             msg = "Skipped " + str(box) + " (not in working area)"
