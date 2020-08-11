@@ -153,8 +153,7 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
-        img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
-        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+        frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
         frame = draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, None, label)
@@ -240,11 +239,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     temp_plant_boxes = precise_det.detect(frame)
 
                     # debug image saving
-                    if config.SAVE_DEBUG_IMAGES:
-                        frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
-                        frame = draw_zone_poly(frame, working_zone_points_cv)
-                        frame = detection.draw_boxes(frame, temp_plant_boxes)
-                        save_image(img_output_dir, frame, None, "(extraction specify)")
+                    debug_save_image(img_output_dir, "(extraction specify)", frame, temp_plant_boxes,
+                                     undistorted_zone_radius, working_zone_points_cv)
 
                     # check case if no plants detected
                     if len(temp_plant_boxes) == 0:
@@ -358,7 +354,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             # logger_full.write(msg + "\n")
             continue
 
-        if len(used_points_history) > 0 and str(used_points_history[-1]) != str(cur_pos):
+        if len(used_points_history) > 0:
+            if str(used_points_history[-1]) != str(cur_pos):
+                used_points_history.append(cur_pos.copy())
+        else:
             used_points_history.append(cur_pos.copy())
 
         """
