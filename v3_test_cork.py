@@ -48,3 +48,7 @@ def main():
         print(traceback.format_exc())
     finally:
         sm_con.disconnect()
+
+
+if __name__ == '__main__':
+    main()
