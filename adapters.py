@@ -514,7 +514,7 @@ class SmoothieAdapter:
         # cork up is done by Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
             # TODO: stub (G28 isn't reading F value from smoothie config, it uses last received F)
-            self._smc.write("G0 Z0.1 F1300")
+            self._smc.write("G0 Z0.1 F" + str(config.Z_F_EXTRACTION_UP))
             response = self._smc.read_some()
             if response != self.RESPONSE_OK:
                 return response
@@ -529,7 +529,7 @@ class SmoothieAdapter:
         with self._sync_locker:
             # TODO: stub (G28 isn't reading F value from smoothie config, it uses last received F)
             if axis_label == "Z":
-                self._smc.write("G0 Z0.1 F1300")
+                self._smc.write("G0 Z0.1 F" + str(config.Z_F_EXTRACTION_UP))
                 response = self._smc.read_some()
                 if response != self.RESPONSE_OK:
                     return response

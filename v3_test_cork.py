@@ -22,7 +22,7 @@ def main():
                 break
 
             # cork down
-            g_code = "G0 Z" + str(config.EXTRACTION_Z) + " F" + str(config.EXTRACTION_Z_F)
+            g_code = "G0 Z" + str(config.EXTRACTION_Z) + " F" + str(config.Z_F_EXTRACTION_DOWN)
             print(g_code, " - ", end="")
             sm_con.write(g_code)
             res = sm_con.read_some()
@@ -30,7 +30,7 @@ def main():
             wait_for_actions_done(sm_con)
 
             # stub to set force for cork up
-            g_code = "G0 Z0.1 F1300"
+            g_code = "G0 Z0.1 F" + str(config.Z_F_EXTRACTION_UP)
             print(g_code, " - ", end="")
             sm_con.write(g_code)
             res = sm_con.read_some()

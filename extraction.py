@@ -17,7 +17,7 @@ class ExtractionMethods:
 
         # extraction, cork down
         # TODO: calculation -Z depending on box size
-        res = smoothie.custom_move_for(F=config.EXTRACTION_Z_F, Z=config.EXTRACTION_Z)
+        res = smoothie.custom_move_for(F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
         smoothie.wait_for_all_actions_done()
         if res != smoothie.RESPONSE_OK:
             msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
@@ -55,7 +55,7 @@ class ExtractionMethods:
 
             # extraction, cork down
             # TODO: calculation -Z depending on box size
-            res = smoothie.custom_move_for(F=config.EXTRACTION_Z_F, Z=config.EXTRACTION_Z)
+            res = smoothie.custom_move_for(F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
                 msg = "Couldn't move the extractor down, smoothie error occurred: " + res
@@ -94,7 +94,7 @@ class ExtractionMethods:
 
             # extraction, cork down
             # TODO: calculation -Z depending on box size
-            res = smoothie.custom_move_for(F=config.EXTRACTION_Z_F, Z=config.EXTRACTION_Z)
+            res = smoothie.custom_move_for(F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
                 msg = "Couldn't move the extractor down, smoothie error occurred: " + res

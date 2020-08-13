@@ -45,7 +45,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew down the Z axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.EXTRACTION_Z_F, config.EXTRACTION_Z)
+        response = self.smoothie.custom_move_for(config.Z_F_EXTRACTION_DOWN, config.EXTRACTION_Z)
         return response
 
     def test_cork_X_right(self):
