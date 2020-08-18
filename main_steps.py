@@ -211,8 +211,16 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # extraction
                     if hasattr(extraction.ExtractionMethods, box.get_name()):
+                        # TODO: temporary log (1)
+                        msg = "Trying extractions: 4"
+                        logger_full.write(msg + "\n")
+
                         res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(smoothie, box)
                     else:
+                        # TODO: temporary log (2)
+                        msg = "Trying extractions: 5"
+                        logger_full.write(msg + "\n")
+
                         res, cork_is_stuck = getattr(extraction.ExtractionMethods,
                                                      extraction.ExtractionMethods.DEFAULT_METHOD)(smoothie, box)
                     if res != smoothie.RESPONSE_OK:
