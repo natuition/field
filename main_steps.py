@@ -835,10 +835,12 @@ def main():
             print(msg)
             logger_full.write(msg + "\n")
 
+        """
         # ask permission to start moving
         msg = "Initializing done. Press enter to start moving."
         input(msg)
         logger_full.write(msg + "\n")
+        """
 
         msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|'
         print(msg)
