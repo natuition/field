@@ -25,6 +25,9 @@ if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
     import robotEN_JETSON as rtk
 
+ALLOW_GATHERING = True
+DATA_GATHERING_DIR = "gathered photos/"
+
 
 def create_directories(*args):
     """Creates directories, receives any args count, each arg is separate dir"""
@@ -151,6 +154,10 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
 
 
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
+    # TODO: data gathering temporary hardcoded
+    if ALLOW_GATHERING:
+        cv.imwrite(DATA_GATHERING_DIR, frame)
+
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
         frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
@@ -703,7 +710,7 @@ def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputi
 
 
 def main():
-    create_directories(config.DEBUG_IMAGES_PATH)
+    create_directories(config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
 
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
