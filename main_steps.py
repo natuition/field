@@ -156,7 +156,7 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
     # TODO: data gathering temporary hardcoded
     if ALLOW_GATHERING:
-        cv.imwrite(DATA_GATHERING_DIR, frame)
+        save_image(DATA_GATHERING_DIR, frame, None, label)
 
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
