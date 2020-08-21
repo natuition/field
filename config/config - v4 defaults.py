@@ -40,6 +40,12 @@ FILTER_MIN_DIST = 600  # minimum allowable distance between consecutive points (
 
 
 # ======================================================================================================================
+# EXTRACTION SETTINGS
+# ======================================================================================================================
+EXTRACTION_DEFAULT_METHOD = "five_drops_near_center"  # or "single_center_drop"
+
+
+# ======================================================================================================================
 # PATHS SETTINGS
 # ======================================================================================================================
 INPUT_GPS_FIELD_FILE = "field.txt"
@@ -195,6 +201,10 @@ DEBUG_IMAGES_PATH = "debug_images/"
 RECEIVE_FIELD_FROM_RTK = True
 SLOW_MODE_MIN_TIME = 3  # seconds
 EXTRACTION_TUNING_MAX_COUNT = 3
+DB_NAME = "dbname"
+DB_USER = "username"
+DB_HOST = "x.x.x.x"
+DB_PWD = "password"
 
 
 # ======================================================================================================================

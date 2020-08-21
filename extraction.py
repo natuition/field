@@ -9,8 +9,6 @@ class ExtractionMethods:
     All methods should have similar signatures.
     """
 
-    DEFAULT_METHOD = "five_drops_near_center"
-
     @staticmethod
     def single_center_drop(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):
         """Extract a plant with a single corkscrew drop to the center"""
@@ -68,7 +66,7 @@ class ExtractionMethods:
                 msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
                       "\nemergency exit as I don't want break corkscrew."
                 return msg, True
-            return res, False
+        return res, False
 
     @staticmethod
     def Daisy(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):
@@ -107,7 +105,7 @@ class ExtractionMethods:
                 msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
                       "\nemergency exit as I don't want break corkscrew."
                 return msg, True
-            return res, False
+        return res, False
     '''
     @staticmethod
     def Plantain(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):

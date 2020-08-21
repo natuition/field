@@ -211,18 +211,20 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # extraction
                     if hasattr(extraction.ExtractionMethods, box.get_name()):
-                        # TODO: temporary log (1)
-                        msg = "Trying extractions: 4"
+                        # TODO: it's temporary log (1)
+                        msg = "Trying extractions: 5"  # only Daisy implemented, it has 5 drops
                         logger_full.write(msg + "\n")
 
                         res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(smoothie, box)
                     else:
-                        # TODO: temporary log (2)
-                        msg = "Trying extractions: 5"
+                        # TODO: it's temporary log (2)
+                        # 5 drops is default, also 1 center drop is possible
+                        drops = 5 if config.EXTRACTION_DEFAULT_METHOD == "five_drops_near_center" else 1
+                        msg = "Trying extractions: " + str(drops)
                         logger_full.write(msg + "\n")
 
-                        res, cork_is_stuck = getattr(extraction.ExtractionMethods,
-                                                     extraction.ExtractionMethods.DEFAULT_METHOD)(smoothie, box)
+                        res, cork_is_stuck = getattr(extraction.ExtractionMethods, config.EXTRACTION_DEFAULT_METHOD)(smoothie, box)
+
                     if res != smoothie.RESPONSE_OK:
                         logger_full.write(res + "\n")
                         if cork_is_stuck:  # danger flag is True if smoothie couldn't pick up cork
