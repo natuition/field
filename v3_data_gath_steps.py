@@ -112,7 +112,7 @@ def gather_data(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapt
 
             # if plant is in working zone and can be reached by cork
             if is_point_in_poly(box_x, box_y, working_zone_polygon):
-                while True:
+                for tuning_counter in range(config.EXTRACTION_TUNING_MAX_COUNT):
                     box_x, box_y = box.get_center_points()
 
                     # if inside undistorted zone
@@ -149,8 +149,9 @@ def gather_data(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapt
                         response = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                         smoothie.wait_for_all_actions_done()
                         if response != smoothie.RESPONSE_OK:
-                            print("Something gone wrong with control point #" + str(control_point[4]),
-                                  "and smoothie error occurred when I tried to go closer to a plant:", response)
+                            if tuning_counter == 0:
+                                print("Something gone wrong with control point #" + str(control_point[4]),
+                                      "and smoothie error occurred when I tried to go closer to a plant:", response)
                             break
 
                         # make a new photo and re-detect plants
