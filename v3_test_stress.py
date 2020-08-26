@@ -17,6 +17,7 @@ import adapters
 import detection
 import cv2 as cv
 import traceback
+import time
 
 # smoothie movements values
 # need to set such values that will make all axes to stop at the roughly same time
@@ -37,7 +38,7 @@ def __th_vesc():
         print("Starting vesc...")
         vesc_engine.start_moving()
         while KEEP_WORKING:
-            pass
+            time.sleep(0.3)
         vesc_engine.stop_moving()
     print("Vesc is stopped correctly.")
 
@@ -104,9 +105,15 @@ def main():
         6 = X, Y, A, vesc forward, camera reading, detection
         7 = X, Y, A, vesc forward, camera reading, detection, gps
         """))
+
+    # check settings and mode
     if mode not in range(1, 8):
         print("Wrong mode. Exiting.")
         exit(1)
+    if X < 0 or Y < 0 or A < 0 or F < 0:
+        print("Bad value detected in settings (at the script beginning). Exiting.")
+        exit(1)
+
     try:
         print("Loading smoothie...")
         with adapters.SmoothieAdapter(config.SMOOTHIE_HOST) as smoothie:
