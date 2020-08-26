@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.4.0"  # still have some obsolete keys
+CONFIG_VERSION = "0.4.1"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -43,6 +43,8 @@ FILTER_MIN_DIST = 600  # minimum allowable distance between consecutive points (
 # EXTRACTION SETTINGS
 # ======================================================================================================================
 EXTRACTION_DEFAULT_METHOD = "five_drops_near_center"  # or "single_center_drop"
+ADDITIONAL_EXTRACTIONS_DISTANCE_X = 10  # mm
+ADDITIONAL_EXTRACTIONS_DISTANCE_Y = 10  # mm
 
 
 # ======================================================================================================================

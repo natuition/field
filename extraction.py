@@ -32,11 +32,11 @@ class ExtractionMethods:
 
     @staticmethod
     def five_drops_near_center(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):
-        """Extract a plant with a sibgle corkscrew drop to the center and four drops X3; X-3; Y3; Y-3"""
+        """Extract a plant with a single corkscrew drop to the center and four drops (distances are defined in config)"""
 
         # mms to move near plant's center
-        y = 3
-        x = 3
+        x = config.ADDITIONAL_EXTRACTIONS_DISTANCE_X
+        y = config.ADDITIONAL_EXTRACTIONS_DISTANCE_Y
 
         # drop cork to the center
         res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, plant_box)
