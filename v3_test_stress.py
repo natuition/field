@@ -129,15 +129,32 @@ def main():
 
             # start smoothie
             print("Starting smoothie movement...")
-            while True:
-                if mode == 1:
-                    smoothie.custom_move_for(F=F, X=X)
-                if mode == 2:
-                    smoothie.custom_move_for(F=F, X=X, Y=Y)
-                if mode > 2:
-                    smoothie.custom_move_for(F=F, X=X, Y=Y, A=A)
+            res = smoothie.ext_align_cork_center(F=config.XY_F_MAX)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                print("Smoothie cork center aligning was failed:\n", res)
 
+            movement_positive = True
+            while True:
+                if movement_positive:
+                    movement_positive = False
+                    if mode == 1:
+                        res = smoothie.custom_move_for(F=F, X=X)
+                    if mode == 2:
+                        res = smoothie.custom_move_for(F=F, X=X, Y=Y)
+                    if mode > 2:
+                        res = smoothie.custom_move_for(F=F, X=X, Y=Y, A=A)
+                else:
+                    movement_positive = True
+                    if mode == 1:
+                        res = smoothie.custom_move_for(F=F, X=-X)
+                    if mode == 2:
+                        res = smoothie.custom_move_for(F=F, X=-X, Y=-Y)
+                    if mode > 2:
+                        res = smoothie.custom_move_for(F=F, X=-X, Y=-Y, A=-A)
                 smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    print("Smoothie movement failed:\n", res)
     except KeyboardInterrupt:
         print("Stop request received.")
     except:
