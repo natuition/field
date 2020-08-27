@@ -736,14 +736,18 @@ class CameraAdapterIMX219_170_Auto:
             if config.BUFF_CLEANING_DELAY > 0:
                 time.sleep(config.BUFF_CLEANING_DELAY)
 
-            image = self._cap.read()
+            if config.APPLY_THREAD_BUFF_CLEANING:
+                image = self._cap.read()
+            else:
+                ret, image = self._cap.read()
+
             if config.CV_APPLY_ROTATION:
                 image = cv.rotate(image, self._cv_rotate_code)
+
             # crop black zones
             if config.APPLY_IMAGE_CROPPING:
                 image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
             return image
-
         else:
             raise RuntimeError("Unable to open camera")
 
@@ -827,9 +831,14 @@ class CameraAdapterIMX219_170:
             if config.BUFF_CLEANING_DELAY > 0:
                 time.sleep(config.BUFF_CLEANING_DELAY)
 
-            image = self._cap.read()
+            if config.APPLY_THREAD_BUFF_CLEANING:
+                image = self._cap.read()
+            else:
+                ret, image = self._cap.read()
+
             if config.CV_APPLY_ROTATION:
                 image = cv.rotate(image, self._cv_rotate_code)
+
             # crop black zones
             if config.APPLY_IMAGE_CROPPING:
                 image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
