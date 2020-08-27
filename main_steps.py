@@ -167,7 +167,7 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
-                       precise_det: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
+                       detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
                        plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir,
                        logger_full: utility.Logger):
     """Extract all plants found in current position"""
@@ -253,7 +253,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # make new photo and re-detect plants
                     frame = camera.get_image()
-                    temp_plant_boxes = precise_det.detect(frame)
+                    temp_plant_boxes = detector.detect(frame)
 
                     # debug image saving
                     debug_save_image(img_output_dir, "(extraction specify)", frame, temp_plant_boxes,
@@ -356,7 +356,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 logger_full.write(msg + "\n")
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
-                    extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
+                    extract_all_plants(smoothie, camera, periphery_det, working_zone_polygon, frame, plants_boxes,
                                        undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
             # time.sleep(0.5)  # if we're not using extractions
             vesc_engine.start_moving()
@@ -748,6 +748,7 @@ def main():
         logger_full.write(msg + "\n")
     sensor_processor.startSession()
     """
+    client = None
 
     try:
         msg = "Initializing..."
@@ -815,12 +816,16 @@ def main():
                                                            config.PERIPHERY_CONFIDENCE_THRESHOLD,
                                                            config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
                                                            config.PERIPHERY_DNN_TARGET)
+        """
         print("Loading precise detector...")
         precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
                                                          config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
                                                          config.PRECISE_CONFIDENCE_THRESHOLD,
                                                          config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
                                                          config.PRECISE_DNN_TARGET)
+        """
+        precise_detector = None
+
         print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
         print("Loading vesc...")
@@ -872,7 +877,6 @@ def main():
             # print(msg)
             logger_full.write(msg + "\n\n")
 
-            client = None
             move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
                                       client, logger_full, logger_table, report_field_names, used_points_history,
                                       config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon, working_zone_points_cv,
