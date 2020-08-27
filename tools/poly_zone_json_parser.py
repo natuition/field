@@ -5,7 +5,7 @@ Aso note: script will extract and use FIRST polygon and won't work with the rest
 import json
 
 INPUT_FILE = "1.json"
-OUTPUT_FILE = "1.txt"
+OUTPUT_FILE = "parsed poly zone.txt"
 
 
 def main():

@@ -716,7 +716,11 @@ class CameraAdapterIMX219_170_Auto:
                     display_height
                 )
         )
-        self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
+
+        if config.APPLY_THREAD_BUFF_CLEANING:
+            self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
+        else:
+            self._cap = cv.VideoCapture(gst_config, cv.CAP_GSTREAMER)
 
     def __enter__(self):
         return self
@@ -729,6 +733,9 @@ class CameraAdapterIMX219_170_Auto:
 
     def get_image(self):
         if self._cap.isOpened():
+            if config.BUFF_CLEANING_DELAY > 0:
+                time.sleep(config.BUFF_CLEANING_DELAY)
+
             image = self._cap.read()
             if config.CV_APPLY_ROTATION:
                 image = cv.rotate(image, self._cv_rotate_code)
@@ -800,7 +807,11 @@ class CameraAdapterIMX219_170:
                     display_height
                 )
         )
-        self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
+
+        if config.APPLY_THREAD_BUFF_CLEANING:
+            self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
+        else:
+            self._cap = cv.VideoCapture(gst_config, cv.CAP_GSTREAMER)
 
     def __enter__(self):
         return self
@@ -813,6 +824,9 @@ class CameraAdapterIMX219_170:
 
     def get_image(self):
         if self._cap.isOpened():
+            if config.BUFF_CLEANING_DELAY > 0:
+                time.sleep(config.BUFF_CLEANING_DELAY)
+
             image = self._cap.read()
             if config.CV_APPLY_ROTATION:
                 image = cv.rotate(image, self._cv_rotate_code)
