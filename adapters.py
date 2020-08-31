@@ -39,6 +39,11 @@ class SmoothieAdapter:
         if res != self.RESPONSE_OK:
             print("G91:", res)  # TODO: what if so?
 
+        # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
+        res = self.custom_move_for(config.Z_F_EXTRACTION_DOWN, Z=-5)
+        if res != self.RESPONSE_OK:
+            print("Couldn't move cork down for Z-5! Calibration errors on Z axis are possible!")
+
         res = self.ext_calibrate_cork()
         """
         if res != self.RESPONSE_OK:
