@@ -9,6 +9,7 @@ import navigation
 
 # settings
 FIELD_SIZE = 15000  # mms
+RPM = -11000
 MOVING_TIME = 3  # seconds
 
 
@@ -22,7 +23,7 @@ def save_gps_coordinates(points: list, file_name):
 def main():
     nav = navigation.GPSComputing()
     with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
-        with adapters.VescAdapter(config.VESC_RPM_SLOW, MOVING_TIME, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
+        with adapters.VescAdapter(RPM, MOVING_TIME, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
                                   config.VESC_PORT, config.VESC_BAUDRATE) as vesc_engine:
             print("Getting a starting point...")
             starting_point = gps.get_fresh_position()
