@@ -6,6 +6,7 @@ Moves robot forward for a bit, reads vector, and generates points based on this 
 from config import config
 import adapters
 import navigation
+import time
 
 # settings
 FIELD_SIZE = 15000  # mms
@@ -26,14 +27,15 @@ def main():
         with adapters.VescAdapter(RPM, MOVING_TIME, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
                                   config.VESC_PORT, config.VESC_BAUDRATE) as vesc_engine:
             print("Getting a starting point...")
-            starting_point = gps.get_fresh_position()
+            starting_point = gps.get_last_position()
 
             print("Moving forward...")
             vesc_engine.start_moving()
             vesc_engine.wait_for_stop()
 
             print("Getting point A...")
-            A = gps.get_fresh_position()
+            time.sleep(1)
+            A = gps.get_last_position()
 
             print("Computing rest points...")
             B = nav.get_coordinate(A, starting_point, 180, FIELD_SIZE)
