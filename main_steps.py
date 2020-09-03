@@ -27,6 +27,7 @@ if config.RECEIVE_FIELD_FROM_RTK:
 
 ALLOW_GATHERING = True
 DATA_GATHERING_DIR = "gathered photos/"
+LOG_ROOT_DIR = "logs/"
 
 
 def create_directories(*args):
@@ -241,6 +242,9 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # calculate values for move camera closer to a plant
                     control_point = get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
+
+                    # TODO: fix cork tube view obscuring
+
                     sm_x, sm_y = control_point[2], control_point[3]
 
                     # move camera closer to a plant
@@ -720,7 +724,8 @@ def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputi
 
 
 def main():
-    create_directories(config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
+    log_cur_dir = LOG_ROOT_DIR + get_current_time() + "/"
+    create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
 
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
@@ -728,8 +733,8 @@ def main():
     view_zone_points_cv = np.array(config.VIEW_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     nav = navigation.GPSComputing()
     used_points_history = []
-    logger_full = utility.Logger("full log " + get_current_time() + ".txt")
-    logger_table = utility.Logger("table log " + get_current_time() + ".csv")
+    logger_full = utility.Logger(log_cur_dir + "log full.txt")
+    logger_table = utility.Logger(log_cur_dir + "log table.csv")
 
     # sensors picking
     report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
@@ -797,7 +802,10 @@ def main():
         # generate path points
         path_points = build_path(field_gps_coords, nav, logger_full)
         if len(path_points) > 0:
-            save_gps_coordinates(path_points, "generated_path " + get_current_time() + ".txt")
+            save_gps_coordinates(path_points, log_cur_dir + "generated path.txt")
+            msg = "Generated path points are successfully saved."
+            print(msg)
+            logger_full.write(msg + "\n")
         else:
             msg = "List of path points is empty, saving canceled."
             print(msg)
@@ -906,7 +914,7 @@ def main():
         # save log data
         print("Saving positions histories...")
         if len(used_points_history) > 0:
-            save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")  # TODO: don't accumulate a lot of points - write each of them to file as soon as they come
+            save_gps_coordinates(used_points_history, log_cur_dir + "used_gps_history.txt")  # TODO: don't accumulate a lot of points - write each of them to file as soon as they come
         else:
             msg = "used_gps_history list has 0 elements!"
             print(msg)
@@ -914,7 +922,7 @@ def main():
 
         adapter_points_history = gps.get_last_positions_list()  # TODO: reduce history positions to 1 to save RAM
         if len(adapter_points_history) > 0:
-            save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
+            save_gps_coordinates(adapter_points_history, log_cur_dir + "adapter_gps_history.txt")
         else:
             msg = "adapter_gps_history list has 0 elements!"
             print(msg)
