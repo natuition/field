@@ -243,17 +243,51 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     # calculate values for move camera closer to a plant
                     control_point = get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
 
-                    # TODO: fix cork tube view obscuring
+                    # fixing cork tube view obscuring
+                    if config.AVOID_CORK_VIEW_OBSCURING:
+                        # compute target point x
+                        C_H = box_x - control_point[0]  # may be negative
+                        H_x = control_point[0] + C_H
+                        target_x = H_x
 
-                    sm_x, sm_y = control_point[2], control_point[3]
+                        # compute target point y
+                        T1_y = control_point[1] - config.UNDISTORTED_ZONE_RADIUS
+                        T1_P = box_y - T1_y  # always positive
+                        target_y = control_point[1] + T1_P - config.DISTANCE_FROM_UNDIST_BORDER
 
-                    # move camera closer to a plant
-                    res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
-                    smoothie.wait_for_all_actions_done()
-                    if res != smoothie.RESPONSE_OK:
-                        msg = "Couldn't move camera closer to plant, smoothie error occurred:\n" + res
-                        logger_full.write(msg + "\n")
-                        break
+                        # transfer that to millimeters
+                        sm_x = px_to_smoothie_value(target_x, control_point[0], config.ONE_MM_IN_PX)
+                        sm_y = -px_to_smoothie_value(target_y, control_point[1], config.ONE_MM_IN_PX)
+
+                        # move camera closer to a plant (and trying to avoid obscuring)
+                        res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            msg = "Couldn't apply cork obscuring, smoothie's response:\n" + res + "\n" + \
+                                "(box_x: " + str(box_x) + " box_y: " + str(box_y) + " target_x: " + str(target_x) + \
+                                " target_y: " + str(target_y) + " cp_x: " + str(control_point[0]) + " cp_y: " + \
+                                str(control_point[1]) + ")"
+                            logger_full.write(msg + "\n")
+
+                            sm_x, sm_y = control_point[2], control_point[3]
+
+                            # move camera closer to a plant
+                            res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                            smoothie.wait_for_all_actions_done()
+                            if res != smoothie.RESPONSE_OK:
+                                msg = "Couldn't move camera closer to plant, smoothie error occurred:\n" + res
+                                logger_full.write(msg + "\n")
+                                break
+                    else:
+                        sm_x, sm_y = control_point[2], control_point[3]
+
+                        # move camera closer to a plant
+                        res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            msg = "Couldn't move camera closer to plant, smoothie error occurred:\n" + res
+                            logger_full.write(msg + "\n")
+                            break
 
                     # make new photo and re-detect plants
                     frame = camera.get_image()

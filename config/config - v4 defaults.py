@@ -45,6 +45,8 @@ FILTER_MIN_DIST = 600  # minimum allowable distance between consecutive points (
 EXTRACTION_DEFAULT_METHOD = "five_drops_near_center"  # or "single_center_drop"
 ADDITIONAL_EXTRACTIONS_DISTANCE_X = 10  # mm
 ADDITIONAL_EXTRACTIONS_DISTANCE_Y = 10  # mm
+AVOID_CORK_VIEW_OBSCURING = True  # is True: adds offsets to control points to make a plant to be at the top half of the undistorted zone
+DISTANCE_FROM_UNDIST_BORDER = 100  # pixels; the corkscrew will move so that the plant is at this distance from the upper border of undistorted zone if AVOID_CORK_VIEW_OBSCURING is True
 
 
 # ======================================================================================================================
