@@ -413,3 +413,11 @@ class GPSComputing:
         sort_points = [[first_point[1], first_point[0]], [second_point[1], second_point[0]],
                        [third_point[1], third_point[0]], [fourth_point[1], fourth_point[0]]]
         return sort_points
+
+    def get_square_corners(self, center_point, corner_point):
+        distance = self.get_distance(center_point, corner_point)
+        corner_1 = self.get_coordinate(center_point, corner_point, 90, distance)
+        corner_2 = self.get_coordinate(center_point, corner_point, -90, distance)
+        corner_3 = self.get_coordinate(center_point, corner_point,  180, distance)
+        corners = self._corner_sort([corner_point, corner_1, corner_2, corner_3])
+        return corners
