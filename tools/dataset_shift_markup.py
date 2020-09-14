@@ -230,9 +230,9 @@ def main():
         print("Missing", missing_dataset_images_count, "images in given images directory. See'", MISSING_DATASET_IMAGES_LIST_FILE, "'file for details.")
 
     if conversion_failed:
-        print("Total: conversion is NOT successful! See report files mentioned above for details.")
+        print("Total: conversion is FAILED! See report files mentioned above for details.")
     else:
-        print("Total: conversion is successful!")
+        print("Total: conversion is SUCCESSFUL!")
 
 
 if __name__ == '__main__':

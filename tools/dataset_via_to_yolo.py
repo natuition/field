@@ -11,8 +11,8 @@ import os
 import cv2 as cv
 
 # paths
-INPUT_JSON_FILE_PATH = "1.json"
-INPUT_CLASSES_FILE_PATH = "../yolo/v3_precise.names"
+INPUT_JSON_FILE_PATH = "1 result.json"
+INPUT_CLASSES_FILE_PATH = "../yolo/v3_precise.names"  # should be exactly same file as one which will be used for learning (types order in this file is strictly valuable, and can't be traced to warn user, so make sure you using same file here and at the NN learning)
 INPUT_DATASET_IMAGES_DIR = "images/"
 OUTPUT_YOLO_TXT_DIR = "yolo txt regions/"
 UNSUPPORTED_REGIONS_LIST_FILE = "unsupported regions list.txt"
@@ -204,9 +204,9 @@ def main():
         print("Missing", missing_classes_count, "classes count in given classes file. See'", MISSING_CLASSES_LIST_FILE, "'file for details.")
 
     if conversion_failed:
-        print("Total: conversion is NOT successful! See report files mentioned above for details.")
+        print("Total: conversion is FAILED! See report files mentioned above for details.")
     else:
-        print("Total: conversion is successful!")
+        print("Total: conversion is SUCCESSFUL!")
 
 
 if __name__ == '__main__':
