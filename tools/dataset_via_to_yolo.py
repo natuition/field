@@ -83,69 +83,69 @@ def main():
             img_x_size, img_y_size = img.shape[1], img.shape[0]
             img_processed += 1
 
-            for region in data["_via_img_metadata"][file_key]["regions"]:
-                regions_processed += 1
+            with open(OUTPUT_YOLO_TXT_DIR + file_name[:-4] + ".txt", "w") as txt_file:
+                for region in data["_via_img_metadata"][file_key]["regions"]:
+                    regions_processed += 1
 
-                if region["shape_attributes"]["name"] == "rect":
-                    x_label = "x"
-                    y_label = "y"
+                    if region["shape_attributes"]["name"] == "rect":
+                        x_label = "x"
+                        y_label = "y"
 
-                    # region center
-                    rcx = region["shape_attributes"][x_label] + int(region["shape_attributes"]["width"] / 2)
-                    rcy = region["shape_attributes"][y_label] + int(region["shape_attributes"]["height"] / 2)
+                        # region center
+                        rcx = region["shape_attributes"][x_label] + int(region["shape_attributes"]["width"] / 2)
+                        rcy = region["shape_attributes"][y_label] + int(region["shape_attributes"]["height"] / 2)
+                        """
+                    elif region["shape_attributes"]["name"] == "circle":
+                        x_label = "cx"
+                        y_label = "cy"
+    
+                        # region center
+                        rcx = region["shape_attributes"][x_label]
+                        rcy = region["shape_attributes"][y_label]
                     """
-                elif region["shape_attributes"]["name"] == "circle":
-                    x_label = "cx"
-                    y_label = "cy"
+                    else:
+                        """
+                        print("Unsupported region shape '", region["shape_attributes"]["name"],
+                              "', THIS REGION WON'T BE PROCESSED! Image name was saved in file ",
+                              MISSING_REGIONS_FILE, sep="")
+                        """
+                        unsupported_regions_count += 1
+                        unsupported_regions_files.add(file_name)
+                        continue
 
-                    # region center
-                    rcx = region["shape_attributes"][x_label]
-                    rcy = region["shape_attributes"][y_label]
-                """
-                else:
-                    """
-                    print("Unsupported region shape '", region["shape_attributes"]["name"],
-                          "', THIS REGION WON'T BE PROCESSED! Image name was saved in file ",
-                          MISSING_REGIONS_FILE, sep="")
-                    """
-                    unsupported_regions_count += 1
-                    unsupported_regions_files.add(file_name)
-                    continue
+                    # check if region type is present
+                    if "type" not in region["region_attributes"]:
+                        missing_json_region_types_count += 1
+                        missing_json_region_types_files.add(file_name)
+                        continue
 
-                # check if region type is present
-                if "type" not in region["region_attributes"]:
-                    missing_json_region_types_count += 1
-                    missing_json_region_types_files.add(file_name)
-                    continue
+                    region_type = region["region_attributes"]["type"]
 
-                region_type = region["region_attributes"]["type"]
+                    # check if type is present in yolo names file
+                    if region_type not in classes:
+                        """
+                        print("Type", region_type, "is not in", INPUT_CLASSES_FILE_PATH, "; please make sure you added to",
+                              "this file all class types that are used in input VIA's json file, remove all previous",
+                              "results and run this script from the scratch.")
+                        """
+                        missing_classes_count += 1
+                        missing_classes.add(region_type)
+                        continue
 
-                # check if type is present in yolo names file
-                if region_type not in classes:
-                    """
-                    print("Type", region_type, "is not in", INPUT_CLASSES_FILE_PATH, "; please make sure you added to",
-                          "this file all class types that are used in input VIA's json file, remove all previous",
-                          "results and run this script from the scratch.")
-                    """
-                    missing_classes_count += 1
-                    missing_classes.add(region_type)
-                    continue
+                    # convert region
+                    obj_class = classes.index(region_type)
+                    x_center = round(rcx / img_x_size, 6)
+                    y_center = round(rcy / img_y_size, 6)
+                    width = round(region["shape_attributes"]["width"] / img_x_size, 6)
+                    height = round(region["shape_attributes"]["height"] / img_y_size, 6)
 
-                # convert region
-                obj_class = classes.index(region_type)
-                x_center = rcx / img_x_size
-                y_center = rcy / img_y_size
-                width = region["shape_attributes"]["width"] / img_x_size
-                height = region["shape_attributes"]["height"] / img_y_size
-
-                # save region
-                with open(OUTPUT_YOLO_TXT_DIR + file_name[:-4] + ".txt", "w") as txt_file:
+                    # save region
                     # <object-class> <x_center> <y_center> <width> <height>
                     record = str(obj_class) + " " + str(x_center) + " " + str(y_center) + " " + str(width) + " " + \
                              str(height) + "\n"
                     txt_file.write(record)
 
-                regions_converted += 1
+                    regions_converted += 1
         else:
             missing_dataset_images_count += 1
             missing_dataset_images_files.add(file_name)
