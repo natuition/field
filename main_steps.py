@@ -385,16 +385,16 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 frame = camera.get_image()
                 frame_t = time.time()
 
-                plants_boxes = periphery_det.detect(frame)
-                per_det_t_2 = time.time()
+                plants_boxes = precise_det.detect(frame)
+                pre_det_t = time.time()
 
-                debug_save_image(img_output_dir, "(periphery 2 view scan)", frame, plants_boxes, undistorted_zone_radius,
+                debug_save_image(img_output_dir, "(precise 2 view scan)", frame, plants_boxes, undistorted_zone_radius,
                                  working_zone_points_cv)
-                msg = "Work (making plants list) frame time: " + str(frame_t - start_work_t) + "\t\tPer. det. time: " + str(per_det_t_2 - frame_t)
+                msg = "Work (making plants list) frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. time: " + str(pre_det_t - frame_t)
                 logger_full.write(msg + "\n")
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
-                    extract_all_plants(smoothie, camera, periphery_det, working_zone_polygon, frame, plants_boxes,
+                    extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                        undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
             # time.sleep(0.5)  # if we're not using extractions
             vesc_engine.start_moving()
@@ -858,24 +858,24 @@ def main():
                                                            config.PERIPHERY_CONFIDENCE_THRESHOLD,
                                                            config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
                                                            config.PERIPHERY_DNN_TARGET)
-        """
+
         print("Loading precise detector...")
         precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
                                                          config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
                                                          config.PRECISE_CONFIDENCE_THRESHOLD,
                                                          config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
                                                          config.PRECISE_DNN_TARGET)
-        """
-        precise_detector = None
 
         print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
+
         print("Loading vesc...")
         vesc_engine = adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         print("Loading gps...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
         # gps = stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+
         print("Loading camera...")
         camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                                   config.CROP_H_TO, config.CV_ROTATE_CODE,
