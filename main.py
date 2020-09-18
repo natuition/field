@@ -182,6 +182,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
         smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
         smoothie.wait_for_all_actions_done()
 
+        plant_position_is_precise = False
         box_x, box_y = box.get_center_points()
 
         # if plant is in working zone (can be reached by cork)
@@ -194,6 +195,31 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                 if is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                     msg = "Plant " + str(box) + " is in undistorted zone"
                     logger_full.write(msg + "\n")
+
+                    # use plant box from precise NN for movement calculations
+                    if not plant_position_is_precise:
+                        frame = camera.get_image()
+                        temp_plant_boxes = detector.detect(frame)
+
+                        # debug image saving
+                        debug_save_image(img_output_dir, "(increasing precision)", frame, temp_plant_boxes,
+                                         undistorted_zone_radius, working_zone_points_cv)
+
+                        # check case if no plants detected
+                        if len(temp_plant_boxes) == 0:
+                            msg = "No plants detected (plant was in undistorted zone before), trying to move on next item"
+                            logger_full.write(msg + "\n")
+                            break
+
+                        # get closest box (update current box from main list coordinates after moving closer)
+                        box = min_plant_box_dist(temp_plant_boxes, config.SCENE_CENTER_X, config.SCENE_CENTER_Y)
+                        box_x, box_y = box.get_center_points()
+
+                        # check if box still in undistorted zone
+                        if not is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
+                            msg = "No plants in undistorted zone (plant was in undistorted zone before), trying to move on next item"
+                            logger_full.write(msg + "\n")
+                            continue
 
                     # calculate values to move camera over a plant
                     sm_x = px_to_smoothie_value(box_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
@@ -305,6 +331,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # get closest box (update current box from main list coordinates after moving closer)
                     box = min_plant_box_dist(temp_plant_boxes, config.SCENE_CENTER_X, config.SCENE_CENTER_Y)
+                    plant_position_is_precise = True
             else:
                 msg = "Too much extraction attempts, trying to extract next plant if there is."
                 logger_full.write(msg)
