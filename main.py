@@ -536,7 +536,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
         target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
-        sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
+        # sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
+        sm_wheels_pos = "off"
 
         # compute order angle (smoothie can't turn for huge values immediately also as cancel movement,
         # so we need to do nav. actions in steps)
@@ -585,7 +586,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         sum_angles = round(sum_angles, 2)
         distance = round(distance, 2)
         ad_wheels_pos = round(ad_wheels_pos, 2)
-        sm_wheels_pos = round(sm_wheels_pos, 2)
+        # sm_wheels_pos = round(sm_wheels_pos, 2)
         gps_quality = cur_pos[2]
 
         msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(8) + str(sm_wheels_pos).ljust(9)
