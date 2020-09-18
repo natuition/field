@@ -8,26 +8,19 @@ import time
 import datetime
 import utility
 import traceback
-"""
 import SensorProcessing
 import socketForRTK
 from socketForRTK.Client import Client
-"""
 import detection
 from matplotlib.patches import Polygon
 import math
 import cv2 as cv
 import numpy as np
 import stubs
-import extraction
 
 if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
     import robotEN_JETSON as rtk
-
-ALLOW_GATHERING = True
-DATA_GATHERING_DIR = "gathered photos/"
-LOG_ROOT_DIR = "logs/"
 
 
 def create_directories(*args):
@@ -155,26 +148,21 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
 
 
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
-    # TODO: data gathering temporary hardcoded
-    if ALLOW_GATHERING:
-        save_image(DATA_GATHERING_DIR, frame, None, label)
-
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
-        frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
+        img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
+        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
         frame = draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, None, label)
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
-                       detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
-                       plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir,
-                       logger_full: utility.Logger):
+                       precise_det: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
+                       plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir):
     """Extract all plants found in current position"""
 
-    msg = "Extracting " + str(len(plant_boxes)) + " plants"
-    logger_full.write(msg + "\n")
+    img_y_c, img_x_c = int(frame.shape[0] / 2), int(frame.shape[1] / 2)
 
     # loop over all detected plants
     for box in plant_boxes:
@@ -187,17 +175,15 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
         # if plant is in working zone (can be reached by cork)
         if is_point_in_poly(box_x, box_y, working_zone_polygon):
             # extraction loop
-            for _ in range(config.EXTRACTION_TUNING_MAX_COUNT):
+            while True:
                 box_x, box_y = box.get_center_points()
 
                 # if plant inside undistorted zone
-                if is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
-                    msg = "Plant " + str(box) + " is in undistorted zone"
-                    logger_full.write(msg + "\n")
-
+                if is_point_in_circle(box_x, box_y, img_x_c, img_y_c, config.UNDISTORTED_ZONE_RADIUS):
+                    print("Plant is in undistorted zone")
                     # calculate values to move camera over a plant
-                    sm_x = px_to_smoothie_value(box_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
-                    sm_y = -px_to_smoothie_value(box_y, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
+                    sm_x = px_to_smoothie_value(box_x, img_x_c, config.ONE_MM_IN_PX)
+                    sm_y = -px_to_smoothie_value(box_y, img_y_c, config.ONE_MM_IN_PX)
                     # swap camera and cork for extraction immediately
                     sm_x += config.CORK_TO_CAMERA_DISTANCE_X
                     sm_y += config.CORK_TO_CAMERA_DISTANCE_Y
@@ -206,112 +192,93 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
-                        msg = "Couldn't move cork over plant, smoothie error occurred:\n" + res
-                        logger_full.write(msg + "\n")
+                        print("Couldn't move cork over plant, smoothie error occurred:", res)
                         break
 
-                    # extraction
-                    if hasattr(extraction.ExtractionMethods, box.get_name()):
-                        # TODO: it's temporary log (1)
-                        msg = "Trying extractions: 5"  # only Daisy implemented, it has 5 drops
-                        logger_full.write(msg + "\n")
-
-                        res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(smoothie, box)
-                    else:
-                        # TODO: it's temporary log (2)
-                        # 5 drops is default, also 1 center drop is possible
-                        drops = 5 if config.EXTRACTION_DEFAULT_METHOD == "five_drops_near_center" else 1
-                        msg = "Trying extractions: " + str(drops)
-                        logger_full.write(msg + "\n")
-
-                        res, cork_is_stuck = getattr(extraction.ExtractionMethods, config.EXTRACTION_DEFAULT_METHOD)(smoothie, box)
-
+                    # extraction, cork down
+                    res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
+                    smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
-                        logger_full.write(res + "\n")
-                        if cork_is_stuck:  # danger flag is True if smoothie couldn't pick up cork
-                            msg = "Cork is stuck! Emergency stopping."
-                            logger_full.write(msg + "\n")
-                            exit(1)
+                        print("Couldn't move the extractor down, smoothie error occurred:", res)
                         break
+
+                    # extraction, cork up
+                    res = smoothie.ext_cork_up()
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
+                              "emergency exit as I don't want break corkscrew."
+                        print(msg)
+                        exit(1)
+
+                    # Daisy additional corners extraction
+                    if box.get_name() == "Daisy":  # TODO: need to create flexible extraction method choosing (maybe dict of functions)
+                        box_x_half, box_y_half = box.get_sizes()
+                        box_x_half, box_y_half = int(box_x_half / 2 / config.ONE_MM_IN_PX), \
+                                                 int(box_y_half / 2 / config.ONE_MM_IN_PX)
+
+                        for x_shift, y_shift in [[-box_x_half, box_y_half], [0, -box_y_half * 2], [box_x_half * 2, 0],
+                                                 [0, box_y_half * 2]]:
+                            # move to the corner
+                            response = smoothie.custom_move_for(config.XY_F_MAX, X=x_shift, Y=y_shift)
+                            smoothie.wait_for_all_actions_done()
+                            if response != smoothie.RESPONSE_OK:
+                                msg = "Aborting movement to the corner (couldn't reach): " + response
+                                print(msg)
+                                break
+
+                            # extraction, cork down
+                            res = smoothie.custom_move_for(F=1700, Z=config.EXTRACTION_Z)  # TODO: calculation -Z depending on box size
+                            smoothie.wait_for_all_actions_done()
+                            if res != smoothie.RESPONSE_OK:
+                                msg = "Couldn't move the extractor down, smoothie error occurred: " + res
+                                print(msg)
+                                break
+
+                            # extraction, cork up
+                            res = smoothie.ext_cork_up()
+                            smoothie.wait_for_all_actions_done()
+                            if res != smoothie.RESPONSE_OK:
+                                msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
+                                      "emergency exit as I don't want break corkscrew."
+                                print(msg)
+                                exit(1)
                     break
 
                 # if outside undistorted zone but in working zone
                 else:
-                    msg = "Plant is in working zone, trying to get closer"
-                    logger_full.write(msg + "\n")
-
                     # calculate values for move camera closer to a plant
                     control_point = get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
+                    sm_x, sm_y = control_point[2], control_point[3]
 
-                    # fixing cork tube view obscuring
-                    if config.AVOID_CORK_VIEW_OBSCURING:
-                        # compute target point x
-                        C_H = box_x - control_point[0]  # may be negative
-                        H_x = control_point[0] + C_H
-                        target_x = H_x
-
-                        # compute target point y
-                        T1_y = control_point[1] - config.UNDISTORTED_ZONE_RADIUS
-                        T1_P = box_y - T1_y  # always positive
-                        target_y = control_point[1] + T1_P - config.DISTANCE_FROM_UNDIST_BORDER
-
-                        # transfer that to millimeters
-                        sm_x = px_to_smoothie_value(target_x, control_point[0], config.ONE_MM_IN_PX)
-                        sm_y = -px_to_smoothie_value(target_y, control_point[1], config.ONE_MM_IN_PX)
-
-                        # move camera closer to a plant (and trying to avoid obscuring)
-                        res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
-                        smoothie.wait_for_all_actions_done()
-                        if res != smoothie.RESPONSE_OK:
-                            msg = "Couldn't apply cork obscuring, smoothie's response:\n" + res + "\n" + \
-                                "(box_x: " + str(box_x) + " box_y: " + str(box_y) + " target_x: " + str(target_x) + \
-                                " target_y: " + str(target_y) + " cp_x: " + str(control_point[0]) + " cp_y: " + \
-                                str(control_point[1]) + ")"
-                            logger_full.write(msg + "\n")
-
-                            sm_x, sm_y = control_point[2], control_point[3]
-
-                            # move camera closer to a plant
-                            res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
-                            smoothie.wait_for_all_actions_done()
-                            if res != smoothie.RESPONSE_OK:
-                                msg = "Couldn't move camera closer to plant, smoothie error occurred:\n" + res
-                                logger_full.write(msg + "\n")
-                                break
-                    else:
-                        sm_x, sm_y = control_point[2], control_point[3]
-
-                        # move camera closer to a plant
-                        res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
-                        smoothie.wait_for_all_actions_done()
-                        if res != smoothie.RESPONSE_OK:
-                            msg = "Couldn't move camera closer to plant, smoothie error occurred:\n" + res
-                            logger_full.write(msg + "\n")
-                            break
+                    # move camera closer to a plant
+                    res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        print("Couldn't move to plant, smoothie error occurred:", res)
+                        break
 
                     # make new photo and re-detect plants
                     frame = camera.get_image()
-                    temp_plant_boxes = detector.detect(frame)
-
-                    # debug image saving
-                    debug_save_image(img_output_dir, "(extraction specify)", frame, temp_plant_boxes,
-                                     undistorted_zone_radius, working_zone_points_cv)
+                    temp_plant_boxes = precise_det.detect(frame)
 
                     # check case if no plants detected
                     if len(temp_plant_boxes) == 0:
-                        msg = "No plants detected (plant was in working zone before), trying to move on next item"
-                        logger_full.write(msg + "\n")
+                        print("No plants detected (plant was in working zone before), trying to move on next item")
                         break
 
+                    # debug image saving
+                    if config.SAVE_DEBUG_IMAGES:
+                        frame = draw_zone_circle(frame, img_x_c, img_y_c, undistorted_zone_radius)
+                        frame = draw_zone_poly(frame, working_zone_points_cv)
+                        frame = detection.draw_boxes(frame, temp_plant_boxes)
+                        save_image(img_output_dir, frame, None, "(extraction specify)")
+
                     # get closest box (update current box from main list coordinates after moving closer)
-                    box = min_plant_box_dist(temp_plant_boxes, config.SCENE_CENTER_X, config.SCENE_CENTER_Y)
-            else:
-                msg = "Too much extraction attempts, trying to extract next plant if there is."
-                logger_full.write(msg)
+                    box = min_plant_box_dist(temp_plant_boxes, img_x_c, img_y_c)
         # if not in working zone
         else:
-            msg = "Skipped " + str(box) + " (not in working area)"
-            logger_full.write(msg + "\n")
+            print("Skipped", str(box), "(not in working area)")
 
     # set camera back to the Y min
     smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
@@ -347,16 +314,17 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     :return:
     """
 
-    raw_angles_history = []
-    stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
-    prev_maneuver_time = time.time()
-    prev_pos = gps.get_last_position()
-
+    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
     slow_mode_time = -float("inf")
     current_working_mode = working_mode_slow = 1
     working_mode_switching = 2
     working_mode_fast = 3
-    close_to_end = False if not config.USE_SPEED_LIMIT else True  # True if robot is close to one of current movement vector points, False otherwise
+    close_to_end = True  # True if robot is close to one of current movement vector points, False otherwise
+
+    raw_angles_history = []
+    stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
+    prev_maneuver_time = time.time()
+    prev_pos = gps.get_last_position()
 
     # set camera to the Y min
     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
@@ -377,8 +345,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         debug_save_image(img_output_dir, "(periphery view scan M=" + str(current_working_mode) + ")", frame,
                          plants_boxes, undistorted_zone_radius,
-                         working_zone_points_cv if current_working_mode == working_mode_slow else view_zone_points_cv)
-        msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
+                         working_zone_points_cv if current_working_mode == 1 else view_zone_points_cv)
+        msg = "View frame time: " + str(frame_t - start_t) + "\t\tPer. det. time: " + str(per_det_t - frame_t)
         logger_full.write(msg + "\n")
 
         # slow mode
@@ -401,7 +369,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
-                                       undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
+                                       undistorted_zone_radius, working_zone_points_cv, img_output_dir)
             elif not any_plant_in_zone(plants_boxes, view_zone_polygon) and \
                     time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                 # set camera to the Y max
@@ -461,20 +429,18 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             # logger_full.write(msg + "\n")
             continue
 
-        if len(used_points_history) > 0:
-            if str(used_points_history[-1]) != str(cur_pos):
-                used_points_history.append(cur_pos.copy())
-        else:
-            used_points_history.append(cur_pos.copy())
+        used_points_history.append(cur_pos.copy())
 
-        """
         if not client.sendData("{};{}".format(cur_pos[0], cur_pos[1])):
             msg = "[Client] Connection closed !"
             print(msg)
             logger_full.write(msg + "\n")
-        """
 
         distance = nav.get_distance(cur_pos, coords_from_to[1])
+
+        msg = "Distance to B: " + str(distance)
+        # print(msg)
+        logger_full.write(msg + "\n")
 
         # check if arrived
         _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
@@ -482,7 +448,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if side != 1:  # TODO: maybe should use both side and distance checking methods at once
             vesc_engine.stop_moving()
             # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-            msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
+            msg = "Arrived to " + str(coords_from_to[1])
             # print(msg)
             logger_full.write(msg + "\n")
             break
@@ -502,10 +468,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if cur_time - prev_maneuver_time < config.MANEUVERS_FREQUENCY:
             continue
         prev_maneuver_time = cur_time
-
-        msg = "Distance to B: " + str(distance)
-        # print(msg)
-        logger_full.write(msg + "\n")
 
         msg = "Prev: " + str(prev_pos) + " Cur: " + str(cur_pos) + " A: " + str(coords_from_to[0]) \
               + " B: " + str(coords_from_to[1])
@@ -605,8 +567,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         logger_table.write(msg + "\n")
 
         prev_pos = cur_pos
-
         response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
+
         if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
             msg = "Smoothie response is not ok: " + response
             print(msg)
@@ -810,8 +772,7 @@ def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputi
 
 
 def main():
-    log_cur_dir = LOG_ROOT_DIR + get_current_time() + "/"
-    create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
+    create_directories(config.DEBUG_IMAGES_PATH)
 
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
@@ -819,14 +780,13 @@ def main():
     view_zone_points_cv = np.array(config.VIEW_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     nav = navigation.GPSComputing()
     used_points_history = []
-    logger_full = utility.Logger(log_cur_dir + "log full.txt")
-    logger_table = utility.Logger(log_cur_dir + "log table.csv")
+    logger_full = utility.Logger("full log " + get_current_time() + ".txt")
+    logger_table = utility.Logger("table log " + get_current_time() + ".csv")
 
     # sensors picking
     report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
                           'avg_input_current', 'rpm', 'input_voltage']
 
-    """
     # QGIS and sensor data transmitting
     path = os.path.abspath(os.getcwd())
     sensor_processor = SensorProcessing.SensorProcessing(path, 0)
@@ -838,8 +798,6 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
     sensor_processor.startSession()
-    """
-    client = None
 
     try:
         msg = "Initializing..."
@@ -888,10 +846,7 @@ def main():
         # generate path points
         path_points = build_path(field_gps_coords, nav, logger_full)
         if len(path_points) > 0:
-            save_gps_coordinates(path_points, log_cur_dir + "generated path.txt")
-            msg = "Generated path points are successfully saved."
-            print(msg)
-            logger_full.write(msg + "\n")
+            save_gps_coordinates(path_points, "generated_path " + get_current_time() + ".txt")
         else:
             msg = "List of path points is empty, saving canceled."
             print(msg)
@@ -910,24 +865,20 @@ def main():
                                                            config.PERIPHERY_CONFIDENCE_THRESHOLD,
                                                            config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
                                                            config.PERIPHERY_DNN_TARGET)
-
         print("Loading precise detector...")
         precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
                                                          config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
                                                          config.PRECISE_CONFIDENCE_THRESHOLD,
                                                          config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
                                                          config.PRECISE_DNN_TARGET)
-
         print("Loading smoothie...")
         smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
-
         print("Loading vesc...")
         vesc_engine = adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         print("Loading gps...")
         gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
         # gps = stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
-
         print("Loading camera...")
         camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                                   config.CROP_H_TO, config.CV_ROTATE_CODE,
@@ -944,12 +895,10 @@ def main():
             print(msg)
             logger_full.write(msg + "\n")
 
-        """
         # ask permission to start moving
         msg = "Initializing done. Press enter to start moving."
         input(msg)
         logger_full.write(msg + "\n")
-        """
 
         msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|'
         print(msg)
@@ -1000,7 +949,7 @@ def main():
         # save log data
         print("Saving positions histories...")
         if len(used_points_history) > 0:
-            save_gps_coordinates(used_points_history, log_cur_dir + "used_gps_history.txt")  # TODO: don't accumulate a lot of points - write each of them to file as soon as they come
+            save_gps_coordinates(used_points_history, "used_gps_history " + get_current_time() + ".txt")  # TODO: don't accumulate a lot of points - write each of them to file as soon as they come
         else:
             msg = "used_gps_history list has 0 elements!"
             print(msg)
@@ -1008,7 +957,7 @@ def main():
 
         adapter_points_history = gps.get_last_positions_list()  # TODO: reduce history positions to 1 to save RAM
         if len(adapter_points_history) > 0:
-            save_gps_coordinates(adapter_points_history, log_cur_dir + "adapter_gps_history.txt")
+            save_gps_coordinates(adapter_points_history, "adapter_gps_history " + get_current_time() + ".txt")
         else:
             msg = "adapter_gps_history list has 0 elements!"
             print(msg)
@@ -1024,13 +973,11 @@ def main():
         vesc_engine.disconnect()
         gps.disconnect()
 
-        """
         # close transmitting connections
         print("Closing transmitters...")
         sensor_processor.endSession()
         client.closeConnection()
         sensor_processor.stopServer()
-        """
 
         print("Safe disable is done.")
 

@@ -430,7 +430,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if side != 1:  # TODO: maybe should use both side and distance checking methods at once
             vesc_engine.stop_moving()
             # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-            msg = "Arrived to " + str(coords_from_to[1])
+            msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
             # print(msg)
             logger_full.write(msg + "\n")
             break
@@ -553,8 +553,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         logger_table.write(msg + "\n")
 
         prev_pos = cur_pos
-        response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
 
+        response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
         if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
             msg = "Smoothie response is not ok: " + response
             print(msg)
