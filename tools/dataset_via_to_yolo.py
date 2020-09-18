@@ -10,15 +10,19 @@ import datetime
 import os
 import cv2 as cv
 
-# paths
-INPUT_JSON_FILE_PATH = "1 result.json"
+# paths input
+INPUT_JSON_FILE_PATH = "raw 1 sorted/dataset5_v23.json"
 INPUT_CLASSES_FILE_PATH = "../yolo/v3_precise.names"  # should be exactly same file as one which will be used for learning (types order in this file is strictly valuable, and can't be traced to warn user, so make sure you using same file here and at the NN learning)
-INPUT_DATASET_IMAGES_DIR = "images/"
+INPUT_DATASET_IMAGES_DIR = "raw 1 sorted/"
+# paths output
 OUTPUT_YOLO_TXT_DIR = "yolo txt regions/"
 UNSUPPORTED_REGIONS_LIST_FILE = "unsupported regions list.txt"
 MISSING_DATASET_IMAGES_LIST_FILE = "missing images list.txt"
 MISSING_JSON_REGION_TYPES_LIST_FILE = "missing in json types file list.txt"
 MISSING_CLASSES_LIST_FILE = "missing classes list.txt"
+
+# settings
+region_type_key = "plant type"
 
 
 def create_directories(*args):
@@ -73,7 +77,12 @@ def main():
         data = json.loads(file.read())
 
     # process regions
+    cur_file_no = 1
     for file_key in data["_via_img_metadata"]:
+        if cur_file_no % 10 == 0:
+            print("Processed", cur_file_no, "of", len(data["_via_img_metadata"]), "files.")
+        cur_file_no += 1
+
         file_name = data["_via_img_metadata"][file_key]["filename"]
         file_path = INPUT_DATASET_IMAGES_DIR + file_name
 
@@ -114,12 +123,12 @@ def main():
                         continue
 
                     # check if region type is present
-                    if "type" not in region["region_attributes"]:
+                    if region_type_key not in region["region_attributes"]:
                         missing_json_region_types_count += 1
                         missing_json_region_types_files.add(file_name)
                         continue
 
-                    region_type = region["region_attributes"]["type"]
+                    region_type = region["region_attributes"][region_type_key]
 
                     # check if type is present in yolo names file
                     if region_type not in classes:
