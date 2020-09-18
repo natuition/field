@@ -385,25 +385,26 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if current_working_mode == working_mode_slow:
             if any_plant_in_zone(plants_boxes, working_zone_polygon):
                 vesc_engine.stop_moving()
-                time.sleep(0.2)
+                time.sleep(0.1)
 
                 start_work_t = time.time()
                 frame = camera.get_image()
                 frame_t = time.time()
 
-                plants_boxes = precise_det.detect(frame)
+                plants_boxes = periphery_det.detect(frame)
                 pre_det_t = time.time()
 
-                debug_save_image(img_output_dir, "(precise view scan M=1)", frame, plants_boxes, undistorted_zone_radius,
+                debug_save_image(img_output_dir, "(periphery view scan M=1)", frame, plants_boxes, undistorted_zone_radius,
                                  working_zone_points_cv)
-                msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. time: " + str(pre_det_t - frame_t)
+                msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPeri. det. time: " + str(pre_det_t - frame_t)
                 logger_full.write(msg + "\n")
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                        undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
-            elif not any_plant_in_zone(plants_boxes, view_zone_polygon) and \
+            elif not any_plant_in_zone(plants_boxes, working_zone_polygon) and \
                     time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
+                """
                 # set camera to the Y max
                 res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
                                               Y=config.Y_MAX / config.XY_COEFFICIENT_TO_MM)
@@ -411,13 +412,15 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y max, smoothie response:\n" + res
                     logger_full.write(msg + "\n")
                 smoothie.wait_for_all_actions_done()
+                """
                 current_working_mode = working_mode_switching
             vesc_engine.start_moving()
 
         # switching to fast mode
         elif current_working_mode == working_mode_switching:
-            if any_plant_in_zone(plants_boxes, view_zone_polygon):
+            if any_plant_in_zone(plants_boxes, working_zone_polygon):
                 vesc_engine.stop_moving()
+                """
                 # set camera to the Y min
                 res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
                                               Y=config.Y_MIN)
@@ -425,17 +428,20 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
                     logger_full.write(msg + "\n")
                 smoothie.wait_for_all_actions_done()
+                """
                 current_working_mode = working_mode_slow
                 slow_mode_time = time.time()
-            elif smoothie.get_smoothie_current_coordinates(False)["Y"] + config.XY_COEFFICIENT_TO_MM * 20 > config.Y_MAX:
+            # elif smoothie.get_smoothie_current_coordinates(False)["Y"] + config.XY_COEFFICIENT_TO_MM * 20 > config.Y_MAX:
+            else:
                 current_working_mode = working_mode_fast
                 if not close_to_end:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
         # fast mode
         else:
-            if any_plant_in_zone(plants_boxes, view_zone_polygon):
+            if any_plant_in_zone(plants_boxes, working_zone_polygon):
                 vesc_engine.stop_moving()
+                """
                 # set camera to the Y min
                 res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
                                               Y=config.Y_MIN)
@@ -443,9 +449,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
                     logger_full.write(msg + "\n")
                 smoothie.wait_for_all_actions_done()
+                """
                 current_working_mode = working_mode_slow
                 slow_mode_time = time.time()
-                vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                vesc_engine.set_rpm(config.VESC_RPM_SLOW)
             elif close_to_end:
                 vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
             else:
