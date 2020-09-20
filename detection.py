@@ -14,7 +14,7 @@ class YoloOpenCVDetection:
         self._input_size = input_size
         self._confidence_threshold = confidence_threshold
         self._nms_threshold = nms_threshold  # non-max suppression
-        self.classes = self._load_class_names(yolo_classes_path)
+        self.classes = self.load_class_names(yolo_classes_path)
         self.net = cv.dnn.readNetFromDarknet(yolo_config_path, yolo_weights_path)
         self.net.setPreferableBackend(backend)  # DNN_BACKEND_OPENCV for CPU usage
         self.net.setPreferableTarget(target)  # DNN_TARGET_CPU for CPU usage
@@ -84,7 +84,8 @@ class YoloOpenCVDetection:
         return final_plant_boxes
 
     # Load names of classes
-    def _load_class_names(self, labels_file):
+    @staticmethod
+    def load_class_names(labels_file):
         with open(labels_file, 'rt') as f:
             return f.read().rstrip('\n').split('\n')
 
