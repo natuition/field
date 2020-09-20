@@ -407,7 +407,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         debug_save_image(img_output_dir, "(periphery view scan M=" + str(current_working_mode) + ")", frame,
                          plants_boxes, undistorted_zone_radius,
-                         working_zone_points_cv if current_working_mode == working_mode_slow else view_zone_points_cv)
+                         working_zone_points_cv)
+                         # working_zone_points_cv if current_working_mode == working_mode_slow else view_zone_points_cv)
         msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
         logger_full.write(msg + "\n")
 
