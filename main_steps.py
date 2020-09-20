@@ -20,6 +20,7 @@ import cv2 as cv
 import numpy as np
 import stubs
 import extraction
+import datacollection
 
 if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
@@ -28,6 +29,7 @@ if config.RECEIVE_FIELD_FROM_RTK:
 ALLOW_GATHERING = True
 DATA_GATHERING_DIR = "gathered photos/"
 LOG_ROOT_DIR = "logs/"
+STATISTICS_FILE = "statistics.txt"
 
 
 def create_directories(*args):
@@ -170,7 +172,7 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                        detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
                        plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir,
-                       logger_full: utility.Logger):
+                       logger_full: utility.Logger, data_collector: datacollection.DataCollector):
     """Extract all plants found in current position"""
 
     msg = "Extracting " + str(len(plant_boxes)) + " plants"
@@ -194,6 +196,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                 if is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                     msg = "Plant " + str(box) + " is in undistorted zone"
                     logger_full.write(msg + "\n")
+
+                    # TODO: use plant box from precise NN for movement calculations
 
                     # calculate values to move camera over a plant
                     sm_x = px_to_smoothie_value(box_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
@@ -232,7 +236,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                             msg = "Cork is stuck! Emergency stopping."
                             logger_full.write(msg + "\n")
                             exit(1)
-                        break
+                    else:
+                        data_collector.add_extractions_data(box.get_name(), 1)
                     break
 
                 # if outside undistorted zone but in working zone
@@ -324,7 +329,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               client, logger_full: utility.Logger, logger_table: utility.Logger, report_field_names,
                               used_points_history: list, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
-                              nav: navigation.GPSComputing):
+                              nav: navigation.GPSComputing, data_collector: datacollection.DataCollector):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -395,7 +400,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
-                                       undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full)
+                                       undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full,
+                                       data_collector)
             # time.sleep(0.5)  # if we're not using extractions
             vesc_engine.start_moving()
 
@@ -761,6 +767,7 @@ def main():
     log_cur_dir = LOG_ROOT_DIR + get_current_time() + "/"
     create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
 
+    data_collector = datacollection.DataCollector()
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     view_zone_polygon = Polygon(config.VIEW_ZONE_POLY_POINTS)
@@ -922,7 +929,8 @@ def main():
             move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
                                       client, logger_full, logger_table, report_field_names, used_points_history,
                                       config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon, working_zone_points_cv,
-                                      view_zone_polygon, view_zone_points_cv, config.DEBUG_IMAGES_PATH, nav)
+                                      view_zone_polygon, view_zone_points_cv, config.DEBUG_IMAGES_PATH, nav,
+                                      data_collector)
 
         msg = "Work is done."
         print(msg)
@@ -937,13 +945,20 @@ def main():
         logger_full.write(msg + "\n")
     finally:
         # try emergency stop
+        print("Disconnecting from vesc...")
         try:
             vesc_engine.stop_moving()
+            vesc_engine.disconnect()
         except:
+            print("Failed:\n" + traceback.format_exc())
             pass
 
         print("Releasing camera...")
-        camera.release()
+        try:
+            camera.release()
+        except:
+            print("Failed:\n" + traceback.format_exc())
+            pass
 
         # save log data
         print("Saving positions histories...")
@@ -954,23 +969,43 @@ def main():
             print(msg)
             logger_full.write(msg + "\n")
 
-        adapter_points_history = gps.get_last_positions_list()  # TODO: reduce history positions to 1 to save RAM
-        if len(adapter_points_history) > 0:
-            save_gps_coordinates(adapter_points_history, log_cur_dir + "adapter_gps_history.txt")
-        else:
-            msg = "adapter_gps_history list has 0 elements!"
-            print(msg)
-            logger_full.write(msg + "\n")
+        try:
+            adapter_points_history = gps.get_last_positions_list()  # TODO: reduce history positions to 1 to save RAM
+            if len(adapter_points_history) > 0:
+                save_gps_coordinates(adapter_points_history, log_cur_dir + "adapter_gps_history.txt")
+            else:
+                msg = "adapter_gps_history list has 0 elements!"
+                print(msg)
+                logger_full.write(msg + "\n")
+        except:
+            pass
+
+        # save session statistics TODO: its temporary
+        print("Saving statistics...")
+        try:
+            data_collector.save_current_data(log_cur_dir + STATISTICS_FILE)
+        except:
+            print("Failed:\n" + traceback.format_exc())
+            pass
 
         # close log and hardware connections
         print("Closing loggers...")
         logger_full.close()
         logger_table.close()
 
-        print("Disconnecting hardware...")
-        smoothie.disconnect()
-        vesc_engine.disconnect()
-        gps.disconnect()
+        print("Disconnecting from smoothie...")
+        try:
+            smoothie.disconnect()
+        except:
+            print("Failed:\n" + traceback.format_exc())
+            pass
+
+        print("Disconnecting from gps...")
+        try:
+            gps.disconnect()
+        except:
+            print("Failed:\n" + traceback.format_exc())
+            pass
 
         """
         # close transmitting connections
