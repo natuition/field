@@ -214,6 +214,11 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         logger_full.write(msg + "\n")
                         break
 
+                    # debug image saving
+                    frame = camera.get_image()
+                    debug_save_image(img_output_dir, "(before first cork down)", frame, [],
+                                     undistorted_zone_radius, working_zone_points_cv)
+
                     # extraction
                     if hasattr(extraction.ExtractionMethods, box.get_name()):
                         # TODO: it's temporary log (1)
