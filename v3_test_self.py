@@ -15,7 +15,7 @@ class Self_Testing:
         self.all_tests = 14
         self.pass_tests = 0
         self.smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
-        self.vesc = adapters.VescAdapter(-2800, 2, config.VESC_ALIVE_FREQ,
+        self.vesc = adapters.VescAdapter(-2800, 10, config.VESC_ALIVE_FREQ,
                                          config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
         self.camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
@@ -53,7 +53,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the right the X axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=10)
+        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=50)
         return response
 
     def test_cork_X_left(self):
@@ -61,7 +61,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the left the X axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=-10)
+        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=-50)
         return response
 
     def test_cork_Y_up(self):
@@ -69,7 +69,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the up the Y axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=10)
+        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=50)
         return response
 
     def test_cork_Y_down(self):
@@ -77,7 +77,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the down the Y axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=-10)
+        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=-50)
         return response
 
     def test_steering_wheels_right(self):
@@ -85,7 +85,7 @@ class Self_Testing:
         Function to check the moving the steering wheels 20 to the right
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.A_F_MAX, A=20)
+        response = self.smoothie.custom_move_for(config.A_F_MAX, A=config.A_MAX)
         return response
 
     def test_steering_wheels_left(self):
@@ -93,7 +93,7 @@ class Self_Testing:
         Function to check the moving the steering wheels 35 to the left
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.A_F_MAX, A=-35)
+        response = self.smoothie.custom_move_for(config.A_F_MAX, A=config.A_MIN)
         return response
 
     def test_steering_wheels_center(self):
@@ -498,19 +498,15 @@ class Self_Testing:
         print(msg)
         try:
             image = self.test_camera()
-            if image == True:
-                response = self.smoothie.RESPONSE_OK
-                print(response)
-                self.logger.write(response + '\n')
-                cv.imwrite(self.name, image)
-                msg = 'Has the image been saved? (y/n)'
-                self.logger.write(msg + '\n')
-                key = input(msg)
-                self.logger.write(key + '\n')
-                error = 'No software errors found'
-            else:
-                response = "Camera error"
-                error = "Image was not received"
+            response = self.smoothie.RESPONSE_OK
+            print(response)
+            self.logger.write(response + '\n')
+            cv.imwrite(self.name, image)
+            msg = 'Has the image been saved? (y/n)'
+            self.logger.write(msg + '\n')
+            key = input(msg)
+            self.logger.write(key + '\n')
+            error = 'No software errors found'
             print(error)
         except:
             error = traceback.format_exc()
