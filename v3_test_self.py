@@ -5,6 +5,9 @@ import datetime
 import cv2 as cv
 import traceback
 
+X_MOVEMENT = 50
+Y_MOVEMENT = 50
+
 
 class Self_Testing:
     """
@@ -53,7 +56,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the right the X axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=50)
+        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=X_MOVEMENT)
         return response
 
     def test_cork_X_left(self):
@@ -61,7 +64,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the left the X axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=-50)
+        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=-X_MOVEMENT)
         return response
 
     def test_cork_Y_up(self):
@@ -69,7 +72,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the up the Y axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=50)
+        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=Y_MOVEMENT)
         return response
 
     def test_cork_Y_down(self):
@@ -77,7 +80,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the down the Y axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=-50)
+        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=-Y_MOVEMENT)
         return response
 
     def test_steering_wheels_right(self):
@@ -238,7 +241,7 @@ class Self_Testing:
             response = None
             key = None
             error = None
-            msg = 'Start the corkscrew movement to the right along the X axis (10)...'
+            msg = 'Start the corkscrew movement to the right along the X axis ' + str(X_MOVEMENT)
             self.logger.write(msg + '\n')
             print(msg)
             try:
@@ -267,7 +270,7 @@ class Self_Testing:
             response = None
             key = None
             error = None
-            msg = 'Start the corkscrew movement to to the left along the X axis (-10)...'
+            msg = 'Start the corkscrew movement to to the left along the X axis ' + str(-X_MOVEMENT)
             self.logger.write(msg + '\n')
             print(msg)
             try:
@@ -296,7 +299,7 @@ class Self_Testing:
             response = None
             key = None
             error = None
-            msg = 'Start the corkscrew movement up along the Y axis (10)...'
+            msg = 'Start the corkscrew movement up along the Y axis ' + str(Y_MOVEMENT)
             self.logger.write(msg + '\n')
             print(msg)
             try:
@@ -325,7 +328,7 @@ class Self_Testing:
             response = None
             key = None
             error = None
-            msg = 'Start the corkscrew movement down along the Y axis (-10)...'
+            msg = 'Start the corkscrew movement down along the Y axis ' + str(-Y_MOVEMENT)
             self.logger.write(msg + '\n')
             print(msg)
             try:
@@ -501,7 +504,7 @@ class Self_Testing:
             response = self.smoothie.RESPONSE_OK
             print(response)
             self.logger.write(response + '\n')
-            cv.imwrite(self.name, image)
+            cv.imwrite(self.name + ".jpg", image)
             msg = 'Has the image been saved? (y/n)'
             self.logger.write(msg + '\n')
             key = input(msg)
