@@ -45,7 +45,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew down the Z axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.Z_F_EXTRACTION_DOWN, config.EXTRACTION_Z)
+        response = self.smoothie.custom_move_for(config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
         return response
 
     def test_cork_X_right(self):
@@ -178,7 +178,7 @@ class Self_Testing:
         response = None
         key = None
         error = None
-        msg = 'Start the corkscrew movement down the Z axis (-50)...'
+        msg = 'Start the corkscrew movement down the Z axis ' + str(config.Z_F_EXTRACTION_DOWN)
         self.logger.write(msg + '\n')
         print(msg)
         try:
@@ -557,12 +557,12 @@ class Self_Testing:
             msg = 'Done.'
             self.logger.write(msg + '\n')
             print(msg)
-            self.logger.close()
 
-            self.smoothie.disconnect()
-            self.gps.disconnect()
-            self.camera.release()
-            self.vesc.disconnect()
+        self.logger.close()
+        self.smoothie.disconnect()
+        self.gps.disconnect()
+        self.camera.release()
+        self.vesc.disconnect()
 
 
 if __name__ == "__main__":
