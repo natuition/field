@@ -124,6 +124,11 @@ def main():
                             print(response)
                             logger.write(response + "\n")
                             smoothie.wait_for_all_actions_done()
+                    except KeyboardInterrupt:
+                        msg = "Keyboard interrupt. Exiting."
+                        print(msg)
+                        logger.write(msg + "\n")
+                        exit(0)
                     except:
                         error = traceback.format_exc()
                         logger.write(error + "\n")
