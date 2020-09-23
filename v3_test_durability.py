@@ -157,10 +157,9 @@ def main():
             msg = 'Done.'
             logger.write(msg + '\n')
             print(msg)
-            logger.close()
-
-            smoothie.disconnect()
-            vesc.disconnect()
+    logger.close()
+    smoothie.disconnect()
+    vesc.disconnect()
 
 
 if __name__ == '__main__':
