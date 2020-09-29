@@ -36,11 +36,15 @@ class SmoothieAdapter:
         self._c_cur = multiprocessing.Value("d", 0)
 
         res = self.switch_to_relative()
+        if res == self.RESPONSE_WTF or "ignored" in res:
+            res = self.switch_to_relative()
         if res != self.RESPONSE_OK:
-            print("G91:", res)  # TODO: what if so?
+            # TODO: what if so?
+            print("Switching smoothie to relative was failed! Smoothie's response:\n", res)
 
         # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
         res = self.custom_move_for(config.Z_F_EXTRACTION_DOWN, Z=-5)
+        self.wait_for_all_actions_done()
         if res != self.RESPONSE_OK:
             print("Couldn't move cork down for Z-5! Calibration errors on Z axis are possible!")
 
@@ -995,14 +999,15 @@ class VescAdapter:
         try:
             while self._keep_thread_alive:
                 if self._allow_movement:
-                    if time.time() > self._next_alive_time:
-                        self._next_alive_time = time.time() + self._alive_freq
-                        self._ser.write(pyvesc.encode(pyvesc.SetAlive))
-
                     if time.time() - self._start_time > self._moving_time:
                         self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
                         self._last_stop_time = time.time()
                         self._allow_movement = False
+                        continue
+
+                    if time.time() > self._next_alive_time:
+                        self._next_alive_time = time.time() + self._alive_freq
+                        self._ser.write(pyvesc.encode(pyvesc.SetAlive))
                 time.sleep(self._check_freq)
         except serial.SerialException as ex:
             print(ex)
@@ -1014,6 +1019,7 @@ class VescAdapter:
 
     def stop_moving(self):
         self._allow_movement = False
+        self._last_stop_time = time.time()
         self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
 
     def wait_for_stop(self):
