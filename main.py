@@ -31,6 +31,9 @@ DATA_GATHERING_DIR = "gathered photos/"
 LOG_ROOT_DIR = "logs/"
 STATISTICS_FILE = "statistics.txt"
 
+# TODO: temp debug counter
+IMAGES_COUNTER = 0
+
 
 def create_directories(*args):
     """Creates directories, receives any args count, each arg is separate dir"""
@@ -157,16 +160,20 @@ def save_image(path_to_save, image, counter, session_label, sep=" "):
 
 
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
+    # TODO: temp counter debug
+    global IMAGES_COUNTER
+    IMAGES_COUNTER += 1
+
     # TODO: data gathering temporary hardcoded
     if ALLOW_GATHERING:
-        save_image(DATA_GATHERING_DIR, frame, None, label)
+        save_image(DATA_GATHERING_DIR, frame, IMAGES_COUNTER, label)
 
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
         frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
         frame = draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
-        save_image(img_output_dir, frame, None, label)
+        save_image(img_output_dir, frame, IMAGES_COUNTER, label)
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
