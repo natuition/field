@@ -5,14 +5,8 @@ import adapters
 import navigation
 from config import config
 import time
-import datetime
 import utility
 import traceback
-"""
-import SensorProcessing
-import socketForRTK
-from socketForRTK.Client import Client
-"""
 import detection
 from matplotlib.patches import Polygon
 import math
@@ -21,6 +15,11 @@ import numpy as np
 import stubs
 import extraction
 import datacollection
+"""
+import SensorProcessing
+import socketForRTK
+from socketForRTK.Client import Client
+"""
 
 if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
@@ -64,13 +63,6 @@ def save_gps_coordinates(points: list, file_name):
         for point in points:
             str_point = str(point[0]) + " " + str(point[1]) + "\n"
             file.write(str_point)
-
-
-def get_current_time():
-    """Returns formatted string with current time (YYYY-MM-DD HH-MM-SS)"""
-
-    date = str(datetime.datetime.now())
-    return date[:date.rindex(".")].replace(":", "-")
 
 
 def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
@@ -148,15 +140,16 @@ def draw_zone_poly(image, np_poly_points):
     return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
 
 
-def save_image(path_to_save, image, counter, session_label, sep=" "):
+def save_image(path_to_save, image, counter, session_label, date, sep=" "):
     """
     Assembles image file name and saves received image under this name to specified directory.
     Counter and session label may be passed if was set to None.
     """
 
+    date = sep + date if date else ""
     session_label = sep + session_label if session_label else ""
     counter = sep + str(counter) if counter or counter == 0 else ""
-    cv.imwrite(path_to_save + get_current_time() + session_label + counter + ".jpg", image)
+    cv.imwrite(path_to_save + date + session_label + counter + ".jpg", image)
 
 
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
@@ -166,14 +159,25 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 
     # TODO: data gathering temporary hardcoded
     if ALLOW_GATHERING:
-        save_image(DATA_GATHERING_DIR, frame, IMAGES_COUNTER, label)
+        save_image(DATA_GATHERING_DIR, frame, IMAGES_COUNTER, label, utility.get_current_time())
 
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
+        # draw time on frame
+        cur_time = utility.get_current_time()
+        left, top = 30, 30
+        label_size, base_line = cv.getTextSize(cur_time, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+        top = max(top, label_size[1])
+        frame = cv.rectangle(frame, (left, top - round(1.5 * label_size[1])),
+                     (left + round(1.5 * label_size[0]), top + base_line),
+                     (0, 0, 255), cv.FILLED)
+        frame = cv.putText(frame, cur_time, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
+
+        # draw data on frame
         frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
         frame = draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
-        save_image(img_output_dir, frame, IMAGES_COUNTER, label)
+        save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
@@ -233,9 +237,15 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     # calculate values to move camera over a plant
                     sm_x = px_to_smoothie_value(box_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
                     sm_y = -px_to_smoothie_value(box_y, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
+                    cam_sm_x = sm_x
+                    cam_sm_y = sm_y
                     # swap camera and cork for extraction immediately
                     sm_x += config.CORK_TO_CAMERA_DISTANCE_X
                     sm_y += config.CORK_TO_CAMERA_DISTANCE_Y
+
+                    msg = "box_x:{0} box_y:{1} cam_sm_x:{2} cam_sm_y:{3} sm_x:{4} sm_y:{5} scene_center_x:{6} scene_center_y:{7} one_mm_in_px:{8}".format(
+                        box_x, box_y, cam_sm_x, cam_sm_y, sm_x, sm_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
+                    logger_full.write(msg + "\n")
 
                     # move cork over a plant
                     res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
@@ -862,7 +872,7 @@ def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputi
 
 
 def main():
-    log_cur_dir = LOG_ROOT_DIR + get_current_time() + "/"
+    log_cur_dir = LOG_ROOT_DIR + utility.get_current_time() + "/"
     create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
 
     data_collector = datacollection.DataCollector()
