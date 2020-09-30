@@ -166,12 +166,12 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
         # draw time on frame
         cur_time = utility.get_current_time()
         left, top = 30, 30
-        label_size, base_line = cv.getTextSize(cur_time, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+        label_size, base_line = cv.getTextSize(cur_time + " No: " + str(IMAGES_COUNTER), cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         top = max(top, label_size[1])
         frame = cv.rectangle(frame, (left, top - round(1.5 * label_size[1])),
                      (left + round(1.5 * label_size[0]), top + base_line),
                      (0, 0, 255), cv.FILLED)
-        frame = cv.putText(frame, cur_time, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
+        frame = cv.putText(frame, cur_time + " No: " + str(IMAGES_COUNTER), (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
 
         # draw data on frame
         frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
