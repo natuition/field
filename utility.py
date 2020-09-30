@@ -35,4 +35,4 @@ class Logger:
 def get_current_time():
     """Returns current time as formatted string"""
 
-    return datetime.datetime.now().strftime("%d-%m-%Y %H-%M %f")
+    return datetime.datetime.now().strftime("%d-%m-%Y %H-%M-%S %f")
