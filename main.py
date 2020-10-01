@@ -438,7 +438,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if current_working_mode == working_mode_slow:
             if any_plant_in_zone(plants_boxes, working_zone_polygon):
                 vesc_engine.stop_moving()
-                time.sleep(0.1)
+                time.sleep(config.DELAY_BEFORE_2ND_SCAN)
 
                 start_work_t = time.time()
                 frame = camera.get_image()
@@ -447,9 +447,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 plants_boxes = periphery_det.detect(frame)
                 pre_det_t = time.time()
 
-                debug_save_image(img_output_dir, "(periphery view scan M=1)", frame, plants_boxes, undistorted_zone_radius,
+                debug_save_image(img_output_dir, "(periphery view scan 2 M=1)", frame, plants_boxes, undistorted_zone_radius,
                                  working_zone_points_cv)
-                msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPeri. det. time: " + str(pre_det_t - frame_t)
+                msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPeri. det. 2 time: " + str(pre_det_t - frame_t)
                 logger_full.write(msg + "\n")
 
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):

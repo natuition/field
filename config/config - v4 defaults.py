@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.4.1"  # still have some obsolete keys
+CONFIG_VERSION = "0.4.2"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -207,6 +207,7 @@ DEBUG_IMAGES_PATH = "debug_images/"
 RECEIVE_FIELD_FROM_RTK = True
 SLOW_MODE_MIN_TIME = 3  # seconds
 EXTRACTION_TUNING_MAX_COUNT = 3
+DELAY_BEFORE_2ND_SCAN = 0.3  # delay in seconds after robot stop and before second scan (M=1)
 DB_NAME = "dbname"
 DB_USER = "username"
 DB_HOST = "x.x.x.x"
