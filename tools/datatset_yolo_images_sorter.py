@@ -21,6 +21,7 @@ def main():
 
     slash = utility.get_path_slash()
     counter = 0
+    empty_files = 0
 
     print("Loading periphery detector...")
     periphery_detector = detection.YoloOpenCVDetection("../" + config.PERIPHERY_CLASSES_FILE, "../" + config.PERIPHERY_CONFIG_FILE,
@@ -31,14 +32,19 @@ def main():
 
     paths_to_images = glob.glob(INPUT_IMAGES_DIR + "*.jpg")
     for full_img_path in paths_to_images:
-        img = cv.imread(full_img_path)
-        plant_boxes = periphery_detector.detect(img)
-        if len(plant_boxes) > 0:
-            file_name = full_img_path.split(slash)[-1]
-            os.replace(full_img_path, OUTPUT_FALSE_IMAGES_DIR + file_name)
+        if os.stat(full_img_path).st_size > 0:
+            img = cv.imread(full_img_path)
+            plant_boxes = periphery_detector.detect(img)
+            if len(plant_boxes) > 0:
+                file_name = full_img_path.split(slash)[-1]
+                os.replace(full_img_path, OUTPUT_FALSE_IMAGES_DIR + file_name)
+        else:
+            empty_files += 1
+
         counter += 1
-        print("Processed", counter, "of", len(paths_to_images), "images")
-    print("Done.")
+        if counter % 100 == 0:
+            print("Processed", counter, "of", len(paths_to_images), "images")
+    print("Done. Found and passed", empty_files, "empty image files.")
 
 
 if __name__ == '__main__':
