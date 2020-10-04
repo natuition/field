@@ -984,9 +984,7 @@ class VescAdapter:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
-        self._keep_thread_alive = False
-        self._ser.close()
+        self.disconnect()
 
     def disconnect(self):
         self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))

@@ -34,7 +34,6 @@ def main():
                 print(msg)
 
                 for i in range(COUNT_OF_ITERATION):
-                    error = None
                     msg = 'Iteration {0}...'.format(i)
                     logger.write(msg + "\n")
                     print(msg)
