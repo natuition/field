@@ -1,4 +1,6 @@
+import platform
 import datetime
+import os
 
 
 class Logger:
@@ -36,3 +38,22 @@ def get_current_time():
     """Returns current time as formatted string"""
 
     return datetime.datetime.now().strftime("%d-%m-%Y %H-%M-%S %f")
+
+
+def create_directories(*args):
+    """Creates directories, receives any args count, each arg is separate dir"""
+
+    for path in args:
+        if not os.path.exists(path):
+            try:
+                os.mkdir(path)
+            except OSError:
+                print("Creation of the directory %s failed" % path)
+            else:
+                print("Successfully created the directory %s " % path)
+        else:
+            print("Directory %s is already exists" % path)
+
+
+def get_path_slash():
+    return "\\" if platform.system() == "Windows" else "/"
