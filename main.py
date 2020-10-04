@@ -213,6 +213,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # use plant box from precise NN for movement calculations
                     if not plant_position_is_precise:
+                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+
                         frame = camera.get_image()
                         temp_plant_boxes = detector.detect(frame)
 
@@ -259,6 +261,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # debug image saving
+                    time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                     frame = camera.get_image()
                     debug_save_image(img_output_dir, "(before first cork down)", frame, [],
                                      undistorted_zone_radius, working_zone_points_cv)
@@ -344,6 +347,8 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                             break
 
                     # make new photo and re-detect plants
+                    time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+
                     frame = camera.get_image()
                     temp_plant_boxes = detector.detect(frame)
 
