@@ -12,6 +12,8 @@ import detection
 INPUT_IMAGES_DIR = "../input/"
 OUTPUT_FALSE_IMAGES_DIR = INPUT_IMAGES_DIR + "false/"
 
+PRINT_FREQUENCY = 100
+
 
 def main():
     if not os.path.exists(INPUT_IMAGES_DIR):
@@ -30,19 +32,21 @@ def main():
                                                        config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
                                                        config.PERIPHERY_DNN_TARGET)
 
+    print("Starting to sort. Results are displayed every", PRINT_FREQUENCY, "images")
     paths_to_images = glob.glob(INPUT_IMAGES_DIR + "*.jpg")
+
     for full_img_path in paths_to_images:
         if os.stat(full_img_path).st_size > 0:
             img = cv.imread(full_img_path)
             plant_boxes = periphery_detector.detect(img)
-            if len(plant_boxes) > 0:
+            if len(plant_boxes) == 0:
                 file_name = full_img_path.split(slash)[-1]
                 os.replace(full_img_path, OUTPUT_FALSE_IMAGES_DIR + file_name)
         else:
             empty_files += 1
 
         counter += 1
-        if counter % 100 == 0:
+        if counter % PRINT_FREQUENCY == 0:
             print("Processed", counter, "of", len(paths_to_images), "images")
     print("Done. Found and passed", empty_files, "empty image files.")
 
