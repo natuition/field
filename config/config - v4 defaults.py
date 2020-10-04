@@ -37,6 +37,9 @@ FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
 PREV_CUR_POINT_MIN_DIST = 100  # pass by cur points dist between them and prev point is lesser than this, mms
 FILTER_MAX_DIST = 5000  # maximum allowable distance between consecutive points (in millimeters)
 FILTER_MIN_DIST = 600  # minimum allowable distance between consecutive points (in millimeters)
+USE_EMERGENCY_FIELD_GENERATION = False  # allows to generate field by moving forward for a given duration
+EMERGENCY_FIELD_SIZE = 15000  # mms; side of the area that will be created if emergency field creation is enabled
+EMERGENCY_MOVING_TIME = 3  # seconds of moving forward for vector getting
 
 
 # ======================================================================================================================
