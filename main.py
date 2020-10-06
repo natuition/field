@@ -59,11 +59,31 @@ def load_coordinates(file_path):
     return positions_list
 
 
-def save_gps_coordinates(points: list, file_name):
+def save_gps_coordinates(points: list, file_name: str):
+    """
+    Saves given list of points using QGIS format
+    :param points:
+    :param file_name:
+    :return:
+    """
+
     with open(file_name, "w") as file:
         for point in points:
             str_point = str(point[0]) + " " + str(point[1]) + "\n"
             file.write(str_point)
+
+
+def save_gps_coordinates_raw(points: list, file_name: str):
+    """
+    Saves given list of points as raw text
+    :param points:
+    :param file_name:
+    :return:
+    """
+
+    with open(file_name, "w") as file:
+        for point in points:
+            file.write(str(point) + "\n")
 
 
 def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
@@ -881,7 +901,7 @@ def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputi
 
 
 def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GPSUbloxAdapter,
-                             nav: navigation.GPSComputing, logger_full: utility.Logger):
+                             nav: navigation.GPSComputing, cur_log_dir, logger_full: utility.Logger):
     msg = "Using emergency field creation..."
     logger_full.write(msg + "\n")
     print(msg)
@@ -913,6 +933,7 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
     print(msg)
     field = [A, B, C, D]
     save_gps_coordinates(field, "field.txt")
+    save_gps_coordinates_raw([starting_point, A, B, C, D], cur_log_dir + "emergency_raw_field.txt")
     return field
 
 
@@ -1009,7 +1030,7 @@ def main():
                     exit(1)
                 field_gps_coords = nav.corner_points(field_gps_coords, config.FILTER_MAX_DIST, config.FILTER_MIN_DIST)
             elif config.USE_EMERGENCY_FIELD_GENERATION:
-                field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, logger_full)
+                field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
             else:
                 msg = "Loading " + config.INPUT_GPS_FIELD_FILE
                 logger_full.write(msg + "\n")
