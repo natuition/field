@@ -1,5 +1,6 @@
 import adapters
 from config import config
+import time
 
 
 def main():
@@ -8,6 +9,7 @@ def main():
     print("Loading vesc...")
     with adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                               config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE) as vesc:
+        time.sleep(2)
         voltage = vesc.get_sensors_data(report_field_names)["input_voltage"]
         print(voltage)
 
