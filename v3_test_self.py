@@ -137,8 +137,8 @@ class Self_Testing:
         Function to check the moving the robot back
         :return: response of the Smoothie
         """
-        response = self.gps.get_last_position()
-        return response
+        position = self.gps.get_last_position()
+        return position
 
     def run(self):
         """
@@ -529,9 +529,9 @@ class Self_Testing:
         self.logger.write(msg + '\n')
         print(msg)
         try:
-            response = self.test_navigation()
-            print(response)
-            self.logger.write(response + '\n')
+            position = self.test_navigation()
+            print(position)
+            self.logger.write(str(position) + '\n')
             msg = 'Has at least one GPS point been received? (y/n)'
             self.logger.write(msg + '\n')
             key = input(msg)
@@ -544,7 +544,7 @@ class Self_Testing:
             print(error)
         finally:
             self.logger.write(error + '\n')
-            if response == self.smoothie.RESPONSE_OK and key == 'y':
+            if key == 'y':
                 msg = 'No technical errors found'
                 self.logger.write(msg + '\n')
                 print(msg)
