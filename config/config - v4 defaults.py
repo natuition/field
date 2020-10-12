@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.4.2"  # still have some obsolete keys
+CONFIG_VERSION = "0.4.3"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -40,6 +40,9 @@ FILTER_MIN_DIST = 600  # minimum allowable distance between consecutive points (
 USE_EMERGENCY_FIELD_GENERATION = False  # allows to generate field by moving forward for a given duration
 EMERGENCY_FIELD_SIZE = 15000  # mms; side of the area that will be created if emergency field creation is enabled
 EMERGENCY_MOVING_TIME = 3  # seconds of moving forward for vector getting
+CONTINUE_PREVIOUS_PATH = False
+PREVIOUS_PATH_POINTS_FILE = "path_points.dat"
+PREVIOUS_PATH_INDEX_FILE = "path_index.txt"
 
 
 # ======================================================================================================================

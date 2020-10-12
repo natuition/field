@@ -15,6 +15,7 @@ import numpy as np
 import stubs
 import extraction
 import datacollection
+import pickle
 
 """
 import SensorProcessing
@@ -1005,53 +1006,88 @@ def main():
                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
                                              config.CAMERA_FLIP_METHOD) as camera:
 
-            # load field coordinates
-            if config.RECEIVE_FIELD_FROM_RTK:
-                msg = "Loading field coordinates from RTK"
+            # load previous path
+            if config.CONTINUE_PREVIOUS_PATH:
+                msg = "Loading previous path points"
                 logger_full.write(msg + "\n")
 
-                try:
-                    field_gps_coords = load_coordinates(rtk.CURRENT_FIELD_PATH)
-                except AttributeError:
-                    msg = "Couldn't get field file name from RTK script as it is wasn't assigned there."
+                # TODO: check if files exist and handle damaged/incorrect data cases
+                with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
+                    path_points = pickle.load(path_points_file)
+                with open(config.PREVIOUS_PATH_INDEX_FILE, "r") as path_index_file:
+                    path_start_index = int(path_index_file.readline())
+
+                # check if index is ok
+                if path_start_index == -1:
+                    msg = "Previous path is already passed"
+                    print(msg)
+                    logger_full.write(msg + "\n")
+                    exit(0)
+                elif path_start_index >= len(path_points) or path_start_index < 1:
+                    msg = "Path start index " + str(path_start_index) + " is out of path points list range (loaded " + \
+                        str(len(path_points)) + " points) (start index can't be zero as 1rst point is starting point)"
                     print(msg)
                     logger_full.write(msg + "\n")
                     exit(1)
-                except FileNotFoundError:
-                    msg = "Couldn't not find " + rtk.CURRENT_FIELD_PATH + " file."
-                    print(msg)
-                    logger_full.write(msg + "\n")
-                    exit(1)
-                if len(field_gps_coords) < 5:
-                    msg = "Expected at least 4 gps points in " + rtk.CURRENT_FIELD_PATH + ", got " + \
-                          str(len(field_gps_coords))
-                    print(msg)
-                    logger_full.write(msg + "\n")
-                    exit(1)
-                field_gps_coords = nav.corner_points(field_gps_coords, config.FILTER_MAX_DIST, config.FILTER_MIN_DIST)
-            elif config.USE_EMERGENCY_FIELD_GENERATION:
-                field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
+
+            # load field points and generate new path
             else:
-                msg = "Loading " + config.INPUT_GPS_FIELD_FILE
+                if config.RECEIVE_FIELD_FROM_RTK:
+                    msg = "Loading field coordinates from RTK"
+                    logger_full.write(msg + "\n")
+
+                    try:
+                        field_gps_coords = load_coordinates(rtk.CURRENT_FIELD_PATH)
+                    except AttributeError:
+                        msg = "Couldn't get field file name from RTK script as it is wasn't assigned there."
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        exit(1)
+                    except FileNotFoundError:
+                        msg = "Couldn't not find " + rtk.CURRENT_FIELD_PATH + " file."
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        exit(1)
+                    if len(field_gps_coords) < 5:
+                        msg = "Expected at least 4 gps points in " + rtk.CURRENT_FIELD_PATH + ", got " + \
+                              str(len(field_gps_coords))
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        exit(1)
+                    field_gps_coords = nav.corner_points(field_gps_coords, config.FILTER_MAX_DIST, config.FILTER_MIN_DIST)
+                elif config.USE_EMERGENCY_FIELD_GENERATION:
+                    field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
+                else:
+                    msg = "Loading " + config.INPUT_GPS_FIELD_FILE
+                    logger_full.write(msg + "\n")
+
+                    field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+
+                # check field corner points count
+                if len(field_gps_coords) != 4:
+                    msg = "Expected 4 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(
+                        field_gps_coords)
+                    print(msg)
+                    logger_full.write(msg + "\n")
+                    exit(1)
+
+                field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
+
+                # generate path points
+                path_start_index = 1
+                path_points = build_path(field_gps_coords, nav, logger_full)
+                msg = "Generated " + str(len(path_points)) + " points."
                 logger_full.write(msg + "\n")
 
-                field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                # save path points and point to start from index
+                with open(config.PREVIOUS_PATH_POINTS_FILE, "wb") as path_points_file:
+                    pickle.dump(path_points, path_points_file)
+                with open(config.PREVIOUS_PATH_INDEX_FILE, "w") as path_index_file:
+                    path_index_file.write(str(path_start_index))
 
-            # check field corner points count
-            if len(field_gps_coords) != 4:
-                msg = "Expected 4 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(
-                    field_gps_coords)
-                print(msg)
-                logger_full.write(msg + "\n")
-                exit(1)
-
-            field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
-
-            # generate path points
-            path_points = build_path(field_gps_coords, nav, logger_full)
             if len(path_points) > 0:
-                save_gps_coordinates(path_points, log_cur_dir + "generated path.txt")
-                msg = "Generated path points are successfully saved."
+                save_gps_coordinates(path_points, log_cur_dir + "current path points.txt")
+                msg = "Current path points are successfully saved."
                 print(msg)
                 logger_full.write(msg + "\n")
             else:
@@ -1089,23 +1125,30 @@ def main():
             logger_table.write(msg + "\n")
 
             # path points visiting loop
-            msg = "Generated " + str(len(path_points)) + " points."
-            logger_full.write(msg + "\n")
-            for i in range(1, len(path_points)):
-                from_to = [path_points[i - 1], path_points[i]]
-                from_to_dist = nav.get_distance(from_to[0], from_to[1])
+            with open(config.PREVIOUS_PATH_INDEX_FILE, "w") as path_index_file:
+                for i in range(path_start_index, len(path_points)):
+                    from_to = [path_points[i - 1], path_points[i]]
+                    from_to_dist = nav.get_distance(from_to[0], from_to[1])
 
-                msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
-                # print(msg)
-                logger_full.write(msg + "\n\n")
+                    msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
+                    # print(msg)
+                    logger_full.write(msg + "\n\n")
 
-                move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
-                                          client, logger_full, logger_table, report_field_names, used_points_history,
-                                          config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon, working_zone_points_cv,
-                                          view_zone_polygon, view_zone_points_cv, config.DEBUG_IMAGES_PATH, nav,
-                                          data_collector)
+                    move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
+                                              client, logger_full, logger_table, report_field_names, used_points_history,
+                                              config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon, working_zone_points_cv,
+                                              view_zone_polygon, view_zone_points_cv, config.DEBUG_IMAGES_PATH, nav,
+                                              data_collector)
 
-            msg = "Work is done."
+                    # save path progress (index of next point to move)
+                    path_index_file.seek(0)
+                    path_index_file.write(str(i + 1))
+
+                # mark path as passed (set next point index to -1)
+                path_index_file.seek(0)
+                path_index_file.write(str(-1))
+
+            msg = "Path is successfully passed."
             print(msg)
             logger_full.write(msg + "\n")
     except KeyboardInterrupt:
