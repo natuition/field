@@ -1,6 +1,7 @@
 import platform
 import datetime
 import os
+import serial.tools.list_ports
 
 
 class Logger:
@@ -57,3 +58,13 @@ def create_directories(*args):
 
 def get_path_slash():
     return "\\" if platform.system() == "Windows" else "/"
+
+
+def get_smoothie_vesc_addresses():
+    equipmentByPort = dict()
+    for port, desc, other in sorted(serial.tools.list_ports.comports()):
+        if "Smoothie" in desc:
+            equipmentByPort["smoothie"] = port
+        if "ChibiOS/RT" in desc:
+            equipmentByPort["vesc"] = port
+    return equipmentByPort

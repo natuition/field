@@ -36,21 +36,6 @@ STATISTICS_FILE = "statistics.txt"
 IMAGES_COUNTER = 0
 
 
-def create_directories(*args):
-    """Creates directories, receives any args count, each arg is separate dir"""
-
-    for path in args:
-        if not os.path.exists(path):
-            try:
-                os.mkdir(path)
-            except OSError:
-                print("Creation of the directory %s failed" % path)
-            else:
-                print("Successfully created the directory %s " % path)
-        else:
-            print("Directory %s is already exists" % path)
-
-
 def load_coordinates(file_path):
     positions_list = []
     with open(file_path) as file:
@@ -215,8 +200,18 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
     # loop over all detected plants
     for box in plant_boxes:
         # go to the extraction position Y min
-        smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+        res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
         smoothie.wait_for_all_actions_done()
+        if res != smoothie.RESPONSE_OK:
+            msg = "Failed to move cork to the extraction position Y_MIN, smoothie's response:\n" + res
+            logger_full.write(msg + "\n")
+
+            msg = "Trying to calibrate cork"
+            logger_full.write(msg + "\n")
+            res = smoothie.ext_calibrate_cork()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Failed to calibrate cork, smoothie's response:\n" + res
+                logger_full.write(msg + "\n")
 
         plant_position_is_precise = False
         box_x, box_y = box.get_center_points()
@@ -940,7 +935,7 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
 
 def main():
     log_cur_dir = LOG_ROOT_DIR + utility.get_current_time() + "/"
-    create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
+    utility.create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
 
     data_collector = datacollection.DataCollector()
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
@@ -951,6 +946,26 @@ def main():
     used_points_history = []
     logger_full = utility.Logger(log_cur_dir + "log full.txt")
     logger_table = utility.Logger(log_cur_dir + "log table.csv")
+
+    # get smoothie and vesc addresses
+    smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
+    if "vesc" in smoothie_vesc_addr:
+        vesc_address = smoothie_vesc_addr["vesc"]
+    else:
+        msg = "Couldn't get vesc's USB address!"
+        print(msg)
+        logger_full.write(msg + "\n")
+        exit(1)
+    if config.SMOOTHIE_BACKEND == 1:
+        smoothie_address = config.SMOOTHIE_HOST
+    else:
+        if "smoothie" in smoothie_vesc_addr:
+            smoothie_address = smoothie_vesc_addr["smoothie"]
+        else:
+            msg = "Couldn't get smoothie's USB address!"
+            print(msg)
+            logger_full.write(msg + "\n")
+            exit(1)
 
     # load yolo networks
     print("Loading periphery detector...")
@@ -992,9 +1007,9 @@ def main():
 
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps,
         with \
-            adapters.SmoothieAdapter(config.SMOOTHIE_HOST) as smoothie, \
+            adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
-                                 config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE) as vesc_engine, \
+                                 config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE) as vesc_engine, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
             adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                              config.CROP_H_TO, config.CV_ROTATE_CODE,
@@ -1143,10 +1158,12 @@ def main():
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
                     path_index_file.write(str(i + 1))
+                    path_index_file.flush()
 
                 # mark path as passed (set next point index to -1)
                 path_index_file.seek(0)
                 path_index_file.write(str(-1))
+                path_index_file.flush()
 
             msg = "Path is successfully passed."
             print(msg)
