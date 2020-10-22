@@ -1023,6 +1023,8 @@ def main():
 
             # load previous path
             if config.CONTINUE_PREVIOUS_PATH:
+                # TODO: create path manager
+
                 msg = "Loading previous path points"
                 logger_full.write(msg + "\n")
 
@@ -1030,7 +1032,13 @@ def main():
                 with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
                     path_points = pickle.load(path_points_file)
                 with open(config.PREVIOUS_PATH_INDEX_FILE, "r") as path_index_file:
-                    path_start_index = int(path_index_file.readline())
+                    str_index = path_index_file.readline()
+                    if str_index == "":
+                        msg = "Path start index file " + config.PREVIOUS_PATH_INDEX_FILE + " is empty!"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        exit(1)
+                    path_start_index = int(str_index)  # TODO check if possible to convert
 
                 # check if index is ok
                 if path_start_index == -1:
@@ -1140,7 +1148,7 @@ def main():
             logger_table.write(msg + "\n")
 
             # path points visiting loop
-            with open(config.PREVIOUS_PATH_INDEX_FILE, "w") as path_index_file:
+            with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
                 for i in range(path_start_index, len(path_points)):
                     from_to = [path_points[i - 1], path_points[i]]
                     from_to_dist = nav.get_distance(from_to[0], from_to[1])
