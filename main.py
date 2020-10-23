@@ -28,7 +28,7 @@ if config.RECEIVE_FIELD_FROM_RTK:
     import robotEN_JETSON as rtk
 
 ALLOW_GATHERING = True
-DATA_GATHERING_DIR = "gathered photos/"
+DATA_GATHERING_DIR = "gathered_photos/"
 LOG_ROOT_DIR = "logs/"
 STATISTICS_FILE = "statistics.txt"
 
