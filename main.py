@@ -147,7 +147,7 @@ def draw_zone_poly(image, np_poly_points):
     return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
 
 
-def save_image(path_to_save, image, counter, session_label, date, sep=" "):
+def save_image(path_to_save, image, counter, session_label, date, sep="_"):
     """
     Assembles image file name and saves received image under this name to specified directory.
     Counter and session label may be passed if was set to None.
