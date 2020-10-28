@@ -43,7 +43,7 @@ class SmoothieAdapter:
             print("Switching smoothie to relative was failed! Smoothie's response:\n", res)
 
         # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
-        res = self.custom_move_for(config.Z_F_EXTRACTION_DOWN, Z=-5)
+        res = self.custom_move_for(config.Z_F_EXTRACTION_DOWN, Z=5)
         self.wait_for_all_actions_done()
         if res != self.RESPONSE_OK:
             print("Couldn't move cork down for Z-5! Calibration errors on Z axis are possible!")
@@ -523,7 +523,7 @@ class SmoothieAdapter:
         # cork up is done by Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
             # TODO: stub (G28 isn't reading F value from smoothie config, it uses last received F)
-            self._smc.write("G0 Z0.1 F" + str(config.Z_F_EXTRACTION_UP))
+            self._smc.write("G0 Z-0.1 F" + str(config.Z_F_EXTRACTION_UP))
             response = self._smc.read_some()
             if response != self.RESPONSE_OK:
                 return response
