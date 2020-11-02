@@ -69,6 +69,7 @@ OUTPUT_GPS_HISTORY_FILE = "gps_history.txt"
 # ======================================================================================================================
 VESC_PORT = "/dev/ttyACM0"
 VESC_BAUDRATE = 115200
+VESC_RPM_UI = -8000
 VESC_RPM_FAST = -5600
 VESC_RPM_SLOW = -2800
 VESC_MOVING_TIME = float("inf")
