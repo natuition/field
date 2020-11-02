@@ -212,6 +212,16 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
             if res != smoothie.RESPONSE_OK:
                 msg = "Failed to calibrate cork, smoothie's response:\n" + res
                 logger_full.write(msg + "\n")
+                exit(1)
+
+            # go to the extraction position Y min again
+            res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                          Y=config.Y_MIN)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Failed to move cork to the extraction position Y_MIN (again, after calibration), smoothie's response:\n" + res
+                logger_full.write(msg + "\n")
+                exit(1)
 
         plant_position_is_precise = False
         box_x, box_y = box.get_center_points()
@@ -364,7 +374,6 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # make new photo and re-detect plants
                     time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-
                     frame = camera.get_image()
                     temp_plant_boxes = detector.detect(frame)
 
@@ -374,9 +383,45 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
 
                     # check case if no plants detected
                     if len(temp_plant_boxes) == 0:
-                        msg = "No plants detected (plant was in working zone before), trying to move on next item"
+                        need_to_break = True  # breaks outer current plant extractions loop, forcing to start extraction of the next plant in the visit list
+
+                        msg = "No plants detected (plant was in working zone before), trying to do delta movement and find this plant"
                         logger_full.write(msg + "\n")
-                        break
+
+                        # try to move for delta values and find the weed (down, up and left, right)
+                        # TODO: make some kind of pool with results of prev. movement, and compute next step if prev wasn't successful (now breaks if movement was failed)
+                        for sm_x, sm_y in [[0, -config.SEEK_DELTA_DISTANCE],
+                                           [-config.SEEK_DELTA_DISTANCE, config.SEEK_DELTA_DISTANCE],
+                                           [config.SEEK_DELTA_DISTANCE * 2, 0]]:
+                            msg = "Trying to move for delta X" + str(sm_x) + " Y" + str(sm_y)
+                            logger_full.write(msg + "\n")
+
+                            res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                            if res != smoothie.RESPONSE_OK:
+                                msg = "Couldn't move for delta X" + str(sm_x) + " Y" + str(sm_y) + ", smoothie response:\n" + res
+                                logger_full.write(msg + "\n")
+                                break
+
+                            # make new photo and re-detect plants
+                            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                            frame = camera.get_image()
+                            temp_plant_boxes = detector.detect(frame)
+
+                            # debug image saving
+                            debug_save_image(img_output_dir, "(delta movement X" + str(sm_x) + " Y" + str(sm_y) + ")",
+                                             frame, temp_plant_boxes, undistorted_zone_radius, working_zone_points_cv)
+
+                            if len(temp_plant_boxes) > 0:
+                                msg = "Found " + str(len(temp_plant_boxes)) + " plants after delta movement, breaking delta movement and searching"
+                                logger_full.write(msg + "\n")
+                                need_to_break = False
+                                break
+                            else:
+                                msg = "No plants found during current delta scan"
+                                logger_full.write(msg + "\n")
+
+                        if need_to_break:
+                            break
 
                     # get closest box (update current box from main list coordinates after moving closer)
                     box = min_plant_box_dist(temp_plant_boxes, config.SCENE_CENTER_X, config.SCENE_CENTER_Y)
