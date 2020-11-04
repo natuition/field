@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="//code.jquery.com/jquery-3.3.1.min.js"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>  
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/arrowAnim.css') }}">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/slider.css') }}">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/button.css') }}">
+        <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+        <meta name="viewport" content="user-scalable=no">
+    </head>
+    <body>
+        <div id="identification">
+            <img src="{{ url_for('static', filename='icon.png') }}" width="100px" >
+            <span>{{sn}}</span>
+        </div>
+        <div class="container_arrows">
+            <div class="container">
+                <div id="arrow_up" class="touchArrow arrow {{arrowsStatus}}" onclick="cclickArrow(this.id)">
+                    <div class="arrow-line arrow-line__upper"></div>
+                    <div class="arrow-line arrow-line__lower"></div>
+                </div>
+                </div>
+                <div class="container">
+                <div id="arrow_left" class="arrow {{arrowsStatus}}" onclick="clickArrow(this.id)">
+                    <div class="arrow-line arrow-line__upper"></div>
+                    <div class="arrow-line arrow-line__lower"></div>
+                </div>
+                <div class="arrow"></div>
+                <div id="arrow_right" class="arrow {{arrowsStatus}}" onclick="clickArrow(this.id)">
+                    <div class="arrow-line arrow-line__upper"></div>
+                    <div class="arrow-line arrow-line__lower"></div>
+                </div>
+                </div>
+                <div class="container">
+                <div id="arrow_down" class="touchArrow arrow {{arrowsStatus}}" onclick="cclickArrow(this.id)">
+                    <div class="arrow-line arrow-line__upper"></div>
+                    <div class="arrow-line arrow-line__lower"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container_slider">
+            <div class="slider range-slider">
+                <input id="slider" class="slider range-slider__range" type="range" value="20" min="15" max="50" step="5">
+                <span class="slider range-slider__value">0</span>
+            </div>
+        </div>
+
+        <div class="container_button">
+            {% if fieldButton == 'charging' %}
+            <button id="Newfield" class="allButton button unselectable active" disabled>
+            {% elif not fieldButton %}
+            <button id="Newfield" class="allButton button unselectable disabled" disabled>
+            {% else %}
+            <button id="Newfield" class="allButton button unselectable">
+            {% endif %}
+                <span class="allButton submit">Nouvelle zone</span>
+                <span class="allButton loading"><i class="fa fa-refresh"></i></span>
+                <span class="allButton check"><i class="fa fa-check"></i></span>
+            </button>
+        </div>
+
+        <iframe width="800px" height="600px" style="margin: 0 auto;display:block;" src="/map">
+            <p>Votre navigateur ne supporte aucune iframe !</p>
+        </iframe>
+
+        <div class="container_button">
+            {% if startButton == None %}
+                {% if stopButton == 'charging' %}
+                <button id="Stop" class="allButton button unselectable active arret">
+                    <span class="allButton submit">Arrêt</span>
+                {% else %}
+                <button id="Stop" class="allButton button unselectable arret">
+                    <span class="allButton submit">Arrêt</span>
+                {% endif %}
+            {% elif startButton == 'charging' %}
+            <button id="Start" class="allButton button unselectable active" disabled>
+                <span class="allButton submit">Départ</span>
+            {% elif not startButton %}
+            <button id="Start" class="allButton button unselectable disabled" disabled>
+                <span class="allButton submit">Départ</span>
+            {% else %}
+            <button id="Start" class="allButton button unselectable">
+                <span class="allButton submit">Départ</span>
+            {% endif %}
+                <span class="allButton loading"><i class="fa fa-refresh"></i></span>
+                <span class="allButton check"><i class="fa fa-check"></i></span>
+            </button>
+
+            {% if continueButton == None %}
+                {% if stopButton == 'charging' %}
+                <button id="Stop" class="allButton button unselectable active arret">
+                    <span class="allButton submit">Arrêt</span>
+                {% else %}
+                <button id="Stop" class="allButton button unselectable arret">
+                    <span class="allButton submit">Arrêt</span>
+                {% endif %}
+            {% elif continueButton == 'charging' %}
+            <button id="Continue" class="allButton button unselectable active" disabled>
+                <span class="allButton submit">Continuer</span>
+            {% elif not continueButton %}
+            <button id="Continue" class="allButton button unselectable disabled" disabled>
+                <span class="allButton submit">Continuer</span>
+            {% else %}
+            <button id="Continue" class="allButton button unselectable">
+                <span class="allButton submit">Continuer</span>
+            {% endif %}
+                <span class="allButton loading"><i class="fa fa-refresh"></i></span>
+                <span class="allButton check"><i class="fa fa-check"></i></span>
+            </button>
+        </div>
+
+        <script src="https://use.fontawesome.com/ee93656331.js"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/button.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/arrowAnim.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/slider.js') }}"></script>
+    </body>
+</html>
+    
