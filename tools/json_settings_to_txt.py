@@ -2,7 +2,7 @@
 
 import json
 
-INPUT_FILE = "1.json"
+INPUT_FILE = "settings.json"
 OUTPUT_FILE = "parsed_settings.txt"
 
 
@@ -57,7 +57,7 @@ def main():
                 print("Unsupported type:", region["shape_attributes"]["name"])
         break
 
-    # adapt settings during image crop values
+    # adapt settings according image crop values
     adapted_working_zone = adapt_working_zone(working_zone, crop_w_from, crop_h_from)
     adapted_scene_c_x, adapted_scene_c_y = adapt_scene_center(scene_center_x, scene_center_y, crop_w_from, crop_h_from)
 
