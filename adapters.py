@@ -538,7 +538,7 @@ class SmoothieAdapter:
         with self._sync_locker:
             # TODO: stub (G28 isn't reading F value from smoothie config, it uses last received F)
             if axis_label == "Z":
-                self._smc.write("G0 Z0.1 F" + str(config.Z_F_EXTRACTION_UP))
+                self._smc.write("G0 Z-0.1 F" + str(config.Z_F_EXTRACTION_UP))
                 response = self._smc.read_some()
                 if response != self.RESPONSE_OK:
                     return response
