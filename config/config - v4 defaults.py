@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.4.3"  # still have some obsolete keys
+CONFIG_VERSION = "0.4.4"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -54,6 +54,7 @@ ADDITIONAL_EXTRACTIONS_DISTANCE_Y = 10  # mm
 AVOID_CORK_VIEW_OBSCURING = True  # is True: adds offsets to control points to make a plant to be at the top half of the undistorted zone
 DISTANCE_FROM_UNDIST_BORDER = 100  # pixels; the corkscrew will move so that the plant is at this distance from the upper border of undistorted zone if AVOID_CORK_VIEW_OBSCURING is True
 EXTRACTIONS_FULL_CYCLES = 2  # count of full extraction loops called after periphery NN detection (should be >= 1)
+SEEK_DELTA_DISTANCE = 25  # mm; if weed is lost after tuning/getting closer - we do 3 shifts for that value (down, left, right) and trying to find it
 
 
 # ======================================================================================================================
@@ -68,6 +69,7 @@ OUTPUT_GPS_HISTORY_FILE = "gps_history.txt"
 # ======================================================================================================================
 VESC_PORT = "/dev/ttyACM0"
 VESC_BAUDRATE = 115200
+VESC_RPM_UI = -8000
 VESC_RPM_FAST = -5600
 VESC_RPM_SLOW = -2800
 VESC_MOVING_TIME = float("inf")
@@ -219,6 +221,7 @@ DB_NAME = "dbname"
 DB_USER = "username"
 DB_HOST = "x.x.x.x"
 DB_PWD = "password"
+ROBOT_SN = "SNXXX"
 
 
 # ======================================================================================================================
