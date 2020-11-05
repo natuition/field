@@ -114,8 +114,8 @@ def emergency_field_defining_end(gps: adapters.GPSUbloxAdapter, nav: navigation.
     msg = "Computing rest points... field_size : {} (length) / {} (width)."
     print(msg.format(length_field,width_field))
 
-    C = nav.get_coordinate(A, B, 90, length_field)
-    D = nav.get_coordinate(B, C, 90, width_field)
+    C = nav.get_coordinate(B, A, 90, length_field)
+    D = nav.get_coordinate(C, B, 90, width_field)
 
     msg = "Saving field.txt file..."
     print(msg)
@@ -227,9 +227,9 @@ def connect():
 
 @socketio.on('direction', namespace='/navigation')
 def handle_dir(status):
-    print(status)
+    #print(status)
     socketio.emit('direction', status, namespace='/navigation', broadcast=True)
-    #Todo : ask the smoothie to spin the wheels
+    #Ask the smoothie to spin the wheels
     if status["direction"] == "arrow_left":
         smoothie.nav_turn_wheels_for(5,4000)
     elif status["direction"] == "arrow_right":
@@ -287,7 +287,6 @@ def handle_start(status):
         #Start main
         print("Waiting 10 sec for main start..")
         time.sleep(10)
-        print("Main are start")
     status["status"]  = "finish"
     setStatusOfUIObject(arrowPropulsion=False,arrowDirection=False,fieldB=False,startB=None,continueB=False,stopB=True)
     socketio.emit('start', status, namespace='/button', broadcast=True)
@@ -339,6 +338,7 @@ def handle_stop(status):
             mainSP.send_signal(signal.SIGINT)
             time.sleep(2)
             setStatusOfUIObject(arrowPropulsion=True,arrowDirection=True,fieldB=True,startB=True,continueB=True,stopB=None)
+            initVescAndSmoothie()
 
 @app.route('/js/worker.js')
 def worker():
