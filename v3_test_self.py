@@ -85,7 +85,7 @@ class Self_Testing:
 
     def test_steering_wheels_right(self):
         """
-        Function to check the moving the steering wheels 20 to the right
+        Function to check the moving the steering wheels to the right
         :return: response of the Smoothie
         """
         response = self.smoothie.custom_move_for(config.A_F_MAX, A=config.A_MAX)
@@ -93,7 +93,7 @@ class Self_Testing:
 
     def test_steering_wheels_left(self):
         """
-        Function to check the moving the steering wheels 35 to the left
+        Function to check the moving the steering wheels to the left
         :return: response of the Smoothie
         """
         response = self.smoothie.custom_move_for(config.A_F_MAX, A=config.A_MIN)
@@ -409,7 +409,7 @@ class Self_Testing:
         response = None
         key = None
         error = None
-        msg = 'Start moving the steering wheels to the right (20)...'
+        msg = 'Start moving the steering wheels to the right...'
         self.logger.write(msg + '\n')
         print(msg)
         try:
@@ -438,7 +438,7 @@ class Self_Testing:
         response = None
         key = None
         error = None
-        msg = 'Start moving the steering wheels to the left (-35)...'
+        msg = 'Start moving the steering wheels to the left...'
         self.logger.write(msg + '\n')
         print(msg)
         try:
