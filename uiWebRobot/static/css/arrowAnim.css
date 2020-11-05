@@ -14,7 +14,7 @@
     align-items: center;
 }
 
-#identification > span{
+#identification > span, .container_slider > span{
     margin-left: 10px;
     padding: 5px 10px;
     background-color: #2c3e50;

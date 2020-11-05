@@ -3,7 +3,7 @@ const startButton = document.querySelector('#Start');
 const continueButton = document.querySelector('#Continue');
 const stopButton = document.querySelector('#Stop');
 
-newFieldButton.addEventListener('click', clickHandler);
+if(newFieldButton != null) newFieldButton.addEventListener('click', clickHandler);
 if(startButton != null) startButton.addEventListener('click', clickHandler);
 if(continueButton != null) continueButton.addEventListener('click', clickHandler);
 if(stopButton != null) stopButton.addEventListener('click', clickHandler);
@@ -21,25 +21,34 @@ socketButton.on('field', function(dataServ) {
     if(dataServ["status"] == "pushed"){
         $('#Continue').attr('disabled', 'disabled');
         $('#Continue').addClass('disabled');
-        $('.arrow').removeClass('arrowStop');
-        $('.arrow').removeClass('arrowOn');
-        $('.arrow').addClass('arrowOff');
+        $('.touchArrow').removeClass('arrowStop');
+        $('.touchArrow').removeClass('arrowOn');
+        $('.touchArrow').addClass('arrowOff');
         $('#Start').attr('disabled', 'disabled');
         $('#Start').addClass('disabled');
         $('#Newfield').addClass('active');
         $('#Newfield').attr('disabled', 'disabled');
+    }else if(dataServ["status"] == "inRun"){
+        divButton = document.getElementById("Newfield")
+        divButton.id = "Stop";
+        $(divButton.firstElementChild).text('Arrêt');
+        $(divButton).css("background-color", "red");
+        $(divButton).removeClass('finished');
+        $(divButton).removeClass('active');
+        $(divButton).removeAttr('disabled');
     }else if(dataServ["status"] == "finish"){
-        $('#Newfield').addClass('finished');
-        setTimeout(() => { 
-            $('#Newfield').removeClass('finished');
-            $('.arrowOff').addClass('arrow');
-            $('.arrow').removeClass('arrowOff');
-            $('.arrow').addClass('arrowStop');    
-            $('#Start').removeAttr('disabled');   
-            $('#Start').removeClass('disabled');
-            $('#Newfield').removeClass('active');
-            $('#Newfield').removeAttr('disabled');
-        }, 2000);
+        divButton = document.getElementById("Stop")
+        divButton.id = "NewField";
+        $(divButton.firstElementChild).text('Nouvelle zone');
+        $(divButton).css("background-color", "#2c3e50");
+        $(divButton).removeClass('finished');
+        $(divButton).removeClass('active');
+        $(divButton).removeAttr('disabled');
+        $('.arrowOff').addClass('arrow');
+        $('.arrow').removeClass('arrowOff');
+        $('.arrow').addClass('arrowStop');    
+        $('#Start').removeAttr('disabled');   
+        $('#Start').removeClass('disabled');
     }
 });
 
@@ -102,12 +111,14 @@ socketButton.on('stop', function(dataServ) {
         setTimeout(() => { 
           document.location.reload(true);
         }, 4000);
+    }else if(dataServ["status"] == "pushedF"){
+        $('#Stop').addClass('active');
     }
 });
 
 function clickHandler() {
     statusButtons = [false,false,false,false]
-    sliderValue = document.getElementById("slider").value
+    sliderValue = document.getElementById("slider-long").value
     if(this.id=="Newfield"){
         socketButton.emit('field', { status : "pushed", value : sliderValue});
     }else if(this.id=="Start"){
