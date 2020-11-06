@@ -38,9 +38,9 @@ socketButton.on('field', function(dataServ) {
         $(divButton).removeAttr('disabled');
     }else if(dataServ["status"] == "finish"){
         divButton = document.getElementById("Stop")
-        divButton.id = "NewField";
+        divButton.id = "Newfield";
         $(divButton.firstElementChild).text('Nouvelle zone');
-        $(divButton).css("background-color", "#2c3e50");
+        $(divButton).removeAttr('style');
         $(divButton).removeClass('finished');
         $(divButton).removeClass('active');
         $(divButton).removeAttr('disabled');
@@ -119,7 +119,7 @@ socketButton.on('stop', function(dataServ) {
 function clickHandler() {
     statusButtons = [false,false,false,false]
     sliderValue = document.getElementById("slider-long").value
-    if(this.id=="Newfield"){
+    if(this.id=="Newfield" || this.id=="NewField"){
         socketButton.emit('field', { status : "pushed", value : sliderValue});
     }else if(this.id=="Start"){
         socketButton.emit('start', { status : "pushed"});
