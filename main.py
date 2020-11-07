@@ -397,6 +397,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                             logger_full.write(msg + "\n")
 
                             res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                            smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 msg = "Couldn't move for delta X" + str(sm_x) + " Y" + str(sm_y) + ", smoothie response:\n" + res
                                 logger_full.write(msg + "\n")
