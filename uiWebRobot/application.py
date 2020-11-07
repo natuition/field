@@ -15,6 +15,7 @@ import time
 import logging
 import subprocess
 import signal
+import json
 
 __author__ = 'Vincent LAMBERT'
 
@@ -146,6 +147,9 @@ def initAll():
     global statusOfUIObject
     global socketio
     global robot_sn
+    global ui_languages
+    with open("ui_language.json", "r") as read_file:
+        ui_languages = json.load(read_file)
     config = manageConfig.ManageConfig("../config/config.py")
     robot_sn = config.getValue("ROBOT_SN")
     historyOfVoltages = list()
@@ -187,7 +191,11 @@ def index():
         arrowsDirectionStatus = "arrowStop"
     else:
         arrowsDirectionStatus = "arrowOff"
-    return render_template('UIRobot.html',sn=robot_sn, arrowsPropulsionStatus=arrowsPropulsionStatus, arrowsDirectionStatus=arrowsDirectionStatus, fieldButton=statusOfUIObject["fieldButton"], startButton=statusOfUIObject["startButton"], continueButton=statusOfUIObject["continueButton"], stopButton=statusOfUIObject["stopButton"])    
+    ui_language = "en"
+    config_ui_language = config.getValue("UI_LANGUAGE")
+    if config_ui_language in ui_languages["Supported Language"]:
+        ui_language = config.getValue("UI_LANGUAGE")
+    return render_template('UIRobot.html',sn=robot_sn, arrowsPropulsionStatus=arrowsPropulsionStatus, arrowsDirectionStatus=arrowsDirectionStatus, fieldButton=statusOfUIObject["fieldButton"], startButton=statusOfUIObject["startButton"], continueButton=statusOfUIObject["continueButton"], stopButton=statusOfUIObject["stopButton"], ui_languages=ui_languages, ui_language=ui_language)    
 
 @app.route('/voltage')
 def volatge():
