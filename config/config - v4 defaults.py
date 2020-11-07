@@ -222,7 +222,7 @@ DB_USER = "username"
 DB_HOST = "x.x.x.x"
 DB_PWD = "password"
 ROBOT_SN = "SNXXX"
-
+UI_LANGUAGE = "nl"
 
 # ======================================================================================================================
 # OBSOLETTE SETTINGS
