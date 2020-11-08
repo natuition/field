@@ -46,7 +46,7 @@ class SmoothieAdapter:
         res = self.custom_move_for(config.Z_F_EXTRACTION_DOWN, Z=5)
         self.wait_for_all_actions_done()
         if res != self.RESPONSE_OK:
-            print("Couldn't move cork down for Z-5! Calibration errors on Z axis are possible!")
+            print("Couldn't move cork down for Z 5! Calibration errors on Z axis are possible!")
 
         res = self.ext_calibrate_cork()
         """
