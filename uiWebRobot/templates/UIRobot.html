@@ -122,6 +122,10 @@
             </button>
         </div>
 
+        <script type="text/javascript">
+        	const ui_languages = {{ui_languages | tojson}};
+			const ui_language = {{ui_language | tojson}};
+        </script>
         <script src="https://use.fontawesome.com/ee93656331.js"></script>
         <script type="text/javascript" src="{{ url_for('static', filename='js/button.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static', filename='js/arrowAnim.js') }}"></script>

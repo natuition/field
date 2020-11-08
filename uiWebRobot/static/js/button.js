@@ -31,7 +31,7 @@ socketButton.on('field', function(dataServ) {
     }else if(dataServ["status"] == "inRun"){
         divButton = document.getElementById("Newfield")
         divButton.id = "Stop";
-        $(divButton.firstElementChild).text('Arrêt');
+        $(divButton.firstElementChild).text((ui_languages["Stop"])[ui_language]);
         $(divButton).css("background-color", "red");
         $(divButton).removeClass('finished');
         $(divButton).removeClass('active');
@@ -39,7 +39,7 @@ socketButton.on('field', function(dataServ) {
     }else if(dataServ["status"] == "finish"){
         divButton = document.getElementById("Stop")
         divButton.id = "Newfield";
-        $(divButton.firstElementChild).text('Nouvelle zone');
+        $(divButton.firstElementChild).text((ui_languages["New zone"])[ui_language]);
         $(divButton).removeAttr('style');
         $(divButton).removeClass('finished');
         $(divButton).removeClass('active');
@@ -69,7 +69,7 @@ socketButton.on('continue', function(dataServ) {
         setTimeout(() => { 
             divButton = document.getElementById("Continue")
             divButton.id = "Stop";
-            $(divButton.firstElementChild).text('Arrêt');
+            $(divButton.firstElementChild).text((ui_languages["Stop"])[ui_language]);
             $(divButton).css("background-color", "red");
             $(divButton).removeClass('finished');
             $(divButton).removeClass('active');
@@ -95,7 +95,7 @@ socketButton.on('start', function(dataServ) {
         setTimeout(() => { 
             divButton = document.getElementById("Start")
             divButton.id = "Stop";
-            $(divButton.firstElementChild).text('Arrêt');
+            $(divButton.firstElementChild).text((ui_languages["Stop"])[ui_language]);
             $(divButton).css("background-color", "red");
             $(divButton).removeClass('finished');
             $(divButton).removeClass('active');
