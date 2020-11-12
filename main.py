@@ -1149,7 +1149,11 @@ def main():
                     logger_full.write(msg + "\n")
                     exit(1)
 
+                # TODO: save field in debug
+
                 field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
+
+                # TODO: save reduced field in debug
 
                 # generate path points
                 path_start_index = 1

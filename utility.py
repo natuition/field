@@ -16,18 +16,18 @@ class MemoryManager:
     - auto-cleaning: automatically calls for cleaner each N seconds (set as parameter), can be stopped at any time
     """
 
-    def __init__(self, path: str, number_of_photo_remove: int = 600, check_frequency_seconds: int = 60,
+    def __init__(self, path: str, files_to_keep_count: int = 600, check_frequency_seconds: int = 60,
                  memory_threshold: int = 95368):
-        self._number_of_photo_remove = number_of_photo_remove
-        self._path = path
-        self._check_frequency_seconds = check_frequency_seconds
-        self._memory_threshold = memory_threshold
+        self.__files_to_keep_count = files_to_keep_count
+        self.__path = path
+        self.__check_frequency_seconds = check_frequency_seconds
+        self.__memory_threshold = memory_threshold
 
-        self._auto_cleaner_thread = threading.Thread(target=self.__auto_cleaner_tf, daemon=True)
-        self._keep_auto_cleaner_thread_alive = False
+        self.__auto_cleaner_thread = threading.Thread(target=self.__auto_cleaner_tf, daemon=True)
+        self.__keep_auto_cleaner_thread_alive = False
 
-        self._manual_cleaner_thread = threading.Thread(target=self.__manual_cleaner_tf, daemon=True)
-        self._keep_manual_cleaner_thread_alive = False
+        self.__manual_cleaner_thread = threading.Thread(target=self.__manual_cleaner_tf, daemon=True)
+        self.__keep_manual_cleaner_thread_alive = False
 
     def __enter__(self):
         return self
@@ -37,36 +37,37 @@ class MemoryManager:
         self.stop_clean_manual_non_blocking()
 
     def start_auto_cleaning(self):
-        self._keep_auto_cleaner_thread_alive = True
-        self._auto_cleaner_thread.start()
+        self.__keep_auto_cleaner_thread_alive = True
+        self.__auto_cleaner_thread.start()
 
     def stop_auto_cleaning(self):
-        self._keep_auto_cleaner_thread_alive = False
+        self.__keep_auto_cleaner_thread_alive = False
 
     def start_clean_manual_non_blocking(self):
-        self._keep_manual_cleaner_thread_alive = True
-        self._manual_cleaner_thread.run()
+        self.__keep_manual_cleaner_thread_alive = True
+        self.__manual_cleaner_thread.run()
 
     def stop_clean_manual_non_blocking(self):
-        self._keep_manual_cleaner_thread_alive = False
+        self.__keep_manual_cleaner_thread_alive = False
 
     def start_clean_manual_blocking(self):
         """This function does disk cleaning, blocking until executed"""
 
-        os.chdir(self._path)
-        images = sorted(os.listdir(os.getcwd()), key=os.path.getmtime)
-        files_to_delete = images[:self._number_of_photo_remove]
+        files_to_delete = self.__get_files_to_delete_list()
         for file in files_to_delete:
             os.remove(file)
+
+    def __get_files_to_delete_list(self):
+        os.chdir(self.__path)
+        full_files_list = sorted(os.listdir(os.getcwd()), key=os.path.getmtime, reverse=True)
+        return full_files_list[self.__files_to_keep_count:]
 
     def __manual_cleaner_tf(self):
         """Manual cleaner thread target function"""
 
-        os.chdir(self._path)
-        images = sorted(os.listdir(os.getcwd()), key=os.path.getmtime)
-        files_to_delete = images[:self._number_of_photo_remove]
+        files_to_delete = self.__get_files_to_delete_list()
         for file in files_to_delete:
-            if self._keep_manual_cleaner_thread_alive:
+            if self.__keep_manual_cleaner_thread_alive:
                 os.remove(file)
             else:
                 break
@@ -74,17 +75,15 @@ class MemoryManager:
     def __auto_cleaner_tf(self):
         """Auto cleaner thread target function"""
 
-        while self._keep_auto_cleaner_thread_alive:
-            if (round((psutil.disk_usage("/").used / (2 ** 20)), 2)) > self._memory_threshold:
-                os.chdir(self._path)
-                images = sorted(os.listdir(os.getcwd()), key=os.path.getmtime)
-                files_to_delete = images[:self._number_of_photo_remove]
+        while self.__keep_auto_cleaner_thread_alive:
+            if (round((psutil.disk_usage("/").used / (2 ** 20)), 2)) > self.__memory_threshold:
+                files_to_delete = self.__get_files_to_delete_list()
                 for file in files_to_delete:
-                    if self._keep_auto_cleaner_thread_alive:
+                    if self.__keep_auto_cleaner_thread_alive:
                         os.remove(file)
                     else:
                         return
-            sleep(self._check_frequency_seconds)
+            sleep(self.__check_frequency_seconds)
 
 
 class Logger:
@@ -144,10 +143,10 @@ def get_path_slash():
 
 
 def get_smoothie_vesc_addresses():
-    equipmentByPort = dict()
+    equipment_by_port = dict()
     for port, desc, other in sorted(serial.tools.list_ports.comports()):
         if "Smoothie" in desc:
-            equipmentByPort["smoothie"] = port
+            equipment_by_port["smoothie"] = port
         if "ChibiOS/RT" in desc:
-            equipmentByPort["vesc"] = port
-    return equipmentByPort
+            equipment_by_port["vesc"] = port
+    return equipment_by_port
