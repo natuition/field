@@ -219,7 +219,8 @@ UNDISTORTED_ZONE_RADIUS = 240
 # ======================================================================================================================
 SAVE_DEBUG_IMAGES = True
 DEBUG_IMAGES_PATH = "debug_images/"
-RECEIVE_FIELD_FROM_RTK = True
+FILES_TO_KEEP_COUNT = 600
+RECEIVE_FIELD_FROM_RTK = False
 SLOW_MODE_MIN_TIME = 3  # seconds
 EXTRACTION_TUNING_MAX_COUNT = 3
 DELAY_BEFORE_2ND_SCAN = 0.3  # delay in seconds after robot stop and before second scan (M=1)
