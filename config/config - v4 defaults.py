@@ -153,27 +153,33 @@ NAV_TURN_WHEELS_CENTER = 0
 # ======================================================================================================================
 # YOLO PERIPHERY NETWORK SETTINGS
 # ======================================================================================================================
-PERIPHERY_CONFIDENCE_THRESHOLD = 0.25    # Confidence threshold
-PERIPHERY_NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
+PERIPHERY_CONFIDENCE_THRESHOLD = 0.25  # Confidence threshold
+PERIPHERY_HIER_THRESHOLD = 0.50
+PERIPHERY_NMS_THRESHOLD = 0.4  # Non-maximum suppression threshold
 PERIPHERY_INPUT_SIZE = (416, 416)
 PERIPHERY_CONFIG_FILE = "yolo/periphery_config.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/periphery_weights.weights"
 PERIPHERY_CLASSES_FILE = "yolo/periphery_classes.names"
+PERIPHERY_DATA_FILE = "yolo/periphery_data.data"
 PERIPHERY_DNN_BACKEND = 5  # cv.dnn: DNN_BACKEND_CUDA = 5; DNN_BACKEND_OPENCV = 3
 PERIPHERY_DNN_TARGET = 7  # cv.dnn: DNN_TARGET_CUDA = 6; DNN_TARGET_CUDA_FP16 = 7; DNN_TARGET_CPU = 0
+PERIPHERY_WRAPPER = 1  # 1 = darknet, 2 = opencv from darknet
 
 
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
-PRECISE_CONFIDENCE_THRESHOLD = 0.25    # Confidence threshold
-PRECISE_NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
+PRECISE_CONFIDENCE_THRESHOLD = 0.25  # Confidence threshold
+PRECISE_HIER_THRESHOLD = 0.50
+PRECISE_NMS_THRESHOLD = 0.4  # Non-maximum suppression threshold
 PRECISE_INPUT_SIZE = (608, 608)
 PRECISE_CONFIG_FILE = "yolo/precise_config.cfg"
 PRECISE_WEIGHTS_FILE = "yolo/precise_weights.weights"
 PRECISE_CLASSES_FILE = "yolo/precise_classes.names"
+PRECISE_DATA_FILE = "yolo/precise_data.data"
 PRECISE_DNN_BACKEND = 5  # cv.dnn: DNN_BACKEND_CUDA = 5; DNN_BACKEND_OPENCV = 3
 PRECISE_DNN_TARGET = 6  # cv.dnn: DNN_TARGET_CUDA = 6; DNN_TARGET_CUDA_FP16 = 7; DNN_TARGET_CPU = 0
+PRECISE_WRAPPER = 1  # 1 = darknet, 2 = opencv from darknet
 
 
 # ======================================================================================================================

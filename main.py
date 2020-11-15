@@ -1024,17 +1024,38 @@ def main():
 
     # load yolo networks
     print("Loading periphery detector...")
-    periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
-                                                       config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
-                                                       config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                                       config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
-                                                       config.PERIPHERY_DNN_TARGET)
+    if config.PERIPHERY_WRAPPER == 1:
+        periphery_detector = detection.YoloDarknetDetector(config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_CONFIG_FILE,
+                                                           config.PERIPHERY_DATA_FILE,
+                                                           config.PERIPHERY_CONFIDENCE_THRESHOLD,
+                                                           config.PERIPHERY_HIER_THRESHOLD,
+                                                           config.PERIPHERY_NMS_THRESHOLD)
+    elif config.PERIPHERY_WRAPPER == 2:
+        periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
+                                                           config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
+                                                           config.PERIPHERY_CONFIDENCE_THRESHOLD,
+                                                           config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
+                                                           config.PERIPHERY_DNN_TARGET)
+    else:
+        msg = "Wrong config.PERIPHERY_WRAPPER = " + str(config.PERIPHERY_WRAPPER) + " code. Exiting."
+        logger_full.write(msg + "\n")
+        exit(1)
+
     print("Loading precise detector...")
-    precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
-                                                     config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
-                                                     config.PRECISE_CONFIDENCE_THRESHOLD,
-                                                     config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
-                                                     config.PRECISE_DNN_TARGET)
+    if config.PRECISE_WRAPPER == 1:
+        precise_detector = detection.YoloDarknetDetector(config.PRECISE_WEIGHTS_FILE, config.PRECISE_CONFIG_FILE,
+                                                         config.PRECISE_DATA_FILE, config.PRECISE_CONFIDENCE_THRESHOLD,
+                                                         config.PRECISE_HIER_THRESHOLD, config.PRECISE_NMS_THRESHOLD)
+    elif config.PRECISE_WRAPPER == 2:
+        precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
+                                                         config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
+                                                         config.PRECISE_CONFIDENCE_THRESHOLD,
+                                                         config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
+                                                         config.PRECISE_DNN_TARGET)
+    else:
+        msg = "Wrong config.PRECISE_WRAPPER = " + str(config.PRECISE_WRAPPER) + " code. Exiting."
+        logger_full.write(msg + "\n")
+        exit(1)
 
     # sensors picking
     report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
