@@ -1,10 +1,10 @@
 import cv2 as cv
 import numpy as np
 import os
-from config import config
 import glob
 import math
 import platform
+import darknet
 
 
 class YoloOpenCVDetection:
@@ -27,21 +27,21 @@ class YoloOpenCVDetection:
         self.net.setInput(blob)
 
         # Runs the forward pass to get output of the output layers
-        out_layers = self._get_output_names(self.net)
+        out_layers = self.__get_output_names(self.net)
         outs = self.net.forward(out_layers)
 
         # Remove the bounding boxes with low confidence
-        return self._post_process(image, outs, self.classes)
+        return self.__post_process(image, outs, self.classes)
 
     # Get the names of the output layers
-    def _get_output_names(self, net):
+    def __get_output_names(self, net):
         # Get the names of all the layers in the network
         layers_names = net.getLayerNames()
         # Get the names of the output layers, i.e. the layers with unconnected outputs
         return [layers_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
     # Remove the bounding boxes with low confidence using non-maxima suppression
-    def _post_process(self, image, outs, classes):
+    def __post_process(self, image, outs, classes):
         frame_height = image.shape[0]
         frame_width = image.shape[1]
         class_ids = []
@@ -79,7 +79,7 @@ class YoloOpenCVDetection:
             i = i[0]
             box = boxes[i]
             left, top, width, height = box[0], box[1], box[2], box[3]
-            final_plant_boxes.append(DetectedPlantBox(left, top, left + width, top + height, classes, class_ids[i],
+            final_plant_boxes.append(DetectedPlantBox(left, top, left + width, top + height, classes[class_ids[i]],
                                                       confidences[i]))
         return final_plant_boxes
 
@@ -90,53 +90,105 @@ class YoloOpenCVDetection:
             return f.read().rstrip('\n').split('\n')
 
 
+class YoloDarknetDetector:
+    # TODO: images are distorted a bit during strict resize wo/o saving ratio, this may affect detections
+    # TODO: check for interpolation (INTER_AREA should be better than INTER_LINEAR)
+
+    def __init__(self,
+                 weights_file_path,  # yolo weights path
+                 config_file_path,  # path to config file
+                 data_file_path,  # path to data file"
+                 confidence_threshold,  # remove detections with lower than this confidence
+                 hier_threshold,
+                 nms_threshold):
+        # check for args errors
+        assert 0 < confidence_threshold < 1, "Confidence threshold should be a float between zero and one (non-inclusive)"
+        assert 0 < nms_threshold < 1, "NMS Threshold should be a float between zero and one (non-inclusive)"
+        if not os.path.exists(config_file_path):
+            raise ValueError("Invalid config path {}".format(os.path.abspath(config_file_path)))
+        if not os.path.exists(weights_file_path):
+            raise ValueError("Invalid weight path {}".format(os.path.abspath(weights_file_path)))
+        if not os.path.exists(data_file_path):
+            raise ValueError("Invalid data file path {}".format(os.path.abspath(data_file_path)))
+
+        self.__confidence_threshold = confidence_threshold
+        self.__nms_threshold = nms_threshold
+        self.__hier_threshold = hier_threshold
+        self.__network, self.__class_names, self.__class_colors = darknet.load_network(config_file_path, data_file_path,
+                                                                                       weights_file_path)
+        # current network input size
+        self.__width, self.__height = darknet.network_width(self.__network), darknet.network_height(self.__network)
+
+    def detect(self, image):
+        # Darknet doesn't accept numpy images.
+        # Create one with image we reuse for each detect
+
+        image_prepared = cv.resize(image, (self.__width, self.__height), interpolation=cv.INTER_LINEAR)
+        image_prepared = cv.cvtColor(image_prepared, cv.COLOR_BGR2RGB)
+        darknet_image = darknet.make_image(self.__width, self.__height, 3)
+        darknet.copy_image_from_bytes(darknet_image, image_prepared.tobytes())
+        detections = darknet.detect_image(self.__network, self.__class_names, darknet_image,
+                                          thresh=self.__confidence_threshold, hier_thresh=self.__hier_threshold,
+                                          nms=self.__nms_threshold)
+        darknet.free_image(darknet_image)
+
+        # convert detections to Natuition format
+        # darknet detections structure and example:
+        # [(label, confidence, center_x, center_y, full_size_x, full_size_y)]
+        # [('Dandellion', '40.87', (356.56658935546875, 433.2556457519531, 96.55016326904297, 83.57292175292969)),
+        # ('Dandellion', '77.86', (465.81317138671875, 367.474365234375, 152.96287536621094, 109.23639678955078))]
+        plant_boxes, height_ratio, width_ratio = [], image.shape[0] / self.__height, image.shape[1] / self.__width
+        for detection in detections:
+            center_x, center_y, box_size_x, box_size_y = detection[2][0] * width_ratio, detection[2][1] * height_ratio,\
+                                                         detection[2][2] * width_ratio, detection[2][3] * height_ratio
+            top, left = center_y - box_size_y / 2, center_x - box_size_x / 2
+            bot, right = top + box_size_y, left + box_size_x
+            plant_boxes.append(DetectedPlantBox(round(left), round(top), round(right), round(bot), detection[0],
+                                                float(detection[1]), round(center_x), round(center_y)))
+        return plant_boxes
+
+
 class DetectedPlantBox:
 
-    def __init__(self, left, top, right, bottom, classes, class_id, confidence):
-        self._left = left
-        self._top = top
-        self._right = right
-        self._bottom = bottom
-        self._center_x = int(left + (right - left) / 2)
-        self._center_y = int(top + (bottom - top) / 2)
-        self._classes = classes
-        self._class_id = class_id
-        self._confidence = confidence
+    def __init__(self, left, top, right, bottom, name, confidence, center_x=None, center_y=None):
+        self.__left = left
+        self.__top = top
+        self.__right = right
+        self.__bottom = bottom
+        self.__name = name
+        self.__confidence = confidence
+        self.__center_x = center_x if center_x is not None else int(left + (right - left) / 2)
+        self.__center_y = center_y if center_y is not None else int(top + (bottom - top) / 2)
 
     def __str__(self):
-        return "Plant Box L=" + str(self._left) + " T=" + str(self._top) + " R=" + str(self._right) + " B=" + \
-               str(self._bottom) + " X=" + str(self._center_x) + " Y=" + str(self._center_y)
+        return "Plant Box L=" + str(self.__left) + " T=" + str(self.__top) + " R=" + str(self.__right) + " B=" + \
+               str(self.__bottom) + " X=" + str(self.__center_x) + " Y=" + str(self.__center_y)
 
     def get_box_points(self):
         """Returns left, top, right, bottom points of the box"""
 
-        return self._left, self._top, self._right, self._bottom
+        return self.__left, self.__top, self.__right, self.__bottom
 
     def get_center_points(self):
         """Returns pair of x and y box center coordinates"""
 
-        return self._center_x, self._center_y
+        return self.__center_x, self.__center_y
 
     def get_sizes(self):
         """Returns x and y sizes of the box"""
 
-        return self._right - self._left, self._bottom - self._top
+        return self.__right - self.__left, self.__bottom - self.__top
 
     def get_name(self):
         """Returns plant class name"""
 
-        return self._classes[self._class_id]
-
-    def get_class_id(self):
-        """Returns plant class index in the classes list"""
-
-        return self._class_id
+        return self.__name
 
     def get_confidence(self):
-        return self._confidence
+        return self.__confidence
 
     def get_distance_from(self, px_point_x, px_point_y):
-        return math.sqrt((self._center_x - px_point_x) ** 2 + (self._center_y - px_point_y) ** 2)
+        return math.sqrt((self.__center_x - px_point_x) ** 2 + (self.__center_y - px_point_y) ** 2)
 
 
 # Draw the predicted bounding box
@@ -179,45 +231,3 @@ def detect_single(detector: YoloOpenCVDetection, input_full_path, output_dir):
     slash = "\\" if platform.system() == "Windows" else "/"
     file_name = input_full_path.split(slash)[-1]
     cv.imwrite(output_dir + file_name, img)
-
-
-def _create_directories(*args):
-    """Creates directories, receives any args count, each arg is separate dir"""
-
-    for path in args:
-        if not os.path.exists(path):
-            try:
-                os.mkdir(path)
-            except OSError:
-                print("Creation of the directory %s failed" % path)
-            else:
-                print("Successfully created the directory %s " % path)
-        else:
-            print("Directory %s is already exists" % path)
-
-
-def _test():
-    precise_input_dir = "precise input/"
-    precise_output_dir = "precise ouput/"
-    periphery_input_dir = "periphery input/"
-    periphery_output_dir = "periphery ouput/"
-
-    _create_directories(precise_input_dir, precise_output_dir, periphery_input_dir, periphery_output_dir)
-
-    periphery_detector = YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
-                                             config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
-                                             config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                             config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
-                                             config.PERIPHERY_DNN_TARGET)
-    precise_detector = YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
-                                           config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
-                                           config.PRECISE_CONFIDENCE_THRESHOLD, config.PRECISE_NMS_THRESHOLD,
-                                           config.PRECISE_DNN_BACKEND,config.PRECISE_DNN_TARGET)
-
-    detect_all_in_directory(precise_detector, precise_input_dir, precise_output_dir)
-    detect_all_in_directory(periphery_detector, periphery_input_dir, periphery_output_dir)
-    print("Done!")
-
-
-if __name__ == '__main__':
-    _test()
