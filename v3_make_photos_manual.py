@@ -1,9 +1,10 @@
 from config import config
 import adapters
 import cv2 as cv
-import datetime
-import os
 import time
+import utility
+
+OUTPUT_DIR = "manual_photos_maker/"
 
 
 def markup_5_points(image):
@@ -21,15 +22,53 @@ def markup_5_points(image):
     return image
 
 
+def manual_photos_making(camera):
+    draw_markup = input("Draw markup points on images? (y/n): ")
+    draw_markup = draw_markup.lower() == "y"
+
+    label = input("Please type label, which should be added to photos: ")
+    sep = " "
+    counter = 1
+    path_piece = OUTPUT_DIR + label + sep
+
+    while True:
+        action = input("Hit enter to get an image, type anything to stop: ")
+        if action != "":
+            break
+
+        frame = camera.get_image()
+
+        if draw_markup == "y":
+            frame = markup_5_points(frame)
+
+        cv.imwrite(path_piece + str(counter) + sep + utility.get_current_time() + ".jpg", frame)
+        counter += 1
+
+
+def run_performance_test(camera):
+    label = input("Please type label, which should be added to photos: ")
+    sep = " "
+    counter = 1
+    path_piece = OUTPUT_DIR + label + sep
+    saving_time_delta = "None"
+
+    try:
+        while True:
+            frame = camera.get_image()
+            cur_time = utility.get_current_time()  # timestamp when frame was read
+
+            saving_start_t = time.time()
+            cv.imwrite(path_piece + str(counter) + sep + cur_time + sep + "(prev. imwrite time " +
+                       str(saving_time_delta) + " seconds).jpg", frame)
+            saving_time_delta = time.time() - saving_start_t
+
+            counter += 1
+    except KeyboardInterrupt:
+        return
+
+
 def main():
-    output_dir = "gathered_data/"
-    if not os.path.exists(output_dir):
-        try:
-            os.mkdir(output_dir)
-        except OSError:
-            print("Creation of the directory %s failed" % output_dir)
-        else:
-            print("Successfully created the directory %s " % output_dir)
+    utility.create_directories(OUTPUT_DIR)
 
     print("Loading...")
     with adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
@@ -42,23 +81,14 @@ def main():
             as camera:
 
         time.sleep(2)
+
         print("Loading complete.")
-        draw_markup = input("Draw markup points on images? (y/n): ")
-        draw_markup = draw_markup.lower() == "y"
-        label = input("Please type label, which should be added to photos: ")
-        sep = " "
-        counter = 1
 
-        while True:
-            action = input("Hit enter to get an image, type anything to stop: ")
-            if action != "":
-                break
-
-            frame = camera.get_image()
-            if draw_markup:
-                frame = markup_5_points(frame)
-            cv.imwrite(output_dir + label + sep + str(counter) + sep + str(datetime.datetime.now()) + ".jpg", frame)
-            counter += 1
+        mode = input("Type y to start in manual photos making mode, type n to start performance test (y/n): ")
+        if mode.lower() == "y":
+            manual_photos_making(camera)
+        else:
+            run_performance_test(camera)
 
         print("Done.")
 
