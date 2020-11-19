@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.4.4"  # still have some obsolete keys
+CONFIG_VERSION = "0.4.5"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -62,6 +62,7 @@ SEEK_DELTA_DISTANCE = 25  # mm; if weed is lost after tuning/getting closer - we
 # ======================================================================================================================
 INPUT_GPS_FIELD_FILE = "field.txt"
 OUTPUT_GPS_HISTORY_FILE = "gps_history.txt"
+DARKNET_LIB_DIR_PATH = "/home/violette/field/darknet/"
 
 
 # ======================================================================================================================
@@ -108,7 +109,7 @@ Z_F_MAX = 1000  # TODO: obsolete, need to update
 XY_COEFFICIENT_TO_MM = 0.40776699029126213592233009708738
 Z_COEFFICIENT_TO_MM = 1  # not used yet
 
-EXTRACTION_Z = -50  # value that passed to smoothie when doing plant extration
+EXTRACTION_Z = -50  # value that passed to smoothie when doing plant extraction
 Z_F_EXTRACTION_UP = 1700
 Z_F_EXTRACTION_DOWN = 1300
 
@@ -154,9 +155,9 @@ NAV_TURN_WHEELS_CENTER = 0
 # YOLO PERIPHERY NETWORK SETTINGS
 # ======================================================================================================================
 PERIPHERY_CONFIDENCE_THRESHOLD = 0.25  # Confidence threshold
-PERIPHERY_HIER_THRESHOLD = 0.50
+PERIPHERY_HIER_THRESHOLD = 0.50  # works only in darknet wrapper
 PERIPHERY_NMS_THRESHOLD = 0.4  # Non-maximum suppression threshold
-PERIPHERY_INPUT_SIZE = (416, 416)
+PERIPHERY_INPUT_SIZE = (416, 416)  # works only in opencv wrapper
 PERIPHERY_CONFIG_FILE = "yolo/periphery_config.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/periphery_weights.weights"
 PERIPHERY_CLASSES_FILE = "yolo/periphery_classes.names"
@@ -170,9 +171,9 @@ PERIPHERY_WRAPPER = 1  # 1 = darknet, 2 = opencv from darknet
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
 PRECISE_CONFIDENCE_THRESHOLD = 0.25  # Confidence threshold
-PRECISE_HIER_THRESHOLD = 0.50
+PRECISE_HIER_THRESHOLD = 0.50  # works only in darknet wrapper
 PRECISE_NMS_THRESHOLD = 0.4  # Non-maximum suppression threshold
-PRECISE_INPUT_SIZE = (608, 608)
+PRECISE_INPUT_SIZE = (608, 608)  # works only in opencv wrapper
 PRECISE_CONFIG_FILE = "yolo/precise_config.cfg"
 PRECISE_WEIGHTS_FILE = "yolo/precise_weights.weights"
 PRECISE_CLASSES_FILE = "yolo/precise_classes.names"

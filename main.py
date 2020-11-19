@@ -27,7 +27,7 @@ if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
     import robotEN_JETSON as rtk
 
-ALLOW_GATHERING = True
+ALLOW_GATHERING = False
 DATA_GATHERING_DIR = "gathered_photos/"
 LOG_ROOT_DIR = "logs/"
 STATISTICS_FILE = "statistics.txt"
@@ -240,7 +240,6 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     # use plant box from precise NN for movement calculations
                     if not plant_position_is_precise:
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-
                         frame = camera.get_image()
                         temp_plant_boxes = detector.detect(frame)
 
@@ -508,9 +507,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if current_working_mode == working_mode_slow:
             if any_plant_in_zone(plants_boxes, working_zone_polygon):
                 vesc_engine.stop_moving()
-                time.sleep(config.DELAY_BEFORE_2ND_SCAN)
 
                 for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
+                    time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+
                     msg = "Extraction cycle " + str(i) + " of " + str(config.EXTRACTIONS_FULL_CYCLES)
                     logger_full.write(msg + "\n")
 
@@ -1252,7 +1252,7 @@ def main():
                     msg = "Starting memory cleaning"
                     logger_full.write(msg + "\n")
                     cleaning_start_t = time.time()
-                    memory_manager.start_clean_manual_blocking()
+                    #memory_manager.start_clean_manual_blocking()
                     cleaning_end_t = time.time()
                     msg = "Cleaning elapsed time: " + str(cleaning_end_t - cleaning_start_t)
                     logger_full.write(msg + "\n")
