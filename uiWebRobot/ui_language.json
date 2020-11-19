@@ -1,0 +1,32 @@
+{
+	"Supported Language": [
+		"fr",
+		"en",
+		"nl"
+	],
+	"Length": {
+		"fr": "Longueur", 
+		"en": "Length",
+		"nl": "Lengte"
+	}, 
+	"New zone": {
+		"fr": "Nouvelle zone", 
+		"en": "New zone",
+		"nl": "Nieuwe zone"
+	}, 
+	"Start": {
+		"fr": "Départ", 
+		"en": "Start",
+		"nl": "Begin"
+	}, 
+	"Continue": {
+		"fr": "Continuer", 
+		"en": "Continue",
+		"nl": "Doorgaan"
+	}, 
+	"Stop": {
+		"fr": "Arrêt", 
+		"en": "Stop",
+		"nl": "Hou op"
+	}
+}

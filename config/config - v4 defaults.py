@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.4.5"  # still have some obsolete keys
+CONFIG_VERSION = "0.4.6"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -230,6 +230,7 @@ DB_USER = "username"
 DB_HOST = "x.x.x.x"
 DB_PWD = "password"
 ROBOT_SN = "SNXXX"
+UI_LANGUAGE = "nl"
 
 
 # ======================================================================================================================

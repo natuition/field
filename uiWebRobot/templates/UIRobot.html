@@ -16,24 +16,24 @@
         </div>
         <div class="container_arrows">
             <div class="container">
-                <div id="arrow_up" class="touchArrow arrow {{arrowsStatus}}" onclick="cclickArrow(this.id)">
+                <div id="arrow_up" class="touchArrow arrow {{arrowsPropulsionStatus}}" onclick="cclickArrow(this.id)">
                     <div class="arrow-line arrow-line__upper"></div>
                     <div class="arrow-line arrow-line__lower"></div>
                 </div>
                 </div>
                 <div class="container">
-                <div id="arrow_left" class="arrow {{arrowsStatus}}" onclick="clickArrow(this.id)">
+                <div id="arrow_left" class="arrow {{arrowsDirectionStatus}}" onclick="clickArrow(this.id)">
                     <div class="arrow-line arrow-line__upper"></div>
                     <div class="arrow-line arrow-line__lower"></div>
                 </div>
                 <div class="arrow"></div>
-                <div id="arrow_right" class="arrow {{arrowsStatus}}" onclick="clickArrow(this.id)">
+                <div id="arrow_right" class="arrow {{arrowsDirectionStatus}}" onclick="clickArrow(this.id)">
                     <div class="arrow-line arrow-line__upper"></div>
                     <div class="arrow-line arrow-line__lower"></div>
                 </div>
                 </div>
                 <div class="container">
-                <div id="arrow_down" class="touchArrow arrow {{arrowsStatus}}" onclick="cclickArrow(this.id)">
+                <div id="arrow_down" class="touchArrow arrow {{arrowsPropulsionStatus}}" onclick="cclickArrow(this.id)">
                     <div class="arrow-line arrow-line__upper"></div>
                     <div class="arrow-line arrow-line__lower"></div>
                 </div>
@@ -41,21 +41,32 @@
         </div>
 
         <div class="container_slider">
+            <span>{{(ui_languages["Length"])[ui_language]}} :</span>
             <div class="slider range-slider">
-                <input id="slider" class="slider range-slider__range" type="range" value="20" min="15" max="50" step="5">
+                <input id="slider-long" class="slider range-slider__range" type="range" value="25" min="15" max="150" step="5">
                 <span class="slider range-slider__value">0</span>
             </div>
         </div>
 
         <div class="container_button">
-            {% if fieldButton == 'charging' %}
+            {% if fieldButton == None %}
+                {% if stopButton == 'charging' %}
+                <button id="Stop" class="allButton button unselectable active arret">
+                    <span class="allButton submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                {% else %}
+                <button id="Stop" class="allButton button unselectable arret">
+                    <span class="allButton submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                {% endif %}
+            {% elif fieldButton == 'charging' %}
             <button id="Newfield" class="allButton button unselectable active" disabled>
+                <span class="allButton submit">{{(ui_languages["New zone"])[ui_language]}}</span>
             {% elif not fieldButton %}
             <button id="Newfield" class="allButton button unselectable disabled" disabled>
+                <span class="allButton submit">{{(ui_languages["New zone"])[ui_language]}}</span>
             {% else %}
             <button id="Newfield" class="allButton button unselectable">
+                <span class="allButton submit">{{(ui_languages["New zone"])[ui_language]}}</span>
             {% endif %}
-                <span class="allButton submit">Nouvelle zone</span>
                 <span class="allButton loading"><i class="fa fa-refresh"></i></span>
                 <span class="allButton check"><i class="fa fa-check"></i></span>
             </button>
@@ -69,20 +80,20 @@
             {% if startButton == None %}
                 {% if stopButton == 'charging' %}
                 <button id="Stop" class="allButton button unselectable active arret">
-                    <span class="allButton submit">Arrêt</span>
+                    <span class="allButton submit">{{(ui_languages["Stop"])[ui_language]}}</span>
                 {% else %}
                 <button id="Stop" class="allButton button unselectable arret">
-                    <span class="allButton submit">Arrêt</span>
+                    <span class="allButton submit">{{(ui_languages["Stop"])[ui_language]}}</span>
                 {% endif %}
             {% elif startButton == 'charging' %}
             <button id="Start" class="allButton button unselectable active" disabled>
-                <span class="allButton submit">Départ</span>
+                <span class="allButton submit">{{(ui_languages["Start"])[ui_language]}}</span>
             {% elif not startButton %}
             <button id="Start" class="allButton button unselectable disabled" disabled>
-                <span class="allButton submit">Départ</span>
+                <span class="allButton submit">{{(ui_languages["Start"])[ui_language]}}</span>
             {% else %}
             <button id="Start" class="allButton button unselectable">
-                <span class="allButton submit">Départ</span>
+                <span class="allButton submit">{{(ui_languages["Start"])[ui_language]}}</span>
             {% endif %}
                 <span class="allButton loading"><i class="fa fa-refresh"></i></span>
                 <span class="allButton check"><i class="fa fa-check"></i></span>
@@ -91,26 +102,30 @@
             {% if continueButton == None %}
                 {% if stopButton == 'charging' %}
                 <button id="Stop" class="allButton button unselectable active arret">
-                    <span class="allButton submit">Arrêt</span>
+                    <span class="allButton submit">{{(ui_languages["Stop"])[ui_language]}}</span>
                 {% else %}
                 <button id="Stop" class="allButton button unselectable arret">
-                    <span class="allButton submit">Arrêt</span>
+                    <span class="allButton submit">{{(ui_languages["Stop"])[ui_language]}}</span>
                 {% endif %}
             {% elif continueButton == 'charging' %}
             <button id="Continue" class="allButton button unselectable active" disabled>
-                <span class="allButton submit">Continuer</span>
+                <span class="allButton submit">{{(ui_languages["Continue"])[ui_language]}}</span>
             {% elif not continueButton %}
             <button id="Continue" class="allButton button unselectable disabled" disabled>
-                <span class="allButton submit">Continuer</span>
+                <span class="allButton submit">{{(ui_languages["Continue"])[ui_language]}}</span>
             {% else %}
             <button id="Continue" class="allButton button unselectable">
-                <span class="allButton submit">Continuer</span>
+                <span class="allButton submit">{{(ui_languages["Continue"])[ui_language]}}</span>
             {% endif %}
                 <span class="allButton loading"><i class="fa fa-refresh"></i></span>
                 <span class="allButton check"><i class="fa fa-check"></i></span>
             </button>
         </div>
 
+        <script type="text/javascript">
+        	const ui_languages = {{ui_languages | tojson}};
+			const ui_language = {{ui_language | tojson}};
+        </script>
         <script src="https://use.fontawesome.com/ee93656331.js"></script>
         <script type="text/javascript" src="{{ url_for('static', filename='js/button.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static', filename='js/arrowAnim.js') }}"></script>
