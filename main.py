@@ -535,6 +535,15 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         msg = "View scan 2 found no plants in working zone."
                         logger_full.write(msg + "\n")
                         break
+
+                # force step forward to avoid infinite loop after extraction (if NN triggers on extracted plants)
+                vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
+                vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
+                vesc_engine.start_moving()
+                vesc_engine.wait_for_stop()
+                vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
+                vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+
             elif not any_plant_in_zone(plants_boxes, working_zone_polygon) and \
                     time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                 """
