@@ -1091,8 +1091,8 @@ def main():
         logger_full.write(msg + "\n")
 
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
+        # utility.MemoryManager(DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
         with \
-            utility.MemoryManager(DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                  config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE) as vesc_engine, \
@@ -1258,13 +1258,15 @@ def main():
                     path_index_file.write(str(i + 1))
                     path_index_file.flush()
 
+                    """
                     msg = "Starting memory cleaning"
                     logger_full.write(msg + "\n")
                     cleaning_start_t = time.time()
-                    #memory_manager.start_clean_manual_blocking()
+                    memory_manager.start_clean_manual_blocking()
                     cleaning_end_t = time.time()
                     msg = "Cleaning elapsed time: " + str(cleaning_end_t - cleaning_start_t)
                     logger_full.write(msg + "\n")
+                    """
 
                 # mark path as passed (set next point index to -1)
                 path_index_file.seek(0)
