@@ -78,8 +78,8 @@ def main():
         # working zones
         file.write("\n# WORKING ZONE FOR CROPPED (this one is for config.py)\n")
         file.write("WORKING_ZONE_POLY_POINTS = " + str(adapted_working_zone) + "\n")
-        file.write("\n# WORKING ZONE FOR UNCROPPED (may be useful for debug, DO NOT add this to config.py!)\n")
-        file.write("WORKING_ZONE_POLY_POINTS = " + str(working_zone) + "\n")
+        # file.write("\n# WORKING ZONE FOR UNCROPPED (may be useful for debug, DO NOT add this to config.py!)\n")
+        # file.write("WORKING_ZONE_POLY_POINTS = " + str(working_zone) + "\n")
 
 
 if __name__ == '__main__':

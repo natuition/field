@@ -27,7 +27,7 @@ ORIGIN_CONTROL_POINT = [1701, 1454, -3, 4, 1]
 # PAY ATTENTION: ALL MARKUP WITH CP SHOULD HAVE SIMILAR ROWS SIZES! This means if you have 11 points on the left side (from the center column) - you have to mark up strictly 11 points on the right side (from the center column), column is counting
 # for example above row cnt will be = 3 (1, 2, 3 and 1, 10, 11)
 POINTS_IN_ROW_COUNT = 11
-# last point on the left side number, for example above it will be 9, as 9th point is last point that was marked on the left side
+# last point on the left side number, for example above it will be 9, as 9th point is last point wither highest number that was marked on the left side
 LAST_LEFT_SIDE_POINT_NUMBER = 110
 CONTROL_POINT_MM_X_STEP = 40
 CONTROL_POINT_MM_Y_STEP = 40
@@ -115,8 +115,8 @@ def main():
         file.write("IMAGE_CONTROL_POINTS_MAP = " + str(adapted_control_points) + "\n")
 
         # control points for uncropped
-        file.write("\n# CONTROL POINTS FOR UNCROPPED (may be useful for debug, DO NOT add this to config.py! It's not for that)\n")
-        file.write("IMAGE_CONTROL_POINTS_MAP = " + str(control_points) + "\n")
+        # file.write("\n# CONTROL POINTS FOR UNCROPPED (may be useful for debug, DO NOT add this to config.py! It's not for that)\n")
+        # file.write("IMAGE_CONTROL_POINTS_MAP = " + str(control_points) + "\n")
 
 
 if __name__ == '__main__':
