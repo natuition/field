@@ -27,8 +27,6 @@ if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
     import robotEN_JETSON as rtk
 
-ALLOW_GATHERING = False
-DATA_GATHERING_DIR = "gathered_photos/"
 LOG_ROOT_DIR = "logs/"
 STATISTICS_FILE = "statistics.txt"
 
@@ -165,8 +163,8 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
     IMAGES_COUNTER += 1
 
     # TODO: data gathering temporary hardcoded
-    if ALLOW_GATHERING:
-        save_image(DATA_GATHERING_DIR, frame, IMAGES_COUNTER, label, utility.get_current_time())
+    if config.ALLOW_GATHERING:
+        save_image(config.DATA_GATHERING_DIR, frame, IMAGES_COUNTER, label, utility.get_current_time())
 
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
@@ -223,7 +221,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                 logger_full.write(msg + "\n")
                 exit(1)
 
-        plant_position_is_precise = False
+        plant_position_is_precise = not config.ALLOW_PRECISE_RESCAN
         box_x, box_y = box.get_center_points()
 
         # if plant is in working zone (can be reached by cork)
@@ -517,13 +515,12 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     start_work_t = time.time()
                     frame = camera.get_image()
                     frame_t = time.time()
-
-                    plants_boxes = periphery_det.detect(frame)
+                    plants_boxes = precise_det.detect(frame)
                     pre_det_t = time.time()
 
-                    debug_save_image(img_output_dir, "(periphery view scan 2 M=1)", frame, plants_boxes,
+                    debug_save_image(img_output_dir, "(precise view scan 2 M=1)", frame, plants_boxes,
                                      undistorted_zone_radius, working_zone_points_cv)
-                    msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPeri. det. 2 time: " + \
+                    msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. 2 time: " + \
                           str(pre_det_t - frame_t)
                     logger_full.write(msg + "\n")
 
@@ -999,7 +996,7 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
 
 def main():
     log_cur_dir = LOG_ROOT_DIR + utility.get_current_time() + "/"
-    utility.create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, DATA_GATHERING_DIR)
+    utility.create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
 
     data_collector = datacollection.DataCollector()
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
@@ -1091,7 +1088,7 @@ def main():
         logger_full.write(msg + "\n")
 
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
-        # utility.MemoryManager(DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
+        # utility.MemoryManager(config.DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
         with \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
