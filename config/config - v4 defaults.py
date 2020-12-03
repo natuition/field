@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.4.7"  # still have some obsolete keys
+CONFIG_VERSION = "0.4.8"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -86,7 +86,7 @@ STEP_FORWARD_RPM = -2500  # # step after extraction loops are done
 # ======================================================================================================================
 GPS_PORT = "/dev/ttyTHS1"
 GPS_BAUDRATE = 19200
-GPS_POSITIONS_TO_KEEP = 1000
+GPS_POSITIONS_TO_KEEP = 1
 
 
 # ======================================================================================================================
@@ -230,6 +230,11 @@ RECEIVE_FIELD_FROM_RTK = False
 SLOW_MODE_MIN_TIME = 3  # seconds
 EXTRACTION_TUNING_MAX_COUNT = 3
 DELAY_BEFORE_2ND_SCAN = 0.3  # delay in seconds after robot stop and before second scan (M=1)
+# seconds; enables/disables cork calibrations after reaching current target point and sets min time before next
+# calibration is allowed; set to float("inf") to disable calibration, set to 0 to apply calibrations after reaching each
+# path point. Note: this sets MIN time to pass before next calibration. Setting 1 hour doesn't mean that calibrations
+# will be done each hour exactly - they won't be more often than 1 calibration per 1 h.
+CORK_CALIBRATION_MIN_TIME = 3600
 DB_NAME = "dbname"
 DB_USER = "username"
 DB_HOST = "x.x.x.x"

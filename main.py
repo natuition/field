@@ -441,7 +441,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                               periphery_det: detection.YoloOpenCVDetection, precise_det: detection.YoloOpenCVDetection,
                               client, logger_full: utility.Logger, logger_table: utility.Logger, report_field_names,
-                              used_points_history: list, undistorted_zone_radius, working_zone_polygon,
+                              trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
                               nav: navigation.GPSComputing, data_collector: datacollection.DataCollector):
     """
@@ -475,7 +475,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     current_working_mode = working_mode_slow = 1
     working_mode_switching = 2
     working_mode_fast = 3
-    close_to_end = False if not config.USE_SPEED_LIMIT else True  # True if robot is close to one of current movement vector points, False otherwise
+    close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
 
     # set camera to the Y min
     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
@@ -483,6 +483,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
         logger_full.write(msg + "\n")
     smoothie.wait_for_all_actions_done()
+
+    # TODO: maybe should add sleep time as camera currently has delay
 
     # main navigation control loop
     while True:
@@ -607,11 +609,14 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             # logger_full.write(msg + "\n")
             continue
 
+        trajectory_saver.save_point(cur_pos)
+        """
         if len(used_points_history) > 0:
             if str(used_points_history[-1]) != str(cur_pos):
                 used_points_history.append(cur_pos.copy())
         else:
             used_points_history.append(cur_pos.copy())
+        """
 
         """
         if not client.sendData("{};{}".format(cur_pos[0], cur_pos[1])):
@@ -1090,6 +1095,7 @@ def main():
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
         # utility.MemoryManager(config.DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
         with \
+            utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt") as trajectory_saver, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                  config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE) as vesc_engine, \
@@ -1236,6 +1242,7 @@ def main():
 
             # path points visiting loop
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
+                next_calibration_time = time.time() + config.CORK_CALIBRATION_MIN_TIME
                 for i in range(path_start_index, len(path_points)):
                     from_to = [path_points[i - 1], path_points[i]]
                     from_to_dist = nav.get_distance(from_to[0], from_to[1])
@@ -1245,7 +1252,7 @@ def main():
                     logger_full.write(msg + "\n\n")
 
                     move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
-                                              client, logger_full, logger_table, report_field_names, used_points_history,
+                                              client, logger_full, logger_table, report_field_names, trajectory_saver,
                                               config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon, working_zone_points_cv,
                                               view_zone_polygon, view_zone_points_cv, config.DEBUG_IMAGES_PATH, nav,
                                               data_collector)
@@ -1265,6 +1272,15 @@ def main():
                     logger_full.write(msg + "\n")
                     """
 
+                    # calibration
+                    if time.time() > next_calibration_time:
+                        msg = "Calibrating cork after reaching path point. Current config.CORK_CALIBRATION_MIN_TIME is "\
+                              + str(config.CORK_CALIBRATION_MIN_TIME)
+                        logger_full.write(msg + "\n")
+
+                        next_calibration_time = time.time() + config.CORK_CALIBRATION_MIN_TIME
+                        smoothie.ext_calibrate_cork()
+
                 # mark path as passed (set next point index to -1)
                 path_index_file.seek(0)
                 path_index_file.write(str(-1))
@@ -1282,6 +1298,7 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
     finally:
+        """
         # save used gps points
         print("Saving positions histories...")
         if len(used_points_history) > 0:
@@ -1291,6 +1308,7 @@ def main():
             msg = "used_gps_history list has 0 elements!"
             print(msg)
             logger_full.write(msg + "\n")
+        """
         # save adapter points history
         try:
             # TODO: reduce history positions to 1 to save RAM

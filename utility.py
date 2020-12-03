@@ -5,6 +5,39 @@ import serial.tools.list_ports
 import threading
 from time import sleep
 import psutil
+import glob
+
+
+class TrajectorySaver:
+    """Provides safe gps points saving (robot's trajectory)"""
+
+    def __init__(self, full_path):
+        self.__full_path = full_path
+        self.__output_file = open(full_path, "w")
+        self.__last_received_point = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.__output_file.close()
+
+    def save_point(self, point: list, save_raw=False, flush_immediately=True):
+        """
+        Saves given point if it is different from previous received gps point.
+        """
+
+        if not str(point) == self.__last_received_point:
+            self.__last_received_point = str(point)
+
+            str_point = str(point[0]) + " " + str(point[1]) + "\n" if save_raw else str(point) + "\n"
+            self.__output_file.write(str_point)
+
+            if flush_immediately:
+                self.__output_file.flush()
 
 
 class MemoryManager:
@@ -58,8 +91,8 @@ class MemoryManager:
             os.remove(file)
 
     def __get_files_to_delete_list(self):
-        os.chdir(self.__path)
-        full_files_list = sorted(os.listdir(os.getcwd()), key=os.path.getmtime, reverse=True)
+        # TODO: can be optimized (seems like getmtime is called multiple times during sorting)
+        full_files_list = sorted(glob.glob(self.__path + "*"), key=os.path.getmtime, reverse=True)
         return full_files_list[self.__files_to_keep_count:]
 
     def __manual_cleaner_tf(self):
