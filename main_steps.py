@@ -988,7 +988,7 @@ def main():
         # save session statistics TODO: its temporary
         print("Saving statistics...")
         try:
-            data_collector.save_current_data(log_cur_dir + STATISTICS_FILE)
+            data_collector.save_extractions_data(log_cur_dir + STATISTICS_FILE)
         except:
             print("Failed:\n" + traceback.format_exc())
             pass

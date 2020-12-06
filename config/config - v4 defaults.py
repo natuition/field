@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.4.8"  # still have some obsolete keys
+CONFIG_VERSION = "0.4.9"  # still have some obsolete keys
 
 
 # ======================================================================================================================
@@ -235,6 +235,10 @@ DELAY_BEFORE_2ND_SCAN = 0.3  # delay in seconds after robot stop and before seco
 # path point. Note: this sets MIN time to pass before next calibration. Setting 1 hour doesn't mean that calibrations
 # will be done each hour exactly - they won't be more often than 1 calibration per 1 h.
 CORK_CALIBRATION_MIN_TIME = 3600
+AUDIT_MODE = False
+AUDIT_OUTPUT_FILE = "audit.txt"
+LOG_ROOT_DIR = "logs/"
+STATISTICS_OUTPUT_FILE = "statistics.txt"
 DB_NAME = "dbname"
 DB_USER = "username"
 DB_HOST = "x.x.x.x"

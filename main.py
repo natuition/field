@@ -27,9 +27,6 @@ if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
     import robotEN_JETSON as rtk
 
-LOG_ROOT_DIR = "logs/"
-STATISTICS_FILE = "statistics.txt"
-
 # TODO: temp debug counter
 IMAGES_COUNTER = 0
 
@@ -189,7 +186,7 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                        detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
                        plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir,
-                       logger_full: utility.Logger, data_collector: datacollection.DataCollector):
+                       logger_full: utility.Logger, data_collector: datacollection.DataCollector, log_cur_dir):
     """Extract all plants found in current position"""
 
     msg = "Extracting " + str(len(plant_boxes)) + " plants"
@@ -313,6 +310,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                             exit(1)
                     else:
                         data_collector.add_extractions_data(box.get_name(), 1)
+                        data_collector.save_extractions_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
                     break
 
                 # if outside undistorted zone but in working zone
@@ -443,7 +441,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               client, logger_full: utility.Logger, logger_table: utility.Logger, report_field_names,
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
-                              nav: navigation.GPSComputing, data_collector: datacollection.DataCollector):
+                              nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -503,101 +501,126 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
         logger_full.write(msg + "\n")
 
-        # slow mode
-        if current_working_mode == working_mode_slow:
-            if any_plant_in_zone(plants_boxes, working_zone_polygon):
-                vesc_engine.stop_moving()
+        if config.AUDIT_MODE:
+            dc_start_t = time.time()
 
-                for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
-                    time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+            # count detected plant boxes for each type
+            plants_count = dict()
+            for plant_box in plants_boxes:
+                plant_box_name = plant_box.get_name()
+                if plant_box_name in plants_count:
+                    plants_count[plant_box_name] += 1
+                else:
+                    plants_count[plant_box_name] = 1
 
-                    msg = "Extraction cycle " + str(i) + " of " + str(config.EXTRACTIONS_FULL_CYCLES)
-                    logger_full.write(msg + "\n")
+            # save info into data collector
+            for plant_label in plants_count:
+                data_collector.add_detections_data(plant_label, plants_count[plant_label])
 
-                    start_work_t = time.time()
-                    frame = camera.get_image()
-                    frame_t = time.time()
-                    plants_boxes = precise_det.detect(frame)
-                    pre_det_t = time.time()
+            # flush updates into the audit output file and log measured time
+            if len(plants_boxes) > 0:
+                data_collector.save_detections_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
 
-                    debug_save_image(img_output_dir, "(precise view scan 2 M=1)", frame, plants_boxes,
-                                     undistorted_zone_radius, working_zone_points_cv)
-                    msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. 2 time: " + \
-                          str(pre_det_t - frame_t)
-                    logger_full.write(msg + "\n")
-
-                    if any_plant_in_zone(plants_boxes, working_zone_polygon):
-                        extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
-                                           undistorted_zone_radius, working_zone_points_cv, img_output_dir, logger_full,
-                                           data_collector)
-                    else:
-                        msg = "View scan 2 found no plants in working zone."
-                        logger_full.write(msg + "\n")
-                        break
-
-                # force step forward to avoid infinite loop after extraction (if NN triggers on extracted plants)
-                vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
-                vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
-                vesc_engine.start_moving()
-                vesc_engine.wait_for_stop()
-                vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
-                vesc_engine.set_rpm(config.VESC_RPM_SLOW)
-
-            elif not any_plant_in_zone(plants_boxes, working_zone_polygon) and \
-                    time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
-                """
-                # set camera to the Y max
-                res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
-                                              Y=config.Y_MAX / config.XY_COEFFICIENT_TO_MM)
-                if res != smoothie.RESPONSE_OK:
-                    msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y max, smoothie response:\n" + res
-                    logger_full.write(msg + "\n")
-                smoothie.wait_for_all_actions_done()
-                """
-                current_working_mode = working_mode_switching
-            vesc_engine.start_moving()
-
-        # switching to fast mode
-        elif current_working_mode == working_mode_switching:
-            if any_plant_in_zone(plants_boxes, working_zone_polygon):
-                vesc_engine.stop_moving()
-                """
-                # set camera to the Y min
-                res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
-                                              Y=config.Y_MIN)
-                if res != smoothie.RESPONSE_OK:
-                    msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
-                    logger_full.write(msg + "\n")
-                smoothie.wait_for_all_actions_done()
-                """
-                current_working_mode = working_mode_slow
-                slow_mode_time = time.time()
-            # elif smoothie.get_smoothie_current_coordinates(False)["Y"] + config.XY_COEFFICIENT_TO_MM * 20 > config.Y_MAX:
-            else:
-                current_working_mode = working_mode_fast
-                if not close_to_end:
-                    vesc_engine.apply_rpm(config.VESC_RPM_FAST)
-
-        # fast mode
+            dc_t = time.time() - dc_start_t
+            msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
+                  ", audit processing tick time: " + str(dc_t)
+            logger_full.write(msg + "\n")
         else:
-            if any_plant_in_zone(plants_boxes, working_zone_polygon):
-                vesc_engine.stop_moving()
-                """
-                # set camera to the Y min
-                res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
-                                              Y=config.Y_MIN)
-                if res != smoothie.RESPONSE_OK:
-                    msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
-                    logger_full.write(msg + "\n")
-                smoothie.wait_for_all_actions_done()
-                """
-                current_working_mode = working_mode_slow
-                slow_mode_time = time.time()
-                vesc_engine.set_rpm(config.VESC_RPM_SLOW)
-            elif close_to_end:
-                vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+            # slow mode
+            if current_working_mode == working_mode_slow:
+                if any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+
+                    for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
+                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+
+                        msg = "Extraction cycle " + str(i) + " of " + str(config.EXTRACTIONS_FULL_CYCLES)
+                        logger_full.write(msg + "\n")
+
+                        start_work_t = time.time()
+                        frame = camera.get_image()
+                        frame_t = time.time()
+                        plants_boxes = precise_det.detect(frame)
+                        pre_det_t = time.time()
+
+                        debug_save_image(img_output_dir, "(precise view scan 2 M=1)", frame, plants_boxes,
+                                         undistorted_zone_radius, working_zone_points_cv)
+                        msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. 2 time: " + \
+                              str(pre_det_t - frame_t)
+                        logger_full.write(msg + "\n")
+
+                        if any_plant_in_zone(plants_boxes, working_zone_polygon):
+                            extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
+                                               undistorted_zone_radius, working_zone_points_cv, img_output_dir,
+                                               logger_full, data_collector, log_cur_dir)
+                        else:
+                            msg = "View scan 2 found no plants in working zone."
+                            logger_full.write(msg + "\n")
+                            break
+
+                    # force step forward to avoid infinite loop after extraction (if NN triggers on extracted plants)
+                    vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
+                    vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
+                    vesc_engine.start_moving()
+                    vesc_engine.wait_for_stop()
+                    vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
+                    vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+
+                elif not any_plant_in_zone(plants_boxes, working_zone_polygon) and \
+                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
+                    """
+                    # set camera to the Y max
+                    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                                  Y=config.Y_MAX / config.XY_COEFFICIENT_TO_MM)
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y max, smoothie response:\n" + res
+                        logger_full.write(msg + "\n")
+                    smoothie.wait_for_all_actions_done()
+                    """
+                    current_working_mode = working_mode_switching
+                vesc_engine.start_moving()
+
+            # switching to fast mode
+            elif current_working_mode == working_mode_switching:
+                if any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    """
+                    # set camera to the Y min
+                    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                                  Y=config.Y_MIN)
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
+                        logger_full.write(msg + "\n")
+                    smoothie.wait_for_all_actions_done()
+                    """
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                # elif smoothie.get_smoothie_current_coordinates(False)["Y"] + config.XY_COEFFICIENT_TO_MM * 20 > config.Y_MAX:
+                else:
+                    current_working_mode = working_mode_fast
+                    if not close_to_end:
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+
+            # fast mode
             else:
-                vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+                if any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    """
+                    # set camera to the Y min
+                    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
+                                                  Y=config.Y_MIN)
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
+                        logger_full.write(msg + "\n")
+                    smoothie.wait_for_all_actions_done()
+                    """
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                    vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+                elif close_to_end:
+                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                else:
+                    vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
         # NAVIGATION CONTROL
         nav_start_t = time.time()
@@ -1000,8 +1023,8 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
 
 
 def main():
-    log_cur_dir = LOG_ROOT_DIR + utility.get_current_time() + "/"
-    utility.create_directories(LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
+    log_cur_dir = config.LOG_ROOT_DIR + utility.get_current_time() + "/"
+    utility.create_directories(config.LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
 
     data_collector = datacollection.DataCollector()
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
@@ -1251,11 +1274,11 @@ def main():
                     # print(msg)
                     logger_full.write(msg + "\n\n")
 
-                    move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector, precise_detector,
-                                              client, logger_full, logger_table, report_field_names, trajectory_saver,
-                                              config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon, working_zone_points_cv,
-                                              view_zone_polygon, view_zone_points_cv, config.DEBUG_IMAGES_PATH, nav,
-                                              data_collector)
+                    move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
+                                              precise_detector, client, logger_full, logger_table, report_field_names,
+                                              trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
+                                              working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
@@ -1328,7 +1351,7 @@ def main():
         logger_full.write(msg + "\n")
         print(msg)
         try:
-            data_collector.save_current_data(log_cur_dir + STATISTICS_FILE)
+            data_collector.save_extractions_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
         except:
             msg = "Failed:\n" + traceback.format_exc()
             logger_full.write(msg + "\n")
