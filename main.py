@@ -484,6 +484,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
     # TODO: maybe should add sleep time as camera currently has delay
 
+    if config.AUDIT_MODE:
+        vesc_engine.start_moving()
+
     # main navigation control loop
     while True:
         # EXTRACTION CONTROL
