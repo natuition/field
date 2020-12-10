@@ -711,6 +711,19 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
+
+
+        if distance < config.CLOSE_TARGET_THRESHOLD:
+            if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD:
+              angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.SMALL_RAW_ANGLE_SQUARE_GAIN
+            if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD:
+              angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.BIG_RAW_ANGLE_SQUARE_GAIN
+        if distance > config.FAR_TARGET_THRESHOLD:
+            angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.FAR_TARGET_GAIN
+
+        
+
+
         target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
         # sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
