@@ -6,6 +6,57 @@ import threading
 from time import sleep
 import psutil
 import glob
+import detection
+import cv2 as cv
+
+
+class ImageSaver:
+    """
+    Implements flexible ways to save images and detected objects on them
+    """
+
+    def __init__(self, counter: int = 0):
+        if type(counter) is not int:
+            raise TypeError("'counter' type should be int, got " + type(counter).__name__)
+
+        self.__counter = counter
+
+    def get_counter(self):
+        return self.__counter
+
+    def set_counter(self, counter: int):
+        if type(counter) is not int:
+            raise TypeError("'counter' type should be int, got " + type(counter).__name__)
+
+        self.__counter = counter
+
+    def save_image(self, image, directory: str, extension: str = "jpg", sep: str = "_", specific_name=None, label=None,
+                   plants_boxes=None):
+        """
+        Saves image in different ways.
+
+        extension should not contain point separator: "jpg"
+        specific_name should not contain file extension
+        """
+
+        # define file name (image and txt if plants_boxes are passed)
+        if specific_name:
+            file_name = specific_name
+        else:
+            file_name = get_current_time() + sep + str(self.__counter)
+            self.__counter += 1
+            if label:
+                file_name += sep + label
+
+        # save image
+        cv.imwrite(directory + file_name + "." + extension, image)
+
+        # save plants boxes if passed
+        if type(plants_boxes) is list and len(plants_boxes) > 0:
+            with open(directory + file_name + ".txt", "w") as txt_file:
+                plant_box: detection.DetectedPlantBox
+                for plant_box in plants_boxes:
+                    txt_file.write(plant_box.get_as_yolo(return_as_text=True) + "\n")
 
 
 class TrajectorySaver:
@@ -45,7 +96,8 @@ class MemoryManager:
     Provides tools for removing obsolete files from given directory.
     Supports:
     - manual blocking cleaning: called manually from code, blocks caller thread until completely executed
-    - manual non-blocking cleaning: called manually, does single time cleaning in a separate thread, can be stopped at any time
+    - manual non-blocking cleaning: called manually, does single time cleaning in a separate thread, can be stopped at
+      any time
     - auto-cleaning: automatically calls for cleaner each N seconds (set as parameter), can be stopped at any time
     """
 

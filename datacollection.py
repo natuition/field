@@ -77,7 +77,3 @@ class DataCollector:
 
         # swap old file with the new
         self.__swap_files(file_full_path, new_file)
-
-
-class ImageCollector:
-    pass

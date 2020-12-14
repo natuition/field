@@ -80,7 +80,7 @@ class YoloOpenCVDetection:
             box = boxes[i]
             left, top, width, height = box[0], box[1], box[2], box[3]
             final_plant_boxes.append(DetectedPlantBox(left, top, left + width, top + height, classes[class_ids[i]],
-                                                      confidences[i]))
+                                                      class_ids[i], confidences[i], frame_width, frame_height))
         return final_plant_boxes
 
     # Load names of classes
@@ -144,21 +144,26 @@ class YoloDarknetDetector:
             top, left = center_y - box_size_y / 2, center_x - box_size_x / 2
             bot, right = top + box_size_y, left + box_size_x
             plant_boxes.append(DetectedPlantBox(round(left), round(top), round(right), round(bot), detection[0],
-                                                float(detection[1]), round(center_x), round(center_y)))
+                                                self.__class_names.index(detection[0]),
+                                                float(detection[1]), image.shape[1], image.shape[0],
+                                                center_x=round(center_x), center_y=round(center_y)))
         return plant_boxes
 
 
 class DetectedPlantBox:
 
-    def __init__(self, left, top, right, bottom, name, confidence, center_x=None, center_y=None):
+    def __init__(self, left, top, right, bottom, name, name_id, confidence, img_w, img_h, center_x=None, center_y=None):
         self.__left = left
         self.__top = top
         self.__right = right
         self.__bottom = bottom
         self.__name = name
+        self.__name_id = name_id
         self.__confidence = confidence
         self.__center_x = center_x if center_x is not None else int(left + (right - left) / 2)
         self.__center_y = center_y if center_y is not None else int(top + (bottom - top) / 2)
+        self.__image_width = img_w
+        self.__image_height = img_h
 
     def __str__(self):
         return "Plant Box L=" + str(self.__left) + " T=" + str(self.__top) + " R=" + str(self.__right) + " B=" + \
@@ -184,8 +189,30 @@ class DetectedPlantBox:
 
         return self.__name
 
+    def get_name_id(self):
+        """Returns plant class name id"""
+
+        return self.__name_id
+
     def get_confidence(self):
         return self.__confidence
+
+    def get_as_yolo(self, return_as_text=False):
+        """Returns box in yolo format, as str text, or as sequence of numbers"""
+
+        # convert to yolo format
+        x_center, y_center = round(self.__center_x / self.__image_width, 6), \
+                             round(self.__center_y / self.__image_height, 6)
+        box_px_width, box_px_height = self.get_sizes()
+        width, height = round(box_px_width / self.__image_width, 6), round(box_px_height / self.__image_height, 6)
+
+        # format as text: "object_class_index x_center y_center width height
+        if return_as_text:
+            return str(self.__name_id) + " " + str(x_center) + " " + str(y_center) + " " + str(width) + " " + \
+                   str(height)
+        # return as numbers: object_class_index, x_center, y_center, width, height
+        else:
+            return self.__name_id, x_center, y_center, width, height
 
     def get_distance_from(self, px_point_x, px_point_y):
         return math.sqrt((self.__center_x - px_point_x) ** 2 + (self.__center_y - px_point_y) ** 2)
