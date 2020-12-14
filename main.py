@@ -186,7 +186,8 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                        detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
                        plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir,
-                       logger_full: utility.Logger, data_collector: datacollection.DataCollector, log_cur_dir):
+                       logger_full: utility.Logger, data_collector: datacollection.DataCollector, log_cur_dir,
+                       image_saver: utility.ImageSaver):
     """Extract all plants found in current position"""
 
     msg = "Extracting " + str(len(plant_boxes)) + " plants"
@@ -239,8 +240,9 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         temp_plant_boxes = detector.detect(frame)
 
                         # debug image saving
-                        debug_save_image(img_output_dir, "(increasing precision)", frame, temp_plant_boxes,
-                                         undistorted_zone_radius, working_zone_points_cv)
+                        if config.SAVE_DEBUG_IMAGES:
+                            image_saver.save_image(frame, img_output_dir, label="(increasing precision)",
+                                                   plants_boxes=plant_boxes)
 
                         # check case if no plants detected
                         if len(temp_plant_boxes) == 0:
@@ -281,10 +283,10 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         break
 
                     # debug image saving
-                    time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                    frame = camera.get_image()
-                    debug_save_image(img_output_dir, "(before first cork down)", frame, [],
-                                     undistorted_zone_radius, working_zone_points_cv)
+                    if config.SAVE_DEBUG_IMAGES:
+                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                        frame = camera.get_image()
+                        image_saver.save_image(frame, img_output_dir, label="(before first cork down)")
 
                     # extraction
                     if hasattr(extraction.ExtractionMethods, box.get_name()):
@@ -373,8 +375,9 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     temp_plant_boxes = detector.detect(frame)
 
                     # debug image saving
-                    debug_save_image(img_output_dir, "(extraction specify)", frame, temp_plant_boxes,
-                                     undistorted_zone_radius, working_zone_points_cv)
+                    if config.SAVE_DEBUG_IMAGES:
+                        image_saver.save_image(frame, img_output_dir, label="(extraction specify)",
+                                               plants_boxes=temp_plant_boxes)
 
                     # check case if no plants detected
                     if len(temp_plant_boxes) == 0:
@@ -404,8 +407,10 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                             temp_plant_boxes = detector.detect(frame)
 
                             # debug image saving
-                            debug_save_image(img_output_dir, "(delta movement X" + str(sm_x) + " Y" + str(sm_y) + ")",
-                                             frame, temp_plant_boxes, undistorted_zone_radius, working_zone_points_cv)
+                            if config.SAVE_DEBUG_IMAGES:
+                                image_saver.save_image(frame, img_output_dir,
+                                                       label="(delta movement X" + str(sm_x) + " Y" + str(sm_y) + ")",
+                                                       plants_boxes=temp_plant_boxes)
 
                             if len(temp_plant_boxes) > 0:
                                 msg = "Found " + str(len(temp_plant_boxes)) + " plants after delta movement, breaking delta movement and searching"
@@ -441,7 +446,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               client, logger_full: utility.Logger, logger_table: utility.Logger, report_field_names,
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
-                              nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir):
+                              nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
+                              image_saver: utility.ImageSaver):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -497,10 +503,11 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         plants_boxes = periphery_det.detect(frame)
         per_det_t = time.time()
 
-        debug_save_image(img_output_dir, "(periphery view scan M=" + str(current_working_mode) + ")", frame,
-                         plants_boxes, undistorted_zone_radius,
-                         working_zone_points_cv)
-        # working_zone_points_cv if current_working_mode == working_mode_slow else view_zone_points_cv)
+        if config.SAVE_DEBUG_IMAGES:
+            image_saver.save_image(frame, img_output_dir,
+                                   label="(periphery view scan M=" + str(current_working_mode) + ")",
+                                   plants_boxes=plants_boxes)
+
         msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
         logger_full.write(msg + "\n")
 
@@ -546,8 +553,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         plants_boxes = precise_det.detect(frame)
                         pre_det_t = time.time()
 
-                        debug_save_image(img_output_dir, "(precise view scan 2 M=1)", frame, plants_boxes,
-                                         undistorted_zone_radius, working_zone_points_cv)
+                        if config.SAVE_DEBUG_IMAGES:
+                            image_saver.save_image(frame, img_output_dir, label="(precise view scan 2 M=1)",
+                                                   plants_boxes=plants_boxes)
+
                         msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. 2 time: " + \
                               str(pre_det_t - frame_t)
                         logger_full.write(msg + "\n")
@@ -555,19 +564,23 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         if any_plant_in_zone(plants_boxes, working_zone_polygon):
                             extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                                undistorted_zone_radius, working_zone_points_cv, img_output_dir,
-                                               logger_full, data_collector, log_cur_dir)
+                                               logger_full, data_collector, log_cur_dir, image_saver)
                         else:
                             msg = "View scan 2 found no plants in working zone."
                             logger_full.write(msg + "\n")
                             break
 
                     # force step forward to avoid infinite loop after extraction (if NN triggers on extracted plants)
+                    msg = "Applying force step forward after extractions cycle(s)"
+                    logger_full.write(msg + "\n")
+
                     vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
                     vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
                     vesc_engine.start_moving()
                     vesc_engine.wait_for_stop()
                     vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
                     vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+                    continue
 
                 elif not any_plant_in_zone(plants_boxes, working_zone_polygon) and \
                         time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
@@ -1042,6 +1055,7 @@ def main():
     log_cur_dir = config.LOG_ROOT_DIR + utility.get_current_time() + "/"
     utility.create_directories(config.LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
 
+    image_saver = utility.ImageSaver()
     data_collector = datacollection.DataCollector()
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
@@ -1294,7 +1308,7 @@ def main():
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
-                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir)
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
