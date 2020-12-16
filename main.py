@@ -153,6 +153,8 @@ def save_image(path_to_save, image, counter, session_label, date, sep="_"):
     counter = sep + str(counter) if counter or counter == 0 else ""
     cv.imwrite(path_to_save + date + session_label + counter + ".jpg", image)
 
+    return date + session_label + counter + ".jpg"
+
 
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
     # TODO: temp counter debug
@@ -180,17 +182,22 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
         frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
         frame = draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
-        save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
+        imagePath = save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
+
+    return imagePath
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                        detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
                        plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir,
-                       logger_full: utility.Logger, data_collector: datacollection.DataCollector, log_cur_dir):
+                       logger_full: utility.Logger, data_collector: datacollection.DataCollector, log_cur_dir, 
+                       gps: adapters.GPSUbloxAdapter):
     """Extract all plants found in current position"""
 
     msg = "Extracting " + str(len(plant_boxes)) + " plants"
     logger_full.write(msg + "\n")
+
+    cur_pos = gps.get_last_position()
 
     # loop over all detected plants
     for box in plant_boxes:
@@ -283,7 +290,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     # debug image saving
                     time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                     frame = camera.get_image()
-                    debug_save_image(img_output_dir, "(before first cork down)", frame, [],
+                    imagePath = debug_save_image(img_output_dir, "(before first cork down)", frame, [],
                                      undistorted_zone_radius, working_zone_points_cv)
 
                     # extraction
@@ -310,7 +317,9 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                             exit(1)
                     else:
                         data_collector.add_extractions_data(box.get_name(), 1)
+                        data_collector.add_extractions_data_by_image(box.get_name(), 1, imagePath, cur_pos)
                         data_collector.save_extractions_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+                        data_collector.save_extractions_data_in_database()
                     break
 
                 # if outside undistorted zone but in working zone
@@ -497,12 +506,14 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         plants_boxes = periphery_det.detect(frame)
         per_det_t = time.time()
 
-        debug_save_image(img_output_dir, "(periphery view scan M=" + str(current_working_mode) + ")", frame,
+        imagePath = debug_save_image(img_output_dir, "(periphery view scan M=" + str(current_working_mode) + ")", frame,
                          plants_boxes, undistorted_zone_radius,
                          working_zone_points_cv)
         # working_zone_points_cv if current_working_mode == working_mode_slow else view_zone_points_cv)
         msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
         logger_full.write(msg + "\n")
+
+        cur_pos = gps.get_last_position()
 
         if config.AUDIT_MODE:
             dc_start_t = time.time()
@@ -519,10 +530,14 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             # save info into data collector
             for plant_label in plants_count:
                 data_collector.add_detections_data(plant_label, plants_count[plant_label])
+                # save info into data collector for local database
+                data_collector.add_detections_data_by_image(plant_label, plants_count[plant_label], imagePath, cur_pos)
 
             # flush updates into the audit output file and log measured time
             if len(plants_boxes) > 0:
                 data_collector.save_detections_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
+                # flush updates into local database
+                data_collector.save_detections_data_in_database()
 
             dc_t = time.time() - dc_start_t
             msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
@@ -555,7 +570,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         if any_plant_in_zone(plants_boxes, working_zone_polygon):
                             extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                                undistorted_zone_radius, working_zone_points_cv, img_output_dir,
-                                               logger_full, data_collector, log_cur_dir)
+                                               logger_full, data_collector, log_cur_dir, gps)
                         else:
                             msg = "View scan 2 found no plants in working zone."
                             logger_full.write(msg + "\n")
