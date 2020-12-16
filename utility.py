@@ -6,15 +6,17 @@ import threading
 from time import sleep
 import psutil
 import glob
+import datacollection
 
 
 class TrajectorySaver:
     """Provides safe gps points saving (robot's trajectory)"""
 
-    def __init__(self, full_path):
+    def __init__(self, full_path,data_collector: datacollection.DataCollector):
         self.__full_path = full_path
         self.__output_file = open(full_path, "w")
         self.__last_received_point = None
+        self.__data_collector = data_collector
 
     def __enter__(self):
         return self
@@ -24,6 +26,7 @@ class TrajectorySaver:
 
     def close(self):
         self.__output_file.close()
+        self.__data_collector.save_working_path_in_database()
 
     def save_point(self, point: list, save_raw=False, flush_immediately=True):
         """
@@ -32,12 +35,14 @@ class TrajectorySaver:
 
         if not str(point) == self.__last_received_point:
             self.__last_received_point = str(point)
-
+            self.__data_collector.add_working_path_point(point)
             str_point = str(point[0]) + " " + str(point[1]) + "\n" if save_raw else str(point) + "\n"
+            self.__data_collector.add_working_path_point(point)
             self.__output_file.write(str_point)
 
             if flush_immediately:
                 self.__output_file.flush()
+                self.__data_collector.save_working_path_in_database()
 
 
 class MemoryManager:

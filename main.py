@@ -31,12 +31,14 @@ if config.RECEIVE_FIELD_FROM_RTK:
 IMAGES_COUNTER = 0
 
 
-def load_coordinates(file_path):
+def load_coordinates(file_path, data_collector: datacollection.DataCollector):
     positions_list = []
     with open(file_path) as file:
         for line in file:
             if line != "":
                 positions_list.append(list(map(float, line.split(" "))))
+                data_collector.add_field_point(list(map(float, line.split(" "))))
+        data_collector.save_field_points_in_database()
     return positions_list
 
 
@@ -151,9 +153,10 @@ def save_image(path_to_save, image, counter, session_label, date, sep="_"):
     date = sep + date if date else ""
     session_label = sep + session_label if session_label else ""
     counter = sep + str(counter) if counter or counter == 0 else ""
-    cv.imwrite(path_to_save + date + session_label + counter + ".jpg", image)
+    imageName = date + session_label + counter + ".jpg"
+    cv.imwrite(path_to_save + imageName, image)
 
-    return date + session_label + counter + ".jpg"
+    return imageName
 
 
 def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
@@ -182,9 +185,9 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
         frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
         frame = draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
-        imagePath = save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
+        imageName = save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
 
-    return imagePath
+    return imageName
 
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
@@ -809,6 +812,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             msg += s
             for key in vesc_data:
                 msg += str(vesc_data[key]) + s
+            data_collector.add_vesc_data(vesc_data) #todo
+            data_collector.save_vesc_data_in_database() #todo
             msg = msg[:-1]
         logger_table.write(msg + "\n")
 
@@ -1149,7 +1154,7 @@ def main():
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
         # utility.MemoryManager(config.DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
         with \
-            utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt") as trajectory_saver, \
+            utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt", data_collector) as trajectory_saver, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                  config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE) as vesc_engine, \
@@ -1203,7 +1208,7 @@ def main():
                     logger_full.write(msg + "\n")
 
                     try:
-                        field_gps_coords = load_coordinates(rtk.CURRENT_FIELD_PATH)
+                        field_gps_coords = load_coordinates(rtk.CURRENT_FIELD_PATH,data_collector)
                     except AttributeError:
                         msg = "Couldn't get field file name from RTK script as it is wasn't assigned there."
                         print(msg)
@@ -1227,7 +1232,7 @@ def main():
                     msg = "Loading " + config.INPUT_GPS_FIELD_FILE
                     logger_full.write(msg + "\n")
 
-                    field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                    field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE,data_collector)  # [A, B, C, D]
 
                 # check field corner points count
                 if len(field_gps_coords) != 4:

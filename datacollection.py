@@ -16,14 +16,20 @@ class DataCollector:
     def __init__(self):
         self.__detected_plants = dict()
         self.__extracted_plants = dict()
-        self.__detected_plants_by_image = dict()
-        self.__extracted_plants_by_image = dict()
-        self.__GPSPoint_by_image = dict()
         self.__start_time = time.time()
         self.__end_time = None
         self.__working_time_formatted = None
         self.__working_time_seconds = None
-        self.__sessionID = 0
+        #Datas for save in database
+        self.__detected_plants_by_image = dict()
+        self.__extracted_plants_by_image = dict()
+        self.__vesc_statistic = list()
+        self.__field_point = list()
+        self.__working_path_point = list()
+        self.__GPSPoint_by_image = dict()
+        self.__sessionId = 0
+        self.__indexPointOfField = 0
+        self.__indexPointOfWorkingPath = 0
         self.__database_connection = psycopg2.connect(host="localhost", port = 5432, database="postgres", user="postgres", password="Plantule69")
         self.create_session_in_database()
 
@@ -34,7 +40,7 @@ class DataCollector:
         start_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.__start_time))
         end_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.__end_time))
         cursor.execute("INSERT INTO sessions (start_time, end_time) VALUES(%s, %s) RETURNING id", (start_time, end_time))
-        self.__sessionID = cursor.fetchone()[0]
+        self.__sessionId = cursor.fetchone()[0]
         cursor.execute("COMMIT")
         cursor.close()
 
@@ -42,7 +48,7 @@ class DataCollector:
         self.__record_end_time()
         cursor = self.__database_connection.cursor()
         end_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.__end_time))
-        cursor.execute("UPDATE sessions SET end_time=%s WHERE id=%s", (end_time,self.__sessionID))
+        cursor.execute("UPDATE sessions SET end_time=%s WHERE id=%s", (end_time,self.__sessionId))
         cursor.execute("COMMIT")
         cursor.close()
 
@@ -104,7 +110,21 @@ class DataCollector:
         # swap old file with the new
         self.__swap_files(file_full_path, new_file)
 
-    #----------------------------------Database----------------------------------
+    #----------------------------------Save in local database----------------------------------
+
+    def save_gps_points_in_database(self, cursor, GPSPoint: list):
+
+        cursor.execute("SELECT id FROM gpspoints WHERE latitude='%s' AND longitude='%s' AND quality='%s'",(GPSPoint[0],GPSPoint[1],GPSPoint[2]))
+
+        if cursor.fetchone() is not None:
+            GPSPointId = cursor.fetchone()
+        else:
+            cursor.execute("INSERT INTO gpspoints(latitude, longitude, quality) VALUES (%s, %s, %s) RETURNING id", (GPSPoint[0],GPSPoint[1],GPSPoint[2]))
+            GPSPointId = cursor.fetchone()[0]
+            cursor.execute("COMMIT")
+
+        return GPSPointId
+
 
     def add_detections_data_by_image(self, type_label: str, count: int, imagePath: str, GPSPoint: list):
         if type(count) is not int:
@@ -129,13 +149,11 @@ class DataCollector:
         for image in self.__detected_plants_by_image:
             cursor.execute("INSERT INTO images(file_name) VALUES (%s) RETURNING id", (image,))
             imageId = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO gpspoints(latitude, longitude, quality) VALUES (%s, %s, %s) RETURNING id", (self.__GPSPoint_by_image[image][0],self.__GPSPoint_by_image[image][1],self.__GPSPoint_by_image[image][2]))
-            GPSPointId = cursor.fetchone()[0]
-            cursor.execute("COMMIT")
+            GPSPointId = self.save_gps_points_in_database(cursor,self.__GPSPoint_by_image[image])
             for label in self.__detected_plants_by_image[image]:
                 cursor.execute("SELECT id FROM weedtypes WHERE label=%s",(label,))
                 weedTypeId = cursor.fetchone()[0]
-                cursor.execute("INSERT INTO weedsstatistics(image_id, gps_point_id, weed_type_id, session_id, detected_count) VALUES (%s, %s, %s, %s, %s)", (imageId,GPSPointId,weedTypeId,self.__sessionID,self.__detected_plants_by_image[image][label]))
+                cursor.execute("INSERT INTO weedsstatistics(image_id, gps_point_id, weed_type_id, session_id, detected_count) VALUES (%s, %s, %s, %s, %s)", (imageId,GPSPointId,weedTypeId,self.__sessionId,self.__detected_plants_by_image[image][label]))
                 cursor.execute("COMMIT")
 
         cursor.close()
@@ -161,21 +179,87 @@ class DataCollector:
         for image in self.__extracted_plants_by_image:
             cursor.execute("INSERT INTO images(file_name) VALUES (%s) RETURNING id", (image,))
             imageId = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO gpspoints(latitude, longitude, quality) VALUES (%s, %s, %s) RETURNING id", (self.__GPSPoint_by_image[image][0],self.__GPSPoint_by_image[image][1],self.__GPSPoint_by_image[image][2]))
-            GPSPointId = cursor.fetchone()[0]
-            cursor.execute("COMMIT")
+            GPSPointId = self.save_gps_points_in_database(cursor,self.__GPSPoint_by_image[image])
             for label in self.__extracted_plants_by_image[image]:
                 cursor.execute("SELECT id FROM weedtypes WHERE label=%s",(label,))
                 weedTypeId = cursor.fetchone()[0]
-                cursor.execute("INSERT INTO weedsstatistics(image_id, gps_point_id, weed_type_id, session_id, extracted_count) VALUES (%s, %s, %s, %s, %s)", (imageId,GPSPointId,weedTypeId,self.__sessionID,self.__extracted_plants_by_image[image][label]))
+                cursor.execute("INSERT INTO weedsstatistics(image_id, gps_point_id, weed_type_id, session_id, extracted_count) VALUES (%s, %s, %s, %s, %s)", (imageId,GPSPointId,weedTypeId,self.__sessionId,self.__extracted_plants_by_image[image][label]))
                 cursor.execute("COMMIT")
 
         cursor.close()
 
         self.__extracted_plants_by_image.clear()
         self.__GPSPoint_by_image.clear()
+
+    def add_vesc_data(self,temp_fet_filtered: float, temp_motor_filtered: float, avg_motor_current: float, avg_input_current: float, rpm: float, input_voltage: float):
+        for var in [temp_fet_filtered,temp_motor_filtered,avg_motor_current,avg_input_current,rpm,input_voltage]:
+            if type(var) is not float:
+                raise TypeError("'count' type should be float, got " + type(var).__name__)
+        self.__vesc_statistic = [input_voltage,rpm,avg_motor_current,avg_input_current,temp_motor_filtered,temp_fet_filtered]
+
+    def save_vesc_data_in_database(self):
+        self.update_end_time_session_in_database()
+
+        cursor = self.__database_connection.cursor()
+        current_time_formatted = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+        for data in self.__vesc_statistic:
+            cursor.execute("INSERT INTO vescstatistic(session_id, timestamp, voltage, rpm, avg_motor, avg_vesc, temp_motor, temp_vesc) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (self.__sessionId,current_time_formatted,data[0],data[1],data[2],data[3],data[4],data[5]))
+            cursor.execute("COMMIT")
+        cursor.close()
+
+        self.__vesc_statistic.clear()
+
+    def add_field_point(self, point: list):
+        if type(point) is not list:
+            raise TypeError("'count' type should be list, got " + type(point).__name__)
+
+        self.__field_point.append(point)
+
+    def save_field_points_in_database(self):
+        cursor = self.__database_connection.cursor()
+
+        cursor.execute("SELECT id FROM pathtype WHERE label=field")
+        pathTypeId = cursor.fetchone()[0]
+
+        current_time_formatted = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime(time.time()))
+        cursor.execute("INSERT INTO paths(label, session_id, path_type_id)VALUES (%s, %s, %s) RETURNING id",("field_"+current_time_formatted,self.__sessionId,pathTypeId))
+        pathId = cursor.fetchone()[0]
+        cursor.execute("COMMIT")
+
+        for point in self.__field_point:
+            GPSPointId = self.save_gps_points_in_database(cursor,point)
+
+            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (?, ?, ?)", (self.__indexPointOfField,pathId,GPSPointId))
+            self.__indexPointOfField += 1
+
+        self.__field_point.clear()
+    
+    def add_working_path_point(self, point: list):
+        if type(point) is not list:
+            raise TypeError("'count' type should be list, got " + type(point).__name__)
+
+        self.__working_path_point.append(point)
+
+    def save_working_path_in_database(self):
+        cursor = self.__database_connection.cursor()
+
+        cursor.execute("SELECT id FROM pathtype WHERE label=workingPath")
+        pathTypeId = cursor.fetchone()[0]
+
+        current_time_formatted = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime(time.time()))
+        cursor.execute("INSERT INTO paths(label, session_id, path_type_id)VALUES (%s, %s, %s) RETURNING id",("workingPath_"+current_time_formatted,self.__sessionId,pathTypeId))
+        pathId = cursor.fetchone()[0]
+        cursor.execute("COMMIT")
+
+        for point in self.__working_path_point:
+            GPSPointId = self.save_gps_points_in_database(cursor,point)
+
+            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (?, ?, ?)", (self.__indexPointOfWorkingPath,pathId,GPSPointId))
+            self.__indexPointOfWorkingPath += 1
+
+        self.__working_path_point.clear()
         
-    #----------------------------------Database----------------------------------
+    #----------------------------------Save in local database----------------------------------
 
 class ImageCollector:
     pass
