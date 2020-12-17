@@ -151,7 +151,7 @@ class DataCollector:
             imageId = cursor.fetchone()[0]
             GPSPointId = self.save_gps_points_in_database(cursor,self.__GPSPoint_by_image[image])
             for label in self.__detected_plants_by_image[image]:
-                cursor.execute("SELECT id FROM weedtypes WHERE label=%s",(label,))
+                cursor.execute("SELECT id FROM weedtypes WHERE label='%s'",(label,))
                 weedTypeId = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO weedsstatistics(image_id, gps_point_id, weed_type_id, session_id, detected_count) VALUES (%s, %s, %s, %s, %s)", (imageId,GPSPointId,weedTypeId,self.__sessionId,self.__detected_plants_by_image[image][label]))
                 cursor.execute("COMMIT")
@@ -181,7 +181,7 @@ class DataCollector:
             imageId = cursor.fetchone()[0]
             GPSPointId = self.save_gps_points_in_database(cursor,self.__GPSPoint_by_image[image])
             for label in self.__extracted_plants_by_image[image]:
-                cursor.execute("SELECT id FROM weedtypes WHERE label=%s",(label,))
+                cursor.execute("SELECT id FROM weedtypes WHERE label='%s'",(label,))
                 weedTypeId = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO weedsstatistics(image_id, gps_point_id, weed_type_id, session_id, extracted_count) VALUES (%s, %s, %s, %s, %s)", (imageId,GPSPointId,weedTypeId,self.__sessionId,self.__extracted_plants_by_image[image][label]))
                 cursor.execute("COMMIT")
@@ -218,7 +218,7 @@ class DataCollector:
     def save_field_points_in_database(self):
         cursor = self.__database_connection.cursor()
 
-        cursor.execute("SELECT id FROM pathtype WHERE label=field")
+        cursor.execute("SELECT id FROM pathtype WHERE label='field'")
         pathTypeId = cursor.fetchone()[0]
 
         current_time_formatted = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime(time.time()))
@@ -243,7 +243,7 @@ class DataCollector:
     def save_working_path_in_database(self):
         cursor = self.__database_connection.cursor()
 
-        cursor.execute("SELECT id FROM pathtype WHERE label=workingPath")
+        cursor.execute("SELECT id FROM pathtype WHERE label='workingPath'")
         pathTypeId = cursor.fetchone()[0]
 
         current_time_formatted = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime(time.time()))
