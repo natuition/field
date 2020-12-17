@@ -114,16 +114,16 @@ class DataCollector:
 
     def save_gps_points_in_database(self, cursor, GPSPoint: list):
 
-        cursor.execute("SELECT id FROM gpspoints WHERE latitude='%s' AND longitude='%s' AND quality='%s'",(GPSPoint[0],GPSPoint[1],GPSPoint[2]))
-
-        if cursor.fetchone() is not None:
-            GPSPointId = cursor.fetchone()
-        else:
+        if len(GPSPoint) == 2:
+            GPSPoint.append(1)
+        cursor.execute("SELECT id FROM gpspoints WHERE latitude=%s AND longitude=%s AND quality=%s",(GPSPoint[0],GPSPoint[1],GPSPoint[2]))
+        GPSPointId = cursor.fetchone()
+        if GPSPointId is None:
             cursor.execute("INSERT INTO gpspoints(latitude, longitude, quality) VALUES (%s, %s, %s) RETURNING id", (GPSPoint[0],GPSPoint[1],GPSPoint[2]))
-            GPSPointId = cursor.fetchone()[0]
+            GPSPointId = cursor.fetchone()
             cursor.execute("COMMIT")
 
-        return GPSPointId
+        return GPSPointId[0]
 
 
     def add_detections_data_by_image(self, type_label: str, count: int, imagePath: str, GPSPoint: list):
@@ -195,7 +195,7 @@ class DataCollector:
         for var in [temp_fet_filtered,temp_motor_filtered,avg_motor_current,avg_input_current,rpm,input_voltage]:
             if type(var) is not float:
                 raise TypeError("'count' type should be float, got " + type(var).__name__)
-        self.__vesc_statistic = [input_voltage,rpm,avg_motor_current,avg_input_current,temp_motor_filtered,temp_fet_filtered]
+        self.__vesc_statistic.append([input_voltage,rpm,avg_motor_current,avg_input_current,temp_motor_filtered,temp_fet_filtered])
 
     def save_vesc_data_in_database(self):
         self.update_end_time_session_in_database()
@@ -229,7 +229,7 @@ class DataCollector:
         for point in self.__field_point:
             GPSPointId = self.save_gps_points_in_database(cursor,point)
 
-            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (?, ?, ?)", (self.__indexPointOfField,pathId,GPSPointId))
+            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (%s, %s, %s)", (self.__indexPointOfField,pathId,GPSPointId))
             self.__indexPointOfField += 1
 
         self.__field_point.clear()
@@ -254,7 +254,7 @@ class DataCollector:
         for point in self.__working_path_point:
             GPSPointId = self.save_gps_points_in_database(cursor,point)
 
-            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (?, ?, ?)", (self.__indexPointOfWorkingPath,pathId,GPSPointId))
+            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (%s, %s, %s)", (self.__indexPointOfWorkingPath,pathId,GPSPointId))
             self.__indexPointOfWorkingPath += 1
 
         self.__working_path_point.clear()

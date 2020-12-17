@@ -812,8 +812,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             msg += s
             for key in vesc_data:
                 msg += str(vesc_data[key]) + s
-            data_collector.add_vesc_data(vesc_data) #todo
-            data_collector.save_vesc_data_in_database() #todo
+            data_collector.add_vesc_data(vesc_data["temp_fet_filtered"],vesc_data["temp_motor_filtered"],vesc_data["avg_motor_current"],vesc_data["avg_input_current"],vesc_data["rpm"],vesc_data["input_voltage"])
+            data_collector.save_vesc_data_in_database()
             msg = msg[:-1]
         logger_table.write(msg + "\n")
 
