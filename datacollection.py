@@ -125,29 +125,29 @@ class DataCollector:
         if len(GPSPoint) == 2:
             GPSPoint.append(1)
         cursor.execute("SELECT id FROM gpspoints WHERE latitude=%s AND longitude=%s AND quality=%s",(GPSPoint[0],GPSPoint[1],GPSPoint[2]))
-        GPSPointId = cursor.fetchone()
-        if GPSPointId is None:
+        GPSPointId = cursor.fetchall()
+        if not GPSPointId:
             cursor.execute("INSERT INTO gpspoints(latitude, longitude, quality) VALUES (%s, %s, %s) RETURNING id", (GPSPoint[0],GPSPoint[1],GPSPoint[2]))
-            GPSPointId = cursor.fetchone()
+            GPSPointId = cursor.fetchall()
             cursor.execute("COMMIT")
 
         return GPSPointId[0]
 
 
-    def add_detections_data_by_image(self, type_label: str, count: int, imagePath: str, GPSPoint: list):
+    def add_detections_data_by_image(self, type_label: str, count: int, imageName: str, GPSPoint: list):
         if type(count) is not int:
             raise TypeError("'count' type should be int, got " + type(count).__name__)
         if count <= 0:
             raise ValueError("'count' value should be greater than 0, got " + str(count))
 
-        if imagePath not in self.__detected_plants_by_image:
-            self.__detected_plants_by_image[imagePath] = dict()
-            self.__GPSPoint_by_image[imagePath] = GPSPoint
+        if imageName not in self.__detected_plants_by_image:
+            self.__detected_plants_by_image[imageName] = dict()
+            self.__GPSPoint_by_image[imageName] = GPSPoint
 
-        if type_label not in self.__detected_plants_by_image[imagePath]:
-            self.__detected_plants_by_image[imagePath][type_label] = count
+        if type_label not in self.__detected_plants_by_image[imageName]:
+            self.__detected_plants_by_image[imageName][type_label.replace(" ", "")] = count
         else:
-            self.__detected_plants_by_image[imagePath][type_label] += count
+            self.__detected_plants_by_image[imageName][type_label.replace(" ", "")] += count
 
     def save_detections_data_in_database(self):
         self.update_end_time_session_in_database()
@@ -156,11 +156,11 @@ class DataCollector:
 
         for image in self.__detected_plants_by_image:
             cursor.execute("INSERT INTO images(file_name) VALUES (%s) RETURNING id", (image,))
-            imageId = cursor.fetchone()[0]
+            imageId = cursor.fetchall()[0]
             GPSPointId = self.save_gps_points_in_database(cursor,self.__GPSPoint_by_image[image])
             for label in self.__detected_plants_by_image[image]:
-                cursor.execute("SELECT id FROM weedtypes WHERE label='%s'",(label,))
-                weedTypeId = cursor.fetchone()[0]
+                cursor.execute("SELECT id FROM weedtypes WHERE label=%s",(label,))
+                weedTypeId = cursor.fetchall()[0]
                 cursor.execute("INSERT INTO weedsstatistics(image_id, gps_point_id, weed_type_id, session_id, detected_count) VALUES (%s, %s, %s, %s, %s)", (imageId,GPSPointId,weedTypeId,self.__session_id,self.__detected_plants_by_image[image][label]))
                 cursor.execute("COMMIT")
 
@@ -169,15 +169,15 @@ class DataCollector:
         self.__detected_plants_by_image.clear()
         self.__GPSPoint_by_image.clear()
 
-    def add_extractions_data_by_image(self, type_label: str, count: int, imagePath: str, GPSPoint: list):
+    def add_extractions_data_by_image(self, type_label: str, count: int, imageName: str, GPSPoint: list):
         if type(count) is not int:
             raise TypeError("'count' type should be int, got " + type(count).__name__)
         if count <= 0:
             raise ValueError("'count' value should be greater than 0, got " + str(count))
 
-        self.__extracted_plants_by_image[imagePath] = dict()
-        self.__GPSPoint_by_image[imagePath] = GPSPoint
-        self.__extracted_plants_by_image[imagePath][type_label] = count
+        self.__extracted_plants_by_image[imageName] = dict()
+        self.__GPSPoint_by_image[imageName] = GPSPoint
+        self.__extracted_plants_by_image[imageName][type_label.replace(" ", "")] = count
 
     def save_extractions_data_in_database(self):
         self.update_end_time_session_in_database()
@@ -186,11 +186,11 @@ class DataCollector:
 
         for image in self.__extracted_plants_by_image:
             cursor.execute("INSERT INTO images(file_name) VALUES (%s) RETURNING id", (image,))
-            imageId = cursor.fetchone()[0]
+            imageId = cursor.fetchall()[0]
             GPSPointId = self.save_gps_points_in_database(cursor,self.__GPSPoint_by_image[image])
             for label in self.__extracted_plants_by_image[image]:
-                cursor.execute("SELECT id FROM weedtypes WHERE label='%s'",(label,))
-                weedTypeId = cursor.fetchone()[0]
+                cursor.execute("SELECT id FROM weedtypes WHERE label=%s",(label,))
+                weedTypeId = cursor.fetchall()[0]
                 cursor.execute("INSERT INTO weedsstatistics(image_id, gps_point_id, weed_type_id, session_id, extracted_count) VALUES (%s, %s, %s, %s, %s)", (imageId,GPSPointId,weedTypeId,self.__session_id,self.__extracted_plants_by_image[image][label]))
                 cursor.execute("COMMIT")
 
@@ -227,7 +227,7 @@ class DataCollector:
 
         if pathType not in self.__path_id:
             cursor.execute("SELECT id FROM pathtype WHERE label=%s",(pathType,))
-            pathTypeId = cursor.fetchone()[0]
+            pathTypeId = cursor.fetchall()[0]
             current_time_formatted = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime(time.time()))
             cursor.execute("INSERT INTO paths(label, session_id, path_type_id)VALUES (%s, %s, %s) RETURNING id",(pathType+"_"+current_time_formatted,self.__session_id,pathTypeId))
             self.__path_id[pathType] = cursor.fetchone()[0]

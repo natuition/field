@@ -564,13 +564,18 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         plants_boxes = precise_det.detect(frame)
                         pre_det_t = time.time()
 
-                        debug_save_image(img_output_dir, "(precise view scan 2 M=1)", frame, plants_boxes,
+                        imageName = debug_save_image(img_output_dir, "(precise view scan 2 M=1)", frame, plants_boxes,
                                          undistorted_zone_radius, working_zone_points_cv)
                         msg = "Work frame time: " + str(frame_t - start_work_t) + "\t\tPrec. det. 2 time: " + \
                               str(pre_det_t - frame_t)
                         logger_full.write(msg + "\n")
 
                         if any_plant_in_zone(plants_boxes, working_zone_polygon):
+                            for plant in plants_boxes:
+                                plant_x, plant_y = plant.get_center_points()
+                                if is_point_in_poly(plant_x, plant_y, working_zone_polygon):
+                                    data_collector.add_detections_data_by_image(plant.get_name(), 1, imageName, cur_pos)
+                            data_collector.save_detections_data_in_database()
                             extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                                undistorted_zone_radius, working_zone_points_cv, img_output_dir,
                                                logger_full, data_collector, log_cur_dir, gps)
