@@ -26,7 +26,7 @@ class TrajectorySaver:
 
     def close(self):
         self.__output_file.close()
-        self.__data_collector.save_working_path_in_database()
+        self.__data_collector.save_path_in_database(datacollection.PathType.WORKING_PATH)
 
     def save_point(self, point: list, save_raw=False, flush_immediately=True):
         """
@@ -35,14 +35,13 @@ class TrajectorySaver:
 
         if not str(point) == self.__last_received_point:
             self.__last_received_point = str(point)
-            self.__data_collector.add_working_path_point(point)
             str_point = str(point[0]) + " " + str(point[1]) + "\n" if save_raw else str(point) + "\n"
-            self.__data_collector.add_working_path_point(point)
+            self.__data_collector.add_path_point(point,datacollection.PathType.WORKING_PATH)
             self.__output_file.write(str_point)
 
             if flush_immediately:
                 self.__output_file.flush()
-                self.__data_collector.save_working_path_in_database()
+                self.__data_collector.save_path_in_database(datacollection.PathType.WORKING_PATH)
 
 
 class MemoryManager:

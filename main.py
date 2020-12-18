@@ -37,8 +37,8 @@ def load_coordinates(file_path, data_collector: datacollection.DataCollector):
         for line in file:
             if line != "":
                 positions_list.append(list(map(float, line.split(" "))))
-                data_collector.add_field_point(list(map(float, line.split(" "))))
-        data_collector.save_field_points_in_database()
+                data_collector.add_path_point(list(map(float, line.split(" "))),datacollection.PathType.FIELD)
+        data_collector.save_path_in_database(datacollection.PathType.FIELD)
     return positions_list
 
 
@@ -1262,6 +1262,8 @@ def main():
 
             if len(path_points) > 0:
                 save_gps_coordinates(path_points, log_cur_dir + "current path points.txt")
+                data_collector.add_path_point(path_points,datacollection.PathType.PLANNED_PATH)
+                data_collector.save_path_in_database(datacollection.PathType.PLANNED_PATH)
                 msg = "Current path points are successfully saved."
                 print(msg)
                 logger_full.write(msg + "\n")

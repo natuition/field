@@ -7,6 +7,11 @@ import time
 import datetime
 import os
 
+class PathType:
+    ALL_TYPE = [FIELD,PLANNED_PATH,WORKING_PATH]
+    FIELD = "field"
+    PLANNED_PATH= "plannedPath"
+    WORKING_PATH= "workingPath"
 
 class DataCollector:
     """
@@ -24,12 +29,15 @@ class DataCollector:
         self.__detected_plants_by_image = dict()
         self.__extracted_plants_by_image = dict()
         self.__vesc_statistic = list()
-        self.__field_point = list()
-        self.__working_path_point = list()
         self.__GPSPoint_by_image = dict()
-        self.__sessionId = 0
-        self.__indexPointOfField = 0
-        self.__indexPointOfWorkingPath = 0
+        self.__session_id = None
+        self.__path_id = dict()
+        self.__paths = dict()
+        for typePath in PathType.ALL_TYPE:
+            self.__paths[typePath] = list()
+        self.__index_point_paths = dict()
+        for typePath in PathType.ALL_TYPE:
+            self.__index_point_paths[typePath] = 0
         self.__database_connection = psycopg2.connect(host="localhost", port = 5432, database="postgres", user="postgres", password="Plantule69")
         self.create_session_in_database()
 
@@ -209,55 +217,30 @@ class DataCollector:
 
         self.__vesc_statistic.clear()
 
-    def add_field_point(self, point: list):
+    def add_path_point(self, point: list, pathType: str):
         if type(point) is not list:
             raise TypeError("'count' type should be list, got " + type(point).__name__)
 
-        self.__field_point.append(point)
-
-    def save_field_points_in_database(self):
-        cursor = self.__database_connection.cursor()
-
-        cursor.execute("SELECT id FROM pathtype WHERE label='field'")
-        pathTypeId = cursor.fetchone()[0]
-
-        current_time_formatted = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime(time.time()))
-        cursor.execute("INSERT INTO paths(label, session_id, path_type_id)VALUES (%s, %s, %s) RETURNING id",("field_"+current_time_formatted,self.__sessionId,pathTypeId))
-        pathId = cursor.fetchone()[0]
-        cursor.execute("COMMIT")
-
-        for point in self.__field_point:
-            GPSPointId = self.save_gps_points_in_database(cursor,point)
-
-            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (%s, %s, %s)", (self.__indexPointOfField,pathId,GPSPointId))
-            self.__indexPointOfField += 1
-
-        self.__field_point.clear()
+        self.__paths[pathType].append(point)
     
-    def add_working_path_point(self, point: list):
-        if type(point) is not list:
-            raise TypeError("'count' type should be list, got " + type(point).__name__)
-
-        self.__working_path_point.append(point)
-
-    def save_working_path_in_database(self):
+    def save_path_in_database(self, pathType: str):
         cursor = self.__database_connection.cursor()
 
-        cursor.execute("SELECT id FROM pathtype WHERE label='workingPath'")
-        pathTypeId = cursor.fetchone()[0]
+        if pathType not in self.__path_id:
+            cursor.execute("SELECT id FROM pathtype WHERE label='%s'",(pathType,))
+            pathTypeId = cursor.fetchone()[0]
+            current_time_formatted = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime(time.time()))
+            cursor.execute("INSERT INTO paths(label, session_id, path_type_id)VALUES (%s, %s, %s) RETURNING id",(pathType+"_"+current_time_formatted,self.__session_id,pathTypeId))
+            self.__path_id[pathType] = cursor.fetchone()[0]
+            cursor.execute("COMMIT")
 
-        current_time_formatted = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime(time.time()))
-        cursor.execute("INSERT INTO paths(label, session_id, path_type_id)VALUES (%s, %s, %s) RETURNING id",("workingPath_"+current_time_formatted,self.__sessionId,pathTypeId))
-        pathId = cursor.fetchone()[0]
-        cursor.execute("COMMIT")
-
-        for point in self.__working_path_point:
+        for point in self.__paths[pathType]:
             GPSPointId = self.save_gps_points_in_database(cursor,point)
 
-            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (%s, %s, %s)", (self.__indexPointOfWorkingPath,pathId,GPSPointId))
-            self.__indexPointOfWorkingPath += 1
+            cursor.execute("INSERT INTO pointsofpaths(point_number, path_id, gps_point_id)VALUES (?, ?, ?)", (self.__index_point_paths[pathType],self.__path_id[pathType],GPSPointId))
+            self.__index_point_paths[pathType] += 1
 
-        self.__working_path_point.clear()
+        self.__paths[pathType].clear()
         
     #----------------------------------Save in local database----------------------------------
 
