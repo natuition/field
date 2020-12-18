@@ -1262,7 +1262,8 @@ def main():
 
             if len(path_points) > 0:
                 save_gps_coordinates(path_points, log_cur_dir + "current path points.txt")
-                data_collector.add_path_point(path_points,datacollection.PathType.PLANNED_PATH)
+                for point in path_points:
+                    data_collector.add_path_point(point,datacollection.PathType.PLANNED_PATH)
                 data_collector.save_path_in_database(datacollection.PathType.PLANNED_PATH)
                 msg = "Current path points are successfully saved."
                 print(msg)
