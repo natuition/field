@@ -16,6 +16,7 @@ import stubs
 import extraction
 import datacollection
 import pickle
+import math
 
 """
 import SensorProcessing
@@ -65,6 +66,14 @@ def save_gps_coordinates_raw(points: list, file_name: str):
     with open(file_name, "w") as file:
         for point in points:
             file.write(str(point) + "\n")
+
+def create_angles_table ( amplitude, frequency, max_samples):
+    openloop_angles = []
+    
+    for mytime in range(0, max_samples):
+        openloop_angle = amplitude * math.sin( frequency * 2 * math.pi * mytime )
+        openloop_angles.append(openloop_angle)
+    return openloop_angles
 
 
 def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
@@ -447,7 +456,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
                               nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver):
+                              image_saver: utility.ImageSaver, openloop_angles: list):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -692,6 +701,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if cur_time - prev_maneuver_time < config.MANEUVERS_FREQUENCY:
             continue
         prev_maneuver_time = cur_time
+        if my_current_time >= config.OPEN_LOOP_TF_MAX_SAMPLE
+            my_current_time = 0
+        else:
+            my_current_time +=1 
 
         msg = "Distance to B: " + str(distance)
         # print(msg)
@@ -701,9 +714,11 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
               + " B: " + str(coords_from_to[1])
         # print(msg)
         logger_full.write(msg + "\n")
-
-        raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
-
+        
+        if not config.OPEN_LOOP_TF_MODE:
+            raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        else: 
+            raw_angle = openloop_angles[my_current_time]
         # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
             raw_angles_history.pop(0)
@@ -1227,7 +1242,10 @@ def main():
                     logger_full.write(msg + "\n")
 
                     field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
-
+                
+                #sinus stimuli for transfer function measure in open loop
+                openloop_angles = create_angles_table (config.OPEN_LOOP_TF_AMPLITUDE, config.OPEN_LOOP_TF_FREQUENCY, config.OPEN_LOOP_TF_MAX_SAMPLE)
+                
                 # check field corner points count
                 if len(field_gps_coords) != 4:
                     msg = "Expected 4 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(
@@ -1308,7 +1326,7 @@ def main():
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
-                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver)
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, openloop_angles)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
