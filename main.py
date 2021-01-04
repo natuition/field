@@ -67,12 +67,23 @@ def save_gps_coordinates_raw(points: list, file_name: str):
         for point in points:
             file.write(str(point) + "\n")
 
+
 def create_angles_table ( amplitude, frequency, max_samples):
     openloop_angles = []
     
     for mytime in range(0, max_samples):
+        openloop_angle = 0
+        openloop_angles.append(openloop_angle)
+    
+    for mytime in range(max_samples, max_samples*3):
         openloop_angle = amplitude * math.sin( frequency * 2 * math.pi * mytime )
         openloop_angles.append(openloop_angle)
+    
+    for mytime in range(max_samples*3, max_samples*4):
+        openloop_angle = 0
+        openloop_angles.append(openloop_angle)
+    
+    
     return openloop_angles
 
 
@@ -504,6 +515,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
     # main navigation control loop
     while True:
+        """
         # EXTRACTION CONTROL
         start_t = time.time()
         frame = camera.get_image()
@@ -593,7 +605,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
                 elif not any_plant_in_zone(plants_boxes, working_zone_polygon) and \
                         time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
-                    """
+
                     # set camera to the Y max
                     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
                                                   Y=config.Y_MAX / config.XY_COEFFICIENT_TO_MM)
@@ -601,7 +613,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y max, smoothie response:\n" + res
                         logger_full.write(msg + "\n")
                     smoothie.wait_for_all_actions_done()
-                    """
+                   
                     current_working_mode = working_mode_switching
                 vesc_engine.start_moving()
 
@@ -609,7 +621,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             elif current_working_mode == working_mode_switching:
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
-                    """
+                  
                     # set camera to the Y min
                     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
                                                   Y=config.Y_MIN)
@@ -617,7 +629,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
                         logger_full.write(msg + "\n")
                     smoothie.wait_for_all_actions_done()
-                    """
+                   
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
                 # elif smoothie.get_smoothie_current_coordinates(False)["Y"] + config.XY_COEFFICIENT_TO_MM * 20 > config.Y_MAX:
@@ -630,7 +642,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             else:
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
-                    """
+                 
                     # set camera to the Y min
                     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
                                                   Y=config.Y_MIN)
@@ -638,7 +650,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y min, smoothie response:\n" + res
                         logger_full.write(msg + "\n")
                     smoothie.wait_for_all_actions_done()
-                    """
+                  
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
                     vesc_engine.set_rpm(config.VESC_RPM_SLOW)
@@ -646,8 +658,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
                 else:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST)
-
-        # NAVIGATION CONTROL
+        """
+        vesc_engine.set_moving_time(float("inf"))
+        vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
+        vesc_engine.start_moving()# NAVIGATION CONTROL
         nav_start_t = time.time()
         cur_pos = gps.get_last_position()
 
@@ -700,31 +714,15 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         # do maneuvers not more often than specified value
         cur_time = time.time()
-        if cur_time - prev_maneuver_time < config.MANEUVERS_FREQUENCY-0.270:
-            continue
-        else:
-            sleep_time = 1-(cur_time - prev_maneuver_time)
-            """if sleep_time > 0:
-                global synchro_ublox_done
-                while str(cur_pos) == str(prev_pos):
-                    sleep_time -= 0.01
-                    print("synchro")
-                    if synchro_ublox_done:
-                        if sleep_time < 0:
-                            print("Erreur synchro loupé !")
-                            exit()
-                    time.sleep(0.01)
-                    cur_pos = gps.get_last_position()
-                synchro_ublox_done = True"""
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-        #print(utility.get_current_time(), " :   ",cur_time - prev_maneuver_time,"("+str(sleep_time)+")")
+        time.sleep(1-0.004-0.0013/20)
+        print(utility.get_current_time())
         prev_maneuver_time = cur_time
 
-        if my_current_time >= config.OPEN_LOOP_TF_MAX_SAMPLE-1:
+        if my_current_time >= 4*config.OPEN_LOOP_TF_MAX_SAMPLE-1:
             my_current_time = 0
         else:
-            my_current_time +=1 
+            my_current_time +=1
+        print(my_current_time)
 
         msg = "Distance to B: " + str(distance)
         # print(msg)
@@ -1291,6 +1289,7 @@ def main():
                 
                 #sinus stimuli for transfer function measure in open loop
                 openloop_angles = create_angles_table (config.OPEN_LOOP_TF_AMPLITUDE, config.OPEN_LOOP_TF_FREQUENCY, config.OPEN_LOOP_TF_MAX_SAMPLE)
+                print("openloop angle size : ___________________________",len(openloop_angles))
                 my_current_time = -1
                 if config.OPEN_LOOP_TF_MODE:
                     global execution_direction_counter
