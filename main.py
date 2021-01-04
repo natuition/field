@@ -456,7 +456,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
                               nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver, openloop_angles: list):
+                              image_saver: utility.ImageSaver, openloop_angles: list, my_current_time: int):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -655,7 +655,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             # msg = "Got the same position, added to history, calculations skipped. Am I stuck?"
             # print(msg)
             # logger_full.write(msg + "\n")
-            continue
+            # continue
+            pass
 
         trajectory_saver.save_point(cur_pos)
         """
@@ -689,7 +690,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
         # (too close points in the same position can produce false huge angles)
         if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
-            continue
+            # continue
+            pass
 
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
@@ -698,10 +700,28 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         # do maneuvers not more often than specified value
         cur_time = time.time()
-        if cur_time - prev_maneuver_time < config.MANEUVERS_FREQUENCY:
+        if cur_time - prev_maneuver_time < config.MANEUVERS_FREQUENCY-0.270:
             continue
+        else:
+            sleep_time = 1-(cur_time - prev_maneuver_time)
+            """if sleep_time > 0:
+                global synchro_ublox_done
+                while str(cur_pos) == str(prev_pos):
+                    sleep_time -= 0.01
+                    print("synchro")
+                    if synchro_ublox_done:
+                        if sleep_time < 0:
+                            print("Erreur synchro loupé !")
+                            exit()
+                    time.sleep(0.01)
+                    cur_pos = gps.get_last_position()
+                synchro_ublox_done = True"""
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+        #print(utility.get_current_time(), " :   ",cur_time - prev_maneuver_time,"("+str(sleep_time)+")")
         prev_maneuver_time = cur_time
-        if my_current_time >= config.OPEN_LOOP_TF_MAX_SAMPLE
+
+        if my_current_time >= config.OPEN_LOOP_TF_MAX_SAMPLE-1:
             my_current_time = 0
         else:
             my_current_time +=1 
@@ -715,10 +735,25 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         # print(msg)
         logger_full.write(msg + "\n")
         
-        if not config.OPEN_LOOP_TF_MODE:
-            raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
-        else: 
-            raw_angle = openloop_angles[my_current_time]
+        if config.OPEN_LOOP_TF_MODE:
+            global execution_direction_counter
+            global first_integral
+            global last_integral
+            global value_for_integral
+            global correction
+            raw_angle = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1]) 
+            value_for_integral.append(raw_angle)
+            if len(value_for_integral) > config.OPEN_LOOP_TF_MAX_SAMPLE:
+                value_for_integral.pop(0)
+            if len(value_for_integral) == config.OPEN_LOOP_TF_MAX_SAMPLE:
+                if first_integral == 0:
+                    first_integral = sum(value_for_integral)
+            if execution_direction_counter >= config.OPEN_LOOP_TF_MAX_SAMPLE*2:
+                last_integral = sum(value_for_integral)
+                correction = ((last_integral-first_integral)/execution_direction_counter)/20
+        else:
+            raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1]) 
+            
         # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
             raw_angles_history.pop(0)
@@ -738,16 +773,26 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             logger_full.write(msg + "\n")
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
-        angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
+        if config.OPEN_LOOP_TF_MODE:
+            if execution_direction_counter >= config.OPEN_LOOP_TF_MAX_SAMPLE*2:
+                before_angle_kp_ki = openloop_angles[my_current_time]
+                angle_kp_ki = before_angle_kp_ki - correction
+                logger_table.write_and_flush(","+str(execution_direction_counter)+","+str(raw_angle)+ "," + str(before_angle_kp_ki)+ "," + str(angle_kp_ki) +"," + str(first_integral) +"," + str(last_integral) +"," + str(correction) + "\n")
+            else:
+                angle_kp_ki = openloop_angles[my_current_time]
+                logger_table.write_and_flush(","+str(execution_direction_counter)+","+str(raw_angle)+ "," + str(angle_kp_ki) + "0," +"," + str(first_integral) +"," + str(last_integral) +"," + str(correction) + "\n")
+            execution_direction_counter +=1
+        else:
+            angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
 
 
-        if distance < config.CLOSE_TARGET_THRESHOLD:
-            if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD:
-              angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.SMALL_RAW_ANGLE_SQUARE_GAIN
-            if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD:
-              angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.BIG_RAW_ANGLE_SQUARE_GAIN
-        if distance > config.FAR_TARGET_THRESHOLD:
-            angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.FAR_TARGET_GAIN
+            if distance < config.CLOSE_TARGET_THRESHOLD:
+                if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD:
+                  angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.SMALL_RAW_ANGLE_SQUARE_GAIN
+                if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD:
+                  angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.BIG_RAW_ANGLE_SQUARE_GAIN
+            if distance > config.FAR_TARGET_THRESHOLD:
+                angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.FAR_TARGET_GAIN
 
         
 
@@ -823,7 +868,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             for key in vesc_data:
                 msg += str(vesc_data[key]) + s
             msg = msg[:-1]
-        logger_table.write(msg + "\n")
+        if not config.OPEN_LOOP_TF_MODE:
+        	logger_table.write(msg + "\n")
 
         prev_pos = cur_pos
 
@@ -1245,6 +1291,20 @@ def main():
                 
                 #sinus stimuli for transfer function measure in open loop
                 openloop_angles = create_angles_table (config.OPEN_LOOP_TF_AMPLITUDE, config.OPEN_LOOP_TF_FREQUENCY, config.OPEN_LOOP_TF_MAX_SAMPLE)
+                my_current_time = -1
+                if config.OPEN_LOOP_TF_MODE:
+                    global execution_direction_counter
+                    global first_integral
+                    global last_integral
+                    global value_for_integral
+                    global correction
+                    global synchro_ublox_done
+                    execution_direction_counter = 0
+                    first_integral = 0
+                    last_integral = 0
+                    value_for_integral = list()
+                    correction = 0
+                    synchro_ublox_done = False
                 
                 # check field corner points count
                 if len(field_gps_coords) != 4:
@@ -1309,7 +1369,8 @@ def main():
             for field_name in report_field_names:
                 msg += field_name + ","
             msg = msg[:-1]
-            logger_table.write(msg + "\n")
+            if not config.OPEN_LOOP_TF_MODE:
+            	logger_table.write(msg + "\n")
 
             # path points visiting loop
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
@@ -1326,7 +1387,7 @@ def main():
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
-                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, openloop_angles)
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, openloop_angles, my_current_time)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)

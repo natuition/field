@@ -52,7 +52,7 @@ BIG_RAW_ANGLE_SQUARE_THRESHOLD = 625  # the output of the KP KI is boost by a mu
 BIG_RAW_ANGLE_SQUARE_GAIN = 1.35# the output of the KP KI is boost by this muliplier if the raw angle is more than the threshold
 OPEN_LOOP_TF_AMPLITUDE = 1# Sinus angle range when the servo system is in open loop
 OPEN_LOOP_TF_FREQUENCY = 0.05 # Sinus frequency range when the servo system is in open loop
-OPEN_LOOP_TF_MAX_SAMPLE = 10 #Sinus  sampling range when the servo system is in open loop
+OPEN_LOOP_TF_MAX_SAMPLE = 20 #Sinus  sampling range when the servo system is in open loop
 OPEN_LOOP_TF_MODE = False # mode enable a sinus angle drive on the robot 
 
 # ======================================================================================================================
