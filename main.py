@@ -473,8 +473,20 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     raw_angles_history = []
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
     prev_maneuver_time = time.time()
-    prev_pos = gps.get_last_position()
+    #prev_pos = gps.get_last_position()      
+    
+    prev_pos = gps.get_fresh_position()
+    
+    lat.append(prev_pos[0])
+    long.append(prev_pos[1])
+    mu_lat, sigma_lat = mu_sigma(lat)
+    mu_long, sigma_long = mu_sigma(long)
+    distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
+    print("| ",utility.get_current_time()," | %2.2f"%distance, " | ", prev_pos, "|")
+    distances.append(distance)
+    mu_distance, sigma_distance = mu_sigma(distances)
 
+       
     slow_mode_time = -float("inf")
     current_working_mode = working_mode_slow = 1
     working_mode_switching = 2
@@ -1163,6 +1175,9 @@ def main():
                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
                                              config.CAMERA_FLIP_METHOD) as camera:
 
+            
+            
+                
             # load previous path
             if config.CONTINUE_PREVIOUS_PATH:
                 # TODO: create path manager
@@ -1197,6 +1212,7 @@ def main():
 
             # load field points and generate new path
             else:
+                print("__________________________________________UOURHERE----------------")
                 if config.RECEIVE_FIELD_FROM_RTK:
                     msg = "Loading field coordinates from RTK"
                     logger_full.write(msg + "\n")
@@ -1239,7 +1255,7 @@ def main():
                 # TODO: save field in debug
 
                 field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
-
+                print("field_gps_coords : ",field_gps_coords)
                 # TODO: save reduced field in debug
 
                 # generate path points

@@ -235,3 +235,59 @@ def get_smoothie_vesc_addresses():
         if "ChibiOS/RT" in desc:
             equipment_by_port["vesc"] = port
     return equipment_by_port
+
+
+def mu_sigma(samples: list):
+    
+    mu =0
+    sigma =0
+    sign =1
+
+    #moyenne arithmétique
+    
+    for x in samples:
+        mu+=x**2
+    
+    mu/=len(samples)
+    if samples[len(samples)-1]<0 :
+        sign=-1
+    mu = sign * math.sqrt(mu)   # mu is ready
+    
+    
+    
+    # perform sigma calculation
+    for x in samples:       
+            sigma+=math.pow(math.fabs(x-mu),2)
+    sigma/=len(samples)
+    sigma = math.sqrt(sigma)
+    
+    print ( "mu =%2.13f"%mu, " sigma =%E"%sigma)
+
+    stat= [mu, sigma]
+    return stat
+
+
+
+def distribution_of_values(samples: list, mu, sigma):
+    leg=[10,9,8,7,6,5,4,3,2,1,1,2,3,4,5,6,7,8,9,10]  # legend
+    stat=[0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    junk=0
+
+    for x in samples:
+            if int(math.fabs((x-mu)/sigma))<10:
+                if x>=mu:
+                    n_sigma=int(((x-mu)/sigma))+10       #n_sigma[10] contient le nombre de valeur entre mu et mu-sigma
+                                                                #n_sigma[11] contient le nombre de valeur entre mu et mu-2sigma
+                else:
+                    n_sigma=-int(((mu-x)/sigma))+9      #n_sigma[9] contient le nombre de valeur entre mu et mu-1sigma
+                stat[n_sigma]+=1                         #n_sigma[8] contient le nombre de valeur entre mu et mu-2sigma
+                #print("nsigma %2d"%n_sigma,"x %2.4f"%x) 
+            else: 
+                junk+=1                                 # stupid value exceeding +10 -9 sigma are only counted
+                #print("junk sample %2.2f"%x)
+    print(leg)
+    print(stat)
+    print("junk total", junk)
+   
+    distrib= [stat, junk]
+    return distrib
