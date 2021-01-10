@@ -68,22 +68,21 @@ def save_gps_coordinates_raw(points: list, file_name: str):
             file.write(str(point) + "\n")
 
 
-def create_angles_table ( amplitude, frequency, max_samples):
+def create_angles_table ( amplitudes:list, frequencies:list, max_samples:list):
     openloop_angles = []
-    
-    for mytime in range(0, max_samples):
-        openloop_angle = 0
-        openloop_angles.append(openloop_angle)
-    
-    for mytime in range(max_samples, max_samples*3):
-        openloop_angle = amplitude * math.sin( frequency * 2 * math.pi * mytime )
-        openloop_angles.append(openloop_angle)
-    
-    for mytime in range(max_samples*3, max_samples*4):
-        openloop_angle = 0
-        openloop_angles.append(openloop_angle)
+    flat = config.OPEN_LOOP_FLAT
     
     
+    for items in range(0,len(frequencies)):
+        print("frequency:", frequencies[items])
+        for mytime in range(0, flat):
+            openloop_angle = 0
+            openloop_angles.append(openloop_angle)
+        
+        for mytime in range(0, max_samples[items]*2):
+            openloop_angle = amplitudes[items] * math.sin( frequencies[items] * 2 * math.pi * mytime )
+            openloop_angles.append(openloop_angle)
+            
     return openloop_angles
 
 
@@ -659,9 +658,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 else:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST)
         """
-        vesc_engine.set_moving_time(float("inf"))
-        vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
-        vesc_engine.start_moving()# NAVIGATION CONTROL
+        
+
+        # NAVIGATION CONTROL
         nav_start_t = time.time()
         cur_pos = gps.get_last_position()
 
@@ -718,12 +717,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         print(utility.get_current_time())
         prev_maneuver_time = cur_time
 
-        if my_current_time >= 4*config.OPEN_LOOP_TF_MAX_SAMPLE-1:
-            my_current_time = 0
-        else:
-            my_current_time +=1
-        print(my_current_time)
-
+             
+                
         msg = "Distance to B: " + str(distance)
         # print(msg)
         logger_full.write(msg + "\n")
@@ -739,16 +734,23 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             global last_integral
             global value_for_integral
             global correction
+            
+            if execution_direction_counter == 0:
+                vesc_engine.set_moving_time(float("inf"))
+                vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
+                vesc_engine.start_moving()
+            
             raw_angle = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1]) 
             value_for_integral.append(raw_angle)
-            if len(value_for_integral) > config.OPEN_LOOP_TF_MAX_SAMPLE:
+            if len(value_for_integral) > config.STRAIGHT_DIRECTION_INTEGRAL_DURATION:
                 value_for_integral.pop(0)
-            if len(value_for_integral) == config.OPEN_LOOP_TF_MAX_SAMPLE:
+            if len(value_for_integral) == config.STRAIGHT_DIRECTION_INTEGRAL_DURATION:
                 if first_integral == 0:
                     first_integral = sum(value_for_integral)
-            if execution_direction_counter >= config.OPEN_LOOP_TF_MAX_SAMPLE*2:
+            if execution_direction_counter == config.STRAIGHT_DIRECTION_INTEGRAL_DURATION*3:
                 last_integral = sum(value_for_integral)
-                correction = ((last_integral-first_integral)/execution_direction_counter)/20
+                #correction=0
+                correction = (last_integral-first_integral)/execution_direction_counter/config.STRAIGHT_DIRECTION_INTEGRAL_DURATION
         else:
             raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1]) 
             
@@ -772,12 +774,27 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         if config.OPEN_LOOP_TF_MODE:
-            if execution_direction_counter >= config.OPEN_LOOP_TF_MAX_SAMPLE*2:
+            if execution_direction_counter >= config.STRAIGHT_DIRECTION_INTEGRAL_DURATION*3:
+                if execution_direction_counter == config.STRAIGHT_DIRECTION_INTEGRAL_DURATION*3:
+                    vesc_engine.stop_moving()
+                if my_current_time >= len(openloop_angles)-1:
+                    return True
+                else:
+                    my_current_time +=1
+                print(my_current_time)
+                               
                 before_angle_kp_ki = openloop_angles[my_current_time]
-                angle_kp_ki = before_angle_kp_ki - correction
+                angle_kp_ki = before_angle_kp_ki - correction * 0
                 logger_table.write_and_flush(","+str(execution_direction_counter)+","+str(raw_angle)+ "," + str(before_angle_kp_ki)+ "," + str(angle_kp_ki) +"," + str(first_integral) +"," + str(last_integral) +"," + str(correction) + "\n")
+                
+                if my_current_time>=2:
+                    if openloop_angles[my_current_time-1]==0 and openloop_angles[my_current_time-2]!=0:   # front descendant imminent (2sec)
+                        vesc_engine.stop_moving()
+                if len(openloop_angles)>my_current_time+2:
+                    if openloop_angles[my_current_time+1]==0 and openloop_angles[my_current_time+2]!=0:  #front montant imminent (2sec)
+                        vesc_engine.start_moving()
             else:
-                angle_kp_ki = openloop_angles[my_current_time]
+                angle_kp_ki = 0
                 logger_table.write_and_flush(","+str(execution_direction_counter)+","+str(raw_angle)+ "," + str(angle_kp_ki) + "0," +"," + str(first_integral) +"," + str(last_integral) +"," + str(correction) + "\n")
             execution_direction_counter +=1
         else:
@@ -1288,8 +1305,12 @@ def main():
                     field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
                 
                 #sinus stimuli for transfer function measure in open loop
-                openloop_angles = create_angles_table (config.OPEN_LOOP_TF_AMPLITUDE, config.OPEN_LOOP_TF_FREQUENCY, config.OPEN_LOOP_TF_MAX_SAMPLE)
+                
+                              
+                openloop_angles = create_angles_table (config.OPEN_LOOP_TF_AMPLITUDES, config.OPEN_LOOP_TF_FREQUENCIES, config.OPEN_LOOP_TF_MAX_SAMPLES)
                 print("openloop angle size : ___________________________",len(openloop_angles))
+                for items in openloop_angles:
+                    print(items)
                 my_current_time = -1
                 if config.OPEN_LOOP_TF_MODE:
                     global execution_direction_counter
@@ -1382,11 +1403,12 @@ def main():
                     # print(msg)
                     logger_full.write(msg + "\n\n")
 
-                    move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
+                    if move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
-                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, openloop_angles, my_current_time)
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, openloop_angles, my_current_time):
+                                              break
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)

@@ -8,6 +8,7 @@ import queue
 import threading
 import serial
 import pyvesc
+import utility
 
 
 class SmoothieAdapter:
@@ -1108,9 +1109,9 @@ class GPSUbloxAdapter:
             self._position_is_fresh = False
         while True:
             with self._sync_locker:
-                if not self._position_is_fresh:
-                    continue
-            return self.get_last_position()
+                if self._position_is_fresh:
+                    return self.get_last_position()
+            
 
     def get_last_position(self):
         """Waits until at least one position is stored, returns last saved position copy at the moment of call
@@ -1144,6 +1145,7 @@ class GPSUbloxAdapter:
                 with self._sync_locker:
                     if len(self._last_pos_container) == self._last_pos_count:
                         self._last_pos_container.pop(0)
+                        #print("self._last_pos_container) == self._last_pos_count \n")
                     self._last_pos_container.append(position)
                     self._position_is_fresh = True
         except serial.SerialException as ex:
@@ -1158,7 +1160,7 @@ class GPSUbloxAdapter:
             #    print("None GNGGA or RTCM threads")
             if "GNGGA" in data and ",,," not in data:
                 # bad string with no position data
-                # print(data)  # debug
+                #print(utility.get_current_time(), data)  # debug
                 data = data.split(",")
                 try:
                     lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
