@@ -472,15 +472,20 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
     raw_angles_history = []
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
-    prev_maneuver_time = time.time()
     #prev_pos = gps.get_last_position()      
     
     #ORIGIN POINT SAVING
     lat = []     #latitude history
     long = []    #longitude history
-    distances = []    
-
+    distances = []
+    detections_period =[]
+    navigations_period =[]
+    start_Nav_while =True
+    last_correct_raw_angle = 0
+    point_status ="origin"
+        
     for i in range(0,config.ORIGIN_AVERAGE_SAMPLES):
+        prev_maneuver_time = time.time()
         prev_pos = gps.get_fresh_position()
         lat.append(prev_pos[0])
         long.append(prev_pos[1])
@@ -492,18 +497,20 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         time.sleep(0.950)
     
     mu_distance, sigma_distance = utility.mu_sigma(distances)
-    print("stat lattitude : \n")
+    #print("stat lattitude : \n")
     mu_lat, sigma_lat = utility.mu_sigma(lat)
     #distribution_of_values(lat, mu_lat, sigma_lat)
-    print("stat longitude : \n")
+    #print("stat longitude : \n")
     mu_long, sigma_long = utility.mu_sigma(long)
     #distribution_of_values(long, mu_long, sigma_long)
-    print("stat distance : \n")
+    #print("stat distance : \n")
     mu_distance, sigma_distance =  utility.mu_sigma(distances)
     #distribution_of_values(distances, mu_distance, sigma_distance)
-    print("Average origin point:  %2.13f"%mu_lat," ","%2.13f"%mu_long, "standard deviation (mm) %2.2f"%sigma_distance)    
+    #print("Average origin point:  %2.13f"%mu_lat," ","%2.13f"%mu_long, "standard deviation (mm) %2.2f"%sigma_distance)    
+    prev_pos[0]=mu_lat      #replace the instantaneous value by the average latitude
+    prev_pos[1]=mu_long     #replace the instantaneous value by the average longitude
     prev_pos.append("Origin_with_" + str(config.ORIGIN_AVERAGE_SAMPLES) + "_samples")
-    print("prev_pos syntax : ",prev_pos)   #debug
+    #print("prev_pos syntax : ",prev_pos)   #debug
     trajectory_saver.save_point(prev_pos)    
     
     slow_mode_time = -float("inf")
@@ -528,10 +535,21 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     while True:
 
         # NAVIGATION CONTROL
+        cur_pos = gps.get_fresh_position()
         nav_start_t = time.time()
-        cur_pos = gps.get_last_position()
-        print("tock")
-        prev_maneuver_time = nav_start_t
+        if start_Nav_while==True:
+            navigation_period =1
+            start_Nav_while=False
+        else:
+            navigation_period = nav_start_t - prev_maneuver_time 
+        
+        navigations_period.append(navigation_period)  
+        prev_maneuver_time = nav_start_t #time reference to decide the number of detection before resuming gps.get
+        #print("tock")
+        
+        mu_navigations_period, sigma_navigations_period = utility.mu_sigma(navigations_period)
+
+
         if str(cur_pos) == str(prev_pos):
             # msg = "Got the same position, added to history, calculations skipped. Am I stuck?"
             # print(msg)
@@ -555,7 +573,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         """
 
         distance = nav.get_distance(cur_pos, coords_from_to[1])
-
+        perpendicular, side = nav.get_deviation(coords_from_to[0],coords_from_to[1],cur_pos)
+        
         # check if arrived
         _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
         # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
@@ -567,11 +586,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             logger_full.write(msg + "\n")
             break
 
-        # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
-        # (too close points in the same position can produce false huge angles)
-        #if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
-            #continue    debugCOVID_PLACE
-
+        
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
             distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
@@ -588,7 +603,17 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         # print(msg)
         logger_full.write(msg + "\n")
 
-        raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        
+        # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
+        # (too close points in the same position can produce false huge angles)
+        if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
+            raw_angle = last_correct_raw_angle
+            #print("The distance covered is low")
+            point_status = "skipped"
+        else:
+            raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+            last_correct_raw_angle = raw_angle
+            point_status ="correct"
 
         # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
@@ -624,7 +649,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
 
         target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
-        target_angle_sm = 0
+        #target_angle_sm = 0     #Debug COVID_PLACE
         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
         # sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
         sm_wheels_pos = "off"
@@ -676,12 +701,13 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         sum_angles = round(sum_angles, 2)
         distance = round(distance, 2)
         ad_wheels_pos = round(ad_wheels_pos, 2)
+        perpendicular = round(perpendicular, 2)
         # sm_wheels_pos = round(sm_wheels_pos, 2)
         gps_quality = cur_pos[2]
 
         msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
             order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
-            8) + str(sm_wheels_pos).ljust(9)
+            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(8)
         print(msg)
         logger_full.write(msg + "\n")
 
@@ -715,11 +741,12 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             start_t = time.time()
             frame = camera.get_image()
             frame_t = time.time()
-            
-            print("tick")
+            #print("tick")
                       
             plants_boxes = periphery_det.detect(frame)
             per_det_t = time.time()
+            detections_period.append(per_det_t-start_t)
+            
 
             if config.SAVE_DEBUG_IMAGES:
                 image_saver.save_image(frame, img_output_dir,
@@ -733,12 +760,19 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 break
                 
             # do maneuvers not more often than specified value
-            cur_time = time.time()
-            print(cur_time - prev_maneuver_time)
-            if cur_time - prev_maneuver_time > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
-                break
             
-                
+            mu_detections_period, sigma_detections_period = utility.mu_sigma(detections_period)
+    
+            cur_time = time.time()
+            detections_time = cur_time - prev_maneuver_time
+            #print(detections_time,"mu detection =%2.13f"%mu_detections_period, " sigma =%E"%sigma_detections_period)
+            
+            #is there enough time before the next navigation to complete a last detection :
+            # the average detection time is mu_detections_period. Assuming that no period exceed mu+3*standard_deviation
+            #print("if estimate next station",detections_time + mu_detections_period + 3*sigma_detections_period,"> threshold ",config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER)
+            if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
+                break
+                                       
 
         if config.AUDIT_MODE:
             dc_start_t = time.time()
@@ -1335,7 +1369,7 @@ def main():
             logger_full.write(msg + "\n")
             """
 
-            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|'
+            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|'
             print(msg)
             logger_full.write(msg + "\n")
             msg = 'GpsQ,Raw ang,Res ang,Ord ang,Sum ang,Distance,Adapter,Smoothie,'

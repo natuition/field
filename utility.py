@@ -266,7 +266,7 @@ def mu_sigma(samples: list):
     sigma/=len(samples)
     sigma = math.sqrt(sigma)
     
-    print ( "mu =%2.13f"%mu, " sigma =%E"%sigma)
+    #print ( "mu =%2.13f"%mu, " sigma =%E"%sigma)
 
     stat= [mu, sigma]
     return stat
