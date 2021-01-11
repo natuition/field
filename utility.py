@@ -8,6 +8,7 @@ import psutil
 import glob
 import detection
 import cv2 as cv
+import math
 
 
 class ImageSaver:
@@ -84,7 +85,11 @@ class TrajectorySaver:
         if not str(point) == self.__last_received_point:
             self.__last_received_point = str(point)
 
+            #if len(point)==3:
+            #    str_point = str(point[0]) + " " + str(point[1])+ " " + point[2] + "\n" if save_raw else str(point) + "\n"
+            #else :
             str_point = str(point[0]) + " " + str(point[1]) + "\n" if save_raw else str(point) + "\n"
+                
             self.__output_file.write(str_point)
 
             if flush_immediately:
