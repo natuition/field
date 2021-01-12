@@ -857,7 +857,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     smoothie.wait_for_all_actions_done()
                     """
                     current_working_mode = working_mode_switching
-                vesc_engine.start_moving()
+                vesc_engine.start_moving()  
 
             # switching to fast mode
             elif current_working_mode == working_mode_switching:
