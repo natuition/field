@@ -440,6 +440,47 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
     smoothie.wait_for_all_actions_done()
 
 
+def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: utility.TrajectorySaver,nav: navigation.GPSComputing):
+
+    #ORIGIN POINT SAVING
+    lat = []     #latitude history
+    long = []    #longitude history
+    distances = []
+    
+
+    for i in range(0,config.ORIGIN_AVERAGE_SAMPLES):
+        prev_maneuver_time = time.time()
+        prev_pos = gps.get_fresh_position()
+        lat.append(prev_pos[0])
+        long.append(prev_pos[1])
+        mu_lat, sigma_lat = utility.mu_sigma(lat)
+        mu_long, sigma_long = utility.mu_sigma(long)
+        distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
+        #print("| ",utility.get_current_time()," | %2.2f"%distance, " | ", prev_pos, "|")
+        distances.append(distance)
+        time.sleep(0.950)
+    
+    mu_distance, sigma_distance = utility.mu_sigma(distances)
+    #print("stat lattitude : \n")
+    mu_lat, sigma_lat = utility.mu_sigma(lat)
+    #distribution_of_values(lat, mu_lat, sigma_lat)
+    #print("stat longitude : \n")
+    mu_long, sigma_long = utility.mu_sigma(long)
+    #distribution_of_values(long, mu_long, sigma_long)
+    #print("stat distance : \n")
+    mu_distance, sigma_distance =  utility.mu_sigma(distances)
+    #distribution_of_values(distances, mu_distance, sigma_distance)
+    #print("Average origin point:  %2.13f"%mu_lat," ","%2.13f"%mu_long, "standard deviation (mm) %2.2f"%sigma_distance)    
+    prev_pos[0]=mu_lat      #replace the instantaneous value by the average latitude
+    prev_pos[1]=mu_long     #replace the instantaneous value by the average longitude
+    prev_pos.append("Origin_with_" + str(config.ORIGIN_AVERAGE_SAMPLES) + "_samples")
+    #print("prev_pos syntax : ",prev_pos)   #debug
+    trajectory_saver.save_point(prev_pos)
+    
+    return prev_pos
+
+
+
 def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapter, vesc_engine: adapters.VescAdapter,
                               smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                               periphery_det: detection.YoloOpenCVDetection, precise_det: detection.YoloOpenCVDetection,
@@ -471,48 +512,20 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     """
 
     raw_angles_history = []
-    stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
-    #prev_pos = gps.get_last_position()      
-    
-    #ORIGIN POINT SAVING
-    lat = []     #latitude history
-    long = []    #longitude history
-    distances = []
     detections_period =[]
     navigations_period =[]
+    stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
+     
     start_Nav_while =True
     last_correct_raw_angle = 0
     point_status ="origin"
+    nav_status = "poursuit"
+    last_corridor_side = 0
+    current_corridor_side = 1
         
-    for i in range(0,config.ORIGIN_AVERAGE_SAMPLES):
-        prev_maneuver_time = time.time()
-        prev_pos = gps.get_fresh_position()
-        lat.append(prev_pos[0])
-        long.append(prev_pos[1])
-        mu_lat, sigma_lat = utility.mu_sigma(lat)
-        mu_long, sigma_long = utility.mu_sigma(long)
-        distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
-        #print("| ",utility.get_current_time()," | %2.2f"%distance, " | ", prev_pos, "|")
-        distances.append(distance)
-        time.sleep(0.950)
-    
-    mu_distance, sigma_distance = utility.mu_sigma(distances)
-    #print("stat lattitude : \n")
-    mu_lat, sigma_lat = utility.mu_sigma(lat)
-    #distribution_of_values(lat, mu_lat, sigma_lat)
-    #print("stat longitude : \n")
-    mu_long, sigma_long = utility.mu_sigma(long)
-    #distribution_of_values(long, mu_long, sigma_long)
-    #print("stat distance : \n")
-    mu_distance, sigma_distance =  utility.mu_sigma(distances)
-    #distribution_of_values(distances, mu_distance, sigma_distance)
-    #print("Average origin point:  %2.13f"%mu_lat," ","%2.13f"%mu_long, "standard deviation (mm) %2.2f"%sigma_distance)    
-    prev_pos[0]=mu_lat      #replace the instantaneous value by the average latitude
-    prev_pos[1]=mu_long     #replace the instantaneous value by the average longitude
-    prev_pos.append("Origin_with_" + str(config.ORIGIN_AVERAGE_SAMPLES) + "_samples")
-    #print("prev_pos syntax : ",prev_pos)   #debug
-    trajectory_saver.save_point(prev_pos)    
-    
+    prev_maneuver_time = time.time()
+       
+        
     slow_mode_time = -float("inf")
     current_working_mode = working_mode_slow = 1
     working_mode_switching = 2
@@ -539,6 +552,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         nav_start_t = time.time()
         if start_Nav_while==True:
             navigation_period =1
+            prev_pos = cur_pos 
             start_Nav_while=False
         else:
             navigation_period = nav_start_t - prev_maneuver_time 
@@ -573,7 +587,14 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         """
 
         distance = nav.get_distance(cur_pos, coords_from_to[1])
-        perpendicular, side = nav.get_deviation(coords_from_to[0],coords_from_to[1],cur_pos)
+        
+        last_corridor_side = current_corridor_side
+        perpendicular, current_corridor_side = nav.get_deviation(coords_from_to[0],coords_from_to[1],cur_pos)
+        
+        
+                
+        
+        
         
         # check if arrived
         _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
@@ -584,6 +605,14 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
             # print(msg)
             logger_full.write(msg + "\n")
+            
+            #put the wheel straight
+            response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+            if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                msg = "Smoothie response is not ok: " + response
+                print(msg)
+                logger_full.write(msg + "\n")
+            
             break
 
         
@@ -606,32 +635,62 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         
         # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
         # (too close points in the same position can produce false huge angles)
+        
+        raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
+        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        
+    
+    
+        #NAVIGATION STATE MACHINE
+        
+        if nav_status=="poursuit":
+            if math.fabs(raw_angle_cruise)<config.CRUISE_ANGLE_LIMIT:
+                nav_status="cruise"
+        
+        almost_start = nav.get_distance(coords_from_to[0], cur_pos)
+        
+        if nav_status=="cruise":
+            if (math.fabs(raw_angle_cruise)>=config.CRUISE_ANGLE_LIMIT) or (almost_start < 8000) :
+                nav_status="poursuit"
+    
+
+    
         if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
             raw_angle = last_correct_raw_angle
             #print("The distance covered is low")
             point_status = "skipped"
         else:
-            raw_angle = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+            if nav_status=="cruise":
+                raw_angle = raw_angle_cruise
+            else:
+                raw_angle = raw_angle_legacy
+
+            
             last_correct_raw_angle = raw_angle
             point_status ="correct"
+
 
         # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
             raw_angles_history.pop(0)
         raw_angles_history.append(raw_angle)
-
+        print("len(raw_angles_history):",len(raw_angles_history))
         sum_angles = sum(raw_angles_history)
         if sum_angles > config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
                   str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(config.SUM_ANGLES_HISTORY_MAX)
             # print(msg)
             logger_full.write(msg + "\n")
+            #Get Ready to go down as soon as the angle get negatif
+            raw_angles_history[len(raw_angles_history)-1]-= sum_angles - config.SUM_ANGLES_HISTORY_MAX   
             sum_angles = config.SUM_ANGLES_HISTORY_MAX
         elif sum_angles < -config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is less than min allowed value " + \
                   str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(-config.SUM_ANGLES_HISTORY_MAX)
             # print(msg)
             logger_full.write(msg + "\n")
+            #get Ready to go up as soon as the angle get positive:
+            raw_angles_history[len(raw_angles_history)-1]+=  -sum_angles - config.SUM_ANGLES_HISTORY_MAX
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
@@ -704,10 +763,16 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         perpendicular = round(perpendicular, 2)
         # sm_wheels_pos = round(sm_wheels_pos, 2)
         gps_quality = cur_pos[2]
+        corridor = ""
+        if current_corridor_side==-1:
+            corridor = "left"
+        elif current_corridor_side==1:
+            corridor = "right"
+        raw_angle_cruise = round(raw_angle_cruise, 2)
 
         msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
             order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
-            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(8)
+            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(8)+corridor+nav_status+str(raw_angle_cruise).ljust(8)
         print(msg)
         logger_full.write(msg + "\n")
 
@@ -1147,7 +1212,8 @@ def main():
     used_points_history = []
     logger_full = utility.Logger(log_cur_dir + "log full.txt")
     logger_table = utility.Logger(log_cur_dir + "log table.csv")
-
+    
+    
     # get smoothie and vesc addresses
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
     if "vesc" in smoothie_vesc_addr:
@@ -1381,8 +1447,17 @@ def main():
             # path points visiting loop
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
                 next_calibration_time = time.time() + config.CORK_CALIBRATION_MIN_TIME
+                
+                average_point(gps,trajectory_saver,nav)
+                
+                GARAGE = [46.1336841, -1.1226950200000294, '1']
+                SQUARE = [46.13394686, -1.1225468000000054, '1']
+                
+                
                 for i in range(path_start_index, len(path_points)):
-                    from_to = [path_points[i - 1], path_points[i]]
+                    
+                    from_to = [GARAGE, SQUARE]
+                    #from_to = [path_points[i - 1], path_points[i]]#debug COVID_PLACE
                     from_to_dist = nav.get_distance(from_to[0], from_to[1])
 
                     msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
@@ -1447,6 +1522,15 @@ def main():
             print(msg)
             logger_full.write(msg + "\n")
         """
+        
+        #put the wheel straight
+        response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+            msg = "Smoothie response is not ok: " + response
+            print(msg)
+            logger_full.write(msg + "\n")
+                
+        
         # save adapter points history
         try:
             # TODO: reduce history positions to 1 to save RAM
