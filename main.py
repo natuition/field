@@ -693,16 +693,21 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             raw_angles_history[len(raw_angles_history)-1]+=  -sum_angles - config.SUM_ANGLES_HISTORY_MAX
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
-        angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI
-
-
-        if distance < config.CLOSE_TARGET_THRESHOLD:
+        
+        if nav_status=="cruise":
+            angle_kp_ki = raw_angle * config.KP_cruise + sum_angles * config.KI_cruise
+        
+        else:
+            angle_kp_ki = raw_angle * config.KP_poursuit + sum_angles * config.KI_poursuit
+        
+        """if distance < config.CLOSE_TARGET_THRESHOLD:
             if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD:
               angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.SMALL_RAW_ANGLE_SQUARE_GAIN
             if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD:
               angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.BIG_RAW_ANGLE_SQUARE_GAIN
         if distance > config.FAR_TARGET_THRESHOLD:
             angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.FAR_TARGET_GAIN
+        """
 
         
 
@@ -753,6 +758,12 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = config.A_MIN
+            
+        response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
+        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+            msg = "Smoothie response is not ok: " + response
+            print(msg)
+            logger_full.write(msg + "\n")
 
         raw_angle = round(raw_angle, 2)
         angle_kp_ki = round(angle_kp_ki, 2)
@@ -768,6 +779,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             corridor = "left"
         elif current_corridor_side==1:
             corridor = "right"
+        
+        
         raw_angle_cruise = round(raw_angle_cruise, 2)
 
         msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
@@ -790,12 +803,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         prev_pos = cur_pos
 
-        response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
-        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-            msg = "Smoothie response is not ok: " + response
-            print(msg)
-            logger_full.write(msg + "\n")
-
+        
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
@@ -1456,7 +1464,9 @@ def main():
                 
                 for i in range(path_start_index, len(path_points)):
                     
-                    from_to = [GARAGE, SQUARE]
+                    #from_to = [GARAGE, SQUARE]
+                    from_to = [SQUARE, GARAGE]
+                    
                     #from_to = [path_points[i - 1], path_points[i]]#debug COVID_PLACE
                     from_to_dist = nav.get_distance(from_to[0], from_to[1])
 
