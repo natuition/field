@@ -519,7 +519,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     start_Nav_while =True
     last_correct_raw_angle = 0
     point_status ="origin"
-    nav_status = "poursuit"
+    nav_status = "pursuit"
     last_corridor_side = 0
     current_corridor_side = 1
         
@@ -636,22 +636,23 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
         # (too close points in the same position can produce false huge angles)
         
-        raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
+        #raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
         raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
-        
+        raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
+        raw_angle = raw_angle_legacy + raw_angle_cruise
     
     
         #NAVIGATION STATE MACHINE
         
-        if nav_status=="poursuit":
-            if math.fabs(raw_angle_cruise)<config.CRUISE_ANGLE_LIMIT:
+        if nav_status=="pursuit":
+            if math.fabs(raw_angle_legacy)<config.PURSUIT_ANGLE_LIMIT:
                 nav_status="cruise"
         
         almost_start = nav.get_distance(coords_from_to[0], cur_pos)
         
         if nav_status=="cruise":
-            if (math.fabs(raw_angle_cruise)>=config.CRUISE_ANGLE_LIMIT) or (almost_start < 8000) :
-                nav_status="poursuit"
+            if (math.fabs(raw_angle_legacy)>=config.PURSUIT_ANGLE_LIMIT) or (almost_start < 4000) :
+                nav_status="pursuit"
     
 
     
@@ -660,12 +661,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             #print("The distance covered is low")
             point_status = "skipped"
         else:
-            if nav_status=="cruise":
-                raw_angle = raw_angle_cruise
-            else:
-                raw_angle = raw_angle_legacy
-
-            
             last_correct_raw_angle = raw_angle
             point_status ="correct"
 
@@ -694,20 +689,16 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         
-        if nav_status=="cruise":
-            angle_kp_ki = raw_angle * config.KP_cruise + sum_angles * config.KI_cruise
+        angle_kp_ki = raw_angle * config.KP_PURSUIT + sum_angles * config.KI_PURSUIT #+ raw_angle * config.KP_CRUISE
         
-        else:
-            angle_kp_ki = raw_angle * config.KP_poursuit + sum_angles * config.KI_poursuit
-        
-        """if distance < config.CLOSE_TARGET_THRESHOLD:
+        if distance < config.CLOSE_TARGET_THRESHOLD:
             if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD:
-              angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.SMALL_RAW_ANGLE_SQUARE_GAIN
-            if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD:
-              angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.BIG_RAW_ANGLE_SQUARE_GAIN
+              angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN
+            #if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD:
+            #  angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN
         if distance > config.FAR_TARGET_THRESHOLD:
-            angle_kp_ki = (raw_angle * config.KP + sum_angles * config.KI)*config.FAR_TARGET_GAIN
-        """
+            angle_kp_ki *= config.FAR_TARGET_GAIN
+        
 
         
 
@@ -1456,16 +1447,27 @@ def main():
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
                 next_calibration_time = time.time() + config.CORK_CALIBRATION_MIN_TIME
                 
-                average_point(gps,trajectory_saver,nav)
+                start_position = average_point(gps,trajectory_saver,nav)
                 
                 GARAGE = [46.1336841, -1.1226950200000294, '1']
                 SQUARE = [46.13394686, -1.1225468000000054, '1']
-                
-                
+                BRISACH = [46.15437552, -1.118523500000007, '1']
+                EVIDENCE = [46.15457596, -1.118661520000015, '1']
                 for i in range(path_start_index, len(path_points)):
                     
+                    start_dist1 = nav.get_distance(start_position, BRISACH)
+                    start_dist2 = nav.get_distance(start_position, EVIDENCE)
+                    print("distance to brisach",start_dist1)
+                    print("distance to evidence",start_dist2)
+                    
                     #from_to = [GARAGE, SQUARE]
-                    from_to = [SQUARE, GARAGE]
+                    #from_to = [SQUARE, GARAGE]
+                    #from_to = [EVIDENCE, BRISACH]
+                    if start_dist1>start_dist2:
+                        from_to = [EVIDENCE, BRISACH]
+                    else:
+                        from_to = [BRISACH, EVIDENCE]
+                    
                     
                     #from_to = [path_points[i - 1], path_points[i]]#debug COVID_PLACE
                     from_to_dist = nav.get_distance(from_to[0], from_to[1])
