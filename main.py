@@ -522,7 +522,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     nav_status = "pursuit"
     last_corridor_side = 0
     current_corridor_side = 1
-        
+    almost_start = 0
+    
     prev_maneuver_time = time.time()
        
         
@@ -644,26 +645,36 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     
         #NAVIGATION STATE MACHINE
         
-        if nav_status=="pursuit":
-            if math.fabs(raw_angle_legacy)<config.PURSUIT_ANGLE_LIMIT:
-                nav_status="cruise"
         
-        almost_start = nav.get_distance(coords_from_to[0], cur_pos)
-        
-        if nav_status=="cruise":
-            if (math.fabs(raw_angle_legacy)>=config.PURSUIT_ANGLE_LIMIT) or (almost_start < 4000) :
-                nav_status="pursuit"
-    
-
-    
         if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
             raw_angle = last_correct_raw_angle
             #print("The distance covered is low")
             point_status = "skipped"
+            
+            # register the last position where the robot almost stop 
+            # in order to disable the deviation servo for a config.POURSUIT_LIMIT length and then resume in cruise
+            last_skipped_point = cur_pos
         else:
             last_correct_raw_angle = raw_angle
             point_status ="correct"
 
+        
+        
+        almost_start = nav.get_distance(last_skipped_point, cur_pos)
+        
+        if nav_status=="pursuit":
+            if almost_start >=config.PURSUIT_LIMIT:
+                nav_status="cruise"
+        
+        
+        
+        if nav_status=="cruise":
+            if almost_start < config.PURSUIT_LIMIT:
+                nav_status="pursuit"
+    
+
+    
+        
 
         # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
@@ -689,7 +700,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         
-        angle_kp_ki = raw_angle * config.KP_PURSUIT + sum_angles * config.KI_PURSUIT #+ raw_angle * config.KP_CRUISE
+        angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI 
         
         if distance < config.CLOSE_TARGET_THRESHOLD:
             if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD:
@@ -1451,22 +1462,41 @@ def main():
                 
                 GARAGE = [46.1336841, -1.1226950200000294, '1']
                 SQUARE = [46.13394686, -1.1225468000000054, '1']
+                TROUVE = [46.13402132, -1.1228246000006645, '1']
                 BRISACH = [46.15437552, -1.118523500000007, '1']
                 EVIDENCE = [46.15457596, -1.118661520000015, '1']
+                
+                
+                
                 for i in range(path_start_index, len(path_points)):
                     
-                    start_dist1 = nav.get_distance(start_position, BRISACH)
-                    start_dist2 = nav.get_distance(start_position, EVIDENCE)
-                    print("distance to brisach",start_dist1)
-                    print("distance to evidence",start_dist2)
+                    #start_dist1 = nav.get_distance(start_position, BRISACH)
+                    #start_dist2 = nav.get_distance(start_position, EVIDENCE)
+                    #start_dist1 = nav.get_distance(start_position, GARAGE)
+                    #start_dist2 = nav.get_distance(start_position, SQUARE)
+                    start_dist1 = nav.get_distance(start_position, TROUVE)
+                    start_dist2 = nav.get_distance(start_position, SQUARE)
+                    
+                    
+                    #print("distance to brisach",start_dist1)
+                    #print("distance to evidence",start_dist2)
+                    #print("distance to GARAGE",start_dist1)
+                    print("distance to TROUVE",start_dist1)
+                    print("distance to SQUARE",start_dist2)
+                    
                     
                     #from_to = [GARAGE, SQUARE]
                     #from_to = [SQUARE, GARAGE]
                     #from_to = [EVIDENCE, BRISACH]
                     if start_dist1>start_dist2:
-                        from_to = [EVIDENCE, BRISACH]
+                        #from_to = [EVIDENCE, BRISACH]
+                        #from_to = [SQUARE, GARAGE]
+                        from_to = [SQUARE, TROUVE]
                     else:
-                        from_to = [BRISACH, EVIDENCE]
+                        #from_to = [BRISACH, EVIDENCE]
+                        #from_to = [GARAGE, SQUARE]
+                        from_to = [TROUVE, SQUARE]
+                          
                     
                     
                     #from_to = [path_points[i - 1], path_points[i]]#debug COVID_PLACE
@@ -1475,6 +1505,12 @@ def main():
                     msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
                     # print(msg)
                     logger_full.write(msg + "\n\n")
+
+                    msg = "KP: " + str(config.KP) + " KI: " + str(config.KI) + " VESC_RPM_FAST: " + str(config.VESC_RPM_FAST)+" SMALL_RAW_ANGLE_SQUARE_GAIN: " + str(config.SMALL_RAW_ANGLE_SQUARE_GAIN)
+                    # print(msg)
+                    logger_full.write(msg + "\n\n")
+
+
 
                     move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
                                               precise_detector, client, logger_full, logger_table, report_field_names,
