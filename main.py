@@ -515,7 +515,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     detections_period =[]
     navigations_period =[]
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
-     
+    
+    last_skipped_point = coords_from_to[0]
     start_Nav_while =True
     last_correct_raw_angle = 0
     point_status ="origin"
@@ -680,7 +681,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if len(raw_angles_history) >= config.WINDOW:
             raw_angles_history.pop(0)
         raw_angles_history.append(raw_angle)
-        print("len(raw_angles_history):",len(raw_angles_history))
+        #print("len(raw_angles_history):",len(raw_angles_history))
         sum_angles = sum(raw_angles_history)
         if sum_angles > config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
@@ -1469,7 +1470,8 @@ def main():
                 
                 
                 for i in range(path_start_index, len(path_points)):
-                    
+                    from_to = [path_points[i - 1], path_points[i]] 
+                    """
                     #start_dist1 = nav.get_distance(start_position, BRISACH)
                     #start_dist2 = nav.get_distance(start_position, EVIDENCE)
                     #start_dist1 = nav.get_distance(start_position, GARAGE)
@@ -1497,14 +1499,16 @@ def main():
                         #from_to = [GARAGE, SQUARE]
                         from_to = [TROUVE, SQUARE]
                           
+                    """
                     
-                    
-                    #from_to = [path_points[i - 1], path_points[i]]#debug COVID_PLACE
                     from_to_dist = nav.get_distance(from_to[0], from_to[1])
+                    
+                    """
 
                     msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
                     # print(msg)
                     logger_full.write(msg + "\n\n")
+                    """
 
                     msg = "KP: " + str(config.KP) + " KI: " + str(config.KI) + " VESC_RPM_FAST: " + str(config.VESC_RPM_FAST)+" SMALL_RAW_ANGLE_SQUARE_GAIN: " + str(config.SMALL_RAW_ANGLE_SQUARE_GAIN)
                     # print(msg)
