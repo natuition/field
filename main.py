@@ -544,6 +544,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     # TODO: maybe should add sleep time as camera currently has delay
 
     if config.AUDIT_MODE:
+        vesc_engine.apply_rpm(config.VESC_RPM_AUDIT)
         vesc_engine.start_moving()
 
     # main navigation control loop
@@ -701,18 +702,78 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         
-        angle_kp_ki = raw_angle * config.KP + sum_angles * config.KI 
-        
-        if distance < config.CLOSE_TARGET_THRESHOLD:
-            if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD:
-              angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN
-            #if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD:
-            #  angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN
-        if distance > config.FAR_TARGET_THRESHOLD:
-            angle_kp_ki *= config.FAR_TARGET_GAIN
-        
+        KP = 0.2*0,55
+        KI = 0.0092*0,91
 
+        if vesc_engine._rpm in config.KP:
+            KP = config.KP[vesc_engine._rpm]
+        else:
+            msg = f"Vesc rpm {vesc_engine._rpm} not present in KP."
+            #print(msg)
+            logger_full.write(msg + "\n")
         
+        if vesc_engine._rpm in config.KI:
+            KI = config.KI[vesc_engine._rpm]
+        else:
+            msg = f"Vesc rpm {vesc_engine._rpm} not present in KI."
+            #print(msg)
+            logger_full.write(msg + "\n")
+
+        angle_kp_ki = raw_angle * KP + sum_angles * KI 
+        
+        if vesc_engine._rpm in config.CLOSE_TARGET_THRESHOLD: #check that this rpm configuration is present in CLOSE_TARGET_THRESHOLD
+            if distance < config.CLOSE_TARGET_THRESHOLD[vesc_engine._rpm]:
+
+                if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that this rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
+                    if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
+
+                        if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that this rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
+                            angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
+                        else:
+                            msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
+                            #print(msg)
+                            logger_full.write(msg + "\n")
+                
+                else:
+                    msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
+                    #print(msg)
+                    logger_full.write(msg + "\n")
+
+                if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that this rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
+                    if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
+
+                        if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that this rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
+                            angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
+                        else:
+                            msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
+                            #print(msg)
+                            logger_full.write(msg + "\n")
+
+                else:
+                    msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
+                    #print(msg)
+                    logger_full.write(msg + "\n")
+
+        else:
+            msg = f"Vesc rpm {vesc_engine._rpm} not present in CLOSE_TARGET_THRESHOLD."
+            #print(msg)
+            logger_full.write(msg + "\n")
+
+        if vesc_engine._rpm in config.FAR_TARGET_THRESHOLD: #check that this rpm configuration is present in FAR_TARGET_THRESHOLD
+            if distance > config.FAR_TARGET_THRESHOLD[vesc_engine._rpm]:
+
+                if vesc_engine._rpm in config.FAR_TARGET_GAIN: #check that this rpm configuration is present in FAR_TARGET_GAIN
+                    angle_kp_ki *= config.FAR_TARGET_GAIN[vesc_engine._rpm]   
+                else:
+                    msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_GAIN."
+                    #print(msg)
+                    logger_full.write(msg + "\n")  
+
+        else:
+            msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_THRESHOLD."
+            #print(msg)
+            logger_full.write(msg + "\n")     
+
 
 
         target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
