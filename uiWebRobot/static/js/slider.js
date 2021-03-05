@@ -1,17 +1,26 @@
-var rangeSlider = function(){
-    var slider = $('.range-slider'),
-        range = $('.range-slider__range'),
-        value = $('.range-slider__value');
-    
-    slider.each(function(){
-        value.each(function(){
-            var value = $(this).prev().attr('value');
-            $(this).html(value);
-        });
-        range.on('input', function(){
-            $(this).next(value).html(this.value);
-        });
-    });
-};
-  
-rangeSlider();
+var rng=document.getElementById('r1'); 
+var span=document.getElementById('rangeCol');
+
+function range() {
+    setValueNumberOfRange(rng.value);
+}
+
+function setValueNumberOfRange(number){
+    if(number < 100){
+        if(number < 10){
+            span.innerHTML="&ensp;" + number.toString();
+        }else{
+            span.innerHTML="&nbsp;" + number.toString();
+        }
+    }else{
+        span.innerHTML=number;
+    }
+    if(document.getElementsByName("Newfield")[0].id == "ValidateZone"){
+        sliderValue = document.getElementById("r1").value;
+        socketio.emit('data', {type: "modifyZone", value : sliderValue});
+    }
+}
+
+
+
+setValueNumberOfRange(rng.value);

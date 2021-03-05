@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<html>
+    
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Error</title>
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+        <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+    </head>
+    <body>
+        <div class="header">
+            <div class="header__info">
+                <div class="header__info--logo">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+                </div>
+                <div class="header__info--model">
+                    <p>{{ sn }}</p>
+                </div>
+            </div>
+        </div>
+        <section class="checklist">
+            <p class="checkbox__item--title" style="color:black;">We are sorry, that error has occured. Please reboot VIOLETTE</p>
+        </section>
+    </body>
+</html>

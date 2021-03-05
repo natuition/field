@@ -16,6 +16,8 @@ import stubs
 import extraction
 import datacollection
 import pickle
+from notification import NotificationClient
+from notification import SyntheseRobot
 
 """
 import SensorProcessing
@@ -438,47 +440,6 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
     # set camera back to the Y min
     smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
     smoothie.wait_for_all_actions_done()
-
-
-def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: utility.TrajectorySaver,nav: navigation.GPSComputing):
-
-    #ORIGIN POINT SAVING
-    lat = []     #latitude history
-    long = []    #longitude history
-    distances = []
-    
-
-    for i in range(0,config.ORIGIN_AVERAGE_SAMPLES):
-        prev_maneuver_time = time.time()
-        prev_pos = gps.get_fresh_position()
-        lat.append(prev_pos[0])
-        long.append(prev_pos[1])
-        mu_lat, sigma_lat = utility.mu_sigma(lat)
-        mu_long, sigma_long = utility.mu_sigma(long)
-        distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
-        #print("| ",utility.get_current_time()," | %2.2f"%distance, " | ", prev_pos, "|")
-        distances.append(distance)
-        time.sleep(0.950)
-    
-    mu_distance, sigma_distance = utility.mu_sigma(distances)
-    #print("stat lattitude : \n")
-    mu_lat, sigma_lat = utility.mu_sigma(lat)
-    #distribution_of_values(lat, mu_lat, sigma_lat)
-    #print("stat longitude : \n")
-    mu_long, sigma_long = utility.mu_sigma(long)
-    #distribution_of_values(long, mu_long, sigma_long)
-    #print("stat distance : \n")
-    mu_distance, sigma_distance =  utility.mu_sigma(distances)
-    #distribution_of_values(distances, mu_distance, sigma_distance)
-    #print("Average origin point:  %2.13f"%mu_lat," ","%2.13f"%mu_long, "standard deviation (mm) %2.2f"%sigma_distance)    
-    prev_pos[0]=mu_lat      #replace the instantaneous value by the average latitude
-    prev_pos[1]=mu_long     #replace the instantaneous value by the average longitude
-    prev_pos.append("Origin_with_" + str(config.ORIGIN_AVERAGE_SAMPLES) + "_samples")
-    #print("prev_pos syntax : ",prev_pos)   #debug
-    trajectory_saver.save_point(prev_pos)
-    
-    return prev_pos
-
 
 
 def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapter, vesc_engine: adapters.VescAdapter,
@@ -983,7 +944,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     continue
 
                 elif not any_plant_in_zone(plants_boxes, working_zone_polygon) and \
-                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
+                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
+                        config.SLOW_FAST_MODE:
                     """
                     # set camera to the Y max
                     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
@@ -993,7 +955,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         logger_full.write(msg + "\n")
                     smoothie.wait_for_all_actions_done()
                     """
-                    current_working_mode = working_mode_switching
+                    current_working_mode = working_mode_fast
+                    if not close_to_end:
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
                 vesc_engine.start_moving()  
 
             # switching to fast mode
@@ -1018,8 +982,11 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
             # fast mode
-            else:
+            elif current_working_mode == working_mode_fast:
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
+                    time.sleep(config.FAST_TO_SLOW_TIME)
                     vesc_engine.stop_moving()
                     """
                     # set camera to the Y min
@@ -1083,16 +1050,16 @@ def compute_x2_spiral(point_a: list, point_b: list, nav: navigation.GPSComputing
     cur_vec_dist = nav.get_distance(point_a, point_b)
 
     # check if moving vector is too small for maneuvers
-    if config.MANEUVER_START_DISTANCE * 2 + config.SPIRAL_SIDES_INTERVAL >= cur_vec_dist:
+    if config.MANEUVER_START_DISTANCE * 2 + config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE] >= cur_vec_dist:
         msg = "No place for maneuvers; Config maneuver distance is (that will be multiplied by 2): " + \
-              str(config.MANEUVER_START_DISTANCE) + " Config spiral interval: " + str(config.SPIRAL_SIDES_INTERVAL) + \
+              str(config.MANEUVER_START_DISTANCE) + " Config spiral interval: " + str(config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]) + \
               " Current moving vector distance is: " + str(cur_vec_dist) + " Given points are: " + str(point_a) + \
               " " + str(point_b)
         # print(msg)
         logger.write(msg + "\n")
         return None
     return nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.MANEUVER_START_DISTANCE -
-                                   config.SPIRAL_SIDES_INTERVAL)
+                                   config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE])
 
 
 def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -1108,16 +1075,16 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
     cur_vec_dist = nav.get_distance(point_a, point_b)
 
     # check if moving vector is too small for maneuvers
-    if config.SPIRAL_SIDES_INTERVAL * 2 >= cur_vec_dist:
+    if config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE] * 2 >= cur_vec_dist:
         msg = "No place for maneuvers; Config spiral interval (that will be multiplied by 2): " + \
-              str(config.SPIRAL_SIDES_INTERVAL) + " Current moving vector distance is: " + str(cur_vec_dist) + \
+              str(config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]) + " Current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
         # print(msg)
         logger.write(msg + "\n")
         return None
 
-    point_x1_int = nav.get_point_on_vector(point_a, point_b, config.SPIRAL_SIDES_INTERVAL)
-    point_x2_int = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.SPIRAL_SIDES_INTERVAL)
+    point_x1_int = nav.get_point_on_vector(point_a, point_b, config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE])
+    point_x2_int = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE])
     return point_x1_int, point_x2_int
 
 
@@ -1286,6 +1253,8 @@ def main():
     logger_table = utility.Logger(log_cur_dir + "log table.csv")
     
     
+    notification = NotificationClient()
+
     # get smoothie and vesc addresses
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
     if "vesc" in smoothie_vesc_addr:
@@ -1294,6 +1263,7 @@ def main():
         msg = "Couldn't get vesc's USB address!"
         print(msg)
         logger_full.write(msg + "\n")
+        notification.setStatus(SyntheseRobot.HS)
         exit(1)
     if config.SMOOTHIE_BACKEND == 1:
         smoothie_address = config.SMOOTHIE_HOST
@@ -1304,6 +1274,7 @@ def main():
             msg = "Couldn't get smoothie's USB address!"
             print(msg)
             logger_full.write(msg + "\n")
+            notification.setStatus(SyntheseRobot.HS)
             exit(1)
 
     # load yolo networks
@@ -1323,6 +1294,7 @@ def main():
     else:
         msg = "Wrong config.PERIPHERY_WRAPPER = " + str(config.PERIPHERY_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
+        notification.setStatus(SyntheseRobot.HS)
         exit(1)
 
     print("Loading precise detector...")
@@ -1339,6 +1311,7 @@ def main():
     else:
         msg = "Wrong config.PRECISE_WRAPPER = " + str(config.PRECISE_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
+        notification.setStatus(SyntheseRobot.HS)
         exit(1)
 
     # sensors picking
@@ -1402,6 +1375,7 @@ def main():
                         msg = "Path start index file " + config.PREVIOUS_PATH_INDEX_FILE + " is empty!"
                         print(msg)
                         logger_full.write(msg + "\n")
+                        notification.setStatus(SyntheseRobot.HS)
                         exit(1)
                     path_start_index = int(str_index)  # TODO check if possible to convert
 
@@ -1410,12 +1384,14 @@ def main():
                     msg = "Previous path is already passed"
                     print(msg)
                     logger_full.write(msg + "\n")
+                    notification.stop()
                     exit(0)
                 elif path_start_index >= len(path_points) or path_start_index < 1:
                     msg = "Path start index " + str(path_start_index) + " is out of path points list range (loaded " + \
                         str(len(path_points)) + " points) (start index can't be zero as 1rst point is starting point)"
                     print(msg)
                     logger_full.write(msg + "\n")
+                    notification.setStatus(SyntheseRobot.HS)
                     exit(1)
 
             # load field points and generate new path
@@ -1430,17 +1406,20 @@ def main():
                         msg = "Couldn't get field file name from RTK script as it is wasn't assigned there."
                         print(msg)
                         logger_full.write(msg + "\n")
+                        notification.setStatus(SyntheseRobot.HS)
                         exit(1)
                     except FileNotFoundError:
                         msg = "Couldn't not find " + rtk.CURRENT_FIELD_PATH + " file."
                         print(msg)
                         logger_full.write(msg + "\n")
+                        notification.setStatus(SyntheseRobot.HS)
                         exit(1)
                     if len(field_gps_coords) < 5:
                         msg = "Expected at least 4 gps points in " + rtk.CURRENT_FIELD_PATH + ", got " + \
                               str(len(field_gps_coords))
                         print(msg)
                         logger_full.write(msg + "\n")
+                        notification.setStatus(SyntheseRobot.HS)
                         exit(1)
                     field_gps_coords = nav.corner_points(field_gps_coords, config.FILTER_MAX_DIST, config.FILTER_MIN_DIST)
                 elif config.USE_EMERGENCY_FIELD_GENERATION:
@@ -1457,6 +1436,7 @@ def main():
                         field_gps_coords)
                     print(msg)
                     logger_full.write(msg + "\n")
+                    notification.setStatus(SyntheseRobot.HS)
                     exit(1)
 
                 # TODO: save field in debug
@@ -1491,6 +1471,7 @@ def main():
                       " instead (1st point is starting point)."
                 print(msg)
                 logger_full.write(msg + "\n")
+                notification.setStatus(SyntheseRobot.HS)
                 exit(1)
 
             # set smoothie's A axis to 0 (nav turn wheels)
@@ -1520,7 +1501,7 @@ def main():
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
                 next_calibration_time = time.time() + config.CORK_CALIBRATION_MIN_TIME
                 
-                start_position = average_point(gps,trajectory_saver,nav)
+                start_position = utility.average_point(gps,trajectory_saver,nav)
                 
                 GARAGE = [46.1336841, -1.1226950200000294, '1']
                 SQUARE = [46.13394686, -1.1225468000000054, '1']
@@ -1615,14 +1596,17 @@ def main():
             msg = "Path is successfully passed."
             print(msg)
             logger_full.write(msg + "\n")
+            notification.stop()
     except KeyboardInterrupt:
         msg = "Stopped by a keyboard interrupt (Ctrl + C)\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
+        notification.stop()
     except:
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
+        notification.setStatus(SyntheseRobot.HS)
     finally:
         """
         # save used gps points

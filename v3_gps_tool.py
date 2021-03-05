@@ -18,15 +18,16 @@ def main():
         points = []
 
         while True:
-            cmd = input("Press enter to save point " + str(i) + ", type anything to exit.")
+            cmd = input("Press enter to get point " + str(i) + ", type anything to exit.")
             if cmd != "":
                 break
             point = gps.get_fresh_position()
             points.append(point)
-            print("Point", i, "saved.\n")
+            print(point)
+            #print("Point", i, "saved.\n")
 
-        save_gps_coordinates(points, config.INPUT_GPS_FIELD_FILE)
-        print("Done!")
+        #save_gps_coordinates(points, config.INPUT_GPS_FIELD_FILE)
+        print("Exit !")
 
 
 if __name__ == '__main__':

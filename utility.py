@@ -9,6 +9,10 @@ import glob
 import detection
 import cv2 as cv
 import math
+import adapters
+import navigation
+from config import config
+import time
 
 
 class ImageSaver:
@@ -296,3 +300,45 @@ def distribution_of_values(samples: list, mu, sigma):
    
     distrib= [stat, junk]
     return distrib
+
+
+
+def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySaver,nav: navigation.GPSComputing):
+
+    #ORIGIN POINT SAVING
+    lat = []     #latitude history
+    long = []    #longitude history
+    distances = []
+    
+
+    for i in range(0,config.ORIGIN_AVERAGE_SAMPLES):
+        prev_maneuver_time = time.time()
+        prev_pos = gps.get_fresh_position()
+        lat.append(prev_pos[0])
+        long.append(prev_pos[1])
+        mu_lat, sigma_lat = mu_sigma(lat)
+        mu_long, sigma_long = mu_sigma(long)
+        distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
+        #print("| ",get_current_time()," | %2.2f"%distance, " | ", prev_pos, "|")
+        distances.append(distance)
+        time.sleep(0.950)
+    
+    mu_distance, sigma_distance = mu_sigma(distances)
+    #print("stat lattitude : \n")
+    mu_lat, sigma_lat = mu_sigma(lat)
+    #distribution_of_values(lat, mu_lat, sigma_lat)
+    #print("stat longitude : \n")
+    mu_long, sigma_long = mu_sigma(long)
+    #distribution_of_values(long, mu_long, sigma_long)
+    #print("stat distance : \n")
+    mu_distance, sigma_distance =  mu_sigma(distances)
+    #distribution_of_values(distances, mu_distance, sigma_distance)
+    #print("Average origin point:  %2.13f"%mu_lat," ","%2.13f"%mu_long, "standard deviation (mm) %2.2f"%sigma_distance)    
+    prev_pos[0]=mu_lat      #replace the instantaneous value by the average latitude
+    prev_pos[1]=mu_long     #replace the instantaneous value by the average longitude
+    prev_pos.append("Origin_with_" + str(config.ORIGIN_AVERAGE_SAMPLES) + "_samples")
+    #print("prev_pos syntax : ",prev_pos)   #debug
+    if trajectory_saver is not None:
+        trajectory_saver.save_point(prev_pos)
+    
+    return prev_pos

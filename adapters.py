@@ -82,9 +82,25 @@ class SmoothieAdapter:
 
     def reset(self):
         with self._sync_locker:
-            self._smc.write("M999")
-            # "WARNING: After HALT you should HOME as position is currently unknown\nok\n"
-            return self._smc.read_some() + self._smc.read_some()
+            self._smc.write("reset")
+            return self._smc.read_some()
+
+    def freewheels(self):
+        with self._sync_locker:
+            self._smc.write("M18")
+            return self._smc.read_some()
+
+    def checkendstop(self, axe):
+        with self._sync_locker:
+            self._smc.write("M119")
+            response = self._smc.read_some()
+            if axe == 'X':
+                return response[response.find("X_min:")+6]
+            if axe == 'Y':
+                return response[response.find("Y_min:")+6]
+            if axe == 'Z':
+                return response[response.find("Z_max:")+6]
+            return self._smc.read_some()
 
     def switch_to_relative(self):
         with self._sync_locker:
@@ -1019,6 +1035,9 @@ class VescAdapter:
         self._allow_movement = False
         self._last_stop_time = time.time()
         self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
+    
+    def stop_current(self):
+        self._ser.write(pyvesc.encode(pyvesc.SetCurrent(0)))
 
     def wait_for_stop(self):
         while self._allow_movement:

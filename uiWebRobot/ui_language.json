@@ -4,15 +4,25 @@
 		"en",
 		"nl"
 	],
+	"Finish check": {
+		"fr": "Terminer le contrôle", 
+		"en": "Finish check",
+		"nl": "Voltooi de controle"
+	},
 	"Length": {
 		"fr": "Longueur", 
 		"en": "Length",
 		"nl": "Lengte"
 	}, 
 	"New zone": {
-		"fr": "Nouvelle zone", 
-		"en": "New zone",
-		"nl": "Nieuwe zone"
+		"fr": "Nouvelle\u00A0zone\u00A0+", 
+		"en": "New\u00A0zone\u00A0+",
+		"nl": "Nieuwe\u00A0zone\u00A0+"
+	}, 
+	"Validate zone": {
+		"fr": "Valider\u00A0la\u00A0zone\u00A0✔", 
+		"en": "Validate\u00A0zone\u00A0✔",
+		"nl": "Valideer\u00A0zone\u00A0✔"
 	}, 
 	"Start": {
 		"fr": "Départ", 
@@ -25,8 +35,118 @@
 		"nl": "Doorgaan"
 	}, 
 	"Stop": {
-		"fr": "Arrêt", 
+		"fr": "Arret", 
 		"en": "Stop",
 		"nl": "Stop"
+	},
+	"Checklist before start": {
+		"fr": "Liste de vérifications avant démarrage", 
+		"en": "Checklist before start",
+		"nl": "Checklist voordat u begint"
+	},
+	"Please ensure all further steps before starting VIOLETTE": {
+		"fr": "Merci de vérifier les points suivants avant de démarrer VIOLETTE :", 
+		"en": "Please ensure all further steps before starting VIOLETTE :",
+		"nl": "Zorg ervoor dat u alle verdere stappen uitvoert voordat u VIOLETTE start :"
+	},
+	"Open middle cover": {
+		"fr": "Ouvrez le capot du milieu.", 
+		"en": "Open middle cover.",
+		"nl": "Open de middelste klep."
+	},
+	"Verify XY": {
+		"fr": "Vérifiez que les mouvements sur les axes X et Y soient réguliers sans heurt.", 
+		"en": "Verify that XY movement is clean and smooth.",
+		"nl": "Controleer of de XY-beweging schoon en soepel is."
+	},
+	"Verify corkscrew": {
+		"fr": "Vérifiez que l'extracteur est propre et sa rotation sans a-coup.", 
+		"en": "Verify that corkscrew is clean and rotation is smooth.",
+		"nl": "Controleer of de kurkentrekker schoon is en soepel draait."
+	},
+	"Verify camera": {
+		"fr": "Vérifiez que l'objectif de la caméra est propre et l'image nette.", 
+		"en": "Verify that camera is clean and image is net.",
+		"nl": "Controleer of de camera schoon is en dat het beeld net is."
+	},
+	"Close middle cove": {
+		"fr": "Refermez le capot du milieu et verrouillez-le.", 
+		"en": "Close and lock middle cover.",
+		"nl": "Sluit en vergrendel de middelste klep."
+	},
+	"Wheels straight": {
+		"fr": "Mettez les roues du robot droite.", 
+		"en": "Put the robot wheels straight.",
+		"nl": "Zet de robotwielen recht."
+	},
+	"Waiting GPS": {
+		"fr": "En attente de gps...", 
+		"en": "Waiting for gps...",
+		"nl": "Wachten op gps..."
+	},
+	"GPS found": {
+		"fr": "GPS trouvé.", 
+		"en": "GPS found.",
+		"nl": "GPS gevonden."
+	},
+	"Audit ?": {
+		"fr": "Voulez-vous vraiment passer en mode audit ?", 
+		"en": "Are you sure you want to switch to audit mode ?",
+		"nl": "Weet u zeker dat u naar de auditmodus wilt overschakelen?"
+	},
+	"Audit on": {
+		"fr": "Mode audit activé", 
+		"en": "Audit mode enabled",
+		"nl": "Auditmodus ingeschakeld"
+	},
+	"Soil type": {
+		"fr": "Veuillez choisir le type de sol.", 
+		"en": "Please choose soil type",
+		"nl": "?"
+	},
+	"Weather type": {
+		"fr": "Veuillez choisir le type de temps.", 
+		"en": "Please choose weather type.",
+		"nl": "?"
+	},
+	"Soil type 1": {
+		"fr": "Choix numéro 1 du type de sol.", 
+		"en": "Type 1 of soil type",
+		"nl": "?"
+	},
+	"Weather type 1": {
+		"fr": "Choix numéro 1 du type de temps.", 
+		"en": "Type 1 of weather type",
+		"nl": "?"
+	},
+	"Plantain_great": {
+		"fr": "Plantain", 
+		"en": "Plantain great",
+		"nl": "Grote weegbree"
+	},
+	"Daisy": {
+		"fr": "Paquerette", 
+		"en": "Daisy",
+		"nl": "Madeliefje"
+	},
+	"Porcelle": {
+		"fr": "Porcelle", 
+		"en": "Catsear",
+		"nl": "Piglet her"
+	},
+	"Mallow": {
+		"fr": "Porcelle", 
+		"en": "Catsear",
+		"nl": "Piglet her"
+	},
+	"Dandellion": {
+		"fr": "Pissenlit", 
+		"en": "Dandellion",
+		"nl": "Paardebloem"
+	},
+	"Plantain_narrowleaf": {
+		"fr": "Plantain lancéolé", 
+		"en": "Plantain narrowleaf",
+		"nl": "Smalle weegbree"
 	}
 }

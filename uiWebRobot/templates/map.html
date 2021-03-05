@@ -1,46 +1,37 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <title>Map</title>
-		
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
-        <meta name="mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <link rel="stylesheet" href="{{ url_for('static',filename='resources/ol.css') }}">
-		<link rel="stylesheet" href="{{ url_for('static',filename='resources/fontawesome-all.min.css') }}">
-		<link rel="stylesheet" href="{{ url_for('static',filename='resources/ol-layerswitcher.css') }}">
-		<link rel="stylesheet" href="{{ url_for('static',filename='resources/qgis2web.css') }}">
-		<link rel="stylesheet" href="{{ url_for('static',filename='css/map/style.css') }}">
 
-    </head>
+<head>
+    <meta charset="utf-8" />
+    <title>Map</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.css" rel="stylesheet" />
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>  
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
 
-    <body>
-	<div id="map">
-		<div id="popup" class="ol-popup">
-			<a href="#" id="popup-closer" class="ol-popup-closer"></a>
-			<div id="popup-content"></div>
-		</div>
-	</div>
-	<script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>  
-	<script src="{{ url_for('static',filename='resources/qgis2web_expressions.js') }}"></script>
-	<script src="{{ url_for('static',filename='resources/polyfills.js') }}"></script>
-	<script src="{{ url_for('static',filename='resources/functions.js') }}"></script>
-	<script src="{{ url_for('static',filename='resources/ol.js') }}"></script>
-	<script src="{{ url_for('static',filename='resources/ol-layerswitcher.js') }}"></script>
-	<script src="{{ url_for('static',filename='layers/qgislocation_point_1.js') }}"></script>
-	<script src="{{ url_for('static',filename='layers/field_contour_2.js') }}"></script>
-	<script src="{{ url_for('static',filename='layers/field_balise_3.js') }}"></script>
-	<script src="{{ url_for('static',filename='layers/field_corner_4.js') }}"></script>
-	<script src="{{ url_for('static',filename='css/map/qgislocation_point_1_style.js') }}"></script>
-	<script src="{{ url_for('static',filename='css/map/field_contour_2_style.js') }}"></script>
-	<script src="{{ url_for('static',filename='css/map/field_balise_3_style.js') }}"></script>
-	<script src="{{ url_for('static',filename='css/map/field_corner_4_style.js') }}"></script>
-	<script src="{{ url_for('static',filename='layers/layers.js') }}"></script>
-	<script src="{{ url_for('static',filename='resources/Autolinker.min.js') }}"></script>
-	<script src="{{ url_for('static',filename='resources/qgis2web.js') }}"></script>
-	</body>
-    
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+        var coords = {{coords}};
+        var myCoords = {{myCoords}};
+    </script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/mapUtil.js') }}"></script> 
+
+</body>
+
 </html>
-
