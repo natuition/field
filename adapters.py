@@ -8,6 +8,7 @@ import queue
 import threading
 import serial
 import pyvesc
+import re
 
 
 class SmoothieAdapter:
@@ -94,13 +95,10 @@ class SmoothieAdapter:
         with self._sync_locker:
             self._smc.write("M119")
             response = self._smc.read_some()
-            if axe == 'X':
-                return response[response.find("X_min:")+6]
-            if axe == 'Y':
-                return response[response.find("Y_min:")+6]
-            if axe == 'Z':
-                return response[response.find("Z_max:")+6]
-            return self._smc.read_some()
+            matches = re.findall(f"(?:(?:{axe}_min)|(?:{axe}_max)):(.)", response)
+            if matches:
+                return matches[0]
+            return 1 #refaire demande
 
     def switch_to_relative(self):
         with self._sync_locker:

@@ -146,11 +146,13 @@
         </button>
 
         {% if statusOfUIObject['audit'] == 'use' %}
-        <img id="Audit" class="unselectable disable-extraction fix" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
+        <img id="Audit" class="unselectable audit fix" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
         {% elif statusOfUIObject['audit'] == 'not-use' %}
         <img id="Audit" class="unselectable fix" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
+        {% elif statusOfUIObject['audit'] == 'disable' %}
+        <img id="Audit" class="unselectable disable-switcher-audit" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
         {% elif statusOfUIObject['audit']%}
-        <img id="Audit" class="unselectable disable-extraction" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
+        <img id="Audit" class="unselectable audit" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
         {% else %}
         <img id="Audit" class="unselectable" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
         {% endif %}

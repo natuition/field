@@ -2,7 +2,7 @@ var socketio = io.connect('http://' + document.domain + ':' + location.port + '/
 
 var isCheck = false
 
-//document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
+document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
 
 function checkAllBoxAreChecked(){
     if (document.getElementById('closecover').checked &&

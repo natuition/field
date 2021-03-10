@@ -60,14 +60,19 @@ function removeAllChildNodes(parent) {
 }
 
 socketio.on('statistics', function(dataServ) {
+    var date = new Date(dataServ["time"]);
+    var today = new Date(); 
+    var timeSec = today-date;
+    var timeDate = new Date(timeSec); 
+    var timeValue = String(timeDate.getUTCHours()).padStart(2, '0') + ":" + String(timeDate.getUTCMinutes()).padStart(2, '0') + ":" + String(timeDate.getUTCSeconds()).padStart(2, '0');
     var statsTimeCount = document.getElementsByClassName("status__time--top")[0];
     removeAllChildNodes(statsTimeCount);
     var p = document.createElement("p");
     var span = document.createElement("span");
-    var timeS = document.createTextNode("Time: ");
-    var timeValue = document.createTextNode(dataServ["time"].split(".")[0]);
-    span.appendChild(timeValue)
-    p.appendChild(timeS)
+    var timeNode = document.createTextNode("Time: ");
+    var timeValueNode = document.createTextNode(timeValue);
+    span.appendChild(timeValueNode)
+    p.appendChild(timeNode)
     p.appendChild(span)
     p.id = "workTime"
     statsTimeCount.appendChild(p)    
@@ -115,3 +120,10 @@ socketio.on('statistics', function(dataServ) {
         statsTimeCount.appendChild(p)*/   
     }
 });
+
+function clearStats(){
+    pieChart.data.datasets[0].data = []
+    pieChart.data.labels = []
+    pieChart.options.plugins.doughnutlabel.labels[1].text = 0+" "
+    pieChart.update();
+}

@@ -18,6 +18,8 @@ import datacollection
 import pickle
 from notification import NotificationClient
 from notification import SyntheseRobot
+import posix_ipc
+import json
 
 """
 import SensorProcessing
@@ -508,6 +510,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         vesc_engine.apply_rpm(config.VESC_RPM_AUDIT)
         vesc_engine.start_moving()
 
+    msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+
     # main navigation control loop
     while True:
 
@@ -535,6 +539,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             continue
 
         trajectory_saver.save_point(cur_pos)
+        msgQueue.send(json.dumps({"last_gps": cur_pos}))
         """
         if len(used_points_history) > 0:
             if str(used_points_history[-1]) != str(cur_pos):
@@ -682,48 +687,53 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         angle_kp_ki = raw_angle * KP + sum_angles * KI 
         
-        if vesc_engine._rpm in config.CLOSE_TARGET_THRESHOLD: #check that this rpm configuration is present in CLOSE_TARGET_THRESHOLD
+        if vesc_engine._rpm in config.CLOSE_TARGET_THRESHOLD: #check that rpm configuration is present in CLOSE_TARGET_THRESHOLD
+
             if distance < config.CLOSE_TARGET_THRESHOLD[vesc_engine._rpm]:
 
-                if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that this rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
+                if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
+
                     if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
 
-                        if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that this rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
+                        if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
                             angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
-                        else:
+
+                        else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_GAIN
                             msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
                             #print(msg)
                             logger_full.write(msg + "\n")
                 
-                else:
+                else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
                     msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
                     #print(msg)
                     logger_full.write(msg + "\n")
 
-                if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that this rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
+                if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
+
                     if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
 
-                        if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that this rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
+                        if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
                             angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
-                        else:
+                            
+                        else: #rpm not present in BIG_RAW_ANGLE_SQUARE_GAIN
                             msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
                             #print(msg)
                             logger_full.write(msg + "\n")
 
-                else:
+                else: #rpm not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
                     msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
                     #print(msg)
                     logger_full.write(msg + "\n")
 
-        else:
+        else: #rpm not present in CLOSE_TARGET_THRESHOLD
             msg = f"Vesc rpm {vesc_engine._rpm} not present in CLOSE_TARGET_THRESHOLD."
             #print(msg)
             logger_full.write(msg + "\n")
 
-        if vesc_engine._rpm in config.FAR_TARGET_THRESHOLD: #check that this rpm configuration is present in FAR_TARGET_THRESHOLD
+        if vesc_engine._rpm in config.FAR_TARGET_THRESHOLD: #check that rpm configuration is present in FAR_TARGET_THRESHOLD
             if distance > config.FAR_TARGET_THRESHOLD[vesc_engine._rpm]:
 
-                if vesc_engine._rpm in config.FAR_TARGET_GAIN: #check that this rpm configuration is present in FAR_TARGET_GAIN
+                if vesc_engine._rpm in config.FAR_TARGET_GAIN: #check that rpm configuration is present in FAR_TARGET_GAIN
                     angle_kp_ki *= config.FAR_TARGET_GAIN[vesc_engine._rpm]   
                 else:
                     msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_GAIN."
@@ -1022,17 +1032,25 @@ def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComput
 
     cur_vec_dist = nav.get_distance(point_a, point_b)
 
+    if config.AUDIT_MODE in config.MANEUVER_START_DISTANCE: 
+        maneuverStartDistance = config.MANEUVER_START_DISTANCE[config.AUDIT_MODE]
+    else:
+        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVER_START_DISTANCE."
+        #print(msg)
+        logger.write(msg + "\n")   
+        return None
+
     # check if moving vector is too small for maneuvers
-    if config.MANEUVER_START_DISTANCE * 2 >= cur_vec_dist:
+    if maneuverStartDistance * 2 >= cur_vec_dist:
         msg = "No place for maneuvers; config start maneuver distance is (that will be multiplied by 2): " + \
-              str(config.MANEUVER_START_DISTANCE) + " current moving vector distance is: " + str(cur_vec_dist) + \
+              str(maneuverStartDistance) + " current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
         # print(msg)
         logger.write(msg + "\n")
         return None, None
 
-    point_x1 = nav.get_point_on_vector(point_a, point_b, config.MANEUVER_START_DISTANCE)
-    point_x2 = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.MANEUVER_START_DISTANCE)
+    point_x1 = nav.get_point_on_vector(point_a, point_b, maneuverStartDistance)
+    point_x2 = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - maneuverStartDistance)
     return point_x1, point_x2
 
 
@@ -1048,18 +1066,33 @@ def compute_x2_spiral(point_a: list, point_b: list, nav: navigation.GPSComputing
     """
 
     cur_vec_dist = nav.get_distance(point_a, point_b)
+    
+    if config.AUDIT_MODE in config.MANEUVER_START_DISTANCE: 
+        maneuverStartDistance = config.MANEUVER_START_DISTANCE[config.AUDIT_MODE]
+    else:
+        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVER_START_DISTANCE."
+        #print(msg)
+        logger.write(msg + "\n")   
+        return None
+
+    if config.AUDIT_MODE in config.SPIRAL_SIDES_INTERVAL: 
+        spiralSidesInterval = config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]
+    else:
+        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVSPIRAL_SIDES_INTERVALER_START_DISTANCE."
+        #print(msg)
+        logger.write(msg + "\n")  
+        return None
 
     # check if moving vector is too small for maneuvers
-    if config.MANEUVER_START_DISTANCE * 2 + config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE] >= cur_vec_dist:
+    if maneuverStartDistance * 2 + spiralSidesInterval >= cur_vec_dist:
         msg = "No place for maneuvers; Config maneuver distance is (that will be multiplied by 2): " + \
-              str(config.MANEUVER_START_DISTANCE) + " Config spiral interval: " + str(config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]) + \
+              str(maneuverStartDistance) + " Config spiral interval: " + str(spiralSidesInterval) + \
               " Current moving vector distance is: " + str(cur_vec_dist) + " Given points are: " + str(point_a) + \
               " " + str(point_b)
         # print(msg)
         logger.write(msg + "\n")
         return None
-    return nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.MANEUVER_START_DISTANCE -
-                                   config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE])
+    return nav.get_point_on_vector(point_a, point_b, cur_vec_dist - maneuverStartDistance - spiralSidesInterval)
 
 
 def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -1074,17 +1107,25 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
 
     cur_vec_dist = nav.get_distance(point_a, point_b)
 
+    if config.AUDIT_MODE in config.SPIRAL_SIDES_INTERVAL: 
+        spiralSidesInterval = config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]
+    else:
+        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVSPIRAL_SIDES_INTERVALER_START_DISTANCE."
+        #print(msg)
+        logger.write(msg + "\n")  
+        return None
+
     # check if moving vector is too small for maneuvers
-    if config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE] * 2 >= cur_vec_dist:
+    if spiralSidesInterval * 2 >= cur_vec_dist:
         msg = "No place for maneuvers; Config spiral interval (that will be multiplied by 2): " + \
-              str(config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]) + " Current moving vector distance is: " + str(cur_vec_dist) + \
+              str(spiralSidesInterval) + " Current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
         # print(msg)
         logger.write(msg + "\n")
         return None
 
-    point_x1_int = nav.get_point_on_vector(point_a, point_b, config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE])
-    point_x2_int = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE])
+    point_x1_int = nav.get_point_on_vector(point_a, point_b, spiralSidesInterval)
+    point_x2_int = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - spiralSidesInterval)
     return point_x1_int, point_x2_int
 
 
@@ -1669,6 +1710,8 @@ def main():
         client.closeConnection()
         sensor_processor.stopServer()
         """
+
+        posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
 
         print("Safe disable is done.")
 

@@ -78,6 +78,7 @@ socketButton.on('continue', function(dataServ) {
 socketButton.on('startMain', function(dataServ) {
     if(dataServ["status"] == "finish"){
         $(document.getElementsByClassName('active')[0]).addClass('finished');
+        clearStats();
         setTimeout(() => { 
             button = document.getElementsByClassName('active')[0]
             button.id = "Stop";
@@ -158,6 +159,7 @@ socketButton.on('field', function(dataServ) {
         $('.begin__button--continue').attr('disabled', '');
         $('.begin__button--start').addClass('disabled');
         $('.begin__button--start').attr('disabled', '');
+        $('#Audit').addClass('disable-switcher-audit');
         $('#Newfield').addClass('active');
         $('#Newfield').attr('disabled', '');
         $('#r1').attr('disabled', '');
@@ -190,6 +192,7 @@ socketButton.on('field', function(dataServ) {
         $(divButton.firstElementChild).text((ui_languages["New zone"])[ui_language]);
         $('#Start').removeAttr('disabled');   
         $('#Start').removeClass('disabled');
+        $('#Audit').removeClass('disable-switcher-audit');
         wheelButton.classList.remove("disabled-wheel");
 
     }
@@ -208,7 +211,7 @@ socketBroadcast.on('audit', function(data) {
 });
 
 function changeMode(){
-    if(!this.classList.contains("fix")){
+    if(!this.classList.contains("fix") && !this.classList.contains("disable-switcher-audit")){
         if(!this.classList.contains("disable-extraction")){
             if(confirm((ui_languages["Audit ?"])[ui_language])) {
                 socketBroadcast.emit('data', {type: "audit", audit: true});

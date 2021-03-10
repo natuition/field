@@ -20,6 +20,8 @@ import serial
 import threading
 import pathlib
 import re
+from datetime import datetime, timezone
+import posix_ipc
 
 #This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
 class CheckState(State):
@@ -163,7 +165,7 @@ class WaitWorkingState(State):
             try:
                 self.smoothie.disconnect()
                 self.vesc_engine.disconnect()
-                self.gps.disconnect()
+                #self.gps.disconnect()
             except:
                 pass
             return ErrorState(self.socketio, self.logger)
@@ -178,7 +180,7 @@ class WaitWorkingState(State):
                 x *= config.A_MAX/100
             y = int(data["y"])
             if self.lastValueX != x:
-                self.smoothie.custom_move_to(F=500,A=x)
+                self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
                 self.lastValueX = x
             if self.lastValueY != y:
                 if y > 15 or y < -15:
@@ -187,7 +189,6 @@ class WaitWorkingState(State):
                     y = 0
                 self.vesc_engine.apply_rpm(y)
                 self.lastValueY = y
-            return self
         return self
 
     def getStatusOfControls(self):
@@ -229,7 +230,7 @@ class CreateFieldState(State):
             "continueButton": False, #True or False or charging or None
             "stopButton": True, #True or charging or None
             "wheelButton": False, #True or False
-            "audit": False, #True or False or use or not-use
+            "audit": 'disable', #True or False or use or not-use or disable
             "slider": 25 #Int for slider value
         }
 
@@ -253,6 +254,9 @@ class CreateFieldState(State):
         elif event == Events.VALIDATE_FIELD:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
             return WaitWorkingState(self.socketio, self.logger, True)
+        elif event == Events.WHEEL:
+            self.smoothie.freewheels()
+            return self
         else:
             try:
                 self.smoothie.disconnect()
@@ -270,7 +274,7 @@ class CreateFieldState(State):
                 if x > 0:
                     x *= config.A_MAX/100
                 print(f"[{self.__class__.__name__}] -> Move '{x}'.")
-                self.smoothie.custom_move_to(F=500,A=x)
+                self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
         elif data["type"] == "field":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
@@ -416,14 +420,31 @@ class WorkingState(State):
         print(msg)
 
         self.isResume = isResume
+
+        msg = f"[{self.__class__.__name__}] -> Création queue de message ui main"
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
+
+        try:
+            posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
+        except:
+            pass
+
+        self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
+        self._gps_thread_alive = True
+        self._gps_thread = threading.Thread(target=self._gps_thread_tf, daemon=True)
+        self._gps_thread.start()
+        
         msg = f"[{self.__class__.__name__}] -> Lancement main"
         self.logger.write_and_flush(msg+"\n")
         print(msg)
         self.main = startMain()
-        socketio.emit('startMain', {"status": "finish", "audit": isAudit}, namespace='/button', broadcast=True)
+        
         """ _ , err = self.main.communicate()
         if err:
             print('The process raised an error:', err.decode())"""
+
+        self.timeStartMain = datetime.now(timezone.utc)
 
         self.statusOfUIObject = {
             "joystick": False, #True or False
@@ -447,10 +468,19 @@ class WorkingState(State):
             self.statusOfUIObject["startButton"] = None
 
         self.field = None
+        self.lastGpsQuality = "1"
 
         self._statistic_thread_alive = True
         self._statistic_thread = threading.Thread(target=self._statistic_thread_tf, daemon=True)
         self._statistic_thread.start()
+
+        msg = f"[{self.__class__.__name__}] -> Attente du lancement du main (10 secondes)"
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
+        #TODO : faire pour que le main nous dise quand il est start (shared object)
+        time.sleep(10)
+
+        socketio.emit('startMain', {"status": "finish", "audit": isAudit}, namespace='/button', broadcast=True)
         
     
     def on_event(self, event):
@@ -461,6 +491,7 @@ class WorkingState(State):
             self.main.wait()
             os.system("sudo systemctl restart nvargus-daemon")
             self._statistic_thread_alive = False
+            self._gps_thread_alive = False
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject["continueButton"] = True
@@ -469,6 +500,8 @@ class WorkingState(State):
             self.statusOfUIObject["stopButton"] = None
             return WaitWorkingState(self.socketio, self.logger, False)
         else:
+            self._statistic_thread_alive = False
+            self._gps_thread_alive = False
             return ErrorState(self.socketio, self.logger)
     
     def on_socket_data(self, data):
@@ -477,6 +510,7 @@ class WorkingState(State):
             return self
         else:
             self._statistic_thread_alive = False
+            self._gps_thread_alive = False
             return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
@@ -508,14 +542,30 @@ class WorkingState(State):
                         for index in range(0,len(groups)):
                             if index > 0 : 
                                 weeds[groups[index][1]] = int(groups[index][2])
-                        data["time"] = timeS
+                        #data["time"] = timeS
+                        data["time"] = self.timeStartMain
                         data["weeds"] = weeds
                         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
+
+        data = {}
+        data["time"] = self.timeStartMain.isoformat()
+        self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
     def _statistic_thread_tf(self): 
         while self._statistic_thread_alive:
             self.sendLastStatistics()
-            time.sleep(1)
+            time.sleep(0.9)
+
+    def _gps_thread_tf(self): 
+        self.allPath = []
+        while self._gps_thread_alive:
+            msg = self.msgQueue.receive()
+            data = json.loads(msg[0])["last_gps"]
+            self.allPath.append([data[1],data[0]])
+            if self.lastGpsQuality != data[2]:
+                self.lastGpsQuality = data[2]
+            self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map')
+            time.sleep(0.5)
 
 
 #This state corresponds when the robot has an error.

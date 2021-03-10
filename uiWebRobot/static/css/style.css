@@ -321,8 +321,13 @@ body {
     filter: invert(54%) sepia(79%) saturate(326%) hue-rotate(79deg) brightness(89%) contrast(90%);
 }
 
-.disable-extraction{
+.audit{
     opacity: 0.5;
+}
+
+.disable-switcher-audit{
+    opacity: 0.2;
+    filter: invert(41%) sepia(78%) saturate(7006%) hue-rotate(349deg) brightness(87%) contrast(137%);
 }
 
 .disabled-wheel{
