@@ -9,6 +9,8 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script defer type="text/javascript" src="{{ url_for('static', filename='js/fontawesome/solid.js') }}"></script>
+    <script defer type="text/javascript" src="{{ url_for('static', filename='js/fontawesome/fontawesome.js') }}"></script>
     <title>Violette</title>
 </head>
 <body>
@@ -84,8 +86,8 @@
                 <button name="Newfield" id="Newfield" class="unselectable">
                     <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
                 {% endif %}
-                <span class="loading"><i class="fa fa-refresh"></i></span>
-                <span class="check"><i class="fa fa-check"></i></span>
+                <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                <span class="check"><i class="fas fa-check scale"></i></span>
                 </button>
             </div>
         </div>
@@ -141,8 +143,8 @@
             <button name="Start" id="Start" class="begin__button--start unselectable">
                 <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
         {% endif %}
-        <span class="loading"><i class="fa fa-refresh"></i></span>
-        <span class="check"><i class="fa fa-check"></i></span>
+        <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+        <span class="check"><i class="fas fa-check scale"></i></span>
         </button>
 
         {% if statusOfUIObject['audit'] == 'use' %}
@@ -175,8 +177,8 @@
             <button name="Continue" id="Continue" class="begin__button--continue unselectable">
                 <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
         {% endif %}
-        <span class="loading"><i class="fa fa-refresh"></i></span>
-        <span class="check"><i class="fa fa-check"></i></span>
+        <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+        <span class="check"><i class="fas fa-check scale"></i></span>
         </button>
     </div>
 </div>
@@ -188,7 +190,7 @@
 <script src="{{ url_for('static', filename='js/slider.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/index.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/statistics.js') }}" defer></script>
-<script src="https://use.fontawesome.com/ee93656331.js"></script>
+<!--<script src="https://use.fontawesome.com/ee93656331.js"></script>-->
 
 {% else %}
 

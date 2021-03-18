@@ -103,7 +103,7 @@ function createMap(coords){
                 'type': 'Feature',
                 'geometry': {
                     'type': 'Point',
-                    'coordinates': [coords[3][0],coords[3][1]]
+                    'coordinates': []
                 }
             }
         });
@@ -119,17 +119,6 @@ function createMap(coords){
     });
 
 }
-
-/*socketMap.on('newPos', function(dataServ) {
-    dataServ = JSON.parse(dataServ)
-    map.getSource('lastPos').setData({ 
-        'type': 'Feature',
-        'geometry': {
-            'type': 'Point',
-            'coordinates': dataServ
-        }
-    });
-});*/
 
 socketMap.on('updatePath', function(dataServ) {
     dataServ = JSON.parse(dataServ)

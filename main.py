@@ -896,7 +896,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
             # save info into data collector
             for plant_label in plants_count:
-                data_collector.add_detections_data(plant_label, plants_count[plant_label])
+                data_collector.add_detections_data(plant_label, math.ceil((plants_count[plant_label])/config.AUDIT_DIVIDER))
 
             # flush updates into the audit output file and log measured time
             if len(plants_boxes) > 0:

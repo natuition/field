@@ -1097,6 +1097,7 @@ class GPSUbloxAdapter:
         self._sync_locker = multiprocessing.RLock()
 
         self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate)
+        #self._hot_reset()
         self._USBNMEA_OUT()
 
         self._keep_thread_alive = True
@@ -1205,3 +1206,8 @@ class GPSUbloxAdapter:
 
         Matrame = "B5 62 06 00 14 00 03 00 00 00 00 00 00 00 00 00 00 00 23 00 03 00 00 00 00 00 43 AE"
         self._serial.write(bytearray.fromhex(Matrame))
+
+    #Start a Hot restart
+    def _hot_reset(self):
+        Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
+        self._serial.write(bytearray.fromhex(Mythread))

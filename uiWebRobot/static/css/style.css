@@ -590,9 +590,6 @@ body {
     top: 100%;
     transform: translateY(0%);
 }
-.active .loading i {
-    animation: loading 500ms linear infinite;
-}
 .active .check, .active .submit {
     display: none;
 }
@@ -605,10 +602,8 @@ body {
     animation: scale 0.5s linear!important;
 }
 
-@keyframes loading {
-    100% {
-        transform: rotate(360deg);
-   }
+svg.fa-sync-alt, svg.fa-check{
+    margin: 0;
 }
 
 @keyframes scale {

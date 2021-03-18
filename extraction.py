@@ -17,7 +17,7 @@ class ExtractionMethods:
         # TODO: calculation -Z depending on box size
         res = smoothie.custom_move_for(F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
         smoothie.wait_for_all_actions_done()
-        if res != smoothie.RESPONSE_OK or smoothie.checkendstop("Z")==1:
+        if res != smoothie.RESPONSE_OK:#or smoothie.checkendstop("Z")==1
             msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
             return msg, False
 

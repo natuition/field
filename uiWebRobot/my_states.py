@@ -126,6 +126,7 @@ class WaitWorkingState(State):
             self.statusOfUIObject["startButton"] = False
             self.statusOfUIObject["continueButton"] = False
             self.statusOfUIObject["joystick"] = False
+            self.statusOfUIObject["audit"] = 'disable'
             self.smoothie.disconnect()
             self.vesc_engine.disconnect()
             #self.gps.disconnect()
@@ -135,6 +136,10 @@ class WaitWorkingState(State):
             self.statusOfUIObject["fieldButton"] = False
             self.statusOfUIObject["continueButton"] = False
             self.statusOfUIObject["joystick"] = False
+            if event == Events.START_MAIN:
+                self.statusOfUIObject["audit"] = 'not-use'
+            elif event == Events.START_AUDIT:
+                self.statusOfUIObject["audit"] = 'use'
             self.smoothie.disconnect()
             self.vesc_engine.disconnect()
             #self.gps.disconnect()
@@ -146,6 +151,10 @@ class WaitWorkingState(State):
             self.statusOfUIObject["startButton"] = False
             self.statusOfUIObject["fieldButton"] = False
             self.statusOfUIObject["joystick"] = False
+            if event == Events.CONTINUE_MAIN:
+                self.statusOfUIObject["audit"] = 'not-use'
+            elif event == Events.CONTINUE_AUDIT:
+                self.statusOfUIObject["audit"] = 'use'
             self.smoothie.disconnect()
             self.vesc_engine.disconnect()
             #self.gps.disconnect()
@@ -234,9 +243,10 @@ class CreateFieldState(State):
             "slider": 25 #Int for slider value
         }
 
-        self.fieldCreator = FieldCreator(self.logger, self.gps, self.nav, self.socketio)
+        self.fieldCreator = FieldCreator(self.logger, self.gps, self.nav, self.smoothie, self.socketio)
 
         self.field = None
+        self.manoeuvre = False
     
     def on_event(self, event):
         if event == Events.STOP:
@@ -245,6 +255,9 @@ class CreateFieldState(State):
             self.statusOfUIObject["stopButton"] = "charging"
             self.fieldCreator.setSecondPoint()
             self.field = self.fieldCreator.calculateField()
+            self.manoeuvre = True
+            self.fieldCreator.manoeuvre()
+            self.manoeuvre = False
             self.statusOfUIObject["stopButton"] = None
             self.statusOfUIObject["fieldButton"] = "validate"
             self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
@@ -267,7 +280,7 @@ class CreateFieldState(State):
 
     def on_socket_data(self, data):
         if data["type"] == "joystick":
-            if self.statusOfUIObject["fieldButton"] != "validate":
+            if self.statusOfUIObject["fieldButton"] != "validate" and not self.manoeuvre:
                 x = int(data["x"])/2
                 if x < 0:
                     x *= -(config.A_MIN/100)
@@ -601,7 +614,7 @@ class ErrorState(State):
 
 class FieldCreator:
 
-    def __init__(self, logger: utility.Logger, gps: adapters.GPSUbloxAdapter, nav: navigation.GPSComputing, socketio: SocketIO):
+    def __init__(self, logger: utility.Logger, gps: adapters.GPSUbloxAdapter, nav: navigation.GPSComputing, smoothie: adapters.SmoothieAdapter, socketio: SocketIO):
         self.A = [0,0]
         self.B = [0,0]
         self.C = [0,0]
@@ -611,6 +624,7 @@ class FieldCreator:
         self.logger = logger
         self.gps = gps
         self.nav = nav
+        self.smoothie = smoothie
         self.socketio = socketio
 
     def setFirstPoint(self):
@@ -676,6 +690,23 @@ class FieldCreator:
         self.logger.write_and_flush(msg+"\n")
         print(msg)
         save_gps_coordinates(self.field, fieldPath)
+
+    def manoeuvre(self):
+        self.vesc_emergency.apply_rpm(-config.VESC_RPM_UI)
+        self.vesc_emergency.start_moving()
+        time.sleep(6)
+        self.vesc_emergency.stop_moving()
+
+        self.smoothie.custom_move_to(F=config.A_F_UI,A=config.A_MIN)
+        self.smoothie.wait_for_all_actions_done()
+
+        self.vesc_emergency.apply_rpm(config.VESC_RPM_UI)
+        self.vesc_emergency.start_moving()
+        time.sleep(8)
+        self.vesc_emergency.stop_moving()
+
+        self.smoothie.custom_move_to(F=config.A_F_UI,A=0)
+        self.smoothie.wait_for_all_actions_done()
 
 
 ###### Function for all state ######

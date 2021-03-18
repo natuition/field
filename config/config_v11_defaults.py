@@ -30,13 +30,13 @@ COURSE_ADJ_SMC_VAL = 10  # nav wheels turn value when trying to get back to the 
 WINDOW = float("inf")   # anyway, the integral is used for only some hundreds of time
 # AB moving vector used as A----A1--B, where A1 is point when robot starts moving to next point.
 # this determines A1-B distance
-AUDIT_MODE = True
+AUDIT_MODE = False
 MANEUVER_START_DISTANCE = {False:4000, True:4000} 
 USE_SPEED_LIMIT = True  # when distance to target point is less than specified in the config
 DECREASE_SPEED_TRESHOLD = 5000  # millimeters
 SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history), should be positive here, in config
 # distance between sides of spiral robot movements, expected to be equal to working area width, may be any positive val
-AUDIT_MODE = True
+AUDIT_MODE = False
 SPIRAL_SIDES_INTERVAL = {False:333, True:3000} 
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
 PREV_CUR_POINT_MIN_DIST = 100  # pass by cur points dist between them and prev point is lesser than this, mms
@@ -91,14 +91,14 @@ DARKNET_LIB_DIR_PATH = "/home/violette/field/darknet/"
 VESC_PORT = "/dev/ttyACM0"
 VESC_BAUDRATE = 115200
 VESC_RPM_UI = -11500
-VESC_RPM_SLOW = -2500
+VESC_RPM_SLOW = -2500 #-2500 à remettre
 VESC_RPM_FAST = -10000
 VESC_RPM_AUDIT = -10000
 VESC_MOVING_TIME = float("inf")
 VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when moving
 VESC_CHECK_FREQ = 0.001  # freq of checking need to stop
 STEP_FORWARD_TIME = 1  # step after extraction loops are done
-STEP_FORWARD_RPM = -2500  # # step after extraction loops are done
+STEP_FORWARD_RPM = -2500  # # step after extraction loops are done #-2500 à remettre
 FAST_TO_SLOW_RPM = 2500
 FAST_TO_SLOW_TIME = 5
 
@@ -149,7 +149,7 @@ USE_C_AXIS_CALIBRATION = False
 
 X_AXIS_CALIBRATION_TO_MAX = False
 Y_AXIS_CALIBRATION_TO_MAX = False
-Z_AXIS_CALIBRATION_TO_MAX = False
+Z_AXIS_CALIBRATION_TO_MAX = False 
 A_AXIS_CALIBRATION_TO_MAX = None
 B_AXIS_CALIBRATION_TO_MAX = None
 C_AXIS_CALIBRATION_TO_MAX = None
@@ -257,7 +257,8 @@ DB_HOST = "x.x.x.x"
 DB_PWD = "password"
 ROBOT_SN = "SN007"
 UI_LANGUAGE = "fr"
-AUDIT_MODE = True
+AUDIT_MODE = False
+AUDIT_DIVIDER = 6
 SLOW_FAST_MODE = False
 SLOW_MODE_MIN_TIME = 3  # seconds
 AUDIT_OUTPUT_FILE = "audit.txt"
