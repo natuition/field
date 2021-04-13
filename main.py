@@ -20,12 +20,18 @@ from notification import NotificationClient
 from notification import SyntheseRobot
 import posix_ipc
 import json
+from enum import Enum
 
 """
 import SensorProcessing
 import socketForRTK
 from socketForRTK.Client import Client
 """
+
+class MatriceMap(Enum):
+    PLANT_CENTER = 1
+    PLANT = 2
+    EXTRACTION = 3
 
 if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
@@ -191,7 +197,7 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                        detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
                        plant_boxes: list, undistorted_zone_radius, working_zone_points_cv, img_output_dir,
                        logger_full: utility.Logger, data_collector: datacollection.DataCollector, log_cur_dir,
-                       image_saver: utility.ImageSaver):
+                       image_saver: utility.ImageSaver, extraction_map: np.matrix):
     """Extract all plants found in current position"""
 
     msg = "Extracting " + str(len(plant_boxes)) + " plants"
@@ -317,6 +323,9 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                     else:
                         data_collector.add_extractions_data(box.get_name(), 1)
                         data_collector.save_extractions_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+                        x = math.ceil(smoothie.get_smoothie_current_coordinates()["X"] / 10)
+                        y = math.ceil(smoothie.get_smoothie_current_coordinates()["Y"] / 10)
+                        extraction_map[y,x] = MatriceMap.EXTRACTION.value
                     break
 
                 # if outside undistorted zone but in working zone
@@ -842,6 +851,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
+        numberMatriceLines = math.ceil(config.Y_MAX * XY_COEFFICIENT_TO_MM / 10)
+        numberMatriceColumns = math.ceil(config.X_MAX * XY_COEFFICIENT_TO_MM / 10)
+        detection_map = np.zeros((numberMatriceLines,numberMatriceColumns))
+        extraction_map = np.zeros((numberMatriceLines,numberMatriceColumns))
 
 
         # EXTRACTION CONTROL
@@ -912,6 +925,29 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 if any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
 
+                    for plant_box in plants_boxes:
+                        box_x,box_y = plant_box.get_center_points()
+
+                        if is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
+                            x,y = box_x,box_y
+                        else:
+                            x,y = get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
+
+                        x_center = math.ceil(x * config.ONE_MM_IN_PX / 10)
+                        y_center = math.ceil(y * config.ONE_MM_IN_PX / 10)
+
+                        radiusSize = plant_box.get_sizes() * config.ONE_MM_IN_PX / 2 / 10
+
+                        y_min = y_center-radiusSize
+                        y_max = y_center+radiusSize+1
+                        x_min = x_center-radiusSize
+                        x_max = x_center+radiusSize+1
+                        
+                        detection_map[y_min:y_max,x_min,x_max] = MatriceMap.PLANT.value
+                        detection_map[y_center,x_center] = MatriceMap.PLANT_CENTER.value
+
+                    detection_map.dump("last_detection_map.txt")                        
+
                     for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
 
@@ -935,7 +971,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         if any_plant_in_zone(plants_boxes, working_zone_polygon):
                             extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                                undistorted_zone_radius, working_zone_points_cv, img_output_dir,
-                                               logger_full, data_collector, log_cur_dir, image_saver)
+                                               logger_full, data_collector, log_cur_dir, image_saver, extraction_map)
+                            extraction_map.dump("last_extraction_map.txt")
                         else:
                             msg = "View scan 2 found no plants in working zone."
                             logger_full.write(msg + "\n")
