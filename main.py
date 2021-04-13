@@ -933,10 +933,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         else:
                             x,y = get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
 
-                        x_center = math.ceil(x * config.ONE_MM_IN_PX / 10)
-                        y_center = math.ceil(y * config.ONE_MM_IN_PX / 10)
+                        x_center = math.ceil(x / config.ONE_MM_IN_PX / 10)
+                        y_center = math.ceil(y / config.ONE_MM_IN_PX / 10)
 
-                        radiusSize = plant_box.get_sizes() * config.ONE_MM_IN_PX / 2 / 10
+                        radiusSize = plant_box.get_sizes() / config.ONE_MM_IN_PX / 2 / 10
 
                         y_min = y_center-radiusSize
                         y_max = y_center+radiusSize+1
