@@ -7,6 +7,7 @@ from state import Events
 class StateMachine:
 
     def __init__(self, socketio):
+        utility.create_directories("logs/")
         self.logger = utility.Logger("logs/"+utility.get_current_time())
         sys.stderr = ErrorLogger(self.logger)
         self.currentState = CheckState(socketio,self.logger)

@@ -29,9 +29,10 @@ from socketForRTK.Client import Client
 """
 
 class MatriceMap(Enum):
-    PLANT_CENTER = 1
+    PLANT_CENTER = 0
     PLANT = 2
-    EXTRACTION = 3
+    EXTRACTION = 0
+    ONE_MATRICE_CELL_IN_MM = 10
 
 if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
@@ -192,6 +193,239 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
 
+def extract_one_plant(smoothie: adapters.SmoothieAdapter, box: detection.DetectedPlantBox, 
+                      logger_full: utility.Logger, data_collector: datacollection.DataCollector,
+                      extraction_map: np.matrix, log_cur_dir):
+    """Extract plant in current position of extraction head"""
+    # extraction
+    if hasattr(extraction.ExtractionMethods, box.get_name()):
+        # TODO: it's temporary log (1)
+        msg = "Trying extractions: 5"  # only Daisy implemented, it has 5 drops
+        logger_full.write(msg + "\n")
+
+        res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(smoothie, box)
+    else:
+        # TODO: it's temporary log (2)
+        # 5 drops is default, also 1 center drop is possible
+        drops = 5 if config.EXTRACTION_DEFAULT_METHOD == "five_drops_near_center" else 1
+        msg = "Trying extractions: " + str(drops)
+        logger_full.write(msg + "\n")
+
+        res, cork_is_stuck = getattr(extraction.ExtractionMethods, config.EXTRACTION_DEFAULT_METHOD)(smoothie, box)
+
+    if res != smoothie.RESPONSE_OK:
+        logger_full.write(res + "\n")
+        if cork_is_stuck:  # danger flag is True if smoothie couldn't pick up cork
+            msg = "Cork is stuck! Emergency stopping."
+            logger_full.write(msg + "\n")
+            exit(1)
+    else:
+        data_collector.add_extractions_data(box.get_name(), 1)
+        data_collector.save_extractions_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+        x = math.ceil(smoothie.get_smoothie_current_coordinates()["X"] / MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+        y = math.ceil(smoothie.get_smoothie_current_coordinates()["Y"] / MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+        extraction_map[y,x] = MatriceMap.EXTRACTION.value
+    
+def is_in_matrice(map: np.matrix, X=None, Y=None):
+    isGood = True
+
+    if Y is not None:
+        if Y.__class__.__name__ in ('list', 'tuple'):
+            for element in Y:
+                if element >= np.shape(map)[0] or element<0:
+                    isGood = False
+        else:
+            if Y >= np.shape(map)[0] or Y<0:
+                isGood = False
+
+    if X is not None:
+        if X.__class__.__name__ in ('list', 'tuple'):
+            for element in X:
+                if element >= np.shape(map)[1] or element<0:
+                    isGood = False
+        else:
+            if X >= np.shape(map)[1] or X<0:
+                isGood = False
+
+    return isGood
+
+def pattern_plus(smoothie: adapters.SmoothieAdapter, box: detection.DetectedPlantBox, 
+              logger_full: utility.Logger, data_collector: datacollection.DataCollector,
+              extraction_map: np.matrix, log_cur_dir, x: int, y: int):
+
+    if is_in_matrice(extraction_map,Y=y+1):
+        if extraction_map[y+1,x] != 0:
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, Y=MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+            extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+            res = smoothie.custom_move_for(config.XY_F_MAX, Y=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+    if is_in_matrice(extraction_map,Y=y-1):
+        if extraction_map[y-1,x] != 0:
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, Y=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+            extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, Y=MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+    if is_in_matrice(extraction_map,X=x+1):
+        if extraction_map[y,x+1] != 0:
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, X=MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+            extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, X=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+    if is_in_matrice(extraction_map,X=x-1):
+        if extraction_map[y,x-1] != 0:
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, X=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+            extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, X=MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+    
+    return True
+
+def pattern_x(smoothie: adapters.SmoothieAdapter, box: detection.DetectedPlantBox, 
+              logger_full: utility.Logger, data_collector: datacollection.DataCollector,
+              extraction_map: np.matrix, log_cur_dir, x: int, y: int):
+
+    if is_in_matrice(extraction_map,Y=y+1,X=x+1):
+        if extraction_map[y+1,x+1] != 0:
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, Y=MatriceMap.ONE_MATRICE_CELL_IN_MM.value, X=MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+            extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+            res = smoothie.custom_move_for(config.XY_F_MAX, Y=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value, X=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+    if is_in_matrice(extraction_map,Y=y-1,X=x-1):
+        if extraction_map[y-1,x-1] != 0:
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, Y=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value, X=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+            extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, Y=MatriceMap.ONE_MATRICE_CELL_IN_MM.value, X=MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+    if is_in_matrice(extraction_map,X=x+1,Y=y-1):
+        if extraction_map[y-1,x+1] != 0:
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, X=MatriceMap.ONE_MATRICE_CELL_IN_MM.value, Y=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+            extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, X=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value, Y=MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+    if is_in_matrice(extraction_map,X=x-1, Y=y+1):
+        if extraction_map[y+1,x-1] != 0:
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, X=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value, Y=MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+
+            extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+            # move
+            res = smoothie.custom_move_for(config.XY_F_MAX, X=MatriceMap.ONE_MATRICE_CELL_IN_MM.value, Y=-MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                logger_full.write(msg + "\n")
+                return False
+    
+    return True
 
 def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                        detector: detection.YoloOpenCVDetection, working_zone_polygon: Polygon, frame,
@@ -292,40 +526,33 @@ def extract_all_plants(smoothie: adapters.SmoothieAdapter, camera: adapters.Came
                         logger_full.write(msg + "\n")
                         break
 
+                    x = math.ceil(smoothie.get_smoothie_current_coordinates()["X"] / MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+                    y = math.ceil(smoothie.get_smoothie_current_coordinates()["Y"] / MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+
+                    if extraction_map[y,x] == 0:
+
+                        if is_in_matrice(extraction_map,Y=(y+1,y-1),X=(x+1,x-1)):
+
+                            if extraction_map[y+1,x] == 0 and extraction_map[y-1,x] == 0 and extraction_map[y,x+1] == 0 and extraction_map[y,x-1] == 0:
+                                if not pattern_x(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir, x, y):
+                                    break
+
+                            else:
+                                if not pattern_plus(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir, x, y):
+                                    break
+
+                        else:
+                            if not pattern_plus(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir, x, y):
+                                break
+
                     # debug image saving
                     if config.SAVE_DEBUG_IMAGES:
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                         frame = camera.get_image()
                         image_saver.save_image(frame, img_output_dir, label="(before first cork down)")
 
-                    # extraction
-                    if hasattr(extraction.ExtractionMethods, box.get_name()):
-                        # TODO: it's temporary log (1)
-                        msg = "Trying extractions: 5"  # only Daisy implemented, it has 5 drops
-                        logger_full.write(msg + "\n")
+                    extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
 
-                        res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(smoothie, box)
-                    else:
-                        # TODO: it's temporary log (2)
-                        # 5 drops is default, also 1 center drop is possible
-                        drops = 5 if config.EXTRACTION_DEFAULT_METHOD == "five_drops_near_center" else 1
-                        msg = "Trying extractions: " + str(drops)
-                        logger_full.write(msg + "\n")
-
-                        res, cork_is_stuck = getattr(extraction.ExtractionMethods, config.EXTRACTION_DEFAULT_METHOD)(smoothie, box)
-
-                    if res != smoothie.RESPONSE_OK:
-                        logger_full.write(res + "\n")
-                        if cork_is_stuck:  # danger flag is True if smoothie couldn't pick up cork
-                            msg = "Cork is stuck! Emergency stopping."
-                            logger_full.write(msg + "\n")
-                            exit(1)
-                    else:
-                        data_collector.add_extractions_data(box.get_name(), 1)
-                        data_collector.save_extractions_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
-                        x = math.ceil(smoothie.get_smoothie_current_coordinates()["X"] / 10)
-                        y = math.ceil(smoothie.get_smoothie_current_coordinates()["Y"] / 10)
-                        extraction_map[y,x] = MatriceMap.EXTRACTION.value
                     break
 
                 # if outside undistorted zone but in working zone
@@ -519,7 +746,12 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         vesc_engine.apply_rpm(config.VESC_RPM_AUDIT)
         vesc_engine.start_moving()
 
-    msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+    try:
+        posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
+    except:
+        pass
+
+    #msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
 
     # main navigation control loop
     while True:
@@ -548,7 +780,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             continue
 
         trajectory_saver.save_point(cur_pos)
-        msgQueue.send(json.dumps({"last_gps": cur_pos}))
+        #msgQueue.send(json.dumps({"last_gps": cur_pos}))
         """
         if len(used_points_history) > 0:
             if str(used_points_history[-1]) != str(cur_pos):
@@ -851,10 +1083,13 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
-        numberMatriceLines = math.ceil(config.Y_MAX * XY_COEFFICIENT_TO_MM / 10)
-        numberMatriceColumns = math.ceil(config.X_MAX * XY_COEFFICIENT_TO_MM / 10)
-        detection_map = np.zeros((numberMatriceLines,numberMatriceColumns))
-        extraction_map = np.zeros((numberMatriceLines,numberMatriceColumns))
+        numberMatriceLines = math.ceil(config.Y_MAX / config.XY_COEFFICIENT_TO_MM / MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+        numberMatriceColumns = math.ceil(config.X_MAX / config.XY_COEFFICIENT_TO_MM / MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+        detection_map = np.ones((numberMatriceLines,numberMatriceColumns))
+        extraction_map = np.ones((numberMatriceLines,numberMatriceColumns))
+        #Only for debug
+        #np.savetxt("last_detection_map.txt",detection_map,fmt='%d')    
+        #np.savetxt("last_extraction_map.txt",extraction_map,fmt='%d') 
 
 
         # EXTRACTION CONTROL
@@ -931,22 +1166,24 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                         if is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                             x,y = box_x,box_y
                         else:
-                            x,y = get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
+                            x,y,x_mm,y_mm,index = get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
 
-                        x_center = math.ceil(x / config.ONE_MM_IN_PX / 10)
-                        y_center = math.ceil(y / config.ONE_MM_IN_PX / 10)
+                        x_center = math.ceil(x / config.ONE_MM_IN_PX / MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
+                        y_center = math.ceil(y / config.ONE_MM_IN_PX / MatriceMap.ONE_MATRICE_CELL_IN_MM.value)
 
-                        radiusSize = plant_box.get_sizes() / config.ONE_MM_IN_PX / 2 / 10
+                        radiusSize_x = plant_box.get_sizes()[0] / config.ONE_MM_IN_PX / 2 / MatriceMap.ONE_MATRICE_CELL_IN_MM.value
+                        radiusSize_y = plant_box.get_sizes()[1] / config.ONE_MM_IN_PX / 2 / MatriceMap.ONE_MATRICE_CELL_IN_MM.value
 
-                        y_min = y_center-radiusSize
-                        y_max = y_center+radiusSize+1
-                        x_min = x_center-radiusSize
-                        x_max = x_center+radiusSize+1
-                        
-                        detection_map[y_min:y_max,x_min,x_max] = MatriceMap.PLANT.value
+                        y_min = math.ceil(y_center-radiusSize_y)
+                        y_max = math.ceil(y_center+radiusSize_y+1)
+                        x_min = math.ceil(x_center-radiusSize_x)
+                        x_max = math.ceil(x_center+radiusSize_x+1)
+
+                        detection_map[y_min:y_max,x_min:x_max] = MatriceMap.PLANT.value
                         detection_map[y_center,x_center] = MatriceMap.PLANT_CENTER.value
 
-                    detection_map.dump("last_detection_map.txt")                        
+                    #Only for debug
+                    #np.savetxt("last_detection_map.txt",detection_map,fmt='%d')        
 
                     for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
@@ -972,7 +1209,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                             extract_all_plants(smoothie, camera, precise_det, working_zone_polygon, frame, plants_boxes,
                                                undistorted_zone_radius, working_zone_points_cv, img_output_dir,
                                                logger_full, data_collector, log_cur_dir, image_saver, extraction_map)
-                            extraction_map.dump("last_extraction_map.txt")
+                            #Only for debug
+                            #np.savetxt("last_extraction_map.txt",extraction_map,fmt='%d')
                         else:
                             msg = "View scan 2 found no plants in working zone."
                             logger_full.write(msg + "\n")

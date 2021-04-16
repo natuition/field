@@ -13,14 +13,13 @@ class NotificationClient:
         self.port = 888
         self.ip = "172.16.0.9"
         self._keep_thread_alive = True
+        self.connected = False
         self.timeout = 1
         self.status = SyntheseRobot.OP
         self.socket = socket(AF_INET, SOCK_STREAM)
-        self.socket.connect((self.ip, self.port))
         self.socket.settimeout(3)
-        print("[Notification] Connected")
         self._report_th = threading.Thread(target=self._report_th_tf, daemon=True)
-        self._report_th.start()
+        self._report_th.start()        
 
     def __enter__(self):
         return self
@@ -30,6 +29,7 @@ class NotificationClient:
         self._close()
 
     def stop(self):
+        print("[Notification] Stopping service...")
         self._keep_thread_alive = False
         self._close()
 
@@ -44,13 +44,20 @@ class NotificationClient:
         try:
             self.socket.send("".encode("utf-8"))
             self.socket.close() 
-            print("[Notification] Disconnected") 
-        except Exception:
-            print("[Notification] Disconnected") 
+        except:
+            pass
+        print("[Notification] Disconnected") 
          
-        
- 
     def _report_th_tf(self):
+        print("[Notification] Connection in progress...")
+        while not self.connected and self._keep_thread_alive:
+            try:
+                self.socket.connect((self.ip, self.port))
+                print("[Notification] Connected")
+                self.connected = True
+            except:
+                sleep(10)
+
         while self._keep_thread_alive:
             try:
                 self.socket.send(self.status.encode("utf-8"))
@@ -58,6 +65,7 @@ class NotificationClient:
             except SocketError as e:
                 if e.errno == errno.ECONNRESET:
                     reconnect = False
+                    print("[Notification] Connection lost reconnecting...")
                     while not reconnect:
                         try:
                             self.socket = socket(AF_INET, SOCK_STREAM)
