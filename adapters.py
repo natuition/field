@@ -865,6 +865,7 @@ class CameraAdapterIMX219_170:
             # crop black zones
             if config.APPLY_IMAGE_CROPPING:
                 image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
+            #image = cv.imread('test.jpg') #fake image for debug
             return image
         else:
             raise RuntimeError("Unable to open camera")

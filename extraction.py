@@ -1,7 +1,11 @@
 from config import config
 import adapters
 import detection
-
+import math
+import numpy as np
+from extraction_manager import ExtractionManager
+import utility
+import datacollection
 
 class ExtractionMethods:
     """
@@ -10,7 +14,7 @@ class ExtractionMethods:
     """
 
     @staticmethod
-    def single_center_drop(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):
+    def single_center_drop(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox, extraction_map: np.matrix):
         """Extract a plant with a single corkscrew drop to the center"""
 
         # extraction, cork down
@@ -28,10 +32,19 @@ class ExtractionMethods:
             msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
                   "\nemergency exit as I don't want break corkscrew."
             return msg, True
+        else:
+            sm_x = smoothie.get_smoothie_current_coordinates()["X"]
+            sm_y = smoothie.get_smoothie_current_coordinates()["Y"]
+            x = math.ceil(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+            y = math.ceil(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+            extraction_map[y,x] = config.MATRIX_EXTRACTION
+            #Only for debug
+            np.savetxt("last_extraction_map.txt",extraction_map,fmt='%d')
+
         return res, False
 
     @staticmethod
-    def five_drops_near_center(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):
+    def five_drops_near_center(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox, extraction_map: np.matrix):
         """Extract a plant with a single corkscrew drop to the center and four drops (distances are defined in config)"""
 
         # mms to move near plant's center
@@ -66,14 +79,23 @@ class ExtractionMethods:
                 msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
                       "\nemergency exit as I don't want break corkscrew."
                 return msg, True
+            else:
+                sm_x = smoothie.get_smoothie_current_coordinates()["X"]
+                sm_y = smoothie.get_smoothie_current_coordinates()["Y"]
+                x = math.ceil(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                y = math.ceil(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                extraction_map[y,x] = config.MATRIX_EXTRACTION
+                #Only for debug
+                np.savetxt("last_extraction_map.txt",extraction_map,fmt='%d')
+
         return res, False
 
     @staticmethod
-    def Daisy(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):
+    def Daisy(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox, extraction_map: np.matrix):
         """This method is used for a daisy extraction"""
 
         # drop cork to the center
-        res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, plant_box)
+        res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, plant_box, extraction_map)
         if res != smoothie.RESPONSE_OK:
             return res, cork_is_stuck
 
@@ -105,17 +127,206 @@ class ExtractionMethods:
                 msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
                       "\nemergency exit as I don't want break corkscrew."
                 return msg, True
+            else:
+                sm_x = smoothie.get_smoothie_current_coordinates()["X"]
+                sm_y = smoothie.get_smoothie_current_coordinates()["Y"]
+                x = math.ceil(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                y = math.ceil(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                extraction_map[y,x] = config.MATRIX_EXTRACTION
+                #Only for debug
+                np.savetxt("last_extraction_map.txt",extraction_map,fmt='%d')
+
         return res, False
     '''
     @staticmethod
-    def Plantain(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):
+    def Plantain(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox, extraction_map: np.matrix):
         """This method is used for a plantain extraction"""
 
         pass
 
     @staticmethod
-    def Dandelion(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox):
+    def Dandelion(smoothie: adapters.SmoothieAdapter, plant_box: detection.DetectedPlantBox, extraction_map: np.matrix):
         """This method is used for a dandelion extraction"""
 
         pass
     '''
+
+    @staticmethod
+    def pattern_plus(smoothie: adapters.SmoothieAdapter, box: detection.DetectedPlantBox, 
+                     logger_full: utility.Logger, data_collector: datacollection.DataCollector,
+                     extraction_map: np.matrix, log_cur_dir, x: int, y: int):
+
+        if ExtractionManager.is_in_matrice(extraction_map,Y=y+1):
+            if extraction_map[y+1,x] != 0:
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, Y=config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+                extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+                res = smoothie.custom_move_for(config.XY_F_MAX, Y=-config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+        if ExtractionManager.is_in_matrice(extraction_map,Y=y-1):
+            if extraction_map[y-1,x] != 0:
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, Y=-config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+                extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, Y=config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+        if ExtractionManager.is_in_matrice(extraction_map,X=x+1):
+            if extraction_map[y,x+1] != 0:
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, X=config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+                extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, X=-config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+        if ExtractionManager.is_in_matrice(extraction_map,X=x-1):
+            if extraction_map[y,x-1] != 0:
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, X=-config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+                extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, X=config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+        
+        return True
+
+    @staticmethod
+    def pattern_x(smoothie: adapters.SmoothieAdapter, box: detection.DetectedPlantBox, 
+                  logger_full: utility.Logger, data_collector: datacollection.DataCollector,
+                  extraction_map: np.matrix, log_cur_dir, x: int, y: int):
+
+        if ExtractionManager.is_in_matrice(extraction_map,Y=y+1,X=x+1):
+            if extraction_map[y+1,x+1] != 0:
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, Y=config.MATRIX_ONE_MATRICE_CELL_IN_MM, X=config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+                extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+                res = smoothie.custom_move_for(config.XY_F_MAX, Y=-config.MATRIX_ONE_MATRICE_CELL_IN_MM, X=-config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+        if ExtractionManager.is_in_matrice(extraction_map,Y=y-1,X=x-1):
+            if extraction_map[y-1,x-1] != 0:
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, Y=-config.MATRIX_ONE_MATRICE_CELL_IN_MM, X=-config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+                extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, Y=config.MATRIX_ONE_MATRICE_CELL_IN_MM, X=config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+        if ExtractionManager.is_in_matrice(extraction_map,X=x+1,Y=y-1):
+            if extraction_map[y-1,x+1] != 0:
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, X=config.MATRIX_ONE_MATRICE_CELL_IN_MM, Y=-config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+                extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, X=-config.MATRIX_ONE_MATRICE_CELL_IN_MM, Y=config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+        if ExtractionManager.is_in_matrice(extraction_map,X=x-1, Y=y+1):
+            if extraction_map[y+1,x-1] != 0:
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, X=-config.MATRIX_ONE_MATRICE_CELL_IN_MM, Y=config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+
+                extract_one_plant(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir)
+
+                # move
+                res = smoothie.custom_move_for(config.XY_F_MAX, X=config.MATRIX_ONE_MATRICE_CELL_IN_MM, Y=-config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't move cork around plant, smoothie error occurred:\n" + res
+                    logger_full.write(msg + "\n")
+                    return False
+        
+        return True
