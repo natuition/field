@@ -33,9 +33,9 @@ class ExtractionManager:
         self.offsetMatriceBorder = config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
         self.numberMatriceLines = math.ceil(config.Y_MAX / config.XY_COEFFICIENT_TO_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder*2
         self.numberMatriceColumns = math.ceil(config.X_MAX / config.XY_COEFFICIENT_TO_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder*2
-        self.init_map()
+        self.reset_map()
 
-    def init_map(self):
+    def reset_map(self):
         self.detection_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),DetectionMapCell())
         self.extraction_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),ExtractionMapCell())
         if DEBUG:
@@ -141,6 +141,8 @@ class ExtractionManager:
                     self.logger_full.write(msg + "\n")
                     if DEBUG:
                         print(msg)
+
+                    self.reset_map()
 
                     vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
                     vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
