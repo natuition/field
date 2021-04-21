@@ -180,9 +180,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     almost_start = 0
     
     prev_maneuver_time = time.time()
-       
-        
-    slow_mode_time = -float("inf")
     current_working_mode = 1
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
 
@@ -198,17 +195,11 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     if config.AUDIT_MODE:
         vesc_engine.apply_rpm(config.VESC_RPM_AUDIT)
         vesc_engine.start_moving()
-
-    try:
-        posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
-    except:
-        pass
-
     
     extraction_manager = ExtractionManager(smoothie, camera, working_zone_polygon, working_zone_points_cv,
                                            logger_full, data_collector, image_saver, log_cur_dir, periphery_det, precise_det)
 
-    #msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
+    #msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
 
     # main navigation control loop
     while True:
@@ -540,6 +531,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
+        extraction_manager.reset_map()
 
         # EXTRACTION CONTROL
         while True:   # perform detection until either it is time to perform a new navigation, or there is something to goget

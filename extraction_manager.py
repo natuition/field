@@ -9,6 +9,8 @@ from matplotlib.patches import Polygon
 import utility
 import extraction
 
+DEBUG = True
+
 class ExtractionManager:
 
     def __init__(self, smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
@@ -28,19 +30,25 @@ class ExtractionManager:
         self.periphery_det = periphery_det
         self.precise_det = precise_det
 
-        numberMatriceLines = math.ceil(config.Y_MAX / config.XY_COEFFICIENT_TO_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-        numberMatriceColumns = math.ceil(config.X_MAX / config.XY_COEFFICIENT_TO_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-        self.detection_map = np.ones((numberMatriceLines,numberMatriceColumns))
-        self.extraction_map = np.ones((numberMatriceLines,numberMatriceColumns))
-        #Only for debug
-        np.savetxt("last_detection_map.txt",self.detection_map,fmt='%03d')    
-        np.savetxt("last_extraction_map.txt",self.extraction_map,fmt='%d') 
+        self.offsetMatriceBorder = config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
+        self.numberMatriceLines = math.ceil(config.Y_MAX / config.XY_COEFFICIENT_TO_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder*2
+        self.numberMatriceColumns = math.ceil(config.X_MAX / config.XY_COEFFICIENT_TO_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder*2
+        self.init_map()
+
+    def init_map(self):
+        self.detection_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),DetectionMapCell())
+        self.extraction_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),ExtractionMapCell())
+        if DEBUG:
+            ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
+            ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map) 
 
     def extraction_control(self, plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode):
 
         working_mode_slow = 1
         working_mode_switching = 2
         working_mode_fast = 3
+
+        slow_mode_time = -float("inf")
                                        
         if config.AUDIT_MODE:
             dc_start_t = time.time()
@@ -69,6 +77,8 @@ class ExtractionManager:
         else:
             # slow mode
             if current_working_mode == working_mode_slow:
+                if DEBUG:
+                    print("Working mode slow")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
 
@@ -80,28 +90,30 @@ class ExtractionManager:
                         else:
                             x,y,x_mm,y_mm,index = ExtractionManager.get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
 
-                        x_center = math.ceil(x / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-                        y_center = math.ceil(y / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                        x_center = math.floor(x / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+                        y_center = math.floor(y / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
 
                         radiusSize_x = plant_box.get_sizes()[0] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM
                         radiusSize_y = plant_box.get_sizes()[1] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM
 
-                        y_min = math.ceil(y_center-radiusSize_y)
-                        y_max = math.ceil(y_center+radiusSize_y+1)
-                        x_min = math.ceil(x_center-radiusSize_x)
-                        x_max = math.ceil(x_center+radiusSize_x+1)
+                        y_min = math.floor(y_center-radiusSize_y) + self.offsetMatriceBorder
+                        y_max = math.floor(y_center+radiusSize_y) + self.offsetMatriceBorder
+                        x_min = math.floor(x_center-radiusSize_x) + self.offsetMatriceBorder
+                        x_max = math.floor(x_center+radiusSize_x) + self.offsetMatriceBorder
 
-                        self.detection_map[y_min:y_max,x_min:x_max] *= config.MATRIX_PLANT
-                        self.detection_map[y_center,x_center] = config.MATRIX_PLANT_CENTER
+                        self.detection_map[y_min:y_max,x_min:x_max].setLeaf()
+                        self.detection_map[y_center,x_center].setRoot()
 
-                    #Only for debug
-                    np.savetxt("last_detection_map.txt",self.detection_map,fmt='%03d')        
+                    if DEBUG:
+                        ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)           
 
                     for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
 
                         msg = "Extraction cycle " + str(i) + " of " + str(config.EXTRACTIONS_FULL_CYCLES)
                         self.logger_full.write(msg + "\n")
+                        if DEBUG:
+                            print(msg)
 
                         start_work_t = time.time()
                         frame = self.camera.get_image()
@@ -127,6 +139,8 @@ class ExtractionManager:
                     # force step forward to avoid infinite loop after extraction (if NN triggers on extracted plants)
                     msg = "Applying force step forward after extractions cycle(s)"
                     self.logger_full.write(msg + "\n")
+                    if DEBUG:
+                        print(msg)
 
                     vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
                     vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
@@ -155,6 +169,8 @@ class ExtractionManager:
 
             # switching to fast mode
             elif current_working_mode == working_mode_switching:
+                if DEBUG:
+                    print("Working mode switching")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
                     """
@@ -176,6 +192,8 @@ class ExtractionManager:
 
             # fast mode
             elif current_working_mode == working_mode_fast:
+                if DEBUG:
+                    print("Working mode fast")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
                     vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
@@ -212,10 +230,11 @@ class ExtractionManager:
         data_collector = self.data_collector
         log_cur_dir = self.log_cur_dir
         image_saver = self.image_saver
-        extraction_map = self.extraction_map
 
         msg = "Extracting " + str(len(plant_boxes)) + " plants"
         logger_full.write(msg + "\n")
+        if DEBUG:
+            print(msg)
 
         # loop over all detected plants
         for box in plant_boxes:
@@ -250,13 +269,16 @@ class ExtractionManager:
             if ExtractionManager.is_point_in_poly(box_x, box_y, working_zone_polygon):
                 # extraction loop
                 for _ in range(config.EXTRACTION_TUNING_MAX_COUNT):
-                    print(f"Turn n°{_}")
+                    if DEBUG:
+                        print(f"Turn n°{_}")
                     box_x, box_y = box.get_center_points()
 
                     # if plant inside undistorted zone
                     if ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                         msg = "Plant " + str(box) + " is in undistorted zone"
                         logger_full.write(msg + "\n")
+                        if DEBUG:
+                            print(msg)
 
                         # use plant box from precise NN for movement calculations
                         if not plant_position_is_precise:
@@ -273,6 +295,8 @@ class ExtractionManager:
                             if len(temp_plant_boxes) == 0:
                                 msg = "No plants detected (plant was in undistorted zone before), trying to move on next item"
                                 logger_full.write(msg + "\n")
+                                if DEBUG:
+                                    print(msg)
                                 break
 
                             # get closest box (update current box from main list coordinates after moving closer)
@@ -283,6 +307,8 @@ class ExtractionManager:
                             if not ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                                 msg = "No plants in undistorted zone (plant was in undistorted zone before), trying to move on next item"
                                 logger_full.write(msg + "\n")
+                                if DEBUG:
+                                    print(msg)
                                 continue
 
                         # calculate values to move camera over a plant
@@ -307,43 +333,45 @@ class ExtractionManager:
                             logger_full.write(msg + "\n")
                             break
 
-                        x = math.ceil(smoothie.get_smoothie_current_coordinates()["X"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-                        y = math.ceil(smoothie.get_smoothie_current_coordinates()["Y"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-
-                        if extraction_map[y,x] == 0:
-
-                            if ExtractionManager.is_in_matrice(extraction_map,Y=(y+1,y-1),X=(x+1,x-1)):
-
-                                if extraction_map[y+1,x] == 0 and extraction_map[y-1,x] == 0 and extraction_map[y,x+1] == 0 and extraction_map[y,x-1] == 0:
-                                    print("here x")
-                                    if not pattern_x(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir, x, y):
-                                        break
-
-                                else:
-                                    if not pattern_plus(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir, x, y):
-                                        print("here +")
-                                        break
-
-                            else:
-                                if not pattern_plus(smoothie, box, logger_full, data_collector, extraction_map, log_cur_dir, x, y):
-                                    print("here ~+")
-                                    break
-
                         # debug image saving
                         if config.SAVE_DEBUG_IMAGES:
                             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                             frame = camera.get_image()
                             image_saver.save_image(frame, img_output_dir, label="(before first cork down)")
 
-                        self.extract_one_plant(box)
-                        print("other")
+                        x = math.floor(smoothie.get_smoothie_current_coordinates()["X"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+                        y = math.floor(smoothie.get_smoothie_current_coordinates()["Y"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
 
+                        offset = math.floor(config.OFFSET_FOR_MATRIX_PATTERN_IN_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+
+                        """
+                        self.extract_one_plant(box,pattern="pattern_x")
+                        self.extract_one_plant(box,pattern="pattern_plus")
+                        """
+
+                        if self.extraction_map[y,x].hasDrop:
+
+                            if self.extraction_map[y,x].isRootExtraction:
+
+                                if self.extraction_map[y,x].lastPattern is None:
+
+                                    self.extract_one_plant(box,pattern="pattern_plus")
+
+                                elif not self.extraction_map[y,x].dictPattern[""]:
+
+                                    self.extract_one_plant(box,pattern="pattern_x")
+
+                        else:
+                            self.extract_one_plant(box)
+                        
                         break
 
                     # if outside undistorted zone but in working zone
                     else:
                         msg = "Plant is in working zone, trying to get closer"
                         logger_full.write(msg + "\n")
+                        if DEBUG:
+                            print(msg)
 
                         # calculate values for move camera closer to a plant
                         control_point = ExtractionManager.get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
@@ -410,6 +438,8 @@ class ExtractionManager:
 
                             msg = "No plants detected (plant was in working zone before), trying to do delta movement and find this plant"
                             logger_full.write(msg + "\n")
+                            if DEBUG:
+                                print(msg)
 
                             # try to move for delta values and find the weed (down, up and left, right)
                             # TODO: make some kind of pool with results of prev. movement, and compute next step if prev wasn't successful (now breaks if movement was failed)
@@ -464,22 +494,41 @@ class ExtractionManager:
         smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
         smoothie.wait_for_all_actions_done()
 
-    def extract_one_plant(self, box: detection.DetectedPlantBox):
+    def extract_one_plant(self, box: detection.DetectedPlantBox, pattern=None):
         """Extract plant in current position of extraction head"""
         
-        # extraction
-        if hasattr(extraction.ExtractionMethods, box.get_name()):
+        if pattern is not None:
+            if hasattr(extraction.ExtractionMethods, pattern):
+                msg = f"Trying extractions method \"{pattern}\"."
+                self.logger_full.write(msg + "\n")
+                if DEBUG:
+                    print(msg)
+
+                res, cork_is_stuck = getattr(extraction.ExtractionMethods, pattern)(self.smoothie, box, self.extraction_map)
+
+            else:
+                msg = f"Extractions method \"{pattern}\" not exist !."
+                self.logger_full.write(msg + "\n")
+                print(msg)
+                return False
+
+        elif hasattr(extraction.ExtractionMethods, box.get_name()):
             # TODO: it's temporary log (1)
-            msg = "Trying extractions: 5"  # only Daisy implemented, it has 5 drops
+            msg = "Trying extractions with 5 drop(s)."  # only Daisy implemented, it has 5 drops
             self.logger_full.write(msg + "\n")
+            if DEBUG:
+                print(msg)
 
             res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(self.smoothie, box, self.extraction_map)
+
         else:
             # TODO: it's temporary log (2)
             # 5 drops is default, also 1 center drop is possible
             drops = 5 if config.EXTRACTION_DEFAULT_METHOD == "five_drops_near_center" else 1
-            msg = "Trying extractions: " + str(drops)
+            msg = f"Trying extractions with {drops} drop(s)."
             self.logger_full.write(msg + "\n")
+            if DEBUG:
+                print(msg)
 
             res, cork_is_stuck = getattr(extraction.ExtractionMethods, config.EXTRACTION_DEFAULT_METHOD)(self.smoothie, box, self.extraction_map)
 
@@ -492,13 +541,8 @@ class ExtractionManager:
         else:
             self.data_collector.add_extractions_data(box.get_name(), 1)
             self.data_collector.save_extractions_data(self.log_cur_dir + config.STATISTICS_OUTPUT_FILE)
-            sm_x = self.smoothie.get_smoothie_current_coordinates()["X"]
-            sm_y = self.smoothie.get_smoothie_current_coordinates()["Y"]
-            x = math.ceil(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-            y = math.ceil(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-            self.extraction_map[y,x] = config.MATRIX_EXTRACTION
-            #Only for debug
-            np.savetxt("last_extraction_map.txt",self.extraction_map,fmt='%d')
+            if DEBUG:
+                ExtractionManager.save_matrix("last_self.extraction_map.txt",self.extraction_map)
 
         return True
 
@@ -576,3 +620,71 @@ class ExtractionManager:
         """Returns plant box, which is closest to the given point coordinates"""
 
         return min(boxes, key=lambda box: box.get_distance_from(current_px_x, current_px_y))
+
+    @staticmethod
+    def save_matrix(matrix: np.ndarray, file: str, fmt = "{0:01}"):
+        str_matrix = ""
+        for idx, obj in np.ndenumerate(matrix):
+            if idx[0] != 0 and idx[1] == 0:
+                str_matrix = str_matrix[:-1] + "\n"
+            str_matrix += fmt.format(obj.getValue()) + " "
+        str_matrix = str_matrix[:-1] + "\n"
+        with open(file, "w") as text_file:
+            methods = [method for method in dir(ExtractionMethods) if method.startswith('_') is False]
+            text_file.write(f"# Method list : "+"(), ".join(methods)+".")
+            text_file.write(f"# If you see {config.MATRIX_EXTRACTION_PATTERN} in matrice its {methods[0]}() pattern for exemple.\n")
+            text_file.write(str_matrix)
+
+class MapCell:
+
+    def __init__(self):
+        self.value = 0
+
+    def getValue(self):
+        return self.value
+
+class DetectionMapCell(MapCell):
+
+    def __init__(self):
+        super().__init__()
+        self.numberOfLeaf = 0
+        self.isRoot = False
+        self.isLeaf = False
+        self.DetectedType = None
+
+    def setRoot(self):
+        self.isLeaf = False
+        self.isRoot = True
+        self.value = config.MATRIX_PLANT_ROOT
+
+    def setLeaf(self):
+        if not self.isRoot:
+            self.isLeaf = True
+            self.numberOfLeaf += 1
+            self.value = config.MATRIX_PLANT_LEAF + (self.numberOfLeaf-1)
+
+class ExtractionMapCell(MapCell):
+    
+    def __init__(self):
+        super().__init__()
+        self.hasDrop = False
+        self.isRootExtraction = False
+        self.parent = None
+        self.lastPattern = None
+        self.dictPattern = dict((method, False) for method in dir(ExtractionMethods) if method.startswith('_') is False)
+
+    def setRootExtraction(self):
+        self.hasDrop = True
+        self.isRootExtraction = True
+        self.value = config.MATRIX_EXTRACTION
+
+    def setPatternExtraction(self, pattern: str, parent = None):
+        self.hasDrop = True
+        self.dictPattern[pattern] = True
+        self.lastPattern = pattern
+
+        if parent is not None:
+            self.parent = parent
+        if not self.isRootExtraction:
+            self.value = config.MATRIX_EXTRACTION_PATTERN + list(self.dictPattern.keys()).index(pattern)
+        
