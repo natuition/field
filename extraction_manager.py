@@ -36,11 +36,13 @@ class ExtractionManager:
         self.reset_map()
 
     def reset_map(self):
-        self.detection_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),DetectionMapCell())
-        self.extraction_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),ExtractionMapCell())
+        #self.detection_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),DetectionMapCell())
+        #self.extraction_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),ExtractionMapCell())  
+        self.detection_map = np.array([[DetectionMapCell() for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], DetectionMapCell)  
+        self.extraction_map = np.array([[ExtractionMapCell() for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], ExtractionMapCell)
         if DEBUG:
             ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
-            ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map) 
+            ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
     def extraction_control(self, plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode):
 
@@ -93,15 +95,17 @@ class ExtractionManager:
                         x_center = math.floor(x / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
                         y_center = math.floor(y / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
 
-                        radiusSize_x = plant_box.get_sizes()[0] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM
-                        radiusSize_y = plant_box.get_sizes()[1] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM
+                        radiusSize_x = math.floor(plant_box.get_sizes()[0] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                        radiusSize_y = math.floor(plant_box.get_sizes()[1] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
 
-                        y_min = math.floor(y_center-radiusSize_y) + self.offsetMatriceBorder
-                        y_max = math.floor(y_center+radiusSize_y) + self.offsetMatriceBorder
-                        x_min = math.floor(x_center-radiusSize_x) + self.offsetMatriceBorder
-                        x_max = math.floor(x_center+radiusSize_x) + self.offsetMatriceBorder
+                        y_min = math.floor(y_center-radiusSize_y)
+                        y_max = math.floor(y_center+radiusSize_y+1)
+                        x_min = math.floor(x_center-radiusSize_x)
+                        x_max = math.floor(x_center+radiusSize_x+1)
 
-                        self.detection_map[y_min:y_max,x_min:x_max].setLeaf()
+                        for y_leaf in range(y_min,y_max):
+                            for x_leaf in range(x_min,x_max):
+                                self.detection_map[y_leaf,x_leaf].setLeaf()
                         self.detection_map[y_center,x_center].setRoot()
 
                     if DEBUG:
@@ -359,7 +363,7 @@ class ExtractionManager:
 
                                     self.extract_one_plant(box,pattern="pattern_plus")
 
-                                elif not self.extraction_map[y,x].dictPattern[""]:
+                                elif not self.extraction_map[y,x].dictPattern["pattern_x"]:
 
                                     self.extract_one_plant(box,pattern="pattern_x")
 
@@ -544,7 +548,7 @@ class ExtractionManager:
             self.data_collector.add_extractions_data(box.get_name(), 1)
             self.data_collector.save_extractions_data(self.log_cur_dir + config.STATISTICS_OUTPUT_FILE)
             if DEBUG:
-                ExtractionManager.save_matrix("last_self.extraction_map.txt",self.extraction_map)
+                ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map)
 
         return True
 
@@ -624,18 +628,26 @@ class ExtractionManager:
         return min(boxes, key=lambda box: box.get_distance_from(current_px_x, current_px_y))
 
     @staticmethod
-    def save_matrix(matrix: np.ndarray, file: str, fmt = "{0:01}"):
+    def save_matrix(file: str, matrix: np.ndarray, fmt = "{0:01}", header=False):
         str_matrix = ""
         for idx, obj in np.ndenumerate(matrix):
             if idx[0] != 0 and idx[1] == 0:
                 str_matrix = str_matrix[:-1] + "\n"
-            str_matrix += fmt.format(obj.getValue()) + " "
+            if idx[1] >= config.OFFSET_FOR_MATRIX_BORDER_IN_CELL and idx[1] < np.shape(matrix)[1]-config.OFFSET_FOR_MATRIX_BORDER_IN_CELL \
+              and idx[0] >= config.OFFSET_FOR_MATRIX_BORDER_IN_CELL and idx[0] < np.shape(matrix)[0]-config.OFFSET_FOR_MATRIX_BORDER_IN_CELL:
+                str_matrix += fmt.format(obj.getValue()) + " "
         str_matrix = str_matrix[:-1] + "\n"
+        if (str_matrix[0] == "\n" and not header):
+            str_matrix = str_matrix[1:]
         with open(file, "w") as text_file:
-            methods = [method for method in dir(ExtractionMethods) if method.startswith('_') is False]
-            text_file.write(f"# Method list : "+"(), ".join(methods)+".")
-            text_file.write(f"# If you see {config.MATRIX_EXTRACTION_PATTERN} in matrice its {methods[0]}() pattern for exemple.\n")
+            methods = [method for method in dir(extraction.ExtractionMethods) if (method.startswith('_') is False and method != "single_center_drop")]
+            if header:
+                text_file.write(f"# Method list : "+"(), ".join(methods)+".\n")
+                text_file.flush()
+                text_file.write(f"# If you see {config.MATRIX_EXTRACTION_PATTERN} in matrice its {methods[0]}() pattern for exemple.\n")
+                text_file.flush()
             text_file.write(str_matrix)
+            text_file.flush()
 
 class MapCell:
 
@@ -673,7 +685,7 @@ class ExtractionMapCell(MapCell):
         self.isRootExtraction = False
         self.parent = None
         self.lastPattern = None
-        self.dictPattern = dict((method, False) for method in dir(ExtractionMethods) if method.startswith('_') is False)
+        self.dictPattern = dict((method, False) for method in dir(extraction.ExtractionMethods) if method.startswith('_') is False)
 
     def setRootExtraction(self):
         self.hasDrop = True

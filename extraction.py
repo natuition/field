@@ -44,7 +44,7 @@ class ExtractionMethods:
             else:
                 extraction_map[y,x].setPatternExtraction(parent.lastPattern,parent)
             if DEBUG:
-                ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map)
+                ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map, header=True)
 
         return res, False
 
@@ -95,7 +95,7 @@ class ExtractionMethods:
                 y = math.floor(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
                 extraction_map[y,x].setPatternExtraction("five_drops_near_center", parent=extraction_map[sm_y,sm_x])
                 if DEBUG:
-                    ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map)
+                    ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map, header=True)
 
         return res, False
 
@@ -147,7 +147,7 @@ class ExtractionMethods:
                 y = math.floor(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
                 extraction_map[y,x].setPatternExtraction("Daisy", parent=extraction_map[sm_y,sm_x])
                 if DEBUG:
-                    ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map)
+                    ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map, header=True)
 
         return res, False
     '''

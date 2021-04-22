@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8">
+      <title>Matrice</title>
+      <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
+      <script type="text/javascript">
+         $(document).ready(function() {
+         
+            // sending a connect request to the server.
+            var socket = io.connect('http://violette.lan:8888');
+
+            socket.on("message", data => {
+                document.getElementById("content").innerHTML = data;
+            });      
+         });
+      </script>
+      <style>
+            p{
+                margin:0;
+            }
+            .rectangle{
+                width:{{ pixelS }}px;
+                height:{{ pixelS }}px;
+                background-color:lightgreen;
+                border: 1px solid rgba(0,0,0,0.25);
+            }
+
+            .rectangle-0{
+                background-color:white!important;
+            }
+            .rectangle-1{
+                background-color:green!important;
+            }
+
+            .extraction-1{
+                border-color: rgb(255, 0, 0);
+            }
+            .extraction-2{
+                border-color: rgb(0, 255, 242);
+            }
+            .extraction-3{
+                border-color: rgb(0, 47, 255);
+            }
+            .extraction-4{
+                border-color: rgb(238, 255, 0);
+            }
+            .extraction-5{
+                border-color: rgb(225, 0, 255);
+            }
+
+            .color-1:before, .color-1:after {
+                background-color: rgb(255, 0, 0);
+            }
+            .color-2:before, .color-2:after{
+                background-color: rgb(0, 255, 242);
+            }
+            .color-3:before, .color-3:after{
+                background-color: rgb(0, 47, 255);
+            }
+            .color-4:before, .color-4:after{
+                background-color: rgb(238, 255, 0);
+            }
+            .color-5:before, .color-5:after{
+                background-color: rgb(225, 0, 255);
+            }
+
+            .extraction:before, .extraction:after {
+                position: absolute;
+                content: ' ';
+                height: {{ pixelS }}px;
+                width: 3px;
+                margin-left: {{ pixelS/2.4 }}px;
+            }
+            .extraction:before {
+                transform: rotate(45deg);
+            }
+            .extraction:after {
+                transform: rotate(-45deg);
+            }
+            .lines{
+                display: flex;
+            }
+
+            #content{
+                border: 1px solid black;
+                width: {{ widthS }}px;
+            }
+            
+        </style>
+   </head>
+   <body>
+    <h1>Matrix :</h1>
+    <div id="content">{{ content| safe }}</div>
+   </body>
+</html>
