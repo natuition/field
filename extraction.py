@@ -108,9 +108,9 @@ class ExtractionMethods:
         if res != smoothie.RESPONSE_OK:
             return res, cork_is_stuck
         else:
-            sm_x = math.floor(smoothie.get_smoothie_current_coordinates()["X"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-            sm_y = math.floor(smoothie.get_smoothie_current_coordinates()["Y"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-            extraction_map[sm_y,sm_x].setPatternExtraction("Daisy")
+            center_sm_x = math.floor(smoothie.get_smoothie_current_coordinates()["X"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
+            center_sm_y = math.floor(smoothie.get_smoothie_current_coordinates()["Y"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
+            extraction_map[center_sm_y,center_sm_x].setPatternExtraction("Daisy")
 
         box_x_half, box_y_half = plant_box.get_sizes()
         box_x_half, box_y_half = int(box_x_half / 2 / config.ONE_MM_IN_PX), \
@@ -145,7 +145,7 @@ class ExtractionMethods:
                 sm_y = smoothie.get_smoothie_current_coordinates()["Y"]
                 x = math.floor(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
                 y = math.floor(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-                extraction_map[y,x].setPatternExtraction("Daisy", parent=extraction_map[sm_y,sm_x])
+                extraction_map[y,x].setPatternExtraction("Daisy", parent=extraction_map[center_sm_y,center_sm_x])
                 if DEBUG:
                     ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map, header=True)
 

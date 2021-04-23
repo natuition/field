@@ -103,13 +103,16 @@ class ExtractionManager:
                         x_min = math.floor(x_center-radiusSize_x)
                         x_max = math.floor(x_center+radiusSize_x+1)
 
+                        self.detection_map[y_center,x_center].setRoot()
                         for y_leaf in range(y_min,y_max):
                             for x_leaf in range(x_min,x_max):
-                                self.detection_map[y_leaf,x_leaf].setLeaf()
-                        self.detection_map[y_center,x_center].setRoot()
+                                if y_leaf != y_center or x_leaf != x_center:
+                                    self.detection_map[y_leaf,x_leaf].setLeaf(self.detection_map[y_center,x_center])                     
 
                     if DEBUG:
-                        ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)           
+                        ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
+
+                    exit(1)       
 
                     for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
@@ -664,17 +667,20 @@ class DetectionMapCell(MapCell):
         self.numberOfLeaf = 0
         self.isRoot = False
         self.isLeaf = False
-        self.DetectedType = None
+        self.herParents = list()
+        self.herChildren = list()
 
     def setRoot(self):
         self.isLeaf = False
         self.isRoot = True
         self.value = config.MATRIX_PLANT_ROOT
 
-    def setLeaf(self):
+    def setLeaf(self, parent):
         if not self.isRoot:
             self.isLeaf = True
-            self.numberOfLeaf += 1
+            self.herParents.append(parent)
+            parent.herChildren.append(self)
+            self.numberOfLeaf = len(self.herParents)
             self.value = config.MATRIX_PLANT_LEAF + (self.numberOfLeaf-1)
 
 class ExtractionMapCell(MapCell):

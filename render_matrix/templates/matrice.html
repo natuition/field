@@ -11,72 +11,93 @@
             // sending a connect request to the server.
             var socket = io.connect('http://violette.lan:8888');
 
-            socket.on("message", data => {
+            socket.on("content", data => {
                 document.getElementById("content").innerHTML = data;
-            });      
+            });   
+            
+            socket.on("footer", data => {
+                document.getElementById("footer").innerHTML = data;
+            }); 
+            
          });
       </script>
       <style>
+            h1{
+                margin-bottom: 10px;
+            }
+            button{
+                margin-bottom: 10px;
+            }
             p{
                 margin:0;
             }
             .rectangle{
                 width:{{ pixelS }}px;
                 height:{{ pixelS }}px;
-                background-color:lightgreen;
+                background-color:rgb(44, 145, 44);
                 border: 1px solid rgba(0,0,0,0.25);
+                color: black;
             }
 
             .rectangle-0{
                 background-color:white!important;
             }
             .rectangle-1{
-                background-color:green!important;
+                background-color:rgb(0, 100, 0)!important;
+            }
+            .rectangle-2{
+                background-color:lightgreen!important;
+            }
+            .rectangle-3{
+                background-color:rgb(144, 255, 144)!important;
+            }
+            .rectangle-4{
+                background-color:rgb(88, 200, 88)!important;
             }
 
-            .extraction-1{
-                border-color: rgb(255, 0, 0);
+            .enable .lines .extraction-1{
+                border-color: rgb(255, 0, 0)!important;
             }
-            .extraction-2{
-                border-color: rgb(0, 255, 242);
+            .enable .lines .extraction-2{
+                border-color: rgb(0, 0, 0)!important;
             }
-            .extraction-3{
-                border-color: rgb(0, 47, 255);
+            .enable .lines .extraction-3{
+                border-color: rgb(0, 47, 255)!important;
             }
-            .extraction-4{
-                border-color: rgb(238, 255, 0);
+            .enable .lines .extraction-4{
+                border-color: rgb(238, 255, 0)!important;
             }
-            .extraction-5{
-                border-color: rgb(225, 0, 255);
+            .enable .lines .extraction-5{
+                border-color: rgb(225, 0, 255)!important;
             }
 
-            .color-1:before, .color-1:after {
+            .enable .lines .rectangle .color-1:before, .color-1:after {
                 background-color: rgb(255, 0, 0);
             }
-            .color-2:before, .color-2:after{
-                background-color: rgb(0, 255, 242);
+            .enable .lines .rectangle .color-2:before, .color-2:after{
+                background-color: rgb(0, 0, 0);
             }
-            .color-3:before, .color-3:after{
+            .enable .lines .rectangle .color-3:before, .color-3:after{
                 background-color: rgb(0, 47, 255);
             }
-            .color-4:before, .color-4:after{
+            .enable .lines .rectangle .color-4:before, .color-4:after{
                 background-color: rgb(238, 255, 0);
             }
-            .color-5:before, .color-5:after{
+            .enable .lines .rectangle .color-5:before, .color-5:after{
                 background-color: rgb(225, 0, 255);
             }
 
-            .extraction:before, .extraction:after {
+            .enable .lines .rectangle .extraction:before, .enable .lines .rectangle .extraction:after {
                 position: absolute;
                 content: ' ';
                 height: {{ pixelS }}px;
                 width: 3px;
                 margin-left: {{ pixelS/2.4 }}px;
             }
-            .extraction:before {
+            .enable .lines .rectangle .extraction:before {
                 transform: rotate(45deg);
             }
-            .extraction:after {
+            .enable .lines .rectangle .extraction:after {
                 transform: rotate(-45deg);
             }
             .lines{
@@ -92,6 +113,22 @@
    </head>
    <body>
     <h1>Matrix :</h1>
-    <div id="content">{{ content| safe }}</div>
+    <button id="switchExt" onclick="switchExt()">Extraction show : Off</button>
+    <br>
+    <div id="content" class="enable">{{ content| safe }}</div>
+    <script>
+    function switchExt() {
+        if(document.getElementById("switchExt").innerHTML == "Extraction show : On"){
+            document.getElementById("switchExt").innerHTML = "Extraction show : Off";
+            document.getElementById("content").classList.add("enable");
+            document.getElementById("content").classList.remove("disable");
+        }else{
+            document.getElementById("switchExt").innerHTML = "Extraction show : On";
+            document.getElementById("content").classList.add("disable");
+            document.getElementById("content").classList.remove("enable");
+        }
+    }
+    </script>
+    <div id="footer">{{ footer| safe }}</div>
    </body>
 </html>
