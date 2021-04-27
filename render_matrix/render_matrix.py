@@ -29,7 +29,7 @@ def getContent(path: str,path2: str):
             lines = line.replace("\n","").split(" ")
             last_data_extraction.append(lines)
     i,j = 0,0 
-    for line in file:
+    for line in list(file):
         newLine=""
         width = len(line.split(" "))
         line = line.replace("\n","").split(" ")
