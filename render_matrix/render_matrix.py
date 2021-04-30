@@ -8,7 +8,7 @@ socketio = SocketIO(app)
 
 @app.route('/')
 def index():
-    pixel = 30
+    pixel = 25
     content,width,footer = getContent("../last_detection_map.txt","../last_extraction_map.txt")
     pixelS = pixel
     widthS = pixel*width
@@ -27,9 +27,9 @@ def getContent(path: str,path2: str):
         cpt+=1
         if cpt > 3:
             lines = line.replace("\n","").split(" ")
-            last_data_extraction.append(lines)
+            last_data_extraction.insert(0,lines)
     i,j = 0,0 
-    for line in list(file):
+    for line in reversed(list(file)):
         newLine=""
         width = len(line.split(" "))
         line = line.replace("\n","").split(" ")
