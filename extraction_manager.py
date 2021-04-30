@@ -36,10 +36,8 @@ class ExtractionManager:
         self.reset_map()
 
     def reset_map(self):
-        #self.detection_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),DetectionMapCell())
-        #self.extraction_map = np.full((self.numberMatriceLines,self.numberMatriceColumns),ExtractionMapCell())  
-        self.detection_map = np.array([[DetectionMapCell() for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], DetectionMapCell)  
-        self.extraction_map = np.array([[ExtractionMapCell() for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], ExtractionMapCell)
+        self.detection_map = np.array([[DetectionMapCell(j,i) for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], DetectionMapCell)  
+        self.extraction_map = np.array([[ExtractionMapCell(j,i) for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], ExtractionMapCell)
         if DEBUG:
             ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
             ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
@@ -80,7 +78,7 @@ class ExtractionManager:
             # slow mode
             if current_working_mode == working_mode_slow:
                 if DEBUG:
-                    print("Working mode slow")
+                    print("[Working mode] : slow")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
 
@@ -103,16 +101,23 @@ class ExtractionManager:
                         x_min = math.floor(x_center-radiusSize_x)
                         x_max = math.floor(x_center+radiusSize_x+1)
 
-                        self.detection_map[y_center,x_center].setRoot()
+                        self.detection_map[y_center,x_center].setRoot(plant_box.get_name())
                         for y_leaf in range(y_min,y_max):
                             for x_leaf in range(x_min,x_max):
                                 if y_leaf != y_center or x_leaf != x_center:
-                                    self.detection_map[y_leaf,x_leaf].setLeaf(self.detection_map[y_center,x_center])                     
+                                    self.detection_map[y_leaf,x_leaf].setLeaf(self.detection_map[y_center,x_center],plant_box.get_name())    
 
                     if DEBUG:
-                        ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
+                        ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)
 
-                    exit(1)       
+                    self.extract_all_groups()
+
+                     # set camera to the Y min
+                    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "INIT: Failed to move camera to Y min X max/2, smoothie response:\n" + res
+                        logger_full.write(msg + "\n")
+                    smoothie.wait_for_all_actions_done()       
 
                     for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
@@ -179,7 +184,7 @@ class ExtractionManager:
             # switching to fast mode
             elif current_working_mode == working_mode_switching:
                 if DEBUG:
-                    print("Working mode switching")
+                    print("[Working mode] : switching")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
                     """
@@ -202,7 +207,7 @@ class ExtractionManager:
             # fast mode
             elif current_working_mode == working_mode_fast:
                 if DEBUG:
-                    print("Working mode fast")
+                    print("[Working mode] : fast")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
                     vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
@@ -225,6 +230,67 @@ class ExtractionManager:
                 else:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
+    def extract_all_groups(self):
+        groups = dict()
+        cpt = 1
+        for idx, obj in np.ndenumerate(self.detection_map):
+            if obj.getValue() >= config.GROUP_THRESHOLD and not obj.isRegister:
+                groups[cpt] = set()
+                groups[cpt].add(obj)
+                obj.isRegister = True
+                parents = list(obj.herParents)
+
+                for parent in parents:
+                    if not parent.isRegister:
+                        groups[cpt].add(parent)
+                        parent.isRegister = True
+
+                        for child in parent.herChildren:
+                            if not child.isRegister:
+                                groups[cpt].add(child)
+                                child.isRegister = True
+                                
+                                for childParent in child.herParents:
+                                    if not childParent.isRegister:
+                                        parents.append(childParent)
+
+                cpt += 1
+
+        if not groups:
+
+            msg = "Groups are found, let's extract them..."
+            self.logger_full.write(msg + "\n")
+
+            if DEBUG:
+                print(msg)
+
+            shootList = list()
+
+            for groupNumber,group in groups.items():
+                shootCoordinate = set()
+                for element in group:
+                    shootCoordinate.add((element.x, element.y, element.type))
+                shootList += list(shootCoordinate)
+
+            shootList.sort(key = lambda tup: (tup[1],tup[0])) 
+
+            y_max,x_max = np.shape(self.extraction_map)[0]-2*config.OFFSET_FOR_MATRIX_BORDER_IN_CELL,np.shape(self.extraction_map)[1]-2*config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
+            
+            for shoot in shootList:
+                x = (shoot[0]-config.OFFSET_FOR_MATRIX_BORDER_IN_CELL+0.5) * config.MATRIX_ONE_MATRICE_CELL_IN_MM
+                y = (shoot[1]-config.OFFSET_FOR_MATRIX_BORDER_IN_CELL+0.5) * config.MATRIX_ONE_MATRICE_CELL_IN_MM
+                res = self.smoothie.custom_move_to(config.XY_F_MAX, X=x, Y=y)
+                if res != self.smoothie.RESPONSE_OK:
+                    msg = "Failed to move cork to the extraction position to the group :\n" + res
+                    self.logger_full.write(msg + "\n")
+                    exit(1)
+                self.smoothie.wait_for_all_actions_done()
+                self.extract_one_plant(detection.DetectedPlantBox(0, 0, 0, 0, shoot[2]+"_group", 0, 0, 0, 0), pattern="single_center_drop")
+
+            msg = "Extraction of groups is finished."
+            self.logger_full.write(msg + "\n")
+            if DEBUG:
+                print(msg)
 
     def extract_all_plants(self, frame, plant_boxes: list, img_output_dir):
         """Extract all plants found in current position"""
@@ -523,7 +589,7 @@ class ExtractionManager:
 
         elif hasattr(extraction.ExtractionMethods, box.get_name()):
             # TODO: it's temporary log (1)
-            msg = "Trying extractions with 5 drop(s)."  # only Daisy implemented, it has 5 drops
+            msg = f"Trying extractions method \"{box.get_name()}\"."  # only Daisy implemented, it has 5 drops
             self.logger_full.write(msg + "\n")
             if DEBUG:
                 print(msg)
@@ -534,7 +600,7 @@ class ExtractionManager:
             # TODO: it's temporary log (2)
             # 5 drops is default, also 1 center drop is possible
             drops = 5 if config.EXTRACTION_DEFAULT_METHOD == "five_drops_near_center" else 1
-            msg = f"Trying extractions with {drops} drop(s)."
+            msg = f"Trying extractions method \"{config.EXTRACTION_DEFAULT_METHOD}\"."
             self.logger_full.write(msg + "\n")
             if DEBUG:
                 print(msg)
@@ -551,7 +617,7 @@ class ExtractionManager:
             self.data_collector.add_extractions_data(box.get_name(), 1)
             self.data_collector.save_extractions_data(self.log_cur_dir + config.STATISTICS_OUTPUT_FILE)
             if DEBUG:
-                ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map)
+                ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
         return True
 
@@ -654,30 +720,42 @@ class ExtractionManager:
 
 class MapCell:
 
-    def __init__(self):
+    def __init__(self, x: int, y: int):
         self.value = 0
+        self.x = x
+        self.y = y
 
     def getValue(self):
         return self.value
+        
+    def __str__(self):
+        return "<" + f"{self.__class__.__name__}[{self.x},{self.y}]={self.value}" + ">"
+
+    def __repr__(self):
+        return self.__str__()
 
 class DetectionMapCell(MapCell):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, x: int, y: int):
+        super().__init__(x,y)
         self.numberOfLeaf = 0
         self.isRoot = False
         self.isLeaf = False
+        self.isRegister = False
+        self.type = None
         self.herParents = list()
         self.herChildren = list()
 
-    def setRoot(self):
+    def setRoot(self, type: str):
         self.isLeaf = False
         self.isRoot = True
+        self.type = type
         self.value = config.MATRIX_PLANT_ROOT
 
-    def setLeaf(self, parent):
+    def setLeaf(self, parent, type: str):
         if not self.isRoot:
             self.isLeaf = True
+            self.type = type
             self.herParents.append(parent)
             parent.herChildren.append(self)
             self.numberOfLeaf = len(self.herParents)
@@ -685,8 +763,8 @@ class DetectionMapCell(MapCell):
 
 class ExtractionMapCell(MapCell):
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, x: int, y: int):
+        super().__init__(x,y)
         self.hasDrop = False
         self.isRootExtraction = False
         self.parent = None
