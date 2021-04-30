@@ -94,6 +94,7 @@ ENV/
 env.bak/
 venv.bak/
 .idea/
+.vscode/
 
 # Spyder project settings
 .spyderproject
@@ -122,3 +123,12 @@ test_input/
 test_output/
 yolo/
 temp/
+configBackup/config_*
+config/config.py.bak
+darknet
+debug_images/
+field.txt
+logs/
+path_index.txt
+path_points.dat
+uiWebRobot/logs/
