@@ -708,7 +708,7 @@ class ExtractionManager:
         str_matrix = str_matrix[:-1] + "\n"
         if (str_matrix[0] == "\n" and not header):
             str_matrix = str_matrix[1:]
-        with open(file, "w") as text_file:
+        with open(file, "w+") as text_file:
             methods = [method for method in dir(extraction.ExtractionMethods) if (method.startswith('_') is False and method != "single_center_drop")]
             if header:
                 text_file.write(f"# Method list : "+"(), ".join(methods)+".\n")
