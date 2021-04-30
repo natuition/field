@@ -556,7 +556,7 @@ class WorkingState(State):
                             if index > 0 : 
                                 weeds[groups[index][1]] = int(groups[index][2])
                         #data["time"] = timeS
-                        data["time"] = self.timeStartMain
+                        data["time"] = self.timeStartMain.isoformat()
                         data["weeds"] = weeds
                         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
