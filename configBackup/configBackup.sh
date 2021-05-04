@@ -1,3 +1,5 @@
+#!/bin/bash
+
 last=$(ls | sort -V | tail -n 1)
 cd ../config
 if [ -s config.py ]; then

@@ -1,0 +1,10 @@
+[Unit]
+Description=Job that runs at start for backup config.py.
+
+[Service]
+Type=simple
+WorkingDirectory=/home/violette/field/configBackup/
+ExecStart=/home/violette/field/configBackup/configBackup.sh
+
+[Install]
+WantedBy=multi-user.target
