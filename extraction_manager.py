@@ -82,49 +82,8 @@ class ExtractionManager:
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
 
-                    for plant_box in plants_boxes:
-                        box_x,box_y = plant_box.get_center_points()
-
-                        if ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, self.undistorted_zone_radius):
-                            x,y = box_x,box_y
-
-                            x_center = math.floor(x / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
-                            y_center = math.floor(y / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
-
-                        else:
-                            p_x, p_y, x, y, index = ExtractionManager.get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
-                            
-                            x_center = math.floor((config.X_MAX/2/config.XY_COEFFICIENT_TO_MM + x) / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
-                            y_center = math.floor((config.Y_MAX/config.XY_COEFFICIENT_TO_MM - y) / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
-
-                        radiusSize_x = math.floor(plant_box.get_sizes()[0] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-                        radiusSize_y = math.floor(plant_box.get_sizes()[1] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-
-                        y_min = math.floor(y_center-radiusSize_y)
-                        y_max = math.floor(y_center+radiusSize_y+1)
-                        x_min = math.floor(x_center-radiusSize_x)
-                        x_max = math.floor(x_center+radiusSize_x+1)
-
-                        self.detection_map[y_center,x_center].setRoot(plant_box.get_name())
-                        for y_leaf in range(y_min,y_max):
-                            for x_leaf in range(x_min,x_max):
-                                if y_leaf != y_center or x_leaf != x_center:
-                                    self.detection_map[y_leaf,x_leaf].setLeaf(self.detection_map[y_center,x_center],plant_box.get_name())    
-
-                    if DEBUG:
-                        ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)
-
-                    self.extract_all_groups()
-                    
-                    # set camera to the Y min
-                    res = self.smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
-                    if res != self.smoothie.RESPONSE_OK:
-                        msg = "INIT: Failed to move camera to Y min X max/2, smoothie response:\n" + res
-                        self.logger_full.write(msg + "\n")
-                    self.smoothie.wait_for_all_actions_done() 
-
                     for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
-                        #break
+
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
 
                         msg = "Extraction cycle " + str(i) + " of " + str(config.EXTRACTIONS_FULL_CYCLES)
@@ -147,7 +106,53 @@ class ExtractionManager:
                         self.logger_full.write(msg + "\n")
 
                         if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
+
+                            if i == 1:
+
+                                for plant_box in plants_boxes:
+                                    box_x,box_y = plant_box.get_center_points()
+
+                                    if ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, self.undistorted_zone_radius):
+                                        x,y = box_x,box_y
+
+                                        x_center = math.floor(x / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+                                        y_center = math.floor(y / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+
+                                    else:
+                                        p_x, p_y, x, y, index = ExtractionManager.get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
+                                        
+                                        x_center = math.floor((config.X_MAX/2/config.XY_COEFFICIENT_TO_MM + x) / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+                                        y_center = math.floor((config.Y_MAX/config.XY_COEFFICIENT_TO_MM - y) / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+
+                                    radiusSize_x = math.floor(plant_box.get_sizes()[0] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+                                    radiusSize_y = math.floor(plant_box.get_sizes()[1] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+
+                                    y_min = math.floor(y_center-radiusSize_y)
+                                    y_max = math.floor(y_center+radiusSize_y+1)
+                                    x_min = math.floor(x_center-radiusSize_x)
+                                    x_max = math.floor(x_center+radiusSize_x+1)
+
+                                    self.detection_map[y_center,x_center].setRoot(plant_box.get_name(), plants_boxes.index(plant_box))
+                                    for y_leaf in range(y_min,y_max):
+                                        for x_leaf in range(x_min,x_max):
+                                            if y_leaf != y_center or x_leaf != x_center:
+                                                self.detection_map[y_leaf,x_leaf].setLeaf(self.detection_map[y_center,x_center],plant_box.get_name(), plants_boxes.index(plant_box))    
+
+                                if DEBUG:
+                                    ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)
+
+                                self.extract_all_groups(plants_boxes)
+                            
+                            # set camera to the Y min
+                            res = self.smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+                            if res != self.smoothie.RESPONSE_OK:
+                                msg = "INIT: Failed to move camera to Y min X max/2, smoothie response:\n" + res
+                                self.logger_full.write(msg + "\n")
+                            self.smoothie.wait_for_all_actions_done() 
+
                             self.extract_all_plants(frame, plants_boxes, img_output_dir)
+
+
                         else:
                             msg = "View scan 2 found no plants in working zone."
                             self.logger_full.write(msg + "\n")
@@ -235,7 +240,7 @@ class ExtractionManager:
                 else:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
-    def extract_all_groups(self):
+    def extract_all_groups(self, plants_boxes: list):
         time.sleep(2)
         groups = dict()
         cpt = 1
@@ -276,7 +281,7 @@ class ExtractionManager:
             for groupNumber,group in groups.items():
                 shootCoordinate = set()
                 for element in group:
-                    shootCoordinate.add((element.x, element.y, element.type))
+                    shootCoordinate.add((element.x, element.y, element.type, element.value))
                 shootList += list(shootCoordinate)
 
             shootList.sort(key = lambda tup: (tup[1],tup[0])) 
@@ -295,7 +300,7 @@ class ExtractionManager:
                         cpt_y += 1
                     cpt_x = 0
                 last_y,last_x = (y,x)
-                if cpt_x%shoot_step==0 and cpt_y%shoot_step==0:
+                if (cpt_x%shoot_step==0 and cpt_y%shoot_step==0) or shoot[3]==1:
                     res = self.smoothie.custom_move_to(config.XY_F_MAX, X=x, Y=y)
                     if res != self.smoothie.RESPONSE_OK:
                         msg = "Failed to move cork to the extraction position to the group :\n" + res
@@ -763,17 +768,20 @@ class DetectionMapCell(MapCell):
         self.type = None
         self.herParents = list()
         self.herChildren = list()
+        self.indexInDetectedList = 0
 
-    def setRoot(self, type: str):
+    def setRoot(self, type: str, index: int):
         self.isLeaf = False
         self.isRoot = True
+        self.indexInDetectedList = index
         self.type = type
         self.value = config.MATRIX_PLANT_ROOT
 
-    def setLeaf(self, parent, type: str):
+    def setLeaf(self, parent, type: str, index: int):
         if not self.isRoot:
             self.isLeaf = True
             self.type = type
+            self.indexInDetectedList = index
             self.herParents.append(parent)
             parent.herChildren.append(self)
             self.numberOfLeaf = len(self.herParents)
