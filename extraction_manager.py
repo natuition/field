@@ -68,12 +68,12 @@ class ExtractionManager:
 
             # flush updates into the audit output file and log measured time
             if len(plants_boxes) > 0:
-                self.data_collector.save_detections_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
+                self.data_collector.save_detections_data(self.log_cur_dir + config.AUDIT_OUTPUT_FILE)
 
             dc_t = time.time() - dc_start_t
             msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
                   ", audit processing tick time: " + str(dc_t)
-            logger_full.write(msg + "\n")
+            self.logger_full.write(msg + "\n")
         else:
             # slow mode
             if current_working_mode == working_mode_slow:
@@ -111,15 +111,16 @@ class ExtractionManager:
                         ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)
 
                     self.extract_all_groups()
-
-                     # set camera to the Y min
-                    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
-                    if res != smoothie.RESPONSE_OK:
+                    
+                    # set camera to the Y min
+                    res = self.smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+                    if res != self.smoothie.RESPONSE_OK:
                         msg = "INIT: Failed to move camera to Y min X max/2, smoothie response:\n" + res
-                        logger_full.write(msg + "\n")
-                    smoothie.wait_for_all_actions_done()       
+                        self.logger_full.write(msg + "\n")
+                    self.smoothie.wait_for_all_actions_done() 
 
                     for i in range(1, config.EXTRACTIONS_FULL_CYCLES + 1):
+                        #break
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
 
                         msg = "Extraction cycle " + str(i) + " of " + str(config.EXTRACTIONS_FULL_CYCLES)
@@ -231,10 +232,12 @@ class ExtractionManager:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
     def extract_all_groups(self):
+        time.sleep(2)
         groups = dict()
         cpt = 1
         for idx, obj in np.ndenumerate(self.detection_map):
             if obj.getValue() >= config.GROUP_THRESHOLD and not obj.isRegister:
+                print("Find group !")
                 groups[cpt] = set()
                 groups[cpt].add(obj)
                 obj.isRegister = True
@@ -256,7 +259,7 @@ class ExtractionManager:
 
                 cpt += 1
 
-        if not groups:
+        if groups:
 
             msg = "Groups are found, let's extract them..."
             self.logger_full.write(msg + "\n")
@@ -276,16 +279,27 @@ class ExtractionManager:
 
             y_max,x_max = np.shape(self.extraction_map)[0]-2*config.OFFSET_FOR_MATRIX_BORDER_IN_CELL,np.shape(self.extraction_map)[1]-2*config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
             
+            shoot_step = math.ceil(config.OFFSET_FOR_MATRIX_PATTERN_IN_MM/config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+
+            last_y, last_x, cpt_x, cpt_y = (0,0,0,0)
+
             for shoot in shootList:
                 x = (shoot[0]-config.OFFSET_FOR_MATRIX_BORDER_IN_CELL+0.5) * config.MATRIX_ONE_MATRICE_CELL_IN_MM
                 y = (shoot[1]-config.OFFSET_FOR_MATRIX_BORDER_IN_CELL+0.5) * config.MATRIX_ONE_MATRICE_CELL_IN_MM
-                res = self.smoothie.custom_move_to(config.XY_F_MAX, X=x, Y=y)
-                if res != self.smoothie.RESPONSE_OK:
-                    msg = "Failed to move cork to the extraction position to the group :\n" + res
-                    self.logger_full.write(msg + "\n")
-                    exit(1)
-                self.smoothie.wait_for_all_actions_done()
-                self.extract_one_plant(detection.DetectedPlantBox(0, 0, 0, 0, shoot[2]+"_group", 0, 0, 0, 0), pattern="single_center_drop")
+                if last_y != y:
+                    if cpt_x != 0:
+                        cpt_y += 1
+                    cpt_x = 0
+                last_y,last_x = (y,x)
+                if cpt_x%shoot_step==0 and cpt_y%shoot_step==0:
+                    res = self.smoothie.custom_move_to(config.XY_F_MAX, X=x, Y=y)
+                    if res != self.smoothie.RESPONSE_OK:
+                        msg = "Failed to move cork to the extraction position to the group :\n" + res
+                        self.logger_full.write(msg + "\n")
+                        exit(1)
+                    self.smoothie.wait_for_all_actions_done()
+                    self.extract_one_plant(detection.DetectedPlantBox(0, 0, 0, 0, shoot[2]+"_group", 0, 0, 0, 0), pattern="single_center_drop")
+                cpt_x+=1
 
             msg = "Extraction of groups is finished."
             self.logger_full.write(msg + "\n")
