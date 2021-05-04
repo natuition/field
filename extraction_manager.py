@@ -87,11 +87,15 @@ class ExtractionManager:
 
                         if ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, self.undistorted_zone_radius):
                             x,y = box_x,box_y
-                        else:
-                            x,y,x_mm,y_mm,index = ExtractionManager.get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
 
-                        x_center = math.floor(x / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
-                        y_center = math.floor(y / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+                            x_center = math.floor(x / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+                            y_center = math.floor(y / config.ONE_MM_IN_PX / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+
+                        else:
+                            p_x, p_y, x, y, index = ExtractionManager.get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
+                            
+                            x_center = math.floor((config.X_MAX/2/config.XY_COEFFICIENT_TO_MM + x) / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+                            y_center = math.floor((config.Y_MAX/config.XY_COEFFICIENT_TO_MM - y) / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
 
                         radiusSize_x = math.floor(plant_box.get_sizes()[0] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
                         radiusSize_y = math.floor(plant_box.get_sizes()[1] / config.ONE_MM_IN_PX / 2 / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
