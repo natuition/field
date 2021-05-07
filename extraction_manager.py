@@ -9,7 +9,7 @@ from matplotlib.patches import Polygon
 import utility
 import extraction
 
-DEBUG = True
+DEBUG = False
 
 class ExtractionManager:
 
@@ -107,7 +107,7 @@ class ExtractionManager:
 
                         if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
 
-                            if i == 1:
+                            if i == 1 and config.ALLOW_DETECT_AND_EXTRACT_GROUP:
 
                                 for plant_box in plants_boxes:
                                     box_x,box_y = plant_box.get_center_points()
@@ -301,13 +301,19 @@ class ExtractionManager:
                     cpt_x = 0
                 last_y,last_x = (y,x)
                 if (cpt_x%shoot_step==0 and cpt_y%shoot_step==0) or shoot[3]==1:
-                    res = self.smoothie.custom_move_to(config.XY_F_MAX, X=x, Y=y)
-                    if res != self.smoothie.RESPONSE_OK:
-                        msg = "Failed to move cork to the extraction position to the group :\n" + res
-                        self.logger_full.write(msg + "\n")
-                        exit(1)
-                    self.smoothie.wait_for_all_actions_done()
-                    self.extract_one_plant(detection.DetectedPlantBox(0, 0, 0, 0, shoot[2]+"_group", 0, 0, 0, 0), pattern="single_center_drop")
+                    if x >= config.X_MIN*config.XY_COEFFICIENT_TO_MM and x <= config.X_MAX*config.XY_COEFFICIENT_TO_MM \
+                       and y >= config.Y_MIN*config.XY_COEFFICIENT_TO_MM and y <= config.Y_MAX*config.XY_COEFFICIENT_TO_MM:
+                        res = self.smoothie.custom_move_to(config.XY_F_MAX, X=x, Y=y)
+                        if res != self.smoothie.RESPONSE_OK:
+                            msg = "Failed to move cork to the extraction position to the group :\n" + res
+                            self.logger_full.write(msg + "\n")
+                            exit(1)
+                        self.smoothie.wait_for_all_actions_done()
+                        if shoot[3]==1: 
+                            label = "root_of_" + shoot[2] + "__groups'"
+                        else:  
+                            label =  "leaf_of_" + shoot[2] + "__groups'"
+                        self.extract_one_plant(detection.DetectedPlantBox(0, 0, 0, 0, label, 0, 0, 0, 0), pattern="single_center_drop")
                 cpt_x+=1
 
             msg = "Extraction of groups is finished."

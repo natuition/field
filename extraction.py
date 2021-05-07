@@ -7,7 +7,7 @@ from extraction_manager import ExtractionManager
 import utility
 import datacollection
 
-DEBUG = True
+DEBUG = False
 
 class ExtractionMethods:
     """

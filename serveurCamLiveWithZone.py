@@ -6,7 +6,6 @@ from config import config
 import detection
 import os
 import numpy as np
-import keyboard
 
 # Image frame sent to the Flask object
 global video_frame
