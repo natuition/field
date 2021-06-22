@@ -9,8 +9,6 @@ from matplotlib.patches import Polygon
 import utility
 import extraction
 
-DEBUG = config.VERBOSE
-
 class ExtractionManager:
 
     def __init__(self, smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
@@ -38,7 +36,7 @@ class ExtractionManager:
     def reset_map(self):
         self.detection_map = np.array([[DetectionMapCell(j,i) for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], DetectionMapCell)  
         self.extraction_map = np.array([[ExtractionMapCell(j,i) for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], ExtractionMapCell)
-        if DEBUG:
+        if config.VERBOSE:
             ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
             ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
@@ -77,7 +75,7 @@ class ExtractionManager:
         else:
             # slow mode
             if current_working_mode == working_mode_slow:
-                if DEBUG:
+                if config.VERBOSE:
                     print("[Working mode] : slow")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
@@ -88,7 +86,7 @@ class ExtractionManager:
 
                         msg = "Extraction cycle " + str(i) + " of " + str(config.EXTRACTIONS_FULL_CYCLES)
                         self.logger_full.write(msg + "\n")
-                        if DEBUG:
+                        if config.VERBOSE:
                             print(msg)
 
                         start_work_t = time.time()
@@ -97,7 +95,7 @@ class ExtractionManager:
                         plants_boxes = self.precise_det.detect(frame)
                         pre_det_t = time.time()
 
-                        if config.SAVE_DEBUG_IMAGES:
+                        if config.SAVE_config.VERBOSE_IMAGES:
                             self.image_saver.save_image(frame, img_output_dir, label="(precise view scan 2 M=1)",
                                                    plants_boxes=plants_boxes)
 
@@ -138,7 +136,7 @@ class ExtractionManager:
                                             if y_leaf != y_center or x_leaf != x_center:
                                                 self.detection_map[y_leaf,x_leaf].setLeaf(self.detection_map[y_center,x_center],plant_box.get_name(), plants_boxes.index(plant_box))    
 
-                                if DEBUG:
+                                if config.VERBOSE:
                                     ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)
 
                                 self.extract_all_groups(plants_boxes)
@@ -161,7 +159,7 @@ class ExtractionManager:
                     # force step forward to avoid infinite loop after extraction (if NN triggers on extracted plants)
                     msg = "Applying force step forward after extractions cycle(s)"
                     self.logger_full.write(msg + "\n")
-                    if DEBUG:
+                    if config.VERBOSE:
                         print(msg)
 
                     self.reset_map()
@@ -193,7 +191,7 @@ class ExtractionManager:
 
             # switching to fast mode
             elif current_working_mode == working_mode_switching:
-                if DEBUG:
+                if config.VERBOSE:
                     print("[Working mode] : switching")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
@@ -216,7 +214,7 @@ class ExtractionManager:
 
             # fast mode
             elif current_working_mode == working_mode_fast:
-                if DEBUG:
+                if config.VERBOSE:
                     print("[Working mode] : fast")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
@@ -273,7 +271,7 @@ class ExtractionManager:
             msg = "Groups are found, let's extract them..."
             self.logger_full.write(msg + "\n")
 
-            if DEBUG:
+            if config.VERBOSE:
                 print(msg)
 
             shootList = list()
@@ -318,7 +316,7 @@ class ExtractionManager:
 
             msg = "Extraction of groups is finished."
             self.logger_full.write(msg + "\n")
-            if DEBUG:
+            if config.VERBOSE:
                 print(msg)
 
     def extract_all_plants(self, frame, plant_boxes: list, img_output_dir):
@@ -337,7 +335,7 @@ class ExtractionManager:
 
         msg = "Extracting " + str(len(plant_boxes)) + " plants"
         logger_full.write(msg + "\n")
-        if DEBUG:
+        if config.VERBOSE:
             print(msg)
 
         # loop over all detected plants
@@ -373,7 +371,7 @@ class ExtractionManager:
             if ExtractionManager.is_point_in_poly(box_x, box_y, working_zone_polygon):
                 # extraction loop
                 for _ in range(config.EXTRACTION_TUNING_MAX_COUNT):
-                    if DEBUG:
+                    if config.VERBOSE:
                         print(f"Turn n°{_}")
                     box_x, box_y = box.get_center_points()
 
@@ -381,7 +379,7 @@ class ExtractionManager:
                     if ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                         msg = "Plant " + str(box) + " is in undistorted zone"
                         logger_full.write(msg + "\n")
-                        if DEBUG:
+                        if config.VERBOSE:
                             print(msg)
 
                         # use plant box from precise NN for movement calculations
@@ -390,8 +388,8 @@ class ExtractionManager:
                             frame = camera.get_image()
                             temp_plant_boxes = detector.detect(frame)
 
-                            # debug image saving
-                            if config.SAVE_DEBUG_IMAGES:
+                            # config.VERBOSE image saving
+                            if config.SAVE_config.VERBOSE_IMAGES:
                                 image_saver.save_image(frame, img_output_dir, label="(increasing precision)",
                                                     plants_boxes=plant_boxes)
 
@@ -399,7 +397,7 @@ class ExtractionManager:
                             if len(temp_plant_boxes) == 0:
                                 msg = "No plants detected (plant was in undistorted zone before), trying to move on next item"
                                 logger_full.write(msg + "\n")
-                                if DEBUG:
+                                if config.VERBOSE:
                                     print(msg)
                                 break
 
@@ -411,7 +409,7 @@ class ExtractionManager:
                             if not ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                                 msg = "No plants in undistorted zone (plant was in undistorted zone before), trying to move on next item"
                                 logger_full.write(msg + "\n")
-                                if DEBUG:
+                                if config.VERBOSE:
                                     print(msg)
                                 continue
 
@@ -437,8 +435,8 @@ class ExtractionManager:
                             logger_full.write(msg + "\n")
                             break
 
-                        # debug image saving
-                        if config.SAVE_DEBUG_IMAGES:
+                        # config.VERBOSE image saving
+                        if config.SAVE_config.VERBOSE_IMAGES:
                             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                             frame = camera.get_image()
                             image_saver.save_image(frame, img_output_dir, label="(before first cork down)")
@@ -474,7 +472,7 @@ class ExtractionManager:
                     else:
                         msg = "Plant is in working zone, trying to get closer"
                         logger_full.write(msg + "\n")
-                        if DEBUG:
+                        if config.VERBOSE:
                             print(msg)
 
                         # calculate values for move camera closer to a plant
@@ -531,8 +529,8 @@ class ExtractionManager:
                         frame = camera.get_image()
                         temp_plant_boxes = detector.detect(frame)
 
-                        # debug image saving
-                        if config.SAVE_DEBUG_IMAGES:
+                        # config.VERBOSE image saving
+                        if config.SAVE_config.VERBOSE_IMAGES:
                             image_saver.save_image(frame, img_output_dir, label="(extraction specify)",
                                                 plants_boxes=temp_plant_boxes)
 
@@ -542,7 +540,7 @@ class ExtractionManager:
 
                             msg = "No plants detected (plant was in working zone before), trying to do delta movement and find this plant"
                             logger_full.write(msg + "\n")
-                            if DEBUG:
+                            if config.VERBOSE:
                                 print(msg)
 
                             # try to move for delta values and find the weed (down, up and left, right)
@@ -565,8 +563,8 @@ class ExtractionManager:
                                 frame = camera.get_image()
                                 temp_plant_boxes = detector.detect(frame)
 
-                                # debug image saving
-                                if config.SAVE_DEBUG_IMAGES:
+                                # config.VERBOSE image saving
+                                if config.SAVE_config.VERBOSE_IMAGES:
                                     image_saver.save_image(frame, img_output_dir,
                                                         label="(delta movement X" + str(sm_x) + " Y" + str(sm_y) + ")",
                                                         plants_boxes=temp_plant_boxes)
@@ -605,7 +603,7 @@ class ExtractionManager:
             if hasattr(extraction.ExtractionMethods, pattern):
                 msg = f"Trying extractions method \"{pattern}\"."
                 self.logger_full.write(msg + "\n")
-                if DEBUG:
+                if config.VERBOSE:
                     print(msg)
 
                 res, cork_is_stuck = getattr(extraction.ExtractionMethods, pattern)(self.smoothie, box, self.extraction_map)
@@ -620,7 +618,7 @@ class ExtractionManager:
             # TODO: it's temporary log (1)
             msg = f"Trying extractions method \"{box.get_name()}\"."  # only Daisy implemented, it has 5 drops
             self.logger_full.write(msg + "\n")
-            if DEBUG:
+            if config.VERBOSE:
                 print(msg)
 
             res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(self.smoothie, box, self.extraction_map)
@@ -631,7 +629,7 @@ class ExtractionManager:
             drops = 5 if config.EXTRACTION_DEFAULT_METHOD == "five_drops_near_center" else 1
             msg = f"Trying extractions method \"{config.EXTRACTION_DEFAULT_METHOD}\"."
             self.logger_full.write(msg + "\n")
-            if DEBUG:
+            if config.VERBOSE:
                 print(msg)
 
             res, cork_is_stuck = getattr(extraction.ExtractionMethods, config.EXTRACTION_DEFAULT_METHOD)(self.smoothie, box, self.extraction_map)
@@ -645,7 +643,7 @@ class ExtractionManager:
         else:
             self.data_collector.add_extractions_data(box.get_name(), 1)
             self.data_collector.save_extractions_data(self.log_cur_dir + config.STATISTICS_OUTPUT_FILE)
-            if DEBUG:
+            if config.VERBOSE:
                 ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
         return True
