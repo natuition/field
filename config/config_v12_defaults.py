@@ -268,6 +268,7 @@ DATA_GATHERING_DIR = "gathered_data/"
 CORK_CALIBRATION_MIN_TIME = 360000
 QUEUE_NAME_UI_MAIN = "/queue_ui_main"
 ALLOW_DETECT_AND_EXTRACT_GROUP = False
+VERBOSE = True
 
 # ======================================================================================================================
 # MATRIX SETTINGS

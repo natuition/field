@@ -9,7 +9,7 @@ from matplotlib.patches import Polygon
 import utility
 import extraction
 
-DEBUG = False
+DEBUG = config.VERBOSE
 
 class ExtractionManager:
 

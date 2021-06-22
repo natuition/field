@@ -7,7 +7,7 @@ from extraction_manager import ExtractionManager
 import utility
 import datacollection
 
-DEBUG = False
+DEBUG = config.VERBOSE
 
 class ExtractionMethods:
     """
