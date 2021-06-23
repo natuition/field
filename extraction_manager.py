@@ -95,7 +95,7 @@ class ExtractionManager:
                         plants_boxes = self.precise_det.detect(frame)
                         pre_det_t = time.time()
 
-                        if config.SAVE_config.VERBOSE_IMAGES:
+                        if config.SAVE_DEBUG_IMAGES:
                             self.image_saver.save_image(frame, img_output_dir, label="(precise view scan 2 M=1)",
                                                    plants_boxes=plants_boxes)
 
@@ -389,7 +389,7 @@ class ExtractionManager:
                             temp_plant_boxes = detector.detect(frame)
 
                             # config.VERBOSE image saving
-                            if config.SAVE_config.VERBOSE_IMAGES:
+                            if config.SAVE_DEBUG_IMAGES:
                                 image_saver.save_image(frame, img_output_dir, label="(increasing precision)",
                                                     plants_boxes=plant_boxes)
 
@@ -436,7 +436,7 @@ class ExtractionManager:
                             break
 
                         # config.VERBOSE image saving
-                        if config.SAVE_config.VERBOSE_IMAGES:
+                        if config.SAVE_DEBUG_IMAGES:
                             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                             frame = camera.get_image()
                             image_saver.save_image(frame, img_output_dir, label="(before first cork down)")
@@ -530,7 +530,7 @@ class ExtractionManager:
                         temp_plant_boxes = detector.detect(frame)
 
                         # config.VERBOSE image saving
-                        if config.SAVE_config.VERBOSE_IMAGES:
+                        if config.SAVE_DEBUG_IMAGES:
                             image_saver.save_image(frame, img_output_dir, label="(extraction specify)",
                                                 plants_boxes=temp_plant_boxes)
 
@@ -564,7 +564,7 @@ class ExtractionManager:
                                 temp_plant_boxes = detector.detect(frame)
 
                                 # config.VERBOSE image saving
-                                if config.SAVE_config.VERBOSE_IMAGES:
+                                if config.SAVE_DEBUG_IMAGES:
                                     image_saver.save_image(frame, img_output_dir,
                                                         label="(delta movement X" + str(sm_x) + " Y" + str(sm_y) + ")",
                                                         plants_boxes=temp_plant_boxes)

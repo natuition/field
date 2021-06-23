@@ -1223,7 +1223,7 @@ def main():
         """
         
         #put the wheel straight
-        response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+        response = smoothie.nav_align_wheels_center(config.A_F_MAX)
         if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
             msg = "Smoothie response is not ok: " + response
             print(msg)
