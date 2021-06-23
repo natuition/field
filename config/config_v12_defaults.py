@@ -284,6 +284,7 @@ MATRIX_EXTRACTION_PATTERN = 2 # All different pattern will be number greater tha
 MATRIX_ONE_MATRICE_CELL_IN_MM = 10
 OFFSET_FOR_MATRIX_BORDER_IN_CELL = 5
 OFFSET_FOR_MATRIX_PATTERN_IN_MM = 20
+DEBUG_MATRIX_FILE = False
 
 # ======================================================================================================================
 # OBSOLETTE SETTINGS

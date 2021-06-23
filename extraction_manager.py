@@ -36,7 +36,7 @@ class ExtractionManager:
     def reset_map(self):
         self.detection_map = np.array([[DetectionMapCell(j,i) for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], DetectionMapCell)  
         self.extraction_map = np.array([[ExtractionMapCell(j,i) for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], ExtractionMapCell)
-        if config.VERBOSE:
+        if config.DEBUG_MATRIX_FILE:
             ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
             ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
@@ -136,7 +136,7 @@ class ExtractionManager:
                                             if y_leaf != y_center or x_leaf != x_center:
                                                 self.detection_map[y_leaf,x_leaf].setLeaf(self.detection_map[y_center,x_center],plant_box.get_name(), plants_boxes.index(plant_box))    
 
-                                if config.VERBOSE:
+                                if config.DEBUG_MATRIX_FILE:
                                     ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)
 
                                 self.extract_all_groups(plants_boxes)
@@ -643,7 +643,7 @@ class ExtractionManager:
         else:
             self.data_collector.add_extractions_data(box.get_name(), 1)
             self.data_collector.save_extractions_data(self.log_cur_dir + config.STATISTICS_OUTPUT_FILE)
-            if config.VERBOSE:
+            if config.DEBUG_MATRIX_FILE:
                 ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
         return True
