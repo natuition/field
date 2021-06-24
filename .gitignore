@@ -132,3 +132,4 @@ logs/
 path_index.txt
 path_points.dat
 uiWebRobot/logs/
+*.txt
