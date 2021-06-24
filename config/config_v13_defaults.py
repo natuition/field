@@ -91,7 +91,7 @@ DARKNET_LIB_DIR_PATH = "/home/violette/field/darknet/"
 VESC_PORT = "/dev/ttyACM0"
 VESC_BAUDRATE = 115200
 VESC_RPM_UI = -11500
-VESC_RPM_SLOW = -2500 #-2500 à remettre
+VESC_RPM_SLOW = -2500
 VESC_RPM_FAST = -10000
 VESC_RPM_AUDIT = -10000
 VESC_MOVING_TIME = float("inf")
@@ -127,17 +127,17 @@ Z_MIN = -float("inf")
 Z_MAX = 100
 
 XY_F_MIN = 1
-XY_F_MAX = 8000 
+XY_F_MAX = 5500 
 Z_F_MIN = 1
 Z_F_MAX = 2000 
 
 XY_COEFFICIENT_TO_MM = 1
 Z_COEFFICIENT_TO_MM = 1  # not used yet
 
-EXTRACTION_Z = 45  # value that passed to smoothie when doing plant extration
+EXTRACTION_Z = 65  # value that passed to smoothie when doing plant extration
 Z_F_EXTRACTION_UP = 1350
-Z_F_EXTRACTION_DOWN = 1900
-ALLOW_PRECISE_RESCAN = False #True à mettre
+Z_F_EXTRACTION_DOWN = 1950
+ALLOW_PRECISE_RESCAN = True
 
 # CALIBRATION
 USE_X_AXIS_CALIBRATION = True
@@ -219,11 +219,11 @@ CROP_W_FROM = 661
 CROP_W_TO = 2708
 CROP_H_FROM = 257
 CROP_H_TO = 1551
-CAMERA_FRAMERATE = 6#8
+CAMERA_FRAMERATE = 8
 CAMERA_FLIP_METHOD = 0
 SCENE_CENTER_X = 979  # 1788 for uncropped
 SCENE_CENTER_Y = 994  # 1368 for uncropped
-ONE_MM_IN_PX = 6
+ONE_MM_IN_PX = 5.2
 ISP_DIGITAL_GAIN_RANGE_FROM = 4
 ISP_DIGITAL_GAIN_RANGE_TO = 4
 GAIN_RANGE_FROM = 4
@@ -244,7 +244,7 @@ UNDISTORTED_ZONE_RADIUS = 240
 # ======================================================================================================================
 # APP SETTINGS
 # ======================================================================================================================
-SAVE_DEBUG_IMAGES = True
+SAVE_DEBUG_IMAGES = False
 DEBUG_IMAGES_PATH = "debug_images/"
 ALLOW_GATHERING = False
 FILES_TO_KEEP_COUNT = 600
@@ -255,7 +255,7 @@ DB_NAME = "dbname"
 DB_USER = "username"
 DB_HOST = "x.x.x.x"
 DB_PWD = "password"
-ROBOT_SN = "SN007"
+ROBOT_SN = "SNXXX"
 UI_LANGUAGE = "fr"
 AUDIT_MODE = False
 AUDIT_DIVIDER = 6
