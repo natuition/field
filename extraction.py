@@ -7,8 +7,6 @@ from extraction_manager import ExtractionManager
 import utility
 import datacollection
 
-DEBUG = False
-
 class ExtractionMethods:
     """
     Contains methods for different plants extraction.
@@ -43,7 +41,7 @@ class ExtractionMethods:
                 extraction_map[y,x].setRootExtraction()
             else:
                 extraction_map[y,x].setPatternExtraction(parent.lastPattern,parent)
-            if DEBUG:
+            if config.DEBUG_MATRIX_FILE:
                 ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map, header=True)
 
         return res, False
@@ -94,7 +92,7 @@ class ExtractionMethods:
                 x = math.floor(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
                 y = math.floor(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
                 extraction_map[y,x].setPatternExtraction("five_drops_near_center", parent=extraction_map[sm_y,sm_x])
-                if DEBUG:
+                if config.DEBUG_MATRIX_FILE:
                     ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map, header=True)
 
         return res, False
@@ -146,7 +144,7 @@ class ExtractionMethods:
                 x = math.floor(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
                 y = math.floor(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
                 extraction_map[y,x].setPatternExtraction("Daisy", parent=extraction_map[center_sm_y,center_sm_x])
-                if DEBUG:
+                if config.DEBUG_MATRIX_FILE:
                     ExtractionManager.save_matrix("last_extraction_map.txt",extraction_map, header=True)
 
         return res, False

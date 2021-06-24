@@ -8,10 +8,12 @@ import time
 from matplotlib.patches import Polygon
 import utility
 import extraction
-
-DEBUG = False
+from sklearn.preprocessing import PolynomialFeatures
+import pickle
 
 class ExtractionManager:
+
+    loaded_prediction_model = dict()
 
     def __init__(self, smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                  working_zone_polygon: Polygon, working_zone_points_cv: np.array,
@@ -38,7 +40,7 @@ class ExtractionManager:
     def reset_map(self):
         self.detection_map = np.array([[DetectionMapCell(j,i) for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], DetectionMapCell)  
         self.extraction_map = np.array([[ExtractionMapCell(j,i) for j in range(self.numberMatriceColumns)] for i in range(self.numberMatriceLines)], ExtractionMapCell)
-        if DEBUG:
+        if config.DEBUG_MATRIX_FILE:
             ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
             ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
@@ -77,7 +79,7 @@ class ExtractionManager:
         else:
             # slow mode
             if current_working_mode == working_mode_slow:
-                if DEBUG:
+                if config.VERBOSE:
                     print("[Working mode] : slow")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
@@ -88,7 +90,7 @@ class ExtractionManager:
 
                         msg = "Extraction cycle " + str(i) + " of " + str(config.EXTRACTIONS_FULL_CYCLES)
                         self.logger_full.write(msg + "\n")
-                        if DEBUG:
+                        if config.VERBOSE:
                             print(msg)
 
                         start_work_t = time.time()
@@ -138,7 +140,7 @@ class ExtractionManager:
                                             if y_leaf != y_center or x_leaf != x_center:
                                                 self.detection_map[y_leaf,x_leaf].setLeaf(self.detection_map[y_center,x_center],plant_box.get_name(), plants_boxes.index(plant_box))    
 
-                                if DEBUG:
+                                if config.DEBUG_MATRIX_FILE:
                                     ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)
 
                                 self.extract_all_groups(plants_boxes)
@@ -161,7 +163,7 @@ class ExtractionManager:
                     # force step forward to avoid infinite loop after extraction (if NN triggers on extracted plants)
                     msg = "Applying force step forward after extractions cycle(s)"
                     self.logger_full.write(msg + "\n")
-                    if DEBUG:
+                    if config.VERBOSE:
                         print(msg)
 
                     self.reset_map()
@@ -193,7 +195,7 @@ class ExtractionManager:
 
             # switching to fast mode
             elif current_working_mode == working_mode_switching:
-                if DEBUG:
+                if config.VERBOSE:
                     print("[Working mode] : switching")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
@@ -216,7 +218,7 @@ class ExtractionManager:
 
             # fast mode
             elif current_working_mode == working_mode_fast:
-                if DEBUG:
+                if config.VERBOSE:
                     print("[Working mode] : fast")
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
@@ -273,7 +275,7 @@ class ExtractionManager:
             msg = "Groups are found, let's extract them..."
             self.logger_full.write(msg + "\n")
 
-            if DEBUG:
+            if config.VERBOSE:
                 print(msg)
 
             shootList = list()
@@ -318,7 +320,7 @@ class ExtractionManager:
 
             msg = "Extraction of groups is finished."
             self.logger_full.write(msg + "\n")
-            if DEBUG:
+            if config.VERBOSE:
                 print(msg)
 
     def extract_all_plants(self, frame, plant_boxes: list, img_output_dir):
@@ -337,7 +339,7 @@ class ExtractionManager:
 
         msg = "Extracting " + str(len(plant_boxes)) + " plants"
         logger_full.write(msg + "\n")
-        if DEBUG:
+        if config.VERBOSE:
             print(msg)
 
         # loop over all detected plants
@@ -373,7 +375,7 @@ class ExtractionManager:
             if ExtractionManager.is_point_in_poly(box_x, box_y, working_zone_polygon):
                 # extraction loop
                 for _ in range(config.EXTRACTION_TUNING_MAX_COUNT):
-                    if DEBUG:
+                    if config.VERBOSE:
                         print(f"Turn n°{_}")
                     box_x, box_y = box.get_center_points()
 
@@ -381,7 +383,7 @@ class ExtractionManager:
                     if ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                         msg = "Plant " + str(box) + " is in undistorted zone"
                         logger_full.write(msg + "\n")
-                        if DEBUG:
+                        if config.VERBOSE:
                             print(msg)
 
                         # use plant box from precise NN for movement calculations
@@ -390,7 +392,7 @@ class ExtractionManager:
                             frame = camera.get_image()
                             temp_plant_boxes = detector.detect(frame)
 
-                            # debug image saving
+                            # config.VERBOSE image saving
                             if config.SAVE_DEBUG_IMAGES:
                                 image_saver.save_image(frame, img_output_dir, label="(increasing precision)",
                                                     plants_boxes=plant_boxes)
@@ -399,7 +401,7 @@ class ExtractionManager:
                             if len(temp_plant_boxes) == 0:
                                 msg = "No plants detected (plant was in undistorted zone before), trying to move on next item"
                                 logger_full.write(msg + "\n")
-                                if DEBUG:
+                                if config.VERBOSE:
                                     print(msg)
                                 break
 
@@ -411,7 +413,7 @@ class ExtractionManager:
                             if not ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
                                 msg = "No plants in undistorted zone (plant was in undistorted zone before), trying to move on next item"
                                 logger_full.write(msg + "\n")
-                                if DEBUG:
+                                if config.VERBOSE:
                                     print(msg)
                                 continue
 
@@ -474,15 +476,17 @@ class ExtractionManager:
                     else:
                         msg = "Plant is in working zone, trying to get closer"
                         logger_full.write(msg + "\n")
-                        if DEBUG:
+                        if config.VERBOSE:
                             print(msg)
 
+                        
                         # calculate values for move camera closer to a plant
-                        control_point = ExtractionManager.get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
+                        plant_pos_prediction = ExtractionManager.get_closer_center_plant(box_x, box_y)
+                        #control_point = ExtractionManager.get_closest_control_point(box_x, box_y, config.IMAGE_CONTROL_POINTS_MAP)
 
                         # fixing cork tube view obscuring
                         if config.AVOID_CORK_VIEW_OBSCURING:
-                            # compute target point x
+                            '''# compute target point x
                             C_H = box_x - control_point[0]  # may be negative
                             H_x = control_point[0] + C_H
                             target_x = H_x
@@ -494,19 +498,26 @@ class ExtractionManager:
 
                             # transfer that to millimeters
                             sm_x = ExtractionManager.px_to_smoothie_value(target_x, control_point[0], config.ONE_MM_IN_PX)
-                            sm_y = -ExtractionManager.px_to_smoothie_value(target_y, control_point[1], config.ONE_MM_IN_PX)
+                            sm_y = -ExtractionManager.px_to_smoothie_value(target_y, control_point[1], config.ONE_MM_IN_PX)'''
 
+                            box_width, box_height = box.get_sizes[0], box.get_sizes[1]
+
+                            box_y_with_offset = box_y - box_height/2
+
+                            plant_pos_prediction_with_offset = ExtractionManager.get_closer_center_plant(box_x, box_y_with_offset)
+
+                            sm_x = float(plant_pos_prediction_with_offset[0])
+                            sm_y = float(plant_pos_prediction_with_offset[1])
+                            
                             # move camera closer to a plant (and trying to avoid obscuring)
                             res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
                             smoothie.wait_for_all_actions_done()
                             if res != smoothie.RESPONSE_OK:
                                 msg = "Couldn't apply cork obscuring, smoothie's response:\n" + res + "\n" + \
-                                    "(box_x: " + str(box_x) + " box_y: " + str(box_y) + " target_x: " + str(target_x) + \
-                                    " target_y: " + str(target_y) + " cp_x: " + str(control_point[0]) + " cp_y: " + \
-                                    str(control_point[1]) + ")"
+                                    f"(box_x: {box_x} box_y: {box_y} box_width: {box_width} box_height: {box_height} prediction_x: {sm_x} prediction_y: {sm_y})"
                                 logger_full.write(msg + "\n")
 
-                                sm_x, sm_y = control_point[2], control_point[3]
+                                sm_x, sm_y = float(plant_pos_prediction[0]), float(plant_pos_prediction[1])
 
                                 # move camera closer to a plant
                                 res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
@@ -516,7 +527,7 @@ class ExtractionManager:
                                     logger_full.write(msg + "\n")
                                     break
                         else:
-                            sm_x, sm_y = control_point[2], control_point[3]
+                            sm_x, sm_y = float(plant_pos_prediction[0]), float(plant_pos_prediction[1])
 
                             # move camera closer to a plant
                             res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
@@ -542,7 +553,7 @@ class ExtractionManager:
 
                             msg = "No plants detected (plant was in working zone before), trying to do delta movement and find this plant"
                             logger_full.write(msg + "\n")
-                            if DEBUG:
+                            if config.VERBOSE:
                                 print(msg)
 
                             # try to move for delta values and find the weed (down, up and left, right)
@@ -605,7 +616,7 @@ class ExtractionManager:
             if hasattr(extraction.ExtractionMethods, pattern):
                 msg = f"Trying extractions method \"{pattern}\"."
                 self.logger_full.write(msg + "\n")
-                if DEBUG:
+                if config.VERBOSE:
                     print(msg)
 
                 res, cork_is_stuck = getattr(extraction.ExtractionMethods, pattern)(self.smoothie, box, self.extraction_map)
@@ -620,7 +631,7 @@ class ExtractionManager:
             # TODO: it's temporary log (1)
             msg = f"Trying extractions method \"{box.get_name()}\"."  # only Daisy implemented, it has 5 drops
             self.logger_full.write(msg + "\n")
-            if DEBUG:
+            if config.VERBOSE:
                 print(msg)
 
             res, cork_is_stuck = getattr(extraction.ExtractionMethods, box.get_name())(self.smoothie, box, self.extraction_map)
@@ -631,7 +642,7 @@ class ExtractionManager:
             drops = 5 if config.EXTRACTION_DEFAULT_METHOD == "five_drops_near_center" else 1
             msg = f"Trying extractions method \"{config.EXTRACTION_DEFAULT_METHOD}\"."
             self.logger_full.write(msg + "\n")
-            if DEBUG:
+            if config.VERBOSE:
                 print(msg)
 
             res, cork_is_stuck = getattr(extraction.ExtractionMethods, config.EXTRACTION_DEFAULT_METHOD)(self.smoothie, box, self.extraction_map)
@@ -645,7 +656,7 @@ class ExtractionManager:
         else:
             self.data_collector.add_extractions_data(box.get_name(), 1)
             self.data_collector.save_extractions_data(self.log_cur_dir + config.STATISTICS_OUTPUT_FILE)
-            if DEBUG:
+            if config.DEBUG_MATRIX_FILE:
                 ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
         return True
@@ -672,6 +683,44 @@ class ExtractionManager:
         return math.sqrt((point_x - circle_center_x) ** 2 + (point_y - circle_center_y) ** 2) <= circle_radius
 
     @staticmethod
+    #prediction of the distance in mm between the center of the plant and the center of the scene
+    def plant_position_prediction(norm_x, norm_y, dis_from_center): #train the model and get .sav with prediction.py before
+        
+        degree = None
+
+        for threshold, _degree in config.ZONE_THRESHOLD_DEGREE.items():
+            if dis_from_center <= threshold:
+                degree = _degree
+                break
+
+        if degree is None:
+            raise ValueError("Incorrect data !")
+
+        values = [norm_x, norm_y, dis_from_center]
+
+        poly_features = PolynomialFeatures(degree=degree)  # generate the matrix of the right degree
+
+        if degree not in ExtractionManager.loaded_prediction_model.keys():
+            filename = 'zone_models/zone_model_' + str(degree) + '.sav'
+            ExtractionManager.loaded_prediction_model[degree] = pickle.load(open(filename, 'rb'))  # open the model trained
+
+        data = poly_features.fit_transform([values])  # charge the datas into the matrix
+        pred = ExtractionManager.loaded_prediction_model[degree].predict(data)[0]  # model.predict() comes from scikit
+        return pred
+    
+    @staticmethod
+    def get_closer_center_plant(plant_px_x, plant_px_y):
+        """ returns the distance in mm between the center of the plant and the center of the scene """
+        
+        x_scene = config.SCENE_CENTER_X 
+        y_scene = config.SCENE_CENTER_Y   
+        norm_x = plant_px_x - x_scene
+        norm_y = plant_px_y - y_scene
+        dis_from_center = math.sqrt(norm_x**2 + norm_y**2)
+        pred = ExtractionManager.plant_position_prediction(norm_x, norm_y, dis_from_center)
+        return pred 
+    
+    '''@staticmethod
     def get_closest_control_point(plant_px_x, plant_px_y, points_map):
         """Returns image control point, which is closest to the given plant center point"""
 
@@ -680,7 +729,8 @@ class ExtractionManager:
             cur_distance = math.sqrt((plant_px_x - points_map[i][0]) ** 2 + (plant_px_y - points_map[i][1]) ** 2)
             if cur_distance < min_distance:
                 min_distance, index = cur_distance, i
-        return points_map[index]
+        return points_map[index]'''
+    
 
     @staticmethod
     def is_in_matrice(map: np.matrix, X=None, Y=None):
