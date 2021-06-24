@@ -199,7 +199,12 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     extraction_manager = ExtractionManager(smoothie, camera, working_zone_polygon, working_zone_points_cv,
                                            logger_full, data_collector, image_saver, log_cur_dir, periphery_det, precise_det)
 
-    msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+    msgQueue = None
+
+    try:
+        msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+    except:
+        pass
 
     # main navigation control loop
     while True:
@@ -228,7 +233,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             continue
 
         trajectory_saver.save_point(cur_pos)
-        msgQueue.send(json.dumps({"last_gps": cur_pos}))
+        if msgQueue is not None:
+            msgQueue.send(json.dumps({"last_gps": cur_pos}))
         """
         if len(used_points_history) > 0:
             if str(used_points_history[-1]) != str(cur_pos):

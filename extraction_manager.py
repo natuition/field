@@ -8,8 +8,11 @@ import time
 from matplotlib.patches import Polygon
 import utility
 import extraction
+<<<<<<< HEAD
 from sklearn.preprocessing import PolynomialFeatures
 import pickle
+=======
+>>>>>>> 1ec1525fc8e565ca21977ee4afe25534eeac9093
 
 class ExtractionManager:
 
@@ -439,7 +442,7 @@ class ExtractionManager:
                             logger_full.write(msg + "\n")
                             break
 
-                        # debug image saving
+                        # config.VERBOSE image saving
                         if config.SAVE_DEBUG_IMAGES:
                             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                             frame = camera.get_image()
@@ -542,7 +545,7 @@ class ExtractionManager:
                         frame = camera.get_image()
                         temp_plant_boxes = detector.detect(frame)
 
-                        # debug image saving
+                        # config.VERBOSE image saving
                         if config.SAVE_DEBUG_IMAGES:
                             image_saver.save_image(frame, img_output_dir, label="(extraction specify)",
                                                 plants_boxes=temp_plant_boxes)
@@ -576,7 +579,7 @@ class ExtractionManager:
                                 frame = camera.get_image()
                                 temp_plant_boxes = detector.detect(frame)
 
-                                # debug image saving
+                                # config.VERBOSE image saving
                                 if config.SAVE_DEBUG_IMAGES:
                                     image_saver.save_image(frame, img_output_dir,
                                                         label="(delta movement X" + str(sm_x) + " Y" + str(sm_y) + ")",
