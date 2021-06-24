@@ -8,11 +8,8 @@ import time
 from matplotlib.patches import Polygon
 import utility
 import extraction
-<<<<<<< HEAD
 from sklearn.preprocessing import PolynomialFeatures
 import pickle
-=======
->>>>>>> 1ec1525fc8e565ca21977ee4afe25534eeac9093
 
 class ExtractionManager:
 
