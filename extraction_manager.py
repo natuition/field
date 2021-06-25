@@ -500,7 +500,7 @@ class ExtractionManager:
                             sm_x = ExtractionManager.px_to_smoothie_value(target_x, control_point[0], config.ONE_MM_IN_PX)
                             sm_y = -ExtractionManager.px_to_smoothie_value(target_y, control_point[1], config.ONE_MM_IN_PX)'''
 
-                            box_width, box_height = box.get_sizes[0], box.get_sizes[1]
+                            box_width, box_height = box.get_sizes()[0], box.get_sizes()[1]
 
                             box_y_with_offset = box_y - box_height/2
 
