@@ -52,6 +52,8 @@ class CheckState(State):
             self.cam.send_signal(signal.SIGINT)
             self.cam.wait()
             os.system("sudo systemctl restart nvargus-daemon")
+            if config.NTRIP:
+                os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState(self.socketio, self.logger, False)
         else:
             try:

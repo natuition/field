@@ -386,6 +386,8 @@ class ExtractionManager:
                         if config.VERBOSE:
                             print(msg)
 
+                        plant_to_extract = list()
+
                         # use plant box from precise NN for movement calculations
                         if not plant_position_is_precise:
                             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
@@ -404,72 +406,87 @@ class ExtractionManager:
                                 if config.VERBOSE:
                                     print(msg)
                                 break
+                        
+                            if not config.MYOPIA_PATCH:
+                                # get closest box (update current box from main list coordinates after moving closer)
+                                box = ExtractionManager.min_plant_box_dist(temp_plant_boxes, config.SCENE_CENTER_X, config.SCENE_CENTER_Y)
+                                box_x, box_y = box.get_center_points()
 
-                            # get closest box (update current box from main list coordinates after moving closer)
-                            box = ExtractionManager.min_plant_box_dist(temp_plant_boxes, config.SCENE_CENTER_X, config.SCENE_CENTER_Y)
-                            box_x, box_y = box.get_center_points()
+                                # check if box still in undistorted zone
+                                if not ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
+                                    plant_to_extract = None
+                                else:
+                                    plant_to_extract.append(box)                       
+                            else:
+                                plant_to_extract = ExtractionManager.get_plants_in_circle(temp_plant_boxes, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
 
-                            # check if box still in undistorted zone
-                            if not ExtractionManager.is_point_in_circle(box_x, box_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius):
+                            if plant_to_extract is None:
                                 msg = "No plants in undistorted zone (plant was in undistorted zone before), trying to move on next item"
                                 logger_full.write(msg + "\n")
                                 if config.VERBOSE:
                                     print(msg)
                                 continue
 
-                        # calculate values to move camera over a plant
-                        sm_x = ExtractionManager.px_to_smoothie_value(box_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
-                        sm_y = -ExtractionManager.px_to_smoothie_value(box_y, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
-                        cam_sm_x = sm_x
-                        cam_sm_y = sm_y
-                        # swap camera and cork for extraction immediately
-                        sm_x += config.CORK_TO_CAMERA_DISTANCE_X
-                        sm_y += config.CORK_TO_CAMERA_DISTANCE_Y
-
-                        msg = "box_x:{0} box_y:{1} cam_sm_x:{2} cam_sm_y:{3} sm_x:{4} sm_y:{5} scene_center_x:{6} scene_center_y:{7} one_mm_in_px:{8}".format(
-                            box_x, box_y, cam_sm_x, cam_sm_y, sm_x, sm_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y,
-                            config.ONE_MM_IN_PX)
-                        logger_full.write(msg + "\n")
-
-                        # move cork over a plant
-                        res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
-                        smoothie.wait_for_all_actions_done()
-                        if res != smoothie.RESPONSE_OK:
-                            msg = "Couldn't move cork over plant, smoothie error occurred:\n" + res
-                            logger_full.write(msg + "\n")
-                            break
-
-                        # config.VERBOSE image saving
-                        if config.SAVE_DEBUG_IMAGES:
-                            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                            frame = camera.get_image()
-                            image_saver.save_image(frame, img_output_dir, label="(before first cork down)")
-
-                        x = math.floor(smoothie.get_smoothie_current_coordinates()["X"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
-                        y = math.floor(smoothie.get_smoothie_current_coordinates()["Y"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
-
-                        offset = math.floor(config.OFFSET_FOR_MATRIX_PATTERN_IN_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
-
-                        """
-                        self.extract_one_plant(box,pattern="pattern_x")
-                        self.extract_one_plant(box,pattern="pattern_plus")
-                        """
-
-                        if self.extraction_map[y,x].hasDrop:
-
-                            if self.extraction_map[y,x].isRootExtraction:
-
-                                if self.extraction_map[y,x].lastPattern is None:
-
-                                    self.extract_one_plant(box,pattern="pattern_plus")
-
-                                elif not self.extraction_map[y,x].dictPattern["pattern_x"]:
-
-                                    self.extract_one_plant(box,pattern="pattern_x")
-
                         else:
-                            self.extract_one_plant(box)
-                        
+                            plant_to_extract.append(box)  
+
+                        for box in plant_to_extract:
+
+                            box_x, box_y = box.get_center_points()
+
+                            # calculate values to move camera over a plant
+                            sm_x = ExtractionManager.px_to_smoothie_value(box_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
+                            sm_y = -ExtractionManager.px_to_smoothie_value(box_y, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
+                            cam_sm_x = sm_x
+                            cam_sm_y = sm_y
+                            # swap camera and cork for extraction immediately
+                            sm_x += config.CORK_TO_CAMERA_DISTANCE_X
+                            sm_y += config.CORK_TO_CAMERA_DISTANCE_Y
+
+                            msg = "box_x:{0} box_y:{1} cam_sm_x:{2} cam_sm_y:{3} sm_x:{4} sm_y:{5} scene_center_x:{6} scene_center_y:{7} one_mm_in_px:{8}".format(
+                                box_x, box_y, cam_sm_x, cam_sm_y, sm_x, sm_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y,
+                                config.ONE_MM_IN_PX)
+                            logger_full.write(msg + "\n")
+
+                            # move cork over a plant
+                            res = smoothie.custom_move_for(config.XY_F_MAX, X=sm_x, Y=sm_y)
+                            smoothie.wait_for_all_actions_done()
+                            if res != smoothie.RESPONSE_OK:
+                                msg = "Couldn't move cork over plant, smoothie error occurred:\n" + res
+                                logger_full.write(msg + "\n")
+                                break
+
+                            # config.VERBOSE image saving
+                            if config.SAVE_DEBUG_IMAGES:
+                                time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                                frame = camera.get_image()
+                                image_saver.save_image(frame, img_output_dir, label="(before first cork down)")
+
+                            x = math.floor(smoothie.get_smoothie_current_coordinates()["X"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+                            y = math.floor(smoothie.get_smoothie_current_coordinates()["Y"] / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + self.offsetMatriceBorder
+
+                            offset = math.floor(config.OFFSET_FOR_MATRIX_PATTERN_IN_MM / config.MATRIX_ONE_MATRICE_CELL_IN_MM)
+
+                            """
+                            self.extract_one_plant(box,pattern="pattern_x")
+                            self.extract_one_plant(box,pattern="pattern_plus")
+                            """
+
+                            if self.extraction_map[y,x].hasDrop:
+
+                                if self.extraction_map[y,x].isRootExtraction:
+
+                                    if self.extraction_map[y,x].lastPattern is None:
+
+                                        self.extract_one_plant(box,pattern="pattern_plus")
+
+                                    elif not self.extraction_map[y,x].dictPattern["pattern_x"]:
+
+                                        self.extract_one_plant(box,pattern="pattern_x")
+
+                            else:
+                                self.extract_one_plant(box)
+                            
                         break
 
                     # if outside undistorted zone but in working zone
@@ -500,7 +517,7 @@ class ExtractionManager:
                             sm_x = ExtractionManager.px_to_smoothie_value(target_x, control_point[0], config.ONE_MM_IN_PX)
                             sm_y = -ExtractionManager.px_to_smoothie_value(target_y, control_point[1], config.ONE_MM_IN_PX)'''
 
-                            box_width, box_height = box.get_sizes[0], box.get_sizes[1]
+                            box_width, box_height = box.get_sizes()[0], box.get_sizes()[1]
 
                             box_y_with_offset = box_y - box_height/2
 
@@ -675,6 +692,22 @@ class ExtractionManager:
             if ExtractionManager.is_point_in_poly(box_x, box_y, zone_polygon):
                 return True
         return False
+
+    @staticmethod
+    def get_plants_in_circle(plants_boxes, circle_center_x, circle_center_y, circle_radius):
+        """Returns None if not have plant in cercle, list of plants otherwise"""
+
+        plants = list()
+
+        for plant in plants_boxes:
+            box_x, box_y = plant.get_center_points()
+            if ExtractionManager.is_point_in_circle(box_x, box_y, circle_center_x, circle_center_y, circle_radius):
+                plants.append(plant)
+
+        if not plants:
+            return None
+        
+        return plants
 
     @staticmethod
     def is_point_in_circle(point_x, point_y, circle_center_x, circle_center_y, circle_radius):

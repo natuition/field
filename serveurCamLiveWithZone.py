@@ -25,7 +25,7 @@ draw_zones = True
 
 #Use for draw image control point.
 global draw_control_point 
-draw_control_point = True
+draw_control_point = False
 
 #Use for save detection
 #Todo : no working today

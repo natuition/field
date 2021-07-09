@@ -417,6 +417,8 @@ class SmoothieAdapter:
             response = self._smc.read_some()
             if response == self.RESPONSE_OK:
                 self._a_cur.value += value
+                with open(config.LAST_ANGLE_WHEELS_FILE, "w") as angle_file:
+                    angle_file.write(str(self._a_cur.value))
             return response
 
     def nav_turn_wheels_to(self, destination, F: int):
@@ -438,8 +440,10 @@ class SmoothieAdapter:
             response = self._smc.read_some()
             if response == self.RESPONSE_OK:
                 self._a_cur.value += smc_a
+                with open(config.LAST_ANGLE_WHEELS_FILE, "w") as angle_file:
+                    angle_file.write(str(self._a_cur.value))
             return response
-
+            
     def nav_turn_wheels_left_max(self, F: int):
         return self.nav_turn_wheels_to(config.A_MIN, F)
 

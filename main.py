@@ -27,11 +27,11 @@ import SensorProcessing
 import socketForRTK
 from socketForRTK.Client import Client
 """
-
+"""
 if config.RECEIVE_FIELD_FROM_RTK:
     # import robotEN_JET as rtk
     import robotEN_JETSON as rtk
-
+"""
 # TODO: temp debug counter
 IMAGES_COUNTER = 0
 
@@ -182,6 +182,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     prev_maneuver_time = time.time()
     current_working_mode = 1
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
+
+    lastNtripRestart = time.time()
 
     # set camera to the Y min
     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
@@ -512,6 +514,14 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         
         
         raw_angle_cruise = round(raw_angle_cruise, 2)
+
+        if str(gps_quality) not in ["4","5"] and time.time() - lastNtripRestart > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
+            msg="Restart Ntrip because 60 seconds without corrections"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE: 
+                print(msg)
+            os.system("sudo systemctl restart ntripClient.service")
+            lastNtripRestart = time.time()
 
         msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
             order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
@@ -998,7 +1008,7 @@ def main():
 
             # load field points and generate new path
             else:
-                if config.RECEIVE_FIELD_FROM_RTK:
+                """if config.RECEIVE_FIELD_FROM_RTK:
                     msg = "Loading field coordinates from RTK"
                     logger_full.write(msg + "\n")
 
@@ -1024,7 +1034,8 @@ def main():
                         notification.setStatus(SyntheseRobot.HS)
                         exit(1)
                     field_gps_coords = nav.corner_points(field_gps_coords, config.FILTER_MAX_DIST, config.FILTER_MIN_DIST)
-                elif config.USE_EMERGENCY_FIELD_GENERATION:
+                """
+                if config.USE_EMERGENCY_FIELD_GENERATION:
                     field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
                 else:
                     msg = "Loading " + config.INPUT_GPS_FIELD_FILE
@@ -1223,11 +1234,20 @@ def main():
         """
         
         #put the wheel straight
-        response = smoothie.nav_align_wheels_center(config.A_F_MAX)
-        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-            msg = "Smoothie response is not ok: " + response
-            print(msg)
+        with adapters.SmoothieAdapter(smoothie_address) as smoothie:
+            #put the wheel straight
+            msg = "Put the wheel straight"
             logger_full.write(msg + "\n")
+            if config.VERBOSE:
+                print(msg)
+            with open(config.LAST_ANGLE_WHEELS_FILE, "r") as angle_file:
+                angle = float(angle_file.read())
+                smoothie._a_cur.value = angle
+                response = smoothie.nav_turn_wheels_to(0,config.A_F_MAX)
+                if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                    msg = "Smoothie response is not ok: " + response
+                    print(msg)
+                    logger_full.write(msg + "\n")
                 
         
         # save adapter points history

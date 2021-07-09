@@ -245,6 +245,11 @@ def get_smoothie_vesc_addresses():
             equipment_by_port["vesc"] = port
     return equipment_by_port
 
+def get_ublox_address():
+    for port, desc, other in sorted(serial.tools.list_ports.comports()):
+        if "u-blox" in desc:
+            return port
+    return None
 
 def mu_sigma(samples: list):
     
