@@ -12,13 +12,14 @@ class DataCollector:
     This class stores and saves collected data as txt file, or (will be added later) sends data to the local database.
     """
 
-    def __init__(self):
+    def __init__(self, notification):
         self.__detected_plants = dict()
         self.__extracted_plants = dict()
         self.__start_time = time.time()
         self.__end_time = None
         self.__working_time_formatted = None
         self.__working_time_seconds = None
+        self.__notification = notification
 
     def __record_end_time(self):
         self.__end_time = time.time()
@@ -64,6 +65,9 @@ class DataCollector:
             self.__extracted_plants[type_label] += count
         else:
             self.__extracted_plants[type_label] = count
+
+        if self.__notification.is_continuous_information_sending():
+            self.__notification.set_extracted_plants(self.__extracted_plants)
 
     def save_extractions_data(self, file_full_path: str):
         self.__record_end_time()

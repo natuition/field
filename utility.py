@@ -13,7 +13,7 @@ import adapters
 import navigation
 from config import config
 import time
-
+from pytz import timezone
 
 class ImageSaver:
     """
@@ -214,7 +214,7 @@ class Logger:
 def get_current_time():
     """Returns current time as formatted string"""
 
-    return datetime.datetime.now().strftime("%d-%m-%Y %H-%M-%S %f")
+    return datetime.datetime.now(timezone('Europe/Berlin')).strftime("%d-%m-%Y %H-%M-%S %f")
 
 
 def create_directories(*args):

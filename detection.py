@@ -119,6 +119,9 @@ class YoloDarknetDetector:
         # current network input size
         self.__width, self.__height = darknet.network_width(self.__network), darknet.network_height(self.__network)
 
+    def get_classes_names(self):
+        return self.__class_names
+
     def detect(self, image):
         # Darknet doesn't accept numpy images.
         # Create one with image we reuse for each detect

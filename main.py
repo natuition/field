@@ -142,7 +142,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
                               nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver):
+                              image_saver: utility.ImageSaver, notification: NotificationClient):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -185,6 +185,21 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
     lastNtripRestart = time.time()
 
+    pierre_vitesse=1    # metre par seconde
+    latprec=0
+    longprec=0
+    latB = coords_from_to[1][0]
+    longB = coords_from_to[1][1]
+    pierre_angle_max=math.radians(23)
+    pierre_E=0.86    #empattement entre les deux axes des roues
+    graph_lat=[latprec]
+    graph_long=[longprec]
+
+    #Rq: long=x, lat=y
+
+    pierre_angle=0 #Angle du robot vers la cible (en radians) en considérant que le robot est dans l'axe AB
+
+
     # set camera to the Y min
     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
     if res != smoothie.RESPONSE_OK:
@@ -213,6 +228,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         # NAVIGATION CONTROL
         cur_pos = gps.get_fresh_position()
+        if config.CONTINUOUS_INFORMATION_SENDING:
+            notification.set_current_coordinate(cur_pos)
         nav_start_t = time.time()
         if start_Nav_while==True:
             navigation_period =1
@@ -226,6 +243,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         #print("tock")
         
         mu_navigations_period, sigma_navigations_period = utility.mu_sigma(navigations_period)
+
+        latprec=cur_pos[0]
+        longprec=cur_pos[1]
 
 
         if str(cur_pos) == str(prev_pos):
@@ -301,7 +321,54 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         
         # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
         # (too close points in the same position can produce false huge angles)
+
+        #PIERRE PREDICTION
+    
+        if pierre_angle>pierre_angle_max :
+            pierre_angle=pierre_angle_max
+
+        #Rayon de braquage
+
+        if math.sin(pierre_angle) != 0 :
+            pierre_rayon=pierre_E/math.sin(pierre_angle)
+            theta_rob=pierre_vitesse/pierre_rayon
+        else :
+            theta_rob = 0
         
+        #Calcul nouvelles coordonnées
+
+        pierre_k=1/(60*1852) #Facteur de conversion metre vers degrès mille nautique
+        distance_deg=pierre_vitesse*navigation_period*pierre_k #Distance en degres parcourue par le robot
+
+        #La vitesse étant constante, on souhaite que le temps entre chaque point soit de 1 sec, comme on a des m/s, "distance=vitesse"
+    #
+        psi=(math.pi-theta_rob)/2 # Angle de trajectoire - pi/2
+        delta=distance_deg*math.sin(psi) # Différence de latitude entre position courante et future
+        beta=distance_deg*math.cos(psi) # Différence de longitude entre position courante et future
+
+        latnew=latprec+delta
+        longnew=longprec+beta
+
+        graph_lat.append(latnew)
+        graph_long.append(longnew)
+
+        #Les coordonnées en n deviennent les n-1
+
+        latprec=latnew
+        longprec=longnew
+        
+        latB = coords_from_to[1][0]
+        longB = coords_from_to[1][1]
+        
+        if (latB-latnew) != 0 :
+            pierre_angle=math.atan((longB-longnew)/(latB-latnew))# Angle co,signe roues
+        else :
+            pierre_angle = math.pi/2
+
+        print("pierre_angle",pierre_angle)
+
+
+    
         #raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
         raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
@@ -538,6 +605,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             msg += s
             for key in vesc_data:
                 msg += str(vesc_data[key]) + s
+                if config.CONTINUOUS_INFORMATION_SENDING and key == "input_voltage":
+                    notification.set_input_voltage(vesc_data[key])
             msg = msg[:-1]
         logger_table.write(msg + "\n")
 
@@ -850,11 +919,13 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
 
 
 def main():
-    log_cur_dir = config.LOG_ROOT_DIR + utility.get_current_time() + "/"
+    time_start = utility.get_current_time()
+    log_cur_dir = config.LOG_ROOT_DIR + time_start + "/"
     utility.create_directories(config.LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
-
+        
+    notification = NotificationClient(time_start)
     image_saver = utility.ImageSaver()
-    data_collector = datacollection.DataCollector()
+    data_collector = datacollection.DataCollector(notification)
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     view_zone_polygon = Polygon(config.VIEW_ZONE_POLY_POINTS)
@@ -865,7 +936,6 @@ def main():
     logger_table = utility.Logger(log_cur_dir + "log table.csv")
     
     
-    notification = NotificationClient()
 
     # get smoothie and vesc addresses
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
@@ -914,17 +984,23 @@ def main():
         precise_detector = detection.YoloDarknetDetector(config.PRECISE_WEIGHTS_FILE, config.PRECISE_CONFIG_FILE,
                                                          config.PRECISE_DATA_FILE, config.PRECISE_CONFIDENCE_THRESHOLD,
                                                          config.PRECISE_HIER_THRESHOLD, config.PRECISE_NMS_THRESHOLD)
+        if config.CONTINUOUS_INFORMATION_SENDING:
+            notification.set_treated_plant(precise_detector.get_classes_names())
     elif config.PRECISE_WRAPPER == 2:
         precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
                                                          config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
                                                          config.PRECISE_CONFIDENCE_THRESHOLD,
                                                          config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
                                                          config.PRECISE_DNN_TARGET)
+        if config.CONTINUOUS_INFORMATION_SENDING:
+            notification.set_treated_plant(detection.classes)
     else:
         msg = "Wrong config.PRECISE_WRAPPER = " + str(config.PRECISE_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
         notification.setStatus(SyntheseRobot.HS)
         exit(1)
+
+    
 
     # sensors picking
     report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
@@ -1054,6 +1130,9 @@ def main():
 
                 # TODO: save field in debug
 
+                if config.CONTINUOUS_INFORMATION_SENDING:
+                    notification.set_field(field_gps_coords)
+
                 field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
                 print("field_gps_coords : ",field_gps_coords)
                 # TODO: save reduced field in debug
@@ -1175,7 +1254,7 @@ def main():
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
-                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver)
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)

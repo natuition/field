@@ -276,6 +276,9 @@ FILES_TO_KEEP_COUNT = 600
 QUEUE_NAME_UI_MAIN = "/queue_ui_main"
 QUEUE_NAME_UI_NOTIFICATION = "/queue_ui_notification"
 
+CONTINUOUS_INFORMATION_SENDING = True
+ALIVE_SENDING_TIMEOUT = 1
+
 # ======================================================================================================================
 # MATRIX SETTINGS
 # ======================================================================================================================
