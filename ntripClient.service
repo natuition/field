@@ -1,0 +1,13 @@
+[Unit]
+Description=Job that runs at start for ntripClient.py.
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/violette/field/
+ExecStart=/usr/bin/python3.6 /home/violette/field/ntripClient.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
