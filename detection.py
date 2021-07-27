@@ -6,6 +6,10 @@ import math
 import platform
 import darknet
 
+from config import config
+import posix_ipc
+from mmap import mmap
+
 
 class YoloOpenCVDetection:
 
@@ -119,6 +123,8 @@ class YoloDarknetDetector:
         # current network input size
         self.__width, self.__height = darknet.network_width(self.__network), darknet.network_height(self.__network)
 
+        self.sharedArray = None
+
     def get_classes_names(self):
         return self.__class_names
 
@@ -150,6 +156,45 @@ class YoloDarknetDetector:
                                                 self.__class_names.index(detection[0]),
                                                 float(detection[1]), image.shape[1], image.shape[0],
                                                 center_x=round(center_x), center_y=round(center_y)))
+
+        if config.FRAME_SHOW:
+
+            img = draw_boxes(image, plant_boxes)
+
+            if self.sharedArray is None:
+                try:
+                    sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME, posix_ipc.O_CREX, size=img.nbytes)
+                except posix_ipc.ExistentialError:
+                    sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
+
+                self.sharedMem = mmap(fileno=sharedMemory.fd, length=img.nbytes)
+
+                sharedMemory.close_fd()
+
+            self.sharedArray = np.ndarray(img.shape, dtype=img.dtype, buffer=self.sharedMem)
+            self.sharedArray[:] = img[:]
+
+            """if self.sharedMemory is None:
+                self.sharedMemory = shared_memory.SharedMemory(name=config.SHARED_MEMORY_NAME_DETECTED_FRAME, create=True, size=img.nbytes)
+                self.sharedArray = np.ndarray(img.shape, dtype=img.dtype, buffer=self.sharedMemory.buf)
+
+            self.sharedArray[:] = img[:]"""
+
+            """if self.sharedMemory is None:
+                try:
+                    self.sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME, posix_ipc.O_CREX, size=image.nbytes)
+                except posix_ipc.ExistentialError:
+                    self.sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
+                
+            if self.sharedMemoryFile is None:
+                self.sharedMemoryFile = os.fdopen(self.sharedMemory.fd, "r+b")
+
+            if plant_boxes:
+                img.tofile(self.sharedMemoryFile)
+                #self.sharedMemoryFile.write(img.tostring())
+                self.sharedMemoryFile.close()
+                self.sharedMemoryFile = None"""
+        
         return plant_boxes
 
 

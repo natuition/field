@@ -1371,7 +1371,16 @@ def main():
         sensor_processor.stopServer()
         """
 
-        posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
+        try:
+            posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
+        except:
+            pass
+
+        """try:
+            sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
+            sharedMemory.unlink()
+        except:
+            pass"""
 
         print("Safe disable is done.")
 
