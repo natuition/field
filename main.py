@@ -1376,14 +1376,22 @@ def main():
         except:
             pass
 
-        """try:
+        try:
             sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
             sharedMemory.unlink()
         except:
-            pass"""
+            pass
+
+        detection.webStream.terminate()
+        detection.webStream.join()
 
         print("Safe disable is done.")
 
 
 if __name__ == '__main__':
+    try:
+        sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
+        sharedMemory.unlink()
+    except:
+        pass
     main()

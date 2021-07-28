@@ -9,7 +9,11 @@ import darknet
 from config import config
 import posix_ipc
 from mmap import mmap
-
+import time
+from multiprocessing import Process
+from liveMain import webstreaming
+from flask import Flask
+import logging
 
 class YoloOpenCVDetection:
 
@@ -98,6 +102,8 @@ class YoloDarknetDetector:
     # TODO: images are distorted a bit during strict resize wo/o saving ratio, this may affect detections
     # TODO: check for interpolation (INTER_AREA should be better than INTER_LINEAR)
 
+    WEBSTREAM = False
+
     def __init__(self,
                  weights_file_path,  # yolo weights path
                  config_file_path,  # path to config file
@@ -159,6 +165,8 @@ class YoloDarknetDetector:
 
         if config.FRAME_SHOW:
 
+            t1 = time.time()
+
             img = draw_boxes(image, plant_boxes)
 
             if self.sharedArray is None:
@@ -166,34 +174,27 @@ class YoloDarknetDetector:
                     sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME, posix_ipc.O_CREX, size=img.nbytes)
                 except posix_ipc.ExistentialError:
                     sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
-
-                self.sharedMem = mmap(fileno=sharedMemory.fd, length=img.nbytes)
-
+                sharedMem = mmap(fileno=sharedMemory.fd, length=img.nbytes)
                 sharedMemory.close_fd()
+                self.sharedArray = np.ndarray(img.shape, dtype=img.dtype, buffer=sharedMem)
 
-            self.sharedArray = np.ndarray(img.shape, dtype=img.dtype, buffer=self.sharedMem)
             self.sharedArray[:] = img[:]
 
-            """if self.sharedMemory is None:
-                self.sharedMemory = shared_memory.SharedMemory(name=config.SHARED_MEMORY_NAME_DETECTED_FRAME, create=True, size=img.nbytes)
-                self.sharedArray = np.ndarray(img.shape, dtype=img.dtype, buffer=self.sharedMemory.buf)
+            print(time.time() - t1)
 
-            self.sharedArray[:] = img[:]"""
+            if not YoloDarknetDetector.WEBSTREAM:
+                template_dir = os.path.abspath('./liveMain')
+                app = Flask("webstreaming", template_folder=template_dir)
+                app.add_url_rule('/', view_func=webstreaming.index)
+                app.add_url_rule('/video_feed', view_func=webstreaming.video_feed)
 
-            """if self.sharedMemory is None:
-                try:
-                    self.sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME, posix_ipc.O_CREX, size=image.nbytes)
-                except posix_ipc.ExistentialError:
-                    self.sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
-                
-            if self.sharedMemoryFile is None:
-                self.sharedMemoryFile = os.fdopen(self.sharedMemory.fd, "r+b")
+                logging.getLogger('werkzeug').disabled = True
+                os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
-            if plant_boxes:
-                img.tofile(self.sharedMemoryFile)
-                #self.sharedMemoryFile.write(img.tostring())
-                self.sharedMemoryFile.close()
-                self.sharedMemoryFile = None"""
+                global webStream
+                webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
+                webStream.start()
+                YoloDarknetDetector.WEBSTREAM = True
         
         return plant_boxes
 
