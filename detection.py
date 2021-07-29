@@ -14,6 +14,7 @@ from multiprocessing import Process
 from liveMain import webstreaming
 from flask import Flask
 import logging
+from flask_cors import CORS
 
 class YoloOpenCVDetection:
 
@@ -185,6 +186,7 @@ class YoloDarknetDetector:
             if not YoloDarknetDetector.WEBSTREAM:
                 template_dir = os.path.abspath('./liveMain')
                 app = Flask("webstreaming", template_folder=template_dir)
+                CORS(app)
                 app.add_url_rule('/', view_func=webstreaming.index)
                 app.add_url_rule('/video_feed', view_func=webstreaming.video_feed)
 

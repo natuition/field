@@ -645,3 +645,7 @@ svg.fa-sync-alt, svg.fa-check{
  height:200px;
  margin:50px
 }
+
+#webCamStream{
+    margin-top: 10px !important;
+}

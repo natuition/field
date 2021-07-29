@@ -25,8 +25,11 @@ if(wheelButton != null) wheelButton.addEventListener('click', clickHandler);
 
 var header_map = document.querySelector('.ruler');
 document.getElementById('map__header').style.width = $(header_map).width() + "px";
+document.getElementById('webCamStream').style.width = $(header_map).width() + "px";
 
 var audit = false;
+
+document.getElementById('webCamStream').src = 'http://' + document.domain + ':8888';
 
 function clickHandler() {
     if(this.id=="Newfield"){
@@ -103,6 +106,8 @@ socketButton.on('startMain', function(dataServ) {
                 statusTitle.classList.add('display-none')
                 statusTitle.classList.remove('display-block')
             }
+            document.getElementById('webCamStream').src = 'http://' + document.domain + ':8888';
+            document.getElementById('webCamStream').style.width = $(header_map).width() + "px";
         }, 2000);
     }
 });
@@ -147,6 +152,7 @@ socketButton.on('stop', function(dataServ) {
             newFieldButton.classList.remove("disabled");
             newFieldButton.removeAttribute("disabled")
             wheelButton.classList.remove("disabled-wheel");
+            verif_iframe_start();
         }, 2000);
     }
 });
@@ -221,3 +227,28 @@ function changeMode(){
         }
     }
 }
+var iframe_verif;
+
+function verif_iframe_stop() {
+    clearInterval(iframe_verif);
+}
+
+function verif_iframe_start(){
+    iframe_verif = setInterval(() => {
+        if(document.getElementById('conteneur_stats') != null)
+        if(document.getElementById('conteneur_stats').classList.contains("display-flex"))
+        try {
+            $.ajax({
+                type : "HEAD",
+                async : true,
+                url : 'http://' + document.domain + ':8888'
+            })
+            .done(function() {
+                $("#webCamStream").attr("src", 'http://' + document.domain + ':8888');
+                verif_iframe_stop();
+            })
+        } catch(e) {}
+    }, 5000);
+}
+
+verif_iframe_start();

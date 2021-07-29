@@ -26,96 +26,104 @@ function createMap(coords){
 
     map.on('load', function () {
         //Field zone
-        map.addSource('field', {
-            'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Polygon',
-                    'coordinates': [
-                        line
-                    ]
+        if(typeof(map.getSource('field')) == "undefined"){
+            map.addSource('field', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Polygon',
+                        'coordinates': [
+                            line
+                        ]
+                    }
                 }
-            }
-        }); 
-        map.addLayer({
-            'id': 'fieldLayer',
-            'type': 'fill',
-            'source': 'field',
-            'layout': {},
-            'paint': {
-                'fill-color': '#088',
-                'fill-opacity': 0.3
-            }
-        });
+            }); 
+            map.addLayer({
+                'id': 'fieldLayer',
+                'type': 'fill',
+                'source': 'field',
+                'layout': {},
+                'paint': {
+                    'fill-color': '#088',
+                    'fill-opacity': 0.3
+                }
+            });
+        }
         //Field line
-        map.addSource('field_corner', {
-            'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'LineString',
-                    'coordinates': line
+        if(typeof(map.getSource('field_corner')) == "undefined"){
+            map.addSource('field_corner', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': line
+                    }
                 }
-            }
-        });    
-        map.addLayer({
-            'id': 'field_cornerLayer',
-            'type': 'line',
-            'source': 'field_corner',
-            'layout': {
-                'line-join': 'round',
-                'line-cap': 'round',
-            },
-            'paint': {
-                'line-color': '#088',
-                'line-width': 4
-            }
-        });
+            });    
+            map.addLayer({
+                'id': 'field_cornerLayer',
+                'type': 'line',
+                'source': 'field_corner',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#088',
+                    'line-width': 4
+                }
+            });
+        }
         //Path line
-        map.addSource('pathRobot', {
-            'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'LineString',
-                    'coordinates': []
+        if(typeof(map.getSource('pathRobot')) == "undefined"){
+            map.addSource('pathRobot', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': []
+                    }
                 }
-            }
-        });    
-        map.addLayer({
-            'id': 'pathRobotLayer',
-            'type': 'line',
-            'source': 'pathRobot',
-            'layout': {
-                'line-join': 'round',
-                'line-cap': 'round',
-            },
-            'paint': {
-                'line-color': 'red',
-                'line-width': 3
-            }
-        });
+            });
+            map.addLayer({
+                'id': 'pathRobotLayer',
+                'type': 'line',
+                'source': 'pathRobot',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': 'red',
+                    'line-width': 3
+                }
+            });
+        }
         //Last pos
-        map.addSource('lastPos', {
-            'type': 'geojson',
-            'data': { 
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': []
+        if(typeof(map.getSource('lastPos')) == "undefined"){
+            map.addSource('lastPos', {
+                'type': 'geojson',
+                'data': { 
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': []
+                    }
                 }
-            }
-        });
-        map.addLayer({
-            'id': 'lastPosLayer',
-            'type': 'circle',
-            'source': 'lastPos',
-            'paint': {
-                'circle-radius': 6,
-                'circle-color': 'darkred'
-            }
-        });
+            });
+            map.addLayer({
+                'id': 'lastPosLayer',
+                'type': 'circle',
+                'source': 'lastPos',
+                'paint': {
+                    'circle-radius': 6,
+                    'circle-color': 'darkred'
+                }
+            });
+        }
     });
 
 }
@@ -126,6 +134,10 @@ socketMap.on('updatePath', function(dataServ) {
     x_center = coords[coords.length - 1][0]
     y_center = coords[coords.length - 1][1]
 
+    if(typeof(map.getSource('pathRobot')) == "undefined" || typeof(map.getSource('lastPos')) == "undefined"){
+        createMap(dataServ);
+    }
+    
     map.getSource('pathRobot').setData({
         'type': 'Feature',
         'geometry': {
@@ -133,7 +145,7 @@ socketMap.on('updatePath', function(dataServ) {
             'coordinates': dataServ
         }
     });
-
+    
     map.getSource('lastPos').setData({ 
         'type': 'Feature',
         'geometry': {

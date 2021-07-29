@@ -126,4 +126,5 @@ function clearStats(){
     pieChart.data.labels = []
     pieChart.options.plugins.doughnutlabel.labels[1].text = 0+" "
     pieChart.update();
+    removeAllChildNodes(document.getElementsByClassName("status__time--bottom")[0]);
 }
