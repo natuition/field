@@ -1,4 +1,7 @@
 var socketMap = io.connect('http://' + document.domain + ':' + location.port + '/map');
+socketMap.on("reconnect_attempt", (attempt) => {
+    if(attempt > 4) location.reload();
+});
 
 var map;
 

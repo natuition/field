@@ -1,10 +1,10 @@
 import cv2
-import time
 import threading
 from flask import Response, Flask
 from config import config
 import detection
 import os
+from multiprocessing import Process
 
 # Image frame sent to the Flask object
 global video_frame
@@ -66,16 +66,25 @@ GST_CONFIG = (
     )
 )
 
+def rescale_frame(frame, percent=75):
+    width = int(frame.shape[1] * percent/ 100)
+    height = int(frame.shape[0] * percent/ 100)
+    dim = (width, height)
+    return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
+
 # Create the Flask object for the application
 app = Flask(__name__)
 
+global thread_alive
+thread_alive=True
+
 def captureFrames():
-    global video_frame, thread_lock
+    global video_frame, thread_lock, thread_alive
 
     # Video capturing from OpenCV
     video_capture = cv2.VideoCapture(GST_CONFIG, cv2.CAP_GSTREAMER)
 
-    while True and video_capture.isOpened():
+    while video_capture.isOpened() and thread_alive:
         return_key, frame = video_capture.read()
         if not return_key:
             break
@@ -106,7 +115,7 @@ def encodeFrame():
 
             if use_detector:
                 global detector
-                plants_boxes = detector.detect(frame)
+                plants_boxes = detector.detect(frame, True)
                 frameFinal = detection.draw_boxes(frame, plants_boxes)
                 if use_save_detector:
                     global out
@@ -114,6 +123,7 @@ def encodeFrame():
             else:
                 frameFinal = frame
 
+            frameFinal = rescale_frame(frameFinal, percent=50)
             return_key, encoded_image = cv2.imencode(".jpg", frameFinal)
             if not return_key:
                 continue
@@ -130,15 +140,10 @@ def streamFrames():
 if __name__ == '__main__':
     print("Reset service cam !")
     os.system("sudo systemctl restart nvargus-daemon")
-    # Create a thread and attach the method that captures the image frames, to it
+
     process_thread = threading.Thread(target=captureFrames)
     process_thread.daemon = True
-
-    # Start the thread
     process_thread.start()
+    app.run("0.0.0.0",8080,False)
 
-    # start the Flask Web Application
-    # While it can be run on any feasible IP, IP = 0.0.0.0 renders the web app on
-    # the host machine's localhost and is discoverable by other machines on the same network 
-    app.run("0.0.0.0", port="8080", use_reloader=False)
     

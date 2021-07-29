@@ -3,7 +3,13 @@ const statusActive = document.querySelector('.status__active')
 const statusTitle = document.querySelector('.status__active--title')
 const generateField = document.querySelector('.ruler')
 const socketButton = io.connect('http://' + document.domain + ':' + location.port + '/button');
+socketButton.on("reconnect_attempt", (attempt) => {
+    if(attempt > 4) location.reload();
+});
 const socketBroadcast = io.connect('http://' + document.domain + ':' + location.port + '/broadcast');
+socketBroadcast.on("reconnect_attempt", (attempt) => {
+    if(attempt > 4) location.reload();
+});
 
 var newFieldButton = document.querySelector('#Newfield');
 const startButton = document.querySelector('#Start');

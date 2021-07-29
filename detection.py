@@ -135,7 +135,7 @@ class YoloDarknetDetector:
     def get_classes_names(self):
         return self.__class_names
 
-    def detect(self, image):
+    def detect(self, image, disable_frame_show=False):
         # Darknet doesn't accept numpy images.
         # Create one with image we reuse for each detect
 
@@ -164,7 +164,7 @@ class YoloDarknetDetector:
                                                 float(detection[1]), image.shape[1], image.shape[0],
                                                 center_x=round(center_x), center_y=round(center_y)))
 
-        if config.FRAME_SHOW:
+        if config.FRAME_SHOW and not disable_frame_show:
 
             t1 = time.time()
 

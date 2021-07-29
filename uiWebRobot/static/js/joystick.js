@@ -1,4 +1,7 @@
 var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+socketio.on("reconnect_attempt", (attempt) => {
+    if(attempt > 4) location.reload();
+});
 
 var value = $(document.querySelector('.main')).width() * 0.5
 
