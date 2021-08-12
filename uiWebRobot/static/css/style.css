@@ -163,24 +163,25 @@ body {
 .finish__check {
     background-color: rgb(71, 168, 87);
     box-shadow: 0px 4px 14px 0px rgba(71, 168, 87, 0.6);
-    font-weight: 500;
     display: flex;
     margin: 0 auto;
     justify-content: center;
     align-items: center;
-    border-radius: 20px;
+    border-radius: 30px;
     height: 50px;
     width: 165px;
     margin-top: 25px;
+    max-width: 155px;
+    font-size: 16px;
+    padding: 0px 5px 0px 5px;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-weight: 700;
 }
 
 .finish__check:hover {
     background-color: rgb(64, 146, 77);
-}
-
-.finish__check a {
-    text-decoration: none;
-    color: #fff;
 }
 
 .header__map,
@@ -205,7 +206,7 @@ body {
 
 
 .ruler__main {
-    width: 100%;
+    width: 100%!important;
     border-radius: 19px;
     background-color: #f9fafc;
     display: flex;
@@ -278,7 +279,7 @@ body {
 .ruler__main--button {
     width: 100%;
     display: flex;
-    justify-content: center;
+    justify-content:space-around;
     align-items: center;
     margin-top: 2.5px;
 }
@@ -367,7 +368,7 @@ body {
 
 .begin__button--start,
 .begin__button--continue,
-.begin__button--stop {
+.begin__button--stop{
     display: flex;
     align-items: center;
     justify-content: center;
@@ -648,4 +649,17 @@ svg.fa-sync-alt, svg.fa-check{
 
 #webCamStream{
     margin-top: 10px !important;
+}
+
+.ruler {
+    flex-wrap: wrap;
+}
+
+select{
+    -webkit-appearance: none;
+}
+
+#choose_field_selector{
+    margin-top: 5px;
+    margin-bottom: 10px;
 }

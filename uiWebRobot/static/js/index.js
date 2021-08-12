@@ -4,11 +4,11 @@ const statusTitle = document.querySelector('.status__active--title')
 const generateField = document.querySelector('.ruler')
 const socketButton = io.connect('http://' + document.domain + ':' + location.port + '/button');
 socketButton.on("reconnect_attempt", (attempt) => {
-    if(attempt > 4) location.reload();
+    if(attempt > 2) location.reload();
 });
 const socketBroadcast = io.connect('http://' + document.domain + ':' + location.port + '/broadcast');
 socketBroadcast.on("reconnect_attempt", (attempt) => {
-    if(attempt > 4) location.reload();
+    if(attempt > 2) location.reload();
 });
 
 var newFieldButton = document.querySelector('#Newfield');
@@ -17,6 +17,8 @@ const continueButton = document.querySelector('#Continue');
 const stopButton = document.querySelector('#Stop');
 const wheelButton = document.querySelector('#Wheel');
 const auditButton = document.querySelector('#Audit');
+const removeFieldButton = document.querySelector('#RemoveField');
+const choose_field_selector = document.querySelector('#field_selector');
 
 if(auditButton != null) auditButton.addEventListener('click', changeMode);
 if(newFieldButton != null) newFieldButton.addEventListener('click', clickHandler);
@@ -28,6 +30,14 @@ if(startButton != null) startButton.addEventListener('click', clickHandler);
 if(continueButton != null) continueButton.addEventListener('click', clickHandler);
 if(stopButton != null) stopButton.addEventListener('click', clickHandler);
 if(wheelButton != null) wheelButton.addEventListener('click', clickHandler);
+if(removeFieldButton != null) removeFieldButton.addEventListener('click', clickHandler);
+
+if(choose_field_selector != null){
+    choose_field_selector.onchange = (event)=>{
+        var inputText = event.target.value;
+        socketio.emit('data', {type: "getField", field_name : inputText});
+    }
+}
 
 var header_map = document.querySelector('.ruler');
 document.getElementById('map__header').style.width = $(header_map).width() + "px";
@@ -52,6 +62,8 @@ function clickHandler() {
         socketio.emit('data', {type: "continue", audit : audit});
     }else if(this.id=="Wheel" && !this.classList.contains("disabled-wheel")){
         socketio.emit('data', {type: "wheel"});
+    }else if(this.id=="RemoveField"){
+        socketio.emit('data', {type: "removeField", field_name : choose_field_selector.value});
     }
 }
 
@@ -163,7 +175,6 @@ socketButton.on('stop', function(dataServ) {
     }
 });
 
-
 socketButton.on('field', function(dataServ) {
     if(dataServ["status"] == "pushed"){
 
@@ -175,6 +186,10 @@ socketButton.on('field', function(dataServ) {
         $('#Newfield').addClass('active');
         $('#Newfield').attr('disabled', '');
         $('#r1').attr('disabled', '');
+
+        $('#RemoveField').addClass('disabled');
+        $('#RemoveField').attr('disabled', '');
+        $('#trash').attr('fill',"#5d61646b");
 
     }else if(dataServ["status"] == "inRun"){
 
@@ -197,6 +212,22 @@ socketButton.on('field', function(dataServ) {
         $(divButton).removeAttr('disabled');
         $('#r1').removeAttr('disabled');
 
+    }else if(dataServ["status"] == "validate_name"){
+
+        var currentdate = new Date(); 
+        var datetime = currentdate.getDate() + "_"
+                        + (currentdate.getMonth()+1)  + "_" 
+                        + currentdate.getFullYear() + "-"  
+                        + currentdate.getHours() + ":"  
+                        + currentdate.getMinutes() + ":" 
+                        + currentdate.getSeconds();
+        let field_name = prompt((ui_languages["Choose_field_name"])[ui_language], "");
+        if (field_name == null || field_name == "") {
+            field_name = datetime;
+        }
+
+        socketio.emit('data', {type: "field_name", name : field_name});
+
     }else if(dataServ["status"] == "validate"){
 
         divButton = document.getElementById("ValidateZone")
@@ -205,6 +236,10 @@ socketButton.on('field', function(dataServ) {
         $('#Start').removeAttr('disabled');   
         $('#Start').removeClass('disabled');
         $('#Audit').removeClass('disable-switcher-audit');
+
+        $('#RemoveField').removeAttr('disabled');
+        $('#RemoveField').removeClass('disabled');
+        $('#trash').attr('fill',"#FFF");
         wheelButton.classList.remove("disabled-wheel");
 
     }

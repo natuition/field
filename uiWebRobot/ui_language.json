@@ -18,7 +18,7 @@
 		"fr": "Nouvelle\u00A0zone\u00A0+", 
 		"en": "New\u00A0zone\u00A0+",
 		"nl": "Nieuwe\u00A0zone\u00A0+"
-	}, 
+	},  
 	"Validate zone": {
 		"fr": "Valider\u00A0la\u00A0zone\u00A0✔", 
 		"en": "Validate\u00A0zone\u00A0✔",
@@ -148,5 +148,20 @@
 		"fr": "Plantain lancéolé", 
 		"en": "Plantain narrowleaf",
 		"nl": "Smalle weegbree"
+	},
+	"Choose_field": {
+		"fr": "Choisissez la zone", 
+		"en": "Choose the zone",
+		"nl": "Kies de zone"
+	},
+	"Choose_field_name": {
+		"fr": "Choisissez le nom de la zone :", 
+		"en": "Choose the name of zone :",
+		"nl": "Kies de naam van de zone :"
+	},
+	"no_field": {
+		"fr": "Pas de zone existante", 
+		"en": "No existing zone",
+		"nl": "Geen bestaande zone:"
 	}
 }

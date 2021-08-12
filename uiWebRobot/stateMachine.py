@@ -3,6 +3,7 @@ sys.path.append('../')
 import utility
 from my_states import CheckState
 from state import Events
+import os
 
 class StateMachine:
 

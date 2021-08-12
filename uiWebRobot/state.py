@@ -18,6 +18,7 @@ class Events(Enum):
     WHEEL = 10
     AUDIT_ENABLE = 11
     AUDIT_DISABLE = 12
+    VALIDATE_FIELD_NAME = 13
 
 class State(object):
 

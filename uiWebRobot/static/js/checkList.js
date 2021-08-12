@@ -1,6 +1,6 @@
 var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
 socketio.on("reconnect_attempt", (attempt) => {
-    if(attempt > 4) location.reload();
+    if(attempt > 2) location.reload();
 });
 var isCheck = false
 
@@ -19,6 +19,21 @@ function checkAllBoxAreChecked(){
             isCheck = true
     }
 
+}
+
+function activateNext(){
+    if (document.getElementById('closecover').checked &&
+        document.getElementById('XY').checked &&
+        document.getElementById('opencover').checked &&
+        document.getElementById('Z').checked &&
+        document.getElementById('camera').checked && 
+        document.getElementById('wheelsStraight').checked){
+            $('#checkbutton').removeAttr('disabled');   
+            $('#checkbutton').removeClass('disabled');
+    }else{
+        $('#checkbutton').addClass('disabled'); 
+        $('#checkbutton').attr('disabled', ''); 
+    }
 }
 
 socketio.on('checklist', function(dataServ) {

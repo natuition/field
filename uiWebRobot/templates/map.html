@@ -27,8 +27,15 @@
 <body>
     <div id="map"></div>
     <script>
-        var coords = {{coords}};
+        {% if coords_field is defined %}
+        var coords_field = {{coords_field}};
+        {% endif %}
+        {% if coords_other is defined %}
+        var coords_other = {{coords_other}};
+        {% endif %}
+        {% if myCoords is defined %}
         var myCoords = {{myCoords}};
+        {% endif %}
     </script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/mapUtil.js') }}"></script> 
 

@@ -22,6 +22,7 @@ import pathlib
 import re
 from datetime import datetime, timezone
 import posix_ipc
+from application import get_other_field, load_field_list
 
 #This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
 class CheckState(State):
@@ -109,7 +110,8 @@ class WaitWorkingState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": True, #True or False
             "audit": False, #True or False or use or not-use
-            "slider": 25 #Int for slider value            
+            "slider": 25, #Int for slider value
+            "removeFieldButton": True #True or False     
         }
 
         if createField:
@@ -200,6 +202,26 @@ class WaitWorkingState(State):
                     y = 0
                 self.vesc_engine.apply_rpm(y)
                 self.lastValueY = y
+                
+        if data["type"] == 'getField':
+            
+            coords, other_fields, current_field_name = updateFields(data["field_name"])
+            fields_list = load_field_list("../fields")
+            self.socketio.emit('newField', json.dumps({"field" : coords, "other_fields" : other_fields, "current_field_name" : current_field_name, "fields_list": fields_list}), namespace='/map')
+
+        if data["type"] == 'removeField':
+
+            os.remove("../fields/"+data["field_name"]+".txt")
+            fields_list = load_field_list("../fields")
+
+            if len(fields_list) > 0:
+                os.system("ln -sf 'fields/"+fields_list[0]+".txt' ../field.txt")
+                coords, other_fields, current_field_name = updateFields(fields_list[0])
+            else:
+                coords, other_fields, current_field_name = list(), list(), ""
+
+            self.socketio.emit('newField', json.dumps({"field" : coords, "other_fields" : other_fields, "current_field_name" : current_field_name, "fields_list": fields_list}), namespace='/map')
+
         return self
 
     def getStatusOfControls(self):
@@ -242,7 +264,8 @@ class CreateFieldState(State):
             "stopButton": True, #True or charging or None
             "wheelButton": False, #True or False
             "audit": 'disable', #True or False or use or not-use or disable
-            "slider": 25 #Int for slider value
+            "slider": 25, #Int for slider value
+            "removeFieldButton": False #True or False  
         }
 
         self.fieldCreator = FieldCreator(self.logger, self.gps, self.nav, self.smoothie, self.socketio)
@@ -267,6 +290,8 @@ class CreateFieldState(State):
             self.gps.disconnect()
             return self
         elif event == Events.VALIDATE_FIELD:
+            return self
+        elif event == Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
             return WaitWorkingState(self.socketio, self.logger, True)
         elif event == Events.WHEEL:
@@ -313,7 +338,20 @@ class CreateFieldState(State):
             self.statusOfUIObject["slider"] = int(data["value"])
             self.fieldCreator.setFieldSize(int(data["value"])*1000)
             self.field = self.fieldCreator.calculateField()
-            self.fieldCreator.saveField("../field.txt")
+            self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
+        elif data["type"] == "field_name":
+            field_name = self.fieldCreator.saveField("../fields/"+data["name"]+".txt")
+            os.system("ln -sf 'fields/"+field_name+".txt' ../field.txt")
+
+            fields_list = load_field_list("../fields")
+
+            if len(fields_list) > 0:
+                os.system("ln -sf 'fields/"+fields_list[0]+".txt' ../field.txt")
+                coords, other_fields, current_field_name = updateFields(fields_list[0])
+            else:
+                coords, other_fields, current_field_name = list(), list(), ""
+
+            self.socketio.emit('newField', json.dumps({"field" : coords, "other_fields" : other_fields, "current_field_name" : current_field_name, "fields_list": fields_list}), namespace='/map')
         return self
 
     def getStatusOfControls(self):
@@ -345,7 +383,8 @@ class StartingState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25 #Int for slider value
+            "slider": 25, #Int for slider value
+            "removeFieldButton": False #True or False  
         }
 
         if isAudit:
@@ -395,7 +434,8 @@ class ResumeState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25 #Int for slider value
+            "slider": 25, #Int for slider value
+            "removeFieldButton": False #True or False  
         }
 
         if isAudit:
@@ -469,7 +509,8 @@ class WorkingState(State):
             "stopButton": True, #True or charging or None
             "wheelButton": False , #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25 #Int for slider value
+            "slider": 25, #Int for slider value
+            "removeFieldButton": False #True or False  
         }
 
         if isAudit:
@@ -601,7 +642,8 @@ class ErrorState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": False, #True or False or use or not-use
-            "slider": 25 #Int for slider value
+            "slider": 25, #Int for slider value
+            "removeFieldButton": False #True or False  
         }
 
         self.field = None
@@ -673,7 +715,10 @@ class FieldCreator:
 
         self.field = [self.B, self.C, self.D, self.A]
      
-        self.socketio.emit('newField', json.dumps(self.formattingFieldPointsForSend()), namespace='/map')
+        other_fields = get_other_field()
+        current_field_name = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
+
+        self.socketio.emit('newField', json.dumps({"field" : self.formattingFieldPointsForSend(), "other_fields" : other_fields, "current_field_name" : current_field_name}), namespace='/map')
 
         return self.field
     
@@ -688,10 +733,17 @@ class FieldCreator:
         return coords
 
     def saveField(self, fieldPath: str):
+        cpt = 1
+        if(os.path.exists(fieldPath)):
+            
+            while os.path.exists(f"{fieldPath[:-4]}_{cpt}.txt"):
+                cpt+=1
+            fieldPath = f"{fieldPath[:-4]}_{cpt}.txt"
         msg = f"[{self.__class__.__name__}] -> Save field in {fieldPath}..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
         save_gps_coordinates(self.field, fieldPath)
+        return f"{fieldPath[:-4]}_{cpt}".split("/")[-1]
 
     def manoeuvre(self):
         self.vesc_emergency.apply_rpm(-config.VESC_RPM_UI)
@@ -746,6 +798,9 @@ def save_gps_coordinates(points: list, file_name):
         for point in points:
             str_point = str(point[0]) + " " + str(point[1]) + "\n"
             file.write(str_point)
+    user=pwd.getpwnam('violette')
+    os.chown(file_name, user.pw_uid, user.pw_gid)
+        
 
 def changeConfigValue(path: str, value):
     with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
@@ -786,3 +841,21 @@ def checkHaveGPS(socketio: SocketIO, statusOfUIObject: dict):
                 socketio.emit('checklist', {"status","GPSWork"}, namespace='/server')
                 GPSSerial.close()
                 break
+
+def updateFields(field_name):
+
+    os.system("ln -sf 'fields/"+field_name+".txt' ../field.txt")
+            
+    with open("../field.txt") as file:
+        points = file.readlines()
+    
+    coords = list()
+    for coord in points:
+        coord = coord.replace("\n","").split(" ")
+        coords.append([float(coord[1]),float(coord[0])])
+    coords.append(coords[0])
+
+    other_fields = get_other_field()
+    current_field_name = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
+
+    return coords, other_fields, current_field_name

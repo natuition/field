@@ -1,20 +1,40 @@
 var socketMap = io.connect('http://' + document.domain + ':' + location.port + '/map');
 socketMap.on("reconnect_attempt", (attempt) => {
-    if(attempt > 4) location.reload();
+    if(attempt > 2) location.reload();
 });
 
 var map;
 
-document.addEventListener("DOMContentLoaded",createMap(coords));
+window.onload = ()=>{
+    if (typeof coords_field != "undefined"){
+        if (typeof coords_other != "undefined"){
+            document.addEventListener("DOMContentLoaded",createMap(coords_field,coords_other));
+        }else{
+            document.addEventListener("DOMContentLoaded",createMap(coords_field,[]));
+        }
+    }else{
+        if (typeof coords_other != "undefined"){
+            document.addEventListener("DOMContentLoaded",createMap([],coords_other));
+        }else{
+            document.addEventListener("DOMContentLoaded",createMap([],[]));
+        }
+    }
+}
 
-function createMap(coords){
+function createMap(coords_field,coords_other){
+    if (coords_field.length > 0) {
 
-    if (typeof coords !== 'undefined') {
-        var line = coords
-        line.push(coords[0])
+        x_center = (coords_field[0][0]+coords_field[1][0]+coords_field[2][0]+coords_field[3][0])/4;
+        y_center = (coords_field[0][1]+coords_field[1][1]+coords_field[2][1]+coords_field[3][1])/4;
 
-        x_center = (coords[0][0]+coords[1][0]+coords[2][0]+coords[3][0])/4
-        y_center = (coords[0][1]+coords[1][1]+coords[2][1]+coords[3][1])/4 
+        var zoom = 17;
+
+    }else{
+        y_center = 48.85304;
+        x_center = 2.3499075;
+
+        var zoom = 16.5;
+
     }
 
     mapboxgl.accessToken = 'pk.eyJ1IjoidmluY2VudGxiIiwiYSI6ImNrY2F2YTA5NjF5c3kzMG8wbG5zbjk5cjcifQ.p9V3BtVZngNW1L8MRoALaw';
@@ -22,12 +42,65 @@ function createMap(coords){
         container: 'map',
         style: 'mapbox://styles/mapbox/satellite-v9',
         center: [x_center,y_center],
-        zoom: 17
+        zoom: zoom
     });
 
-    //map.addControl(new mapboxgl.NavigationControl());
+    var coords_other_multipolygon = []
+
+    for (const other of coords_other) { 
+        coords_other_multipolygon.push([other]);
+    }
 
     map.on('load', function () {
+        //Other field zone
+        if(typeof(map.getSource('other_field')) == "undefined"){
+            map.addSource('other_field', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiPolygon',
+                        'coordinates': coords_other_multipolygon
+                    }
+                }
+            }); 
+            map.addLayer({
+                'id': 'otherFieldLayer',
+                'type': 'fill',
+                'source': 'other_field',
+                'layout': {},
+                'paint': {
+                    'fill-color': '#888',
+                    'fill-opacity': 0.4
+                }
+            });
+        }
+        //Other field line
+        if(typeof(map.getSource('other_field_corner')) == "undefined"){
+            map.addSource('other_field_corner', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiLineString',
+                        'coordinates': coords_other
+                    }
+                }
+            });    
+            map.addLayer({
+                'id': 'other_field_cornerLayer',
+                'type': 'line',
+                'source': 'other_field_corner',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#888',
+                    'line-width': 4
+                }
+            });
+        }
         //Field zone
         if(typeof(map.getSource('field')) == "undefined"){
             map.addSource('field', {
@@ -37,7 +110,7 @@ function createMap(coords){
                     'geometry': {
                         'type': 'Polygon',
                         'coordinates': [
-                            line
+                            coords_field
                         ]
                     }
                 }
@@ -48,8 +121,8 @@ function createMap(coords){
                 'source': 'field',
                 'layout': {},
                 'paint': {
-                    'fill-color': '#088',
-                    'fill-opacity': 0.3
+                    'fill-color': '#0620FB',
+                    'fill-opacity': 0.4
                 }
             });
         }
@@ -61,7 +134,7 @@ function createMap(coords){
                     'type': 'Feature',
                     'geometry': {
                         'type': 'LineString',
-                        'coordinates': line
+                        'coordinates': coords_field
                     }
                 }
             });    
@@ -74,7 +147,7 @@ function createMap(coords){
                     'line-cap': 'round',
                 },
                 'paint': {
-                    'line-color': '#088',
+                    'line-color': '#0620FB',
                     'line-width': 4
                 }
             });
@@ -133,7 +206,7 @@ function createMap(coords){
 
 socketMap.on('updatePath', function(dataServ) {
     dataServ = JSON.parse(dataServ)
-    coords = dataServ
+    var coords = dataServ
     x_center = coords[coords.length - 1][0]
     y_center = coords[coords.length - 1][1]
 
@@ -161,17 +234,93 @@ socketMap.on('updatePath', function(dataServ) {
 });
 
 socketMap.on('newField', function(dataServ) {
-    dataServ = JSON.parse(dataServ)
+    dataServ = JSON.parse(dataServ);
+
+    if(dataServ["current_field_name"] == ""){
+        parent.document.location.reload()
+    }
 
     if(typeof(map.getSource('field')) == "undefined"){
         createMap(dataServ);
     }else{
+        
+        var coords_other_multipolygon = []
+
+        for (const other of dataServ["other_fields"]) { 
+            coords_other_multipolygon.push([other]);
+        }
+        if(map.getSource('other_field') == undefined){
+            map.addSource('other_field', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiPolygon',
+                        'coordinates': [
+                            dataServ["other_fields"]
+                        ]
+                    }
+                }
+            }); 
+            map.addLayer({
+                'id': 'otherFieldLayer',
+                'type': 'fill',
+                'source': 'other_field',
+                'layout': {},
+                'paint': {
+                    'fill-color': '#888',
+                    'fill-opacity': 0.4
+                }
+            });
+        }else{
+            map.getSource('other_field').setData({
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'MultiPolygon',
+                    'coordinates': coords_other_multipolygon
+                }
+            });
+        }
+        if(map.getSource('other_field') == undefined){
+            map.addSource('other_field_corner', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiLineString',
+                        'coordinates': dataServ["other_fields"]
+                    }
+                }
+            });    
+            map.addLayer({
+                'id': 'other_field_cornerLayer',
+                'type': 'line',
+                'source': 'other_field_corner',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#888',
+                    'line-width': 4
+                }
+            });
+        }else{
+            map.getSource('other_field_corner').setData({
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'MultiLineString',
+                    'coordinates': dataServ["other_fields"]
+                }
+            });
+        }
+
         map.getSource('field').setData({
             'type': 'Feature',
             'geometry': {
                 'type': 'Polygon',
                 'coordinates': [
-                    dataServ
+                    dataServ["field"]
                 ]
             }
         });
@@ -179,17 +328,54 @@ socketMap.on('newField', function(dataServ) {
             'type': 'Feature',
             'geometry': {
                 'type': 'LineString',
-                'coordinates': dataServ
+                'coordinates': dataServ["field"]
             }
         });
-        coords = dataServ
-        x_center = (coords[0][0]+coords[1][0]+coords[2][0]+coords[3][0])/4
-        y_center = (coords[0][1]+coords[1][1]+coords[2][1]+coords[3][1])/4
-        map.flyTo({
-            center: [x_center,y_center],
-            speed: 1,
-            zoom: 17
-        });
+
+        if (dataServ["field"].length > 0){
+            var coords = dataServ["field"]
+            x_center = (coords[0][0]+coords[1][0]+coords[2][0]+coords[3][0])/4
+            y_center = (coords[0][1]+coords[1][1]+coords[2][1]+coords[3][1])/4
+            map.flyTo({
+                center: [x_center,y_center],
+                speed: 2,
+                zoom: 17
+            });
+        }
+
+        var sel = parent.document.getElementById('field_selector');
+        var opts = sel.options;
+
+        var current_field_name_found = false;
+        
+        for (var opt, j = 0; opt = opts[j]; j++) {
+            if (opt.value == dataServ["current_field_name"]) {
+                sel.selectedIndex = j;
+                current_field_name_found = true;
+            }else if(typeof dataServ["fields_list"] != "undefined"){
+                if(!dataServ["fields_list"].includes(opt.value) && !opt.disabled){
+                    sel.remove(j);
+                }
+            }
+        }
+
+        if(!current_field_name_found){
+            if(typeof dataServ["fields_list"] != "undefined"){
+                if(dataServ["fields_list"].includes(dataServ["current_field_name"])){
+                    var option = document.createElement('option');
+                    option.value = option.text = dataServ["current_field_name"];
+                    sel.add(option);
+                    var opts = sel.options;
+                    for (var opt, j = 0; opt = opts[j]; j++) {
+                        if (opt.value == dataServ["current_field_name"]) {
+                            sel.selectedIndex = j;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+        }
     }
     
 });

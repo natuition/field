@@ -4,12 +4,14 @@ from config import config
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
-from flask import Flask, render_template, url_for, copy_current_request_context,make_response,send_from_directory, Response
-import time
+from flask import Flask, render_template, url_for, copy_current_request_context,make_response,send_from_directory, Response, request
+import os
 import logging
 import json
 import stateMachine
 from state import Events
+import subprocess
+import my_states
 
 __author__ = 'Vincent LAMBERT'
 
@@ -30,12 +32,41 @@ def init():
 
 def load_coordinates(file_path):
     positions_list = []
-    with open(file_path) as file:
-        for line in file:
-            if line != "":
-                coords = list(map(float, line.split(" ")))
-                positions_list.append([coords[0],coords[1]])
+    try:
+        with open(file_path) as file:
+            for line in file:
+                if line != "":
+                    coords = list(map(float, line.split(" ")))
+                    positions_list.append([coords[0],coords[1]])
+    except OSError as e:
+        return None
     return positions_list
+
+def load_field_list(dir_path):
+    field_list = []
+    for file in os.listdir(dir_path):
+        if file.endswith(".txt"):
+            field_list.append(file.split(".txt")[0])
+    return field_list
+
+def get_other_field():
+    current_field = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
+    field_list = load_field_list("../fields")
+    if len(field_list)>=2:
+        coords_other = []
+        for field_name in field_list:
+            if field_name != current_field:
+                with open("../fields/"+field_name+".txt") as file:
+                    points = file.readlines()
+                
+                coords = list()
+                for coord in points:
+                    coord = coord.replace("\n","").split(" ")
+                    coords.append([float(coord[1]),float(coord[0])])
+                coords.append(coords[0])
+                coords_other.append(coords)
+        return coords_other
+    return list()
 
 def formattingFieldPointsForSend(corners):
     coords = list()
@@ -55,7 +86,11 @@ def on_socket_data(data):
         elif data["type"] == "field":
             stateMachine.on_event(Events.CREATE_FIELD)
             stateMachine.on_socket_data(data)
+        elif data["type"] == "field_name":
+            stateMachine.on_socket_data(data)
+            stateMachine.on_event(Events.VALIDATE_FIELD_NAME)
         elif data["type"] == "validerZone":
+            data["client_id"] = request.sid
             stateMachine.on_socket_data(data)
             stateMachine.on_event(Events.VALIDATE_FIELD)
         elif data["type"] == "start":
@@ -76,8 +111,13 @@ def on_socket_data(data):
             stateMachine.on_event(Events.WHEEL)
         elif data["type"] == "modifyZone":
             stateMachine.on_socket_data(data)
+        elif data["type"] == "getField":
+            stateMachine.on_socket_data(data)
         elif data["type"] == "getStats":
             stateMachine.on_socket_data(data)
+        elif data["type"] == "removeField":
+            if isinstance(stateMachine.currentState,my_states.WaitWorkingState):
+                stateMachine.on_socket_data(data)
 
 
 @socketio.on('data', namespace='/broadcast')
@@ -102,10 +142,20 @@ def index():
     #sn = "SNXXX"
     statusOfUIObject = stateMachine.getStatusOfControls()
 
+    Field_list = load_field_list("../fields")
+
+    if not Field_list:
+        Field_list = None
+        current_field = None
+    else:
+        Field_list.sort(key=str.casefold)
+        current_field = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")
+        current_field=current_field[:-5]
+
     if str(stateMachine.currentState) == "ErrorState":
         return render_template("500.html",sn=sn), 500
 
-    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language)    
+    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field)    
 
 @app.route('/map')
 def maps():
@@ -113,7 +163,15 @@ def maps():
     field = stateMachine.getField()
     if field is None:
         field = load_coordinates("../field.txt")
-    return render_template('map.html', coords=formattingFieldPointsForSend(field), myCoords=myCoords)
+    if field is None:
+        return render_template('map.html', myCoords=myCoords)
+    else:
+        coords_other = get_other_field()
+        coords_field = formattingFieldPointsForSend(field)
+        if coords_other:
+            return render_template('map.html', coords_field=coords_field, myCoords=myCoords, coords_other=coords_other)
+        else:
+            return render_template('map.html', coords_field=coords_field, myCoords=myCoords)
 
 @app.errorhandler(Exception)
 def handle_exception(e):
