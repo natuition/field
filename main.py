@@ -366,6 +366,17 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             pierre_angle = math.pi/2
 
         print("pierre_angle",pierre_angle)
+        
+        new_foreseen_point = list()
+        new_foreseen_point.append(latnew)
+        new_foreseen_point.append(longnew)
+        new_foreseen_point.append("new_foreseen_point")
+
+        trajectory_saver.save_point(new_foreseen_point)
+
+        pierre_error = nav.get_distance(new_foreseen_point, cur_pos)
+
+        print("pierre_error",pierre_error)
 
 
     
