@@ -282,7 +282,7 @@ class CreateFieldState(State):
             self.fieldCreator.setSecondPoint()
             self.field = self.fieldCreator.calculateField()
             self.manoeuvre = True
-            #self.fieldCreator.manoeuvre()
+            self.fieldCreator.manoeuvre()
             self.manoeuvre = False
             self.statusOfUIObject["stopButton"] = None
             self.statusOfUIObject["fieldButton"] = "validate"
