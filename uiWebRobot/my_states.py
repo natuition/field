@@ -282,7 +282,7 @@ class CreateFieldState(State):
             self.fieldCreator.setSecondPoint()
             self.field = self.fieldCreator.calculateField()
             self.manoeuvre = True
-            self.fieldCreator.manoeuvre()
+            #self.fieldCreator.manoeuvre()
             self.manoeuvre = False
             self.statusOfUIObject["stopButton"] = None
             self.statusOfUIObject["fieldButton"] = "validate"
@@ -341,14 +341,13 @@ class CreateFieldState(State):
             self.field = self.fieldCreator.calculateField()
             self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
         elif data["type"] == "field_name":
-            field_name = self.fieldCreator.saveField("../fields/"+data["name"]+".txt")
-            os.system("ln -sf 'fields/"+field_name+".txt' ../field.txt")
+            field_name = self.fieldCreator.saveField("../fields/",data["name"]+".txt")
 
             fields_list = load_field_list("../fields")
 
             if len(fields_list) > 0:
                 os.system("ln -sf 'fields/"+fields_list[0]+".txt' ../field.txt")
-                coords, other_fields, current_field_name = updateFields(fields_list[0])
+                coords, other_fields, current_field_name = updateFields(field_name)
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
 
@@ -733,19 +732,20 @@ class FieldCreator:
 
         return coords
 
-    def saveField(self, fieldPath: str):
+    def saveField(self, fieldPath: str , fieldName: str):
         cpt = 1
-        fieldPath = re.sub(r'[\/\\]',"_",fieldPath)
-        if(os.path.exists(fieldPath)):
+        fieldName = re.sub(r'[\/\\]',"_",fieldName)
+        if(os.path.exists(fieldPath+fieldName)):
             
-            while os.path.exists(f"{fieldPath[:-4]}_{cpt}.txt"):
+            while os.path.exists(f"{fieldPath+fieldName[:-4]}_{cpt}.txt"):
                 cpt+=1
-            fieldPath = f"{fieldPath[:-4]}_{cpt}.txt"
-        msg = f"[{self.__class__.__name__}] -> Save field in {fieldPath}..."
+            fieldName = f"{fieldName[:-4]}_{cpt}.txt"
+        path = fieldPath + fieldName
+        msg = f"[{self.__class__.__name__}] -> Save field in {path}..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
-        save_gps_coordinates(self.field, fieldPath)
-        return f"{fieldPath[:-4]}_{cpt}".split("/")[-1]
+        save_gps_coordinates(self.field, path)
+        return fieldName[:-4]
 
     def manoeuvre(self):
         self.vesc_emergency.apply_rpm(-config.VESC_RPM_UI)
