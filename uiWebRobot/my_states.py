@@ -735,6 +735,7 @@ class FieldCreator:
 
     def saveField(self, fieldPath: str):
         cpt = 1
+        fieldPath = re.sub(r'[\/\\]',"_",fieldPath)
         if(os.path.exists(fieldPath)):
             
             while os.path.exists(f"{fieldPath[:-4]}_{cpt}.txt"):
