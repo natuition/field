@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <title>Violette</title>
+
+  </head>
+  <body>
+    <div class="main">
+        <div class="header">
+            <div class="header__info">
+                <div class="header__info--logo">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+                </div>
+                <div class="header__info--model">
+                    <p>{{ sn }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="checklist">
+        <p class="checkbox__item--title" style="color:black;">{{(ui_languages["Offline"])[ui_language]}}</p>
+    </section>
+
+    <script>
+
+      window.addEventListener('online', () => {
+        window.location.reload();
+      });
+
+      async function checkNetworkAndReload() {
+        try {
+          const response = await fetch('.');
+          if (response.status >= 200 && response.status < 500) {
+            window.location.reload();
+            return;
+          }
+        } catch {}
+        window.setTimeout(checkNetworkAndReload, 1000);
+      }
+
+      checkNetworkAndReload();
+    </script>
+
+  </body>
+</html>

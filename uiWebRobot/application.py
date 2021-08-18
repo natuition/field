@@ -4,7 +4,7 @@ from config import config
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
-from flask import Flask, render_template, url_for, copy_current_request_context,make_response,send_from_directory, Response, request
+from flask import Flask, render_template,make_response,send_from_directory, request
 import os
 import logging
 import json
@@ -173,6 +173,18 @@ def maps():
         else:
             return render_template('map.html', coords_field=coords_field, myCoords=myCoords)
 
+@app.route('/offline.html')
+def offline():
+    sn = config.ROBOT_SN
+    ui_language = config.UI_LANGUAGE
+    return render_template('offline.html',sn=sn, ui_languages=ui_languages, ui_language=ui_language)
+
+@app.route('/styles.css')
+def style():
+    response=make_response(send_from_directory('static',filename='css/style.css'))
+    response.headers['Content-Type'] = 'text/css'
+    return response
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     # pass through HTTP errors
@@ -185,9 +197,9 @@ def handle_exception(e):
     sn = config.ROBOT_SN
     return render_template("500.html",sn=sn), 500
 
-@app.route('/js/worker.js')
+@app.route('/sw.js')
 def worker():
-    response=make_response(send_from_directory('static',filename='js/worker.js'))
+    response=make_response(send_from_directory('static',filename='js/offline_worker.js'))
     response.headers['Content-Type'] = 'application/javascript'
     return response
 

@@ -163,5 +163,10 @@
 		"fr": "Pas de zone existante", 
 		"en": "No existing zone",
 		"nl": "Geen bestaande zone:"
+	},
+	"Offline": {
+		"fr": "Vous n'êtes plus connecté au robot !", 
+		"en": "You are no longer connected to the robot !",
+		"nl": "Je bent niet meer verbonden met de robot !"
 	}
 }

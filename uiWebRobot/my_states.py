@@ -51,6 +51,7 @@ class CheckState(State):
     def on_event(self, event):
         if event == Events.LIST_VALIDATION:
             self.cam.send_signal(signal.SIGINT)
+            self.cam.send_signal(signal.SIGINT)
             self.cam.wait()
             os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
