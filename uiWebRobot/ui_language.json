@@ -168,5 +168,15 @@
 		"fr": "Vous n'êtes plus connecté au robot !", 
 		"en": "You are no longer connected to the robot !",
 		"nl": "Je bent niet meer verbonden met de robot !"
+	},
+	"Check_remove_zone": {
+		"fr": "Êtes vous sûr de vouloir supprimer la zone séléctionnée ?", 
+		"en": "Are you sure you want to delete the selected area ?",
+		"nl": "Weet u zeker dat u het geselecteerde gebied wilt verwijderen ?"
+	},
+	"Error_500": {
+		"fr": "Nous sommes désolés, une erreur s'est produite. Veuillez redémarrer VIOLETTE.", 
+		"en": "We are sorry, an error has occurred. Please reboot VIOLETTE.",
+		"nl": "Het spijt ons, er heeft zich een fout voorgedaan. Herstart VIOLETTE aub."
 	}
 }

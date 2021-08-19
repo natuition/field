@@ -139,6 +139,8 @@ def on_disconnect():
 def index():
     #ui_language = "fr"
     ui_language = config.UI_LANGUAGE
+    if ui_language not in ui_languages["Supported Language"]:
+        ui_language = "en"
     sn = config.ROBOT_SN
     #sn = "SNXXX"
     statusOfUIObject = stateMachine.getStatusOfControls()
@@ -178,6 +180,8 @@ def maps():
 def offline():
     sn = config.ROBOT_SN
     ui_language = config.UI_LANGUAGE
+    if ui_language not in ui_languages["Supported Language"]:
+        ui_language = "en"
     return render_template('offline.html',sn=sn, ui_languages=ui_languages, ui_language=ui_language)
 
 @app.route('/styles.css')
@@ -196,7 +200,10 @@ def handle_exception(e):
     print(e)
     stateMachine.on_event(Events.ERROR)
     sn = config.ROBOT_SN
-    return render_template("500.html",sn=sn), 500
+    ui_language = config.UI_LANGUAGE
+    if ui_language not in ui_languages["Supported Language"]:
+        ui_language = "en"
+    return render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
 
 @app.route('/sw.js')
 def worker():

@@ -63,7 +63,9 @@ function clickHandler() {
     }else if(this.id=="Wheel" && !this.classList.contains("disabled-wheel")){
         socketio.emit('data', {type: "wheel"});
     }else if(this.id=="RemoveField"){
-        socketio.emit('data', {type: "removeField", field_name : choose_field_selector.value});
+        if (confirm((ui_languages["Check_remove_zone"])[ui_language])) {
+            socketio.emit('data', {type: "removeField", field_name : choose_field_selector.value});
+        }   
     }
 }
 
