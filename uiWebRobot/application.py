@@ -12,6 +12,7 @@ import stateMachine
 from state import Events
 import subprocess
 import my_states
+from urllib.parse import quote, unquote
 
 __author__ = 'Vincent LAMBERT'
 
@@ -46,7 +47,7 @@ def load_field_list(dir_path):
     field_list = []
     for file in os.listdir(dir_path):
         if file.endswith(".txt"):
-            field_list.append(file.split(".txt")[0])
+            field_list.append(unquote(file.split(".txt")[0]))
     return field_list
 
 def get_other_field():
@@ -55,8 +56,8 @@ def get_other_field():
     if len(field_list)>=2:
         coords_other = []
         for field_name in field_list:
-            if field_name != current_field:
-                with open("../fields/"+field_name+".txt") as file:
+            if field_name != unquote(current_field):
+                with open("../fields/"+quote(field_name,safe="")+".txt") as file:
                     points = file.readlines()
                 
                 coords = list()
@@ -149,8 +150,8 @@ def index():
         current_field = None
     else:
         Field_list.sort(key=str.casefold)
-        current_field = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")
-        current_field=current_field[:-5]
+        current_field = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
+        current_field = unquote(current_field)
 
     if str(stateMachine.currentState) == "ErrorState":
         return render_template("500.html",sn=sn), 500

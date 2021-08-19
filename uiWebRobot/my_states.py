@@ -23,6 +23,7 @@ import re
 from datetime import datetime, timezone
 import posix_ipc
 from application import get_other_field, load_field_list
+from urllib.parse import quote, unquote
 
 #This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
 class CheckState(State):
@@ -212,11 +213,11 @@ class WaitWorkingState(State):
 
         if data["type"] == 'removeField':
 
-            os.remove("../fields/"+data["field_name"]+".txt")
+            os.remove("../fields/"+quote(data["field_name"],safe="")+".txt")
             fields_list = load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/"+fields_list[0]+".txt' ../field.txt")
+                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="")+".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(fields_list[0])
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
@@ -346,7 +347,7 @@ class CreateFieldState(State):
             fields_list = load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/"+fields_list[0]+".txt' ../field.txt")
+                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="")+".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(field_name)
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
@@ -718,7 +719,7 @@ class FieldCreator:
         other_fields = get_other_field()
         current_field_name = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
 
-        self.socketio.emit('newField', json.dumps({"field" : self.formattingFieldPointsForSend(), "other_fields" : other_fields, "current_field_name" : current_field_name}), namespace='/map')
+        self.socketio.emit('newField', json.dumps({"field" : self.formattingFieldPointsForSend(), "other_fields" : other_fields, "current_field_name" : unquote(current_field_name)}), namespace='/map')
 
         return self.field
     
@@ -734,9 +735,8 @@ class FieldCreator:
 
     def saveField(self, fieldPath: str , fieldName: str):
         cpt = 1
-        fieldName = re.sub(r'[\/\\]',"_",fieldName)
+        fieldName = quote(fieldName,safe="")
         if(os.path.exists(fieldPath+fieldName)):
-            
             while os.path.exists(f"{fieldPath+fieldName[:-4]}_{cpt}.txt"):
                 cpt+=1
             fieldName = f"{fieldName[:-4]}_{cpt}.txt"
@@ -745,7 +745,7 @@ class FieldCreator:
         self.logger.write_and_flush(msg+"\n")
         print(msg)
         save_gps_coordinates(self.field, path)
-        return fieldName[:-4]
+        return unquote(fieldName[:-4])
 
     def manoeuvre(self):
         self.vesc_emergency.apply_rpm(-config.VESC_RPM_UI)
@@ -846,7 +846,11 @@ def checkHaveGPS(socketio: SocketIO, statusOfUIObject: dict):
 
 def updateFields(field_name):
 
-    os.system("ln -sf 'fields/"+field_name+".txt' ../field.txt")
+    field_name = quote(field_name,safe="")
+
+    cmd = "ln -sf 'fields/"+field_name+".txt' ../field.txt"
+
+    os.system(cmd)
             
     with open("../field.txt") as file:
         points = file.readlines()
@@ -860,4 +864,4 @@ def updateFields(field_name):
     other_fields = get_other_field()
     current_field_name = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
 
-    return coords, other_fields, current_field_name
+    return coords, other_fields, unquote(current_field_name)

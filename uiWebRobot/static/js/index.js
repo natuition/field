@@ -215,12 +215,12 @@ socketButton.on('field', function(dataServ) {
     }else if(dataServ["status"] == "validate_name"){
 
         var currentdate = new Date(); 
-        var datetime = currentdate.getDate() + "_"
-                        + (currentdate.getMonth()+1)  + "_" 
-                        + currentdate.getFullYear() + "-"  
-                        + currentdate.getHours() + ":"  
-                        + currentdate.getMinutes() + ":" 
-                        + currentdate.getSeconds();
+        var datetime = String(currentdate.getDate()).padStart(2, '0') + "/"
+                        + String(currentdate.getMonth()+1).padStart(2, '0')  + "/" 
+                        + currentdate.getFullYear() + " "  
+                        + String(currentdate.getHours()).padStart(2, '0') + ":"  
+                        + String(currentdate.getMinutes()).padStart(2, '0') + ":" 
+                        + String(currentdate.getSeconds()).padStart(2, '0');
         let field_name = prompt((ui_languages["Choose_field_name"])[ui_language], "");
         if (field_name == null || field_name == "") {
             field_name = datetime;
