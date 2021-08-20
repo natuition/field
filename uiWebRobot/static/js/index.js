@@ -47,6 +47,8 @@ var audit = false;
 
 document.getElementById('webCamStream').src = 'http://' + document.domain + ':8888';
 
+var reloader = 0;
+
 function clickHandler() {
     if(this.id=="Newfield"){
         sliderValue = document.getElementById("r1").value
@@ -216,6 +218,10 @@ socketButton.on('field', function(dataServ) {
 
     }else if(dataServ["status"] == "validate_name"){
 
+        divButton = document.getElementById("ValidateZone")
+        $(divButton).addClass('active');
+        $(divButton).attr('disabled', '');
+
         var currentdate = new Date(); 
         var datetime = String(currentdate.getDate()).padStart(2, '0') + "/"
                         + String(currentdate.getMonth()+1).padStart(2, '0')  + "/" 
@@ -230,11 +236,18 @@ socketButton.on('field', function(dataServ) {
 
         socketio.emit('data', {type: "field_name", name : field_name});
 
+        reloader = setTimeout(()=>{ 
+            document.location.reload();
+            reloader = 0;
+        }, 1000);
+
     }else if(dataServ["status"] == "validate"){
 
         divButton = document.getElementById("ValidateZone")
         divButton.id = "Newfield";
         $(divButton.firstElementChild).text((ui_languages["New zone"])[ui_language]);
+        $(divButton).removeClass('active');
+        $(divButton).removeAttr('disabled');
         $('#Start').removeAttr('disabled');   
         $('#Start').removeClass('disabled');
         $('#Audit').removeClass('disable-switcher-audit');
@@ -244,6 +257,15 @@ socketButton.on('field', function(dataServ) {
         $('#trash').attr('fill',"#FFF");
         wheelButton.classList.remove("disabled-wheel");
 
+    }
+});
+
+socketBroadcast.on('reloader', function(dataServ) {
+    if(!dataServ["status"]){
+        if(reloader != 0){
+            clearTimeout(reloader);
+            reloader = 0;
+        }
     }
 });
 

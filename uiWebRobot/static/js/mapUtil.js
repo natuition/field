@@ -1,4 +1,5 @@
-var socketMap = io.connect('http://' + document.domain + ':' + location.port + '/map');
+const socketMap = io.connect('http://' + document.domain + ':' + location.port + '/map');
+const socketBroadcast = io.connect('http://' + document.domain + ':' + location.port + '/broadcast');
 socketMap.on("reconnect_attempt", (attempt) => {
     if(attempt > 2) location.reload();
 });
@@ -347,15 +348,21 @@ socketMap.on('newField', function(dataServ) {
         var opts = sel.options;
 
         var current_field_name_found = false;
-        
-        for (var opt, j = 0; opt = opts[j]; j++) {
-            if (opt.value == dataServ["current_field_name"]) {
-                sel.selectedIndex = j;
-                current_field_name_found = true;
-            }else if(typeof dataServ["fields_list"] != "undefined"){
+
+        for (var j = 0; j < sel.options.length ; j++) {
+            var opt = opts[j];
+            if(typeof dataServ["fields_list"] != "undefined"){
                 if(!dataServ["fields_list"].includes(opt.value) && !opt.disabled){
                     sel.remove(j);
                 }
+            }
+        }
+
+        for (var j = 0; j < sel.options.length ; j++) {
+            var opt = opts[j];
+            if (opt.value == dataServ["current_field_name"]) {
+                sel.selectedIndex = j;
+                current_field_name_found = true;
             }
         }
 
@@ -377,5 +384,7 @@ socketMap.on('newField', function(dataServ) {
             
         }
     }
+
+    socketBroadcast.emit('data', {type: "reloader", status : false});
     
 });

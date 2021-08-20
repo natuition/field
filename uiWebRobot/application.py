@@ -156,7 +156,7 @@ def index():
         current_field = unquote(current_field)
 
     if str(stateMachine.currentState) == "ErrorState":
-        return render_template("500.html",sn=sn), 500
+        render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
 
     return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field)    
 

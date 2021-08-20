@@ -342,6 +342,7 @@ class CreateFieldState(State):
             self.field = self.fieldCreator.calculateField()
             self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
         elif data["type"] == "field_name":
+            self.statusOfUIObject["fieldButton"] = "charging"
             field_name = self.fieldCreator.saveField("../fields/",data["name"]+".txt")
 
             fields_list = load_field_list("../fields")
