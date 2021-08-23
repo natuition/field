@@ -188,6 +188,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     
     prev_maneuver_time = time.time()
     current_working_mode = 1
+    last_working_mode = 0
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
 
     lastNtripRestart = time.time()
@@ -631,8 +632,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
-        extraction_manager.reset_map()
-
         # EXTRACTION CONTROL
         while True:   # perform detection until either it is time to perform a new navigation, or there is something to goget
             start_t = time.time()
@@ -670,91 +669,91 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
                 break
 
+        working_mode_slow = 1
+        working_mode_switching = 2
+        working_mode_fast = 3
 
-            #old extraction control
+        slow_mode_time = -float("inf")
+                                    
+        if config.AUDIT_MODE:
+            dc_start_t = time.time()
 
-            working_mode_slow = 1
-            working_mode_switching = 2
-            working_mode_fast = 3
+            # count detected plant boxes for each type
+            plants_count = dict()
+            for plant_box in plants_boxes:
+                plant_box_name = plant_box.get_name()
+                if plant_box_name in plants_count:
+                    plants_count[plant_box_name] += 1
+                else:
+                    plants_count[plant_box_name] = 1
 
-            slow_mode_time = -float("inf")
-                                        
-            if config.AUDIT_MODE:
-                dc_start_t = time.time()
+            # save info into data collector
+            for plant_label in plants_count:
+                data_collector.add_detections_data(plant_label, math.ceil((plants_count[plant_label])/config.AUDIT_DIVIDER))
 
-                # count detected plant boxes for each type
-                plants_count = dict()
-                for plant_box in plants_boxes:
-                    plant_box_name = plant_box.get_name()
-                    if plant_box_name in plants_count:
-                        plants_count[plant_box_name] += 1
-                    else:
-                        plants_count[plant_box_name] = 1
+            # flush updates into the audit output file and log measured time
+            if len(plants_boxes) > 0:
+                data_collector.save_detections_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
 
-                # save info into data collector
-                for plant_label in plants_count:
-                    data_collector.add_detections_data(plant_label, math.ceil((plants_count[plant_label])/config.AUDIT_DIVIDER))
+            dc_t = time.time() - dc_start_t
+            msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
+                ", audit processing tick time: " + str(dc_t)
+            logger_full.write(msg + "\n")
+        else:
+            # slow mode
+            if current_working_mode == working_mode_slow:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : slow")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
 
-                # flush updates into the audit output file and log measured time
-                if len(plants_boxes) > 0:
-                    data_collector.save_detections_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
+                    extraction_manager_v3.extract_all_plants()
 
-                dc_t = time.time() - dc_start_t
-                msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
-                    ", audit processing tick time: " + str(dc_t)
-                logger_full.write(msg + "\n")
-            else:
-                # slow mode
-                if current_working_mode == working_mode_slow:
-                    if config.VERBOSE:
-                        print("[Working mode] : slow")
-                    if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                        vesc_engine.stop_moving()
+                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
 
-                        extraction_manager_v3.extract_all_plants()
+                elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
+                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
+                        config.SLOW_FAST_MODE:
 
-                        vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                    current_working_mode = working_mode_fast
+                    if not close_to_end:
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+                vesc_engine.start_moving()        
 
-                    elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
-                            time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
-                            config.SLOW_FAST_MODE:
+            # switching to fast mode
+            elif current_working_mode == working_mode_switching:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : switching")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
 
-                        current_working_mode = working_mode_fast
-                        if not close_to_end:
-                            vesc_engine.apply_rpm(config.VESC_RPM_FAST)
-                    vesc_engine.start_moving()        
-
-                # switching to fast mode
-                elif current_working_mode == working_mode_switching:
-                    if config.VERBOSE:
-                        print("[Working mode] : switching")
-                    if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                        vesc_engine.stop_moving()
-
-                        current_working_mode = working_mode_slow
-                        slow_mode_time = time.time()
-                    else:
-                        current_working_mode = working_mode_fast
-                        if not close_to_end:
-                         vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
-
-                # fast mode
-                elif current_working_mode == working_mode_fast:
-                    if config.VERBOSE:
-                        print("[Working mode] : fast")
-                    if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                        vesc_engine.stop_moving()
-                        vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
-                        time.sleep(config.FAST_TO_SLOW_TIME)
-                        vesc_engine.stop_moving()
-
-                        current_working_mode = working_mode_slow
-                        slow_mode_time = time.time()
-                        vesc_engine.set_rpm(config.VESC_RPM_SLOW)
-                    elif close_to_end:
-                        vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
-                    else:
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                else:
+                    current_working_mode = working_mode_fast
+                    if not close_to_end:
                         vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
+
+            # fast mode
+            elif current_working_mode == working_mode_fast:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : fast")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
+                    time.sleep(config.FAST_TO_SLOW_TIME)
+                    vesc_engine.stop_moving()
+
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                    vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+                elif close_to_end:
+                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                else:
+                    vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
     """
@@ -1143,9 +1142,8 @@ def main():
                                              config.CAMERA_FLIP_METHOD) as camera, \
             ExtractionManagerV3(smoothie, camera, working_zone_points_cv,
                                 logger_full, data_collector, image_saver,
-                                log_cur_dir, periphery_detector, precise_detector, 
-                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3:
-            
+                                log_cur_dir, periphery_detector, precise_detector,
+                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3 :            
                 
             # load previous path
             if config.CONTINUE_PREVIOUS_PATH:
@@ -1483,8 +1481,9 @@ def main():
         except:
             pass
 
-        detection.webStream.terminate()
-        detection.webStream.join()
+        if detection.YoloDarknetDetector.webStream is not None:
+            detection.YoloDarknetDetector.webStream.terminate()
+            detection.YoloDarknetDetector.webStream.join()
 
         print("Safe disable is done.")
 

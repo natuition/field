@@ -104,6 +104,7 @@ class YoloDarknetDetector:
     # TODO: check for interpolation (INTER_AREA should be better than INTER_LINEAR)
 
     WEBSTREAM = False
+    webStream = None
 
     def __init__(self,
                  weights_file_path,  # yolo weights path
@@ -181,7 +182,7 @@ class YoloDarknetDetector:
 
             self.sharedArray[:] = img[:]
 
-            print(time.time() - t1)
+            #print(time.time() - t1)
 
             if not YoloDarknetDetector.WEBSTREAM:
                 template_dir = os.path.abspath('./liveMain')
@@ -193,9 +194,8 @@ class YoloDarknetDetector:
                 logging.getLogger('werkzeug').disabled = True
                 os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
-                global webStream
-                webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
-                webStream.start()
+                YoloDarknetDetector.webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
+                YoloDarknetDetector.webStream.start()
                 YoloDarknetDetector.WEBSTREAM = True
         
         return plant_boxes

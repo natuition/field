@@ -8,7 +8,7 @@ import datacollection
 from matplotlib.patches import Polygon
 import time
 import pickle
-import sklearn
+from sklearn.preprocessing import PolynomialFeatures
 
 
 class ExtractionManagerV3:
@@ -40,6 +40,12 @@ class ExtractionManagerV3:
         self.__pdz_polygon = self.__pdz_dist_to_poly(pdz_distances)
         self.__extraction_map = ExtractionMap(config.EXTRACTION_MAP_CELL_SIZE_MM)
         self.__converter = PxToMMConverter()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
 
     @staticmethod
     def __pdz_dist_to_poly(pdz: dict):
@@ -91,7 +97,7 @@ class ExtractionManagerV3:
 
                 # convert smoothie relative coordinates to absolute
                 cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()
-                abs_sm_x, abs_sm_y = cur_sm_pos["X"] + rel_sm_x, cur_sm_pos["Y"] + rel_sm_y
+                abs_sm_x, abs_sm_y = cur_sm_pos["X"] + float(rel_sm_x), cur_sm_pos["Y"] + float(rel_sm_y)
 
                 # skip coordinates that are out of working range
                 if not (config.X_MIN < abs_sm_x < config.X_MAX and config.Y_MIN < abs_sm_y < config.Y_MAX):
@@ -239,6 +245,8 @@ class ExtractionManagerV3:
                     else:
                         msg = "No plants detected - assuming last extraction was successful; coming to next PDZ item"
                         self.__logger_full.write(msg + "\n")
+                        if config.VERBOSE:
+                            print(msg)
                         break
 
                 scan_is_first = False
@@ -617,7 +625,7 @@ class PxToMMConverter:
         norm_x = plant_px_x - config.SCENE_CENTER_X
         norm_y = plant_px_y - config.SCENE_CENTER_Y
         dis_from_center = math.sqrt(norm_x ** 2 + norm_y ** 2)
-        return self.__plant_position_prediction(norm_x, norm_y, dis_from_center)
+        return self.__plant_position_prediction(norm_x, norm_y, dis_from_center)[:2]
 
     # prediction of the distance in mm between the center of the plant and the center of the scene
     def __plant_position_prediction(self, norm_x, norm_y,
@@ -636,7 +644,7 @@ class PxToMMConverter:
         values = [norm_x, norm_y, dis_from_center]
 
         # generate the matrix of the right degree
-        poly_features = sklearn.preprocessing.PolynomialFeatures(degree=degree)
+        poly_features = PolynomialFeatures(degree=degree)
 
         if degree not in self.__loaded_prediction_model.keys():
             filename = 'zone_models/zone_model_' + str(degree) + '.sav'

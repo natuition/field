@@ -308,6 +308,8 @@ ALLOW_DELTA_SEEKING = True  # will try to move over supposed plant position if p
 # False: seek over coordinates updated by cork obscuring patch; True: seek over original coordinates
 DELTA_SEEKING_IGNORE_OBSCURING = False
 
+DEBUG_MATRIX_FILE = False
+
 # ======================================================================================================================
 # PREDICTION SETTINGS
 # ======================================================================================================================
