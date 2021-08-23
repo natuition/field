@@ -216,6 +216,14 @@ class DetectedPlantBox:
         self.__image_width = img_w
         self.__image_height = img_h
 
+    @property
+    def center_x(self):
+        return self.__center_x
+
+    @property
+    def center_y(self):
+        return self.__center_y
+
     def __str__(self):
         return "Plant Box L=" + str(self.__left) + " T=" + str(self.__top) + " R=" + str(self.__right) + " B=" + \
                str(self.__bottom) + " X=" + str(self.__center_x) + " Y=" + str(self.__center_y)
