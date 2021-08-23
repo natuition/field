@@ -20,7 +20,7 @@ from notification import NotificationClient
 from notification import SyntheseRobot
 import posix_ipc
 import json
-from extraction_manager import ExtractionManager
+from extraction import ExtractionManagerV3
 
 """
 import SensorProcessing
@@ -142,7 +142,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
                               nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver, notification: NotificationClient):
+                              image_saver: utility.ImageSaver, notification: NotificationClient, extraction_manager_v3: ExtractionManagerV3):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -156,12 +156,19 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     :param logger_full:
     :param logger_table:
     :param report_field_names:
-    :param used_points_history:
-    :param nav:
-    :param working_zone_polygon:
+    :param trajectory_saver:
     :param undistorted_zone_radius:
+    :param working_zone_polygon:
     :param working_zone_points_cv:
+    :param view_zone_polygon:
+    :param view_zone_points_cv:
     :param img_output_dir:
+    :param nav:
+    :param data_collector:
+    :param log_cur_dir:
+    :param image_saver:
+    :param notification:
+    :param extraction_manager_v3:
     :return:
     """
 
@@ -212,9 +219,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     if config.AUDIT_MODE:
         vesc_engine.apply_rpm(config.VESC_RPM_AUDIT)
         vesc_engine.start_moving()
-    
-    extraction_manager = ExtractionManager(smoothie, camera, working_zone_polygon, working_zone_points_cv,
-                                           logger_full, data_collector, image_saver, log_cur_dir, periphery_det, precise_det)
 
     msgQueue = None
 
@@ -649,7 +653,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
             logger_full.write(msg + "\n")
             
-            if ExtractionManager.any_plant_in_zone(plants_boxes, working_zone_polygon):
+            if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                 break
                 
             # do maneuvers not more often than specified value
@@ -666,8 +670,91 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
                 break
 
-        extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode)
 
+            #old extraction control
+
+            working_mode_slow = 1
+            working_mode_switching = 2
+            working_mode_fast = 3
+
+            slow_mode_time = -float("inf")
+                                        
+            if config.AUDIT_MODE:
+                dc_start_t = time.time()
+
+                # count detected plant boxes for each type
+                plants_count = dict()
+                for plant_box in plants_boxes:
+                    plant_box_name = plant_box.get_name()
+                    if plant_box_name in plants_count:
+                        plants_count[plant_box_name] += 1
+                    else:
+                        plants_count[plant_box_name] = 1
+
+                # save info into data collector
+                for plant_label in plants_count:
+                    data_collector.add_detections_data(plant_label, math.ceil((plants_count[plant_label])/config.AUDIT_DIVIDER))
+
+                # flush updates into the audit output file and log measured time
+                if len(plants_boxes) > 0:
+                    data_collector.save_detections_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
+
+                dc_t = time.time() - dc_start_t
+                msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
+                    ", audit processing tick time: " + str(dc_t)
+                logger_full.write(msg + "\n")
+            else:
+                # slow mode
+                if current_working_mode == working_mode_slow:
+                    if config.VERBOSE:
+                        print("[Working mode] : slow")
+                    if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                        vesc_engine.stop_moving()
+
+                        extraction_manager_v3.extract_all_plants()
+
+                        vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+
+                    elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
+                            time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
+                            config.SLOW_FAST_MODE:
+
+                        current_working_mode = working_mode_fast
+                        if not close_to_end:
+                            vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+                    vesc_engine.start_moving()        
+
+                # switching to fast mode
+                elif current_working_mode == working_mode_switching:
+                    if config.VERBOSE:
+                        print("[Working mode] : switching")
+                    if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                        vesc_engine.stop_moving()
+
+                        current_working_mode = working_mode_slow
+                        slow_mode_time = time.time()
+                    else:
+                        current_working_mode = working_mode_fast
+                        if not close_to_end:
+                         vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
+
+                # fast mode
+                elif current_working_mode == working_mode_fast:
+                    if config.VERBOSE:
+                        print("[Working mode] : fast")
+                    if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                        vesc_engine.stop_moving()
+                        vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
+                        time.sleep(config.FAST_TO_SLOW_TIME)
+                        vesc_engine.stop_moving()
+
+                        current_working_mode = working_mode_slow
+                        slow_mode_time = time.time()
+                        vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+                    elif close_to_end:
+                        vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                    else:
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
     """
@@ -1053,9 +1140,11 @@ def main():
                                              config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
-                                             config.CAMERA_FLIP_METHOD) as camera:
-
-            
+                                             config.CAMERA_FLIP_METHOD) as camera, \
+            ExtractionManagerV3(smoothie, camera, working_zone_points_cv,
+                                logger_full, data_collector, image_saver,
+                                log_cur_dir, periphery_detector, precise_detector, 
+                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3:
             
                 
             # load previous path
@@ -1265,7 +1354,8 @@ def main():
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
-                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification)
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, 
+                                              image_saver, notification, extraction_manager_v3)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
