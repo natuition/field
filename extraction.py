@@ -181,6 +181,7 @@ class ExtractionManagerV3:
                             exit(1)
 
                 # make a scan, keep only plants that are in undistorted zone
+                # TODO: possibly here will be multiple scans with average coordinates
                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                 frame = self.__camera.get_image()
                 plants_boxes = self.__precise_det.detect(frame)
@@ -289,13 +290,9 @@ class ExtractionManagerV3:
                     rel_sm_x = self.px_to_smoothie_value(plant_box.center_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
                     rel_sm_y = -self.px_to_smoothie_value(plant_box.center_y, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
 
-                    print("Before CORK_TO_CAMERA_DISTANCE :",rel_sm_x,rel_sm_y)
-
                     # swap camera and cork for extraction immediately (coords are relative)
                     rel_sm_x += config.CORK_TO_CAMERA_DISTANCE_X
                     rel_sm_y += config.CORK_TO_CAMERA_DISTANCE_Y
-
-                    print("After CORK_TO_CAMERA_DISTANCE :",rel_sm_x,rel_sm_y)
 
                     # convert smoothie relative coordinates to absolute
                     cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()
@@ -312,6 +309,15 @@ class ExtractionManagerV3:
                 for ext_sm_x, ext_sm_y in smoothie_plants_positions:
                     extraction_pattern = self.__extraction_map.get_strategy(ext_sm_x, ext_sm_y)
                     if extraction_pattern:
+                        # go to position
+                        res = self.__smoothie.custom_move_to(F=config.XY_F_MAX, X=ext_sm_x, Y=ext_sm_y)
+                        if res != self.__smoothie.RESPONSE_OK:
+                            msg = f"Missing plant as could not move cork to position X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
+                            msg += "\n" + res
+                            self.__logger_full.write(msg + "\n")
+                            continue
+
+                        # extract
                         res, cork_is_stuck = extraction_pattern(self.__smoothie, self.__extraction_map)
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = "Something gone wrong during extractions, smoothie's response:\n" + res
