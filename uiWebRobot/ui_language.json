@@ -178,5 +178,15 @@
 		"fr": "Nous sommes désolés, une erreur s'est produite. Veuillez redémarrer VIOLETTE.", 
 		"en": "We are sorry, an error has occurred. Please reboot VIOLETTE.",
 		"nl": "Het spijt ons, er heeft zich een fout voorgedaan. Herstart VIOLETTE aub."
+	},
+	"AI_selector": {
+		"fr": "Sélection de l'intelligence artificielle :", 
+		"en": "Selection of artificial intelligence :",
+		"nl": "Selectie van kunstmatige intelligentie :"
+	},
+	"Choose_AI": {
+		"fr": "Veuillez choisir une intelligence artificielle", 
+		"en": "Please choose an artificial intelligence",
+		"nl": "Kies een kunstmatige intelligentie"
 	}
 }

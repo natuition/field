@@ -333,42 +333,22 @@
                 </span>
             </label>
         </div>
-        <!--
         <div class="checklist__select">
             <div class="checklist__select--title">
-                {{(ui_languages["Soil type"])[ui_language]}}
+                {{(ui_languages["AI_selector"])[ui_language]}}
             </div>
             <div class="checklist__select--role">
-                <select>
-                    <option value='{{(ui_languages["Soil type 1"])[ui_language]}}' disabled>Please choose soil type</option>
-                    <option value='Please choose soil type'>{{(ui_languages["Soil type 1"])[ui_language]}}</option>
-                    <option value='Please choose soil type'>{{(ui_languages["Soil type 1"])[ui_language]}}</option>
-                    <option value='Please choose soil type'>{{(ui_languages["Soil type 1"])[ui_language]}}</option>
-                    <option value='Please choose soil type'>{{(ui_languages["Soil type 1"])[ui_language]}}</option>
+                <select id="AI_selector">
+                    <option value='{{(ui_languages["Choose_AI"])[ui_language]}}' disabled>{{(ui_languages["Choose_AI"])[ui_language]}}</option>
+                    {%  for ia in IA_list %}
+                    <option value='{{ia}}'>{{ia}}</option>
+                    {%  endfor %}
                 </select>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4" class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
                     <path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"></path>
                 </svg>
             </div>
         </div>
-        <div class="checklist__select">
-            <div class="checklist__select--title">
-                {{(ui_languages["Weather type"])[ui_language]}}
-            </div>
-            <div class="checklist__select--role">
-                <select>
-                    <option value='{{(ui_languages["Soil type 1"])[ui_language]}}' disabled>Please choose soil type</option>
-                    <option value='Please choose soil type'>{{(ui_languages["Soil type 1"])[ui_language]}}</option>
-                    <option value='Please choose soil type'>{{(ui_languages["Soil type 1"])[ui_language]}}</option>
-                    <option value='Please choose soil type'>{{(ui_languages["Soil type 1"])[ui_language]}}</option>
-                    <option value='Please choose soil type'>{{(ui_languages["Soil type 1"])[ui_language]}}</option>
-                </select>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4" class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
-                    <path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"></path>
-                </svg>
-            </div>
-        </div>
-        -->
         <button name="checkbutton" id="checkbutton" class="finish__check unselectable disabled" onclick="checkAllBoxAreChecked()" disabled>
             <span class="submit">{{(ui_languages["Finish check"])[ui_language]}}</span>
         </button>

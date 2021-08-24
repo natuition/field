@@ -67,7 +67,17 @@ class CheckState(State):
             return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
-        return ErrorState(self.socketio, self.logger)
+        if data["type"] == 'allChecked':
+            with open("../yolo/"+data["strategy"]+".conf") as file:
+                for line in file.readlines():
+                    content = line.split("#")[0]
+                    content = re.sub('[^0-9a-zA-Z._="/]+', '', content)
+                    if content:
+                        changeConfigValue(content.split("=")[0],content.split("=")[1])
+            return self
+        else:
+            return ErrorState(self.socketio, self.logger)
+
 
     def getStatusOfControls(self):
         return self.statusOfUIObject
@@ -282,15 +292,23 @@ class CreateFieldState(State):
             self.statusOfUIObject["stopButton"] = "charging"
             self.fieldCreator.setSecondPoint()
             self.field = self.fieldCreator.calculateField()
-            self.manoeuvre = True
-            self.fieldCreator.manoeuvre()
-            self.manoeuvre = False
-            self.statusOfUIObject["stopButton"] = None
-            self.statusOfUIObject["fieldButton"] = "validate"
+            if config.TWO_POINTS_FOR_CREATE_FIELD:
+                self.fieldCreator.saveField("../field.txt")
+            else:
+                self.manoeuvre = True
+                self.fieldCreator.manoeuvre()
+                self.manoeuvre = False
+                self.statusOfUIObject["stopButton"] = None
+                self.statusOfUIObject["fieldButton"] = "validate"
             self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
+            if config.TWO_POINTS_FOR_CREATE_FIELD:
+                self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
             self.smoothie.disconnect()
             self.gps.disconnect()
-            return self
+            if config.TWO_POINTS_FOR_CREATE_FIELD:
+                return WaitWorkingState(self.socketio, self.logger, True)
+            else:
+                return self
         elif event == Events.VALIDATE_FIELD:
             return self
         elif event == Events.VALIDATE_FIELD_NAME:
@@ -712,10 +730,12 @@ class FieldCreator:
         self.logger.write_and_flush(msg+"\n")
         print(msg)
 
-        self.C = self.nav.get_coordinate(self.B, self.A, 90, self.length_field)
-        self.D = self.nav.get_coordinate(self.C, self.B, 90, width_field)
-
-        self.field = [self.B, self.C, self.D, self.A]
+        if not config.TWO_POINTS_FOR_CREATE_FIELD:
+            self.C = self.nav.get_coordinate(self.B, self.A, 90, self.length_field)
+            self.D = self.nav.get_coordinate(self.C, self.B, 90, width_field)
+            self.field = [self.B, self.C, self.D, self.A]
+        else:
+            self.field = [self.B, self.A]
      
         other_fields = get_other_field()
         current_field_name = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
@@ -730,7 +750,8 @@ class FieldCreator:
         for coord in self.field:
             coords.append([coord[1],coord[0]])
 
-        coords.append(coords[0])
+        if len(self.field) == 4:
+            coords.append(coords[0])
 
         return coords
 

@@ -25,8 +25,16 @@ window.onload = ()=>{
 function createMap(coords_field,coords_other){
     if (coords_field.length > 0) {
 
-        x_center = (coords_field[0][0]+coords_field[1][0]+coords_field[2][0]+coords_field[3][0])/4;
-        y_center = (coords_field[0][1]+coords_field[1][1]+coords_field[2][1]+coords_field[3][1])/4;
+        let cpt = 0
+        let x_center = 0
+        let y_center = 0
+        for(const coord of coords_field){
+            x_center += coord[0]
+            y_center += coord[1]
+            cpt += 1
+        }
+        x_center /= cpt
+        y_center /= cpt
 
         var zoom = 17;
 
@@ -335,8 +343,16 @@ socketMap.on('newField', function(dataServ) {
 
         if (dataServ["field"].length > 0){
             var coords = dataServ["field"]
-            x_center = (coords[0][0]+coords[1][0]+coords[2][0]+coords[3][0])/4
-            y_center = (coords[0][1]+coords[1][1]+coords[2][1]+coords[3][1])/4
+            let cpt = 0
+            let x_center = 0
+            let y_center = 0
+            for(const coord of coords){
+                x_center += coord[0]
+                y_center += coord[1]
+                cpt += 1
+            }
+            x_center /= cpt
+            y_center /= cpt
             map.flyTo({
                 center: [x_center,y_center],
                 speed: 2,

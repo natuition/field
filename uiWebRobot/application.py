@@ -12,6 +12,7 @@ import stateMachine
 from state import Events
 import subprocess
 import my_states
+import os
 from urllib.parse import quote, unquote
 
 __author__ = 'Vincent LAMBERT'
@@ -42,6 +43,13 @@ def load_coordinates(file_path):
     except OSError as e:
         return None
     return positions_list
+
+def load_ai_list(dir_path):
+    ia_list = []
+    for file in os.listdir(dir_path):
+        if file.endswith(".conf"):
+            ia_list.append(file.split(".conf")[0])
+    return ia_list
 
 def load_field_list(dir_path):
     field_list = []
@@ -107,6 +115,7 @@ def on_socket_data(data):
         elif data["type"] == "stop":
             stateMachine.on_event(Events.STOP)
         elif data["type"] == "allChecked":
+            stateMachine.on_socket_data(data)
             stateMachine.on_event(Events.LIST_VALIDATION)
         elif data["type"] == "wheel":
             stateMachine.on_event(Events.WHEEL)
@@ -145,6 +154,7 @@ def index():
     #sn = "SNXXX"
     statusOfUIObject = stateMachine.getStatusOfControls()
 
+    IA_list = load_ai_list("../yolo")
     Field_list = load_field_list("../fields")
 
     if not Field_list:
@@ -158,7 +168,7 @@ def index():
     if str(stateMachine.currentState) == "ErrorState":
         render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
 
-    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field)    
+    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list)    
 
 @app.route('/map')
 def maps():

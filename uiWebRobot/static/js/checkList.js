@@ -7,6 +7,7 @@ var isCheck = false
 document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
 
 function checkAllBoxAreChecked(){
+    var select_ai = document.getElementById("AI_selector");
     if (document.getElementById('closecover').checked &&
         document.getElementById('XY').checked &&
         document.getElementById('opencover').checked &&
@@ -15,7 +16,7 @@ function checkAllBoxAreChecked(){
         document.getElementById('wheelsStraight').checked && 
         isCheck == false){
     		console.log("User all check !")
-            socketio.emit('data', {type: "allChecked"});
+            socketio.emit('data', {type: "allChecked", strategy: select_ai.value});
             isCheck = true
     }
 

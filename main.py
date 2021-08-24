@@ -1131,8 +1131,25 @@ def main():
                     field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
 
                 # check field corner points count
-                if len(field_gps_coords) != 4:
-                    msg = "Expected 4 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(
+                if len(field_gps_coords) == 4:
+                    # TODO: save field in debug
+
+                    field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
+                    print("field_gps_coords : ",field_gps_coords)
+                    # TODO: save reduced field in debug
+
+                    # generate path points
+                    path_start_index = 1
+                    path_points = build_path(field_gps_coords, nav, logger_full)
+                    msg = "Generated " + str(len(path_points)) + " points."
+                    logger_full.write(msg + "\n")
+
+                elif len(field_gps_coords) == 2: 
+                    path_start_index = 1
+                    path_points = field_gps_coords
+
+                else:
+                    msg = "Expected 4 or 2 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(
                         field_gps_coords)
                     print(msg)
                     logger_full.write(msg + "\n")
@@ -1143,16 +1160,6 @@ def main():
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
                     notification.set_field(field_gps_coords)
-
-                field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
-                print("field_gps_coords : ",field_gps_coords)
-                # TODO: save reduced field in debug
-
-                # generate path points
-                path_start_index = 1
-                path_points = build_path(field_gps_coords, nav, logger_full)
-                msg = "Generated " + str(len(path_points)) + " points."
-                logger_full.write(msg + "\n")
 
                 # save path points and point to start from index
                 with open(config.PREVIOUS_PATH_POINTS_FILE, "wb") as path_points_file:
