@@ -284,13 +284,27 @@ class CreateFieldState(State):
 
         self.field = None
         self.manoeuvre = False
+
+        try:
+            self.notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION)
+        except:
+            self.notificationQueue = None
     
     def on_event(self, event):
         if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject["fieldButton"] = None
             self.statusOfUIObject["stopButton"] = "charging"
-            self.fieldCreator.setSecondPoint()
+
+            try:
+                self.fieldCreator.setSecondPoint()
+            except TimeoutError:
+                if self.notificationQueue is not None:
+                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))     
+                self.smoothie.disconnect()
+                self.gps.disconnect() 
+                return WaitWorkingState(self.socketio, self.logger, False) 
+
             self.field = self.fieldCreator.calculateField()
             if config.TWO_POINTS_FOR_CREATE_FIELD:
                 self.fieldCreator.saveField("../field.txt")
@@ -333,7 +347,7 @@ class CreateFieldState(State):
                     x *= -(config.A_MIN/100)
                 if x > 0:
                     x *= config.A_MAX/100
-                print(f"[{self.__class__.__name__}] -> Move '{x}'.")
+                #print(f"[{self.__class__.__name__}] -> Move '{x}'.")
                 self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
         elif data["type"] == "field":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
@@ -341,9 +355,18 @@ class CreateFieldState(State):
             print(msg)
             self.statusOfUIObject["slider"] = int(data["value"])
             self.fieldCreator.setFieldSize(int(data["value"])*1000)
-            self.fieldCreator.setFirstPoint()
-            self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
-            self.statusOfUIObject["fieldButton"] = None
+
+            try:
+                self.fieldCreator.setFirstPoint()
+                self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
+                self.statusOfUIObject["fieldButton"] = None
+            except TimeoutError:
+                if self.notificationQueue is not None:
+                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))  
+                self.smoothie.disconnect()
+                self.gps.disconnect()
+                return WaitWorkingState(self.socketio, self.logger, False)
+
         elif data["type"] == "modifyZone":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
@@ -839,11 +862,13 @@ def changeConfigValue(path: str, value):
 
          
 def startMain():
-    mainSP = subprocess.Popen(["python3","main.py"], cwd="/home/violette/field")#, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    #mainSP = subprocess.Popen(["python3","main.py"], cwd="/home/violette/field")#, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    mainSP = subprocess.Popen(["python3","main.py"], cwd=os.getcwd().split("/uiWebRobot")[0])
     return mainSP
 
 def startLiveCam():
-    camSP = subprocess.Popen(["python3","serveurCamLive.py"], cwd="/home/violette/field")
+    #camSP = subprocess.Popen(["python3","serveurCamLive.py"], cwd="/home/violette/field")
+    camSP = subprocess.Popen(["python3","serveurCamLive.py"], cwd=os.getcwd().split("/uiWebRobot")[0])
     return camSP
 
 def checkHaveGPS(socketio: SocketIO, statusOfUIObject: dict):

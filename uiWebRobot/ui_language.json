@@ -89,10 +89,25 @@
 		"en": "GPS found.",
 		"nl": "GPS gevonden."
 	},
+	"No_GPS_for_field": {
+		"fr": "Impossible de créer la nouvelle zone, VIOLETTE n'a pas de GPS !", 
+		"en": "Couldn't create new zone, VIOLETTE don't have GPS !",
+		"nl": "Kan geen nieuwe zone maken, VIOLETTE heeft geen GPS !"
+	},
+	"Degraded_navigation_mode_on": {
+		"fr": "Navigation en mode dégradée, VIOLETTE va avancer tout droit.", 
+		"en": "Navigation is in degraded mode, VIOLETTE goes straight.",
+		"nl": "Navigatie is in gedegradeerde modus, VIOLETTE gaat rechtdoor."
+	},
+	"Degraded_navigation_mode_off": {
+		"fr": "Navigation en mode nominal.", 
+		"en": "Navigation is in nominal mode.",
+		"nl": "De navigatie is in de nominale modus."
+	},
 	"Audit ?": {
 		"fr": "Voulez-vous vraiment passer en mode audit ?", 
 		"en": "Are you sure you want to switch to audit mode ?",
-		"nl": "Weet u zeker dat u naar de auditmodus wilt overschakelen?"
+		"nl": "Weet u zeker dat u naar de auditmodus wilt overschakelen ?"
 	},
 	"Audit on": {
 		"fr": "Mode audit activé", 

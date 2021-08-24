@@ -110,6 +110,8 @@ FAST_TO_SLOW_TIME = 5
 GPS_PORT = "/dev/ttyTHS1"
 GPS_BAUDRATE = 38400
 GPS_POSITIONS_TO_KEEP = 1000
+NO_GPS_TIMEOUT = 10
+GPS_CHECK_IN_DEGRADED_MODE = 30 #Check if gps returned every GPS_CHECK_IN_DEGRADED_MODE navigation cycle.
 
 # ======================================================================================================================
 # SMOOTHIE SETTINGS
@@ -283,6 +285,7 @@ CONTINUOUS_INFORMATION_SENDING = True
 ALIVE_SENDING_TIMEOUT = 1
 
 TWO_POINTS_FOR_CREATE_FIELD = False
+
 # ======================================================================================================================
 # MATRIX SETTINGS
 # ======================================================================================================================

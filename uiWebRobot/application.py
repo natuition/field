@@ -14,6 +14,8 @@ import subprocess
 import my_states
 import os
 from urllib.parse import quote, unquote
+import posix_ipc
+from threading import Thread
 
 __author__ = 'Vincent LAMBERT'
 
@@ -30,6 +32,8 @@ def init():
     global stateMachine
     with open("ui_language.json", "r", encoding='utf-8') as read_file:
         ui_languages = json.load(read_file)    
+    thread_notification = Thread(target=catch_send_notification, args=(socketio,))
+    thread_notification.start()
     stateMachine = stateMachine.StateMachine(socketio)
 
 def load_coordinates(file_path):
@@ -86,6 +90,24 @@ def formattingFieldPointsForSend(corners):
     coords.append(coords[0])
 
     return coords
+
+def catch_send_notification(socketio: SocketIO):
+    try:
+        posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_NOTIFICATION)
+    except:
+        pass
+
+    notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION, posix_ipc.O_CREX)
+    
+    ui_language = config.UI_LANGUAGE
+
+    while True:
+        notification = notificationQueue.receive()
+        
+        message_name = json.loads(notification[0])["message_name"]
+        message = ui_languages[message_name][ui_language]
+        
+        socketio.emit('notification', {"message_name":message_name,"message":message} , namespace='/broadcast', broadcast=True)
 
 @socketio.on('data', namespace='/server')
 def on_socket_data(data):

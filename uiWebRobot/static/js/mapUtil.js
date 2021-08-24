@@ -23,11 +23,13 @@ window.onload = ()=>{
 }
 
 function createMap(coords_field,coords_other){
+    var x_center = 0
+    var y_center = 0
+
     if (coords_field.length > 0) {
 
         let cpt = 0
-        let x_center = 0
-        let y_center = 0
+        
         for(const coord of coords_field){
             x_center += coord[0]
             y_center += coord[1]
