@@ -175,6 +175,8 @@ socketButton.on('stop', function(dataServ) {
             newFieldButton.removeAttribute("disabled")
             wheelButton.classList.remove("disabled-wheel");
             verif_iframe_start();
+
+            document.getElementById('map__header').contentWindow.location.reload();
         }, 2000);
     }
 });
