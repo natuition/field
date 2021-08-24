@@ -83,18 +83,6 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
     print("Point A saved.")
     return [point_a, point_b]
 
-def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius):
-    """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
-
-    return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, (0, 0, 255), thickness=3)
-
-
-def draw_zone_poly(image, np_poly_points):
-    """Draws received polygon on image. Used for drawing working zone edges on photo"""
-
-    return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
-
-
 def save_image(path_to_save, image, counter, session_label, date, sep="_"):
     """
     Assembles image file name and saves received image under this name to specified directory.
@@ -130,8 +118,8 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
                            (0, 0, 0), 2)
 
         # draw data on frame
-        frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
-        frame = draw_zone_poly(frame, poly_zone_points_cv)
+        frame = utility.ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
+        frame = utility.ImageSaver.draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
 

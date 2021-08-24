@@ -169,7 +169,8 @@ class YoloDarknetDetector:
 
             t1 = time.time()
 
-            img = draw_boxes(image, plant_boxes)
+            #img = draw_boxes(image, plant_boxes)
+            img = image
 
             if self.sharedArray is None:
                 try:
@@ -181,6 +182,8 @@ class YoloDarknetDetector:
                 self.sharedArray = np.ndarray(img.shape, dtype=img.dtype, buffer=sharedMem)
 
             self.sharedArray[:] = img[:]
+
+            draw_boxes(self.sharedArray, plant_boxes)
 
             #print(time.time() - t1)
 

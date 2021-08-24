@@ -10,7 +10,6 @@ import time
 import pickle
 from sklearn.preprocessing import PolynomialFeatures
 
-
 class ExtractionManagerV3:
     """Implements extraction logic and control"""
 
@@ -38,6 +37,7 @@ class ExtractionManagerV3:
         self.__precise_det = precise_det
         self.__camera_positions = camera_positions
         self.__pdz_polygon = self.__pdz_dist_to_poly(pdz_distances)
+        self.__pdz_cv_rect = self.__pdz_dist_for_rect_cv(pdz_distances)
         self.__extraction_map = ExtractionMap(config.EXTRACTION_MAP_CELL_SIZE_MM)
         self.__converter = PxToMMConverter()
 
@@ -60,6 +60,14 @@ class ExtractionManagerV3:
             [config.SCENE_CENTER_X - pdz["left"], config.SCENE_CENTER_Y + pdz["bot"]]
         ])
 
+    @staticmethod
+    def __pdz_dist_for_rect_cv(pdz: dict):
+        """Converts related to scene center PDZ distances for show pdz in image with cv
+        """
+
+        return [(config.SCENE_CENTER_X - pdz["left"], config.SCENE_CENTER_Y - pdz["top"]),
+        (config.SCENE_CENTER_X + pdz["right"], config.SCENE_CENTER_Y + pdz["bot"])]
+
     def scan_sectors(self):
         """Detects plants under robot's working zone, optimizes extractions order and returns list of plants as smoothie
         absolute coordinates (coordinates out of working range are skipped).
@@ -81,14 +89,21 @@ class ExtractionManagerV3:
 
             # take a photo and look for a plants
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-            image = self.__camera.get_image()
+            frame = self.__camera.get_image()
+            plants_boxes = self.__precise_det.detect(frame)
             # get plants boxes and keep only that are in PDZ
             cur_pos_plant_boxes_pdz = list(filter(
                 lambda box: self.is_point_in_poly(
                     box.center_x,
                     box.center_y,
                     self.__pdz_polygon),
-                self.__precise_det.detect(image)))
+                plants_boxes))
+
+            if config.SAVE_DEBUG_IMAGES:
+                frame = utility.ImageSaver.draw_data_in_frame(frame, pdz_cv_rect=self.__pdz_cv_rect, plants_boxes=cur_pos_plant_boxes_pdz)
+                self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
+                                       label=f"(precise view scan at {cam_sm_x} {cam_sm_y}) for find all plants",
+                                       plants_boxes=plants_boxes)
 
             # convert plants boxes px coordinates into absolute smoothie coordinates
             for plant_box in cur_pos_plant_boxes_pdz:
@@ -168,6 +183,7 @@ class ExtractionManagerV3:
                 # make a scan, keep only plants that are in undistorted zone
                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                 frame = self.__camera.get_image()
+                plants_boxes = self.__precise_det.detect(frame)
                 cur_pos_plant_boxes_undist = list(filter(
                     lambda plant_box_1: self.is_point_in_circle(
                         plant_box_1.center_x,
@@ -175,8 +191,19 @@ class ExtractionManagerV3:
                         config.SCENE_CENTER_X,
                         config.SCENE_CENTER_Y,
                         config.UNDISTORTED_ZONE_RADIUS),
-                    self.__precise_det.detect(frame)
+                    plants_boxes
                 ))
+
+                if config.SAVE_DEBUG_IMAGES and len(cur_pos_plant_boxes_undist) > 0:
+                    frame = utility.ImageSaver.draw_data_in_frame(frame, undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS, plants_boxes=cur_pos_plant_boxes_undist)
+                    self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
+                                       label=f"(precise view scan at {cur_pos_sm_x} {cur_pos_sm_y}), find plant in undistorted zone",
+                                       plants_boxes=cur_pos_plant_boxes_undist)
+                else:
+                    frame = utility.ImageSaver.draw_data_in_frame(frame, undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS, plants_boxes=plants_boxes)
+                    self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
+                                       label=f"(precise view scan at {cur_pos_sm_x} {cur_pos_sm_y}), no find plant in undistorted zone",
+                                       plants_boxes=plants_boxes)
 
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
                 if len(cur_pos_plant_boxes_undist) == 0:
@@ -232,6 +259,11 @@ class ExtractionManagerV3:
                                 # used during check rescan after extractions
                                 if len(cur_pos_plant_boxes_undist) > 0:
                                     cur_pos_sm_x, cur_pos_sm_y = delta_sm_x, delta_sm_y
+
+                                    if config.SAVE_DEBUG_IMAGES:
+                                        frame = utility.ImageSaver.draw_data_in_frame(frame, undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS, plants_boxes=cur_pos_plant_boxes_undist)
+                                        self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH, label=f"(precise view scan at {cur_pos_sm_x} {cur_pos_sm_y}), find plant in undistorted zone (after delta seeking)", plants_boxes=cur_pos_plant_boxes_undist)
+                                       
                                     break
                                 else:
                                     msg = "No plants found during delta scan iteration"
@@ -255,12 +287,15 @@ class ExtractionManagerV3:
                 smoothie_plants_positions = []
                 for plant_box in cur_pos_plant_boxes_undist:
                     rel_sm_x = self.px_to_smoothie_value(plant_box.center_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
-                    rel_sm_y = -self.px_to_smoothie_value(plant_box.center_y, config.SCENE_CENTER_Y,
-                                                          config.ONE_MM_IN_PX)
+                    rel_sm_y = -self.px_to_smoothie_value(plant_box.center_y, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
+
+                    print("Before CORK_TO_CAMERA_DISTANCE :",rel_sm_x,rel_sm_y)
 
                     # swap camera and cork for extraction immediately (coords are relative)
                     rel_sm_x += config.CORK_TO_CAMERA_DISTANCE_X
                     rel_sm_y += config.CORK_TO_CAMERA_DISTANCE_Y
+
+                    print("After CORK_TO_CAMERA_DISTANCE :",rel_sm_x,rel_sm_y)
 
                     # convert smoothie relative coordinates to absolute
                     cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()

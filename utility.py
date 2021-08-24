@@ -63,6 +63,29 @@ class ImageSaver:
                 for plant_box in plants_boxes:
                     txt_file.write(plant_box.get_as_yolo(return_as_text=True) + "\n")
 
+    @staticmethod
+    def draw_data_in_frame(frame, undistorted_zone_radius=None, poly_zone_points_cv=None, pdz_cv_rect=None, plants_boxes=None):
+        if undistorted_zone_radius is not None:
+            frame = ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius, (255, 40, 162))
+            frame = ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, 5, (255, 40, 162), -1)
+        if poly_zone_points_cv is not None:
+            frame = ImageSaver.draw_zone_poly(frame, poly_zone_points_cv, (255, 0, 0))
+        if plants_boxes is not None:
+            frame = detection.draw_boxes(frame, plants_boxes)
+        if pdz_cv_rect is not None:
+            frame = cv.rectangle(frame, pdz_cv_rect[0], pdz_cv_rect[1], (16, 127, 237), 3)
+        return frame
+
+    @staticmethod
+    def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius, color=(0, 0, 255), thickness=3):
+        """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
+        return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, color, thickness=thickness)
+
+    @staticmethod
+    def draw_zone_poly(image, np_poly_points, color=(0, 0, 255)):
+        """Draws received polygon on image. Used for drawing working zone edges on photo"""
+        return cv.polylines(image, [np_poly_points], isClosed=True, color=color, thickness=5)
+
 
 class TrajectorySaver:
     """Provides safe gps points saving (robot's trajectory)"""
