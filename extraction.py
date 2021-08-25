@@ -718,9 +718,9 @@ class PxToMMConverter:
     def __plant_position_prediction(self, norm_x, norm_y,
                                     dis_from_center):  # train the model and get .sav with prediction.py before
 
-        degree = None
+        degree = config.ZONE_THRESHOLD_DEGREE[-1][1]
 
-        for threshold, _degree in config.ZONE_THRESHOLD_DEGREE.items():
+        for threshold, _degree in config.ZONE_THRESHOLD_DEGREE:
             if dis_from_center <= threshold:
                 degree = _degree
                 break
