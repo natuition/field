@@ -120,11 +120,11 @@ SMOOTHIE_BACKEND = 2  # 1 = telnet, 2 = serial
 
 X_MIN = 0
 X_MAX = 440
-#X_F = 8000
+X_F = 8000
 
 Y_MIN = 0
 Y_MAX = 225
-#Y_F = 4000
+Y_F = 4000
 
 XY_F_MIN = 1
 XY_F_MAX = 5500 
