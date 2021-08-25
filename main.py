@@ -239,7 +239,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         if degraded_navigation_mode:
             number_navigation_cycle_without_gps += 1
 
-        if (degraded_navigation_mode and number_navigation_cycle_without_gps == config.GPS_CHECK_IN_DEGRADED_MODE) or not degraded_navigation_mode:
+        if (degraded_navigation_mode and number_navigation_cycle_without_gps == config.GPS_CHECK_IN_DEGRADED_MODE*2) or not degraded_navigation_mode:
 
             try:
                     
@@ -274,7 +274,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 if not vesc_engine._allow_movement:
                     vesc_engine.start_moving()
 
-        if config.CONTINUOUS_INFORMATION_SENDING:
+        if config.CONTINUOUS_INFORMATION_SENDING and not degraded_navigation_mode:
             notification.set_current_coordinate(cur_pos)
 
         nav_start_t = time.time()
@@ -392,7 +392,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             distance_deg=pierre_vitesse*navigation_period*pierre_k #Distance en degres parcourue par le robot
 
             #La vitesse étant constante, on souhaite que le temps entre chaque point soit de 1 sec, comme on a des m/s, "distance=vitesse"
-        #
+
             psi=(math.pi-theta_rob)/2 # Angle de trajectoire - pi/2
             delta=distance_deg*math.sin(psi) # Différence de latitude entre position courante et future
             beta=distance_deg*math.cos(psi) # Différence de longitude entre position courante et future
@@ -678,46 +678,46 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             msg = "Nav calc time: " + str(time.time() - nav_start_t)
             logger_full.write(msg + "\n\n")
 
-            extraction_manager.reset_map()
+        extraction_manager.reset_map()
 
-            # EXTRACTION CONTROL
-            while True:   # perform detection until either it is time to perform a new navigation, or there is something to goget
-                start_t = time.time()
-                frame = camera.get_image()
-                frame_t = time.time()
-                #print("tick")
-                        
-                plants_boxes = periphery_det.detect(frame)
-                per_det_t = time.time()
-                detections_period.append(per_det_t-start_t)
-                
-
-                if config.SAVE_DEBUG_IMAGES:
-                    image_saver.save_image(frame, img_output_dir,
-                                        label="(periphery view scan M=" + str(current_working_mode) + ")",
-                                        plants_boxes=plants_boxes)
-
-                msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
-                logger_full.write(msg + "\n")
-                
-                if ExtractionManager.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                    break
+        # EXTRACTION CONTROL
+        while True:   # perform detection until either it is time to perform a new navigation, or there is something to goget
+            start_t = time.time()
+            frame = camera.get_image()
+            frame_t = time.time()
+            #print("tick")
                     
-                # do maneuvers not more often than specified value
-                
-                mu_detections_period, sigma_detections_period = utility.mu_sigma(detections_period)
-        
-                cur_time = time.time()
-                detections_time = cur_time - prev_maneuver_time
-                #print(detections_time,"mu detection =%2.13f"%mu_detections_period, " sigma =%E"%sigma_detections_period)
-                
-                #is there enough time before the next navigation to complete a last detection :
-                # the average detection time is mu_detections_period. Assuming that no period exceed mu+3*standard_deviation
-                #print("if estimate next station",detections_time + mu_detections_period + 3*sigma_detections_period,"> threshold ",config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER)
-                if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
-                    break
+            plants_boxes = periphery_det.detect(frame)
+            per_det_t = time.time()
+            detections_period.append(per_det_t-start_t)
+            
 
-            extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode)
+            if config.SAVE_DEBUG_IMAGES:
+                image_saver.save_image(frame, img_output_dir,
+                                    label="(periphery view scan M=" + str(current_working_mode) + ")",
+                                    plants_boxes=plants_boxes)
+
+            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
+            logger_full.write(msg + "\n")
+            
+            if ExtractionManager.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                break
+                
+            # do maneuvers not more often than specified value
+            
+            mu_detections_period, sigma_detections_period = utility.mu_sigma(detections_period)
+    
+            cur_time = time.time()
+            detections_time = cur_time - prev_maneuver_time
+            #print(detections_time,"mu detection =%2.13f"%mu_detections_period, " sigma =%E"%sigma_detections_period)
+            
+            #is there enough time before the next navigation to complete a last detection :
+            # the average detection time is mu_detections_period. Assuming that no period exceed mu+3*standard_deviation
+            #print("if estimate next station",detections_time + mu_detections_period + 3*sigma_detections_period,"> threshold ",config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER)
+            if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
+                break
+
+        extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode)
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):

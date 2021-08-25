@@ -14,6 +14,7 @@ import pickle
 class ExtractionManager:
 
     loaded_prediction_model = dict()
+    last_working_mode = 0
 
     def __init__(self, smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
                  working_zone_polygon: Polygon, working_zone_points_cv: np.array,
@@ -79,8 +80,9 @@ class ExtractionManager:
         else:
             # slow mode
             if current_working_mode == working_mode_slow:
-                if config.VERBOSE:
+                if config.VERBOSE and ExtractionManager.last_working_mode != current_working_mode:
                     print("[Working mode] : slow")
+                    ExtractionManager.last_working_mode = current_working_mode
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
 
@@ -195,8 +197,9 @@ class ExtractionManager:
 
             # switching to fast mode
             elif current_working_mode == working_mode_switching:
-                if config.VERBOSE:
+                if config.VERBOSE and ExtractionManager.last_working_mode != current_working_mode:
                     print("[Working mode] : switching")
+                    ExtractionManager.last_working_mode = current_working_mode
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
                     """
@@ -218,8 +221,9 @@ class ExtractionManager:
 
             # fast mode
             elif current_working_mode == working_mode_fast:
-                if config.VERBOSE:
+                if config.VERBOSE and ExtractionManager.last_working_mode != current_working_mode:
                     print("[Working mode] : fast")
+                    ExtractionManager.last_working_mode = current_working_mode
                 if ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon):
                     vesc_engine.stop_moving()
                     vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)

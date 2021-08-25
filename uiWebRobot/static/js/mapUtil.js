@@ -222,7 +222,7 @@ socketMap.on('updatePath', function(dataServ) {
     y_center = coords[coords.length - 1][1]
 
     if(typeof(map.getSource('pathRobot')) == "undefined" || typeof(map.getSource('lastPos')) == "undefined"){
-        createMap(dataServ);
+        createMap(dataServ["field"],dataServ["other_fields"]);
     }
     
     map.getSource('pathRobot').setData({

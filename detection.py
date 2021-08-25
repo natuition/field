@@ -181,7 +181,7 @@ class YoloDarknetDetector:
 
             self.sharedArray[:] = img[:]
 
-            print(time.time() - t1)
+            #print(time.time() - t1)
 
             if not YoloDarknetDetector.WEBSTREAM:
                 template_dir = os.path.abspath('./liveMain')

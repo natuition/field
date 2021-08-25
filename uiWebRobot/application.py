@@ -33,6 +33,7 @@ def init():
     with open("ui_language.json", "r", encoding='utf-8') as read_file:
         ui_languages = json.load(read_file)    
     thread_notification = Thread(target=catch_send_notification, args=(socketio,))
+    thread_notification.setDaemon(True)
     thread_notification.start()
     stateMachine = stateMachine.StateMachine(socketio)
 
@@ -102,12 +103,15 @@ def catch_send_notification(socketio: SocketIO):
     ui_language = config.UI_LANGUAGE
 
     while True:
-        notification = notificationQueue.receive()
-        
-        message_name = json.loads(notification[0])["message_name"]
-        message = ui_languages[message_name][ui_language]
-        
-        socketio.emit('notification', {"message_name":message_name,"message":message} , namespace='/broadcast', broadcast=True)
+        try:
+            notification = notificationQueue.receive(timeout=1)
+            
+            message_name = json.loads(notification[0])["message_name"]
+            message = ui_languages[message_name][ui_language]
+            
+            socketio.emit('notification', {"message_name":message_name,"message":message} , namespace='/broadcast', broadcast=True)
+        except:
+            continue
 
 @socketio.on('data', namespace='/server')
 def on_socket_data(data):
