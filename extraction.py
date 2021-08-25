@@ -18,9 +18,9 @@ class ExtractionManagerV3:
                  camera: adapters.CameraAdapterIMX219_170,
                  working_zone_points_cv: np.array,  # not used atm
                  logger_full: utility.Logger,
-                 data_collector: datacollection.DataCollector,  # not used atm
-                 image_saver: utility.ImageSaver,  # not used atm
-                 log_cur_dir,  # not used atm
+                 data_collector: datacollection.DataCollector,
+                 image_saver: utility.ImageSaver,
+                 log_cur_dir, 
                  periphery_det: detection.YoloOpenCVDetection,  # not used atm
                  precise_det: detection.YoloOpenCVDetection,
                  camera_positions: list,
@@ -102,7 +102,7 @@ class ExtractionManagerV3:
             if config.SAVE_DEBUG_IMAGES:
                 frame = utility.ImageSaver.draw_data_in_frame(frame, pdz_cv_rect=self.__pdz_cv_rect, plants_boxes=cur_pos_plant_boxes_pdz)
                 self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                       label=f"(precise view scan at {cam_sm_x} {cam_sm_y}) for find all plants",
+                                       label=f"(precise_view_scan_at_{round(cam_sm_x,1)}_{round(cam_sm_y,1)})_for_find_all_plants",
                                        plants_boxes=plants_boxes)
 
             # convert plants boxes px coordinates into absolute smoothie coordinates
@@ -198,12 +198,12 @@ class ExtractionManagerV3:
                 if config.SAVE_DEBUG_IMAGES and len(cur_pos_plant_boxes_undist) > 0:
                     frame = utility.ImageSaver.draw_data_in_frame(frame, undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS, plants_boxes=cur_pos_plant_boxes_undist)
                     self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                       label=f"(precise view scan at {cur_pos_sm_x} {cur_pos_sm_y}), find plant in undistorted zone",
+                                       label=f"(precise_view_scan_at_{round(cur_pos_sm_x,1)}_{round(cur_pos_sm_y,1)}),find_plant_in_undistorted_zone",
                                        plants_boxes=cur_pos_plant_boxes_undist)
                 else:
                     frame = utility.ImageSaver.draw_data_in_frame(frame, undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS, plants_boxes=plants_boxes)
                     self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                       label=f"(precise view scan at {cur_pos_sm_x} {cur_pos_sm_y}), no find plant in undistorted zone",
+                                       label=f"(precise_view_scan_at_{round(cur_pos_sm_x,1)}_{round(cur_pos_sm_y,1)}),no_find_plant_in_undistorted_zone",
                                        plants_boxes=plants_boxes)
 
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
@@ -263,7 +263,7 @@ class ExtractionManagerV3:
 
                                     if config.SAVE_DEBUG_IMAGES:
                                         frame = utility.ImageSaver.draw_data_in_frame(frame, undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS, plants_boxes=cur_pos_plant_boxes_undist)
-                                        self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH, label=f"(precise view scan at {cur_pos_sm_x} {cur_pos_sm_y}), find plant in undistorted zone (after delta seeking)", plants_boxes=cur_pos_plant_boxes_undist)
+                                        self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH, label=f"(precise_view_scan_at_{round(cur_pos_sm_x,1)}_{round(cur_pos_sm_y,1)}),find_plant_in_undistorted_zone_(after_delta_seeking)", plants_boxes=cur_pos_plant_boxes_undist)
                                        
                                     break
                                 else:
@@ -284,9 +284,10 @@ class ExtractionManagerV3:
 
                 scan_is_first = False
 
-                # convert plant boxes into smoothie absolute coordinates pairs
+                # convert plant boxes into smoothie absolute coordinates pairs and her type
                 smoothie_plants_positions = []
                 for plant_box in cur_pos_plant_boxes_undist:
+                    plant_box: detection.DetectedPlantBox = plant_box
                     rel_sm_x = self.px_to_smoothie_value(plant_box.center_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
                     rel_sm_y = -self.px_to_smoothie_value(plant_box.center_y, config.SCENE_CENTER_Y, config.ONE_MM_IN_PX)
 
@@ -303,10 +304,10 @@ class ExtractionManagerV3:
                         continue
 
                     # add absolute coordinates to the result list
-                    smoothie_plants_positions.append((abs_sm_x, abs_sm_y))
+                    smoothie_plants_positions.append((abs_sm_x, abs_sm_y, plant_box.get_name()))
 
                 # extract these plants
-                for ext_sm_x, ext_sm_y in smoothie_plants_positions:
+                for ext_sm_x, ext_sm_y, type_name in smoothie_plants_positions:
                     extraction_pattern = self.__extraction_map.get_strategy(ext_sm_x, ext_sm_y)
                     if extraction_pattern:
                         # go to position
@@ -326,6 +327,10 @@ class ExtractionManagerV3:
                                 msg = "Corkscrew is stuck! Emergency stopping."
                                 self.__logger_full.write(msg + "\n")
                                 exit(1)
+                        else:
+                            if extraction_pattern == self.__extraction_map.strategies[0]:
+                                self.__data_collector.add_extractions_data(type_name, 1)
+                                self.__data_collector.save_extractions_data(self.__log_cur_dir + config.STATISTICS_OUTPUT_FILE)
                     else:
                         msg = "Did too many extraction tries at this position, no strategies to try left"
                         self.__logger_full.write(msg + "\n")
@@ -344,6 +349,7 @@ class ExtractionManagerV3:
 
         # TODO: implement TSP optimization algorithm instead
         # reverse list to start from last (closest) positions checked
+        return sorted(smoothie_coordinates, key=lambda x: (x[0], x[1]))
         return list(reversed(smoothie_coordinates))
 
     @staticmethod
@@ -413,8 +419,8 @@ class ExtractionMap:
         # list items order is strategies order which defines what strategies should be used first
         self.__strategies = [
             ExtractionMethods.single_center_drop,
-            ExtractionMethods.pattern_x,
-            ExtractionMethods.pattern_plus
+            ExtractionMethods.pattern_plus,
+            ExtractionMethods.pattern_x
         ]
 
     def record_extraction(self, x: float, y: float):
@@ -442,6 +448,10 @@ class ExtractionMap:
 
     def save_to_file(self, output_file_path: str):
         raise NotImplementedError("this function is not implemented yet")
+
+    @property
+    def strategies(self):
+        return self.__strategies
 
 
 class ExtractionMethods:

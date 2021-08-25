@@ -48,10 +48,12 @@ class ImageSaver:
         if specific_name:
             file_name = specific_name
         else:
-            file_name = get_current_time() + sep + str(self.__counter)
+            file_name = get_current_time()[:-3] + sep + str(self.__counter)
             self.__counter += 1
             if label:
                 file_name += sep + label
+
+        file_name = file_name.replace(" ","_")
 
         # save image
         cv.imwrite(directory + file_name + "." + extension, image)
