@@ -194,6 +194,11 @@ class SmoothieAdapter:
 
     def custom_move_for(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement by some value(s)"""
+        
+        if Y is not None:
+            F = config.Y_F
+        else:
+            F = config.X_F
 
         with self._sync_locker:
             if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
@@ -285,6 +290,11 @@ class SmoothieAdapter:
 
     def custom_move_to(self, F: int, X=None, Y=None, Z=None, A=None, B=None, C=None):
         """Movement to the specified position"""
+        
+        if Y is not None:
+            F = config.Y_F
+        else:
+            F = config.X_F
 
         with self._sync_locker:
             if self._check_arg_types([type(None)], X, Y, Z, A, B, C):
