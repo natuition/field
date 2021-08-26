@@ -45,7 +45,7 @@ class ExtractionManager:
             ExtractionManager.save_matrix("last_detection_map.txt",self.detection_map)    
             ExtractionManager.save_matrix("last_extraction_map.txt",self.extraction_map, header=True) 
 
-    def extraction_control(self, plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode):
+    def extraction_control(self, plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode, speed: float):
 
         working_mode_slow = 1
         working_mode_switching = 2
@@ -175,13 +175,13 @@ class ExtractionManager:
                     vesc_engine.start_moving()
                     vesc_engine.wait_for_stop()
                     vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
-                    vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+                    vesc_engine.set_rpm(speed)
                     return
 
-                elif not ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon) and \
+                """elif not ExtractionManager.any_plant_in_zone(plants_boxes, self.working_zone_polygon) and \
                         time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
                         config.SLOW_FAST_MODE:
-                    """
+                    
                     # set camera to the Y max
                     res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
                                                   Y=config.Y_MAX / config.XY_COEFFICIENT_TO_MM)
@@ -189,11 +189,11 @@ class ExtractionManager:
                         msg = "M=" + str(current_working_mode) + ": " + "Failed to move to Y max, smoothie response:\n" + res
                         logger_full.write(msg + "\n")
                     smoothie.wait_for_all_actions_done()
-                    """
+                    
                     current_working_mode = working_mode_fast
                     if not close_to_end:
-                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
-                vesc_engine.start_moving()  
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)"""
+                vesc_engine.start_moving()
 
             # switching to fast mode
             elif current_working_mode == working_mode_switching:
@@ -240,9 +240,9 @@ class ExtractionManager:
                     """
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
-                    vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+                    vesc_engine.set_rpm(speed)
                 elif close_to_end:
-                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                    vesc_engine.apply_rpm(speed)
                 else:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
