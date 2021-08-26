@@ -198,10 +198,10 @@ PERIPHERY_INPUT_SIZE = (416, 416)
 PERIPHERY_CONFIG_FILE = "yolo/Y0016_416.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/Y0016.weights"
 PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
+PERIPHERY_DATA_FILE ="yolo/Y0014.data"
 PERIPHERY_DNN_BACKEND = 5  # cv.dnn: DNN_BACKEND_CUDA = 5; DNN_BACKEND_OPENCV = 3
 PERIPHERY_DNN_TARGET = 6  # cv.dnn: DNN_TARGET_CUDA = 6; DNN_TARGET_CUDA_FP16 = 7; DNN_TARGET_CPU = 0
 PERIPHERY_WRAPPER = 1  # 1 = darknet, 2 = opencv from darknet
-PERIPHERY_DATA_FILE ="yolo/Y0014.data"
 
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
