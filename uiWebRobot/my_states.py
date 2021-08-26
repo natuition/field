@@ -358,7 +358,6 @@ class CreateFieldState(State):
                 self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
                 self.statusOfUIObject["fieldButton"] = None
             except TimeoutError:
-                print("bip")
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))  
                 self.smoothie.disconnect()
@@ -716,7 +715,7 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Getting point A..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
-        self.A = utility.average_point(self.gps,None,self.nav)
+        self.A = utility.average_point(self.gps,None,self.nav,self.logger)
 
         self.socketio.emit('newPos', json.dumps([self.A[1],self.A[0]]), namespace='/map')
 

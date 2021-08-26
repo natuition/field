@@ -308,7 +308,7 @@ def distribution_of_values(samples: list, mu, sigma):
 
 
 
-def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySaver,nav: navigation.GPSComputing):
+def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySaver,nav: navigation.GPSComputing, logger: Logger=None):
 
     #ORIGIN POINT SAVING
     lat = []     #latitude history
@@ -318,7 +318,20 @@ def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySav
 
     for i in range(0,config.ORIGIN_AVERAGE_SAMPLES):
         prev_maneuver_time = time.time()
-        prev_pos = gps.get_fresh_position()
+        try:
+            prev_pos = gps.get_fresh_position()
+            msg = f"Get {i+1}/{config.ORIGIN_AVERAGE_SAMPLES} point in {time.time()-prev_maneuver_time} for average_point."
+            if logger is not None:
+                logger.write_and_flush(msg+"\n")
+            if config.VERBOSE:
+                print(msg)
+        except TimeoutError:
+            msg = f"Erro waiting time too long for the {i+1} point in average_point !"
+            if logger is not None:
+                logger.write_and_flush(msg+"\n")
+            if config.VERBOSE:
+                print(msg)
+            raise TimeoutError
         lat.append(prev_pos[0])
         long.append(prev_pos[1])
         mu_lat, sigma_lat = mu_sigma(lat)
