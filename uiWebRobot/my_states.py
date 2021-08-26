@@ -341,11 +341,10 @@ class CreateFieldState(State):
                 if x > 0:
                     x *= config.A_MAX/100
                 #print(f"[{self.__class__.__name__}] -> Move '{x}'.")
-                if not self.smoothie.is_disconnect:
-                    try:
-                        self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
-                    except serial.PortNotOpenError:
-                        pass
+                try:
+                    self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
+                except serial.PortNotOpenError:
+                    pass
         elif data["type"] == "field":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
@@ -736,7 +735,7 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Getting point B..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
-        self.B = utility.average_point(self.gps,None,self.nav)
+        self.B = utility.average_point(self.gps,None,self.nav,self.logger)
 
         self.socketio.emit('newPos', json.dumps([self.B[1],self.B[0]]), namespace='/map')
     
