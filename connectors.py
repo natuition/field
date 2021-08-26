@@ -67,6 +67,10 @@ class SmoothieV11SerialConnector:
     def disconnect(self):
         self._ser.close()
 
+    @property
+    def is_open(self):
+        return self._ser.is_open
+
     def get_serial(self):
         """Only for debug!"""
 

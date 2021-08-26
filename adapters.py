@@ -64,6 +64,10 @@ class SmoothieAdapter:
     def disconnect(self):
         self._smc.disconnect()
 
+    @property
+    def is_disconnect(self):
+        return self._smc.is_open
+
     def get_connector(self):
         """Only for debug!"""
 

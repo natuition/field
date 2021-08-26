@@ -306,23 +306,16 @@ class CreateFieldState(State):
                 return WaitWorkingState(self.socketio, self.logger, False) 
 
             self.field = self.fieldCreator.calculateField()
-            if config.TWO_POINTS_FOR_CREATE_FIELD:
-                self.fieldCreator.saveField("../field.txt")
-            else:
+            if not config.TWO_POINTS_FOR_CREATE_FIELD:
                 self.manoeuvre = True
                 self.fieldCreator.manoeuvre()
                 self.manoeuvre = False
-                self.statusOfUIObject["stopButton"] = None
-                self.statusOfUIObject["fieldButton"] = "validate"
+            self.statusOfUIObject["stopButton"] = None
+            self.statusOfUIObject["fieldButton"] = "validate"
             self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
-            if config.TWO_POINTS_FOR_CREATE_FIELD:
-                self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
             self.smoothie.disconnect()
             self.gps.disconnect()
-            if config.TWO_POINTS_FOR_CREATE_FIELD:
-                return WaitWorkingState(self.socketio, self.logger, True)
-            else:
-                return self
+            return self
         elif event == Events.VALIDATE_FIELD:
             return self
         elif event == Events.VALIDATE_FIELD_NAME:
@@ -348,7 +341,11 @@ class CreateFieldState(State):
                 if x > 0:
                     x *= config.A_MAX/100
                 #print(f"[{self.__class__.__name__}] -> Move '{x}'.")
-                self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
+                if not self.smoothie.is_disconnect:
+                    try:
+                        self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
+                    except serial.PortNotOpenError:
+                        pass
         elif data["type"] == "field":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
@@ -361,6 +358,7 @@ class CreateFieldState(State):
                 self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
                 self.statusOfUIObject["fieldButton"] = None
             except TimeoutError:
+                print("bip")
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))  
                 self.smoothie.disconnect()
