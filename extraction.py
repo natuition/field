@@ -316,6 +316,16 @@ class ExtractionManagerV3:
                             print(msg)
                         break
 
+                # try to filter extracted plants by comparison new plants list and initial plants list
+                # if plant in a new list is away from all plants in old - then it probably was extracted and shifted
+                # so skip it
+                if config.FILTER_EXTRACTED_PLANTS and scan_is_first:
+                    initial_plants = cur_pos_plant_boxes_undist
+                if config.FILTER_EXTRACTED_PLANTS and not scan_is_first:
+                    cur_pos_plant_boxes_undist = self.__filter_extracted_plants(initial_plants,
+                                                                                cur_pos_plant_boxes_undist,
+                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST)
+
                 scan_is_first = False
 
                 # convert plant boxes into smoothie absolute coordinates pairs and her type
@@ -387,6 +397,22 @@ class ExtractionManagerV3:
         # reverse list to start from last (closest) positions checked
         return sorted(smoothie_coordinates, key=lambda x: (x[0], x[1]), reverse=True)
         # return list(reversed(smoothie_coordinates))
+
+    @staticmethod
+    def __filter_extracted_plants(initial_scan_plants: list, new_scan_plants: list, trigger_distance: float):
+        """Removes each plant from new scan list if all plants in initial list are further than trigger distance.
+        Does no changes to argument lists, returns result as a new list.
+        """
+
+        filtered_plants = []
+        for new_plant_box in new_scan_plants:
+            new_plant_box: detection.DetectedPlantBox
+            for init_plant_box in initial_scan_plants:
+                init_plant_box: detection.DetectedPlantBox
+                if new_plant_box.get_distance_from(init_plant_box.center_x, init_plant_box.center_y) <= trigger_distance:
+                    filtered_plants.append(new_plant_box)
+                    break
+        return filtered_plants
 
     @staticmethod
     def any_plant_in_zone(plant_boxes: list, zone_polygon: Polygon):

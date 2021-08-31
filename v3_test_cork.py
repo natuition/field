@@ -9,7 +9,7 @@ def wait_for_actions_done(smoothie_connector):
 
 
 def main():
-    sm_con = connectors.SmoothieV11TelnetConnector(config.SMOOTHIE_HOST)
+    sm_con = connectors.SmoothieV11SerialConnector("/dev/ttyACM0", config.SMOOTHIE_BAUDRATE)
 
     try:
         sm_con.write("G91")
@@ -30,7 +30,7 @@ def main():
             wait_for_actions_done(sm_con)
 
             # stub to set force for cork up
-            g_code = "G0 Z0.1 F" + str(config.Z_F_EXTRACTION_UP)
+            g_code = "G0 Z-0.1 F" + str(config.Z_F_EXTRACTION_UP)
             print(g_code, " - ", end="")
             sm_con.write(g_code)
             res = sm_con.read_some()
