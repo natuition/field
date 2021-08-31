@@ -1079,6 +1079,20 @@ class VescAdapter:
     def get_last_stop_time(self):
         return self._last_stop_time
 
+    def get_last_start_time(self):
+        return self._start_time
+
+    def get_last_moving_time(self):
+        """Returns last moving time if VESCs are not working at the moment;
+        returns current working time if VESCs are working at the moment.
+        """
+        if self._start_time is None:
+            return 0
+        elif self._allow_movement or not self._last_stop_time:
+            return time.time() - self._start_time
+        else:
+            return self._last_stop_time - self._start_time
+
     def get_sensors_data(self, report_field_names):
         self._ser.write(pyvesc.encode_request(pyvesc.GetValues))
         in_buf = b''

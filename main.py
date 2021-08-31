@@ -630,7 +630,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             plants_boxes = periphery_det.detect(frame)
             per_det_t = time.time()
             detections_period.append(per_det_t-start_t)
-            
 
             if config.SAVE_DEBUG_IMAGES:
                 image_saver.save_image(frame, img_output_dir,
@@ -696,7 +695,17 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
 
-                    extraction_manager_v3.extract_all_plants()
+                    # single precise center scan before calling for PDZ scanning and extractions
+                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ:
+                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                        frame = camera.get_image()
+                        plants_boxes = precise_det.detect(frame)
+
+                        # do PDZ scan and extract all plants if single precise scan got plants in working area
+                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                            extraction_manager_v3.extract_all_plants()
+                    else:
+                        extraction_manager_v3.extract_all_plants()
 
                     vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
 
