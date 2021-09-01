@@ -142,7 +142,7 @@ class ExtractionManagerV3:
 
         return self.optimize_corkscrew_way(smoothie_plants_positions)
 
-    def extract_all_plants(self):
+    def extract_all_plants(self, data_collector: datacollection.DataCollector):
         """Find and extract all plants found in current robot's position
         """
 
@@ -364,7 +364,7 @@ class ExtractionManagerV3:
                             continue
 
                         # extract
-                        res, cork_is_stuck = extraction_pattern(self.__smoothie, self.__extraction_map)
+                        res, cork_is_stuck = extraction_pattern(self.__smoothie, self.__extraction_map, data_collector)
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = "Something gone wrong during extractions, smoothie's response:\n" + res
                             self.__logger_full.write(msg + "\n")
@@ -521,9 +521,12 @@ class ExtractionMethods:
     """
 
     @staticmethod
-    def single_center_drop(smoothie: adapters.SmoothieAdapter, extraction_map: ExtractionMap):
+    def single_center_drop(smoothie: adapters.SmoothieAdapter,
+                           extraction_map: ExtractionMap,
+                           data_collector: datacollection.DataCollector):
         """Extract a plant with a single corkscrew drop to the center"""
 
+        start_t = time.time()
         # extraction, cork down
         res = smoothie.custom_move_for(F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
         smoothie.wait_for_all_actions_done()
@@ -538,10 +541,12 @@ class ExtractionMethods:
             msg = "Couldn't move the extractor up, smoothie error occurred:\n" + res + \
                   "\nemergency exit as I don't want break corkscrew."
             return msg, True
+        extraction_time = time.time() - start_t
 
-        # make a record about this extraction to extraction matrix
-        sm_cur_coords = smoothie.get_smoothie_current_coordinates()
+        # add an extraction record to the extraction matrix and extraction time to the statistic collector
+        sm_cur_coords = smoothie.get_adapter_current_coordinates()
         extraction_map.record_extraction(sm_cur_coords["X"], sm_cur_coords["Y"])
+        data_collector.add_cork_moving_time_data(extraction_time)
 
         # save current matrix state to a file
         if config.DEBUG_MATRIX_FILE:
@@ -666,7 +671,9 @@ class ExtractionMethods:
         raise NotImplementedError("this function is not implemented yet")
 
     @staticmethod
-    def pattern_plus(smoothie: adapters.SmoothieAdapter, extraction_map: ExtractionMap):
+    def pattern_plus(smoothie: adapters.SmoothieAdapter,
+                     extraction_map: ExtractionMap,
+                     data_collector: datacollection.DataCollector):
 
         sm_cur = smoothie.get_adapter_current_coordinates()
         positions = [
@@ -689,14 +696,16 @@ class ExtractionMethods:
                 return msg, False
 
             # do extraction
-            res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map)
+            res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map, data_collector)
             if res != smoothie.RESPONSE_OK:
                 return res, cork_is_stuck
 
         return smoothie.RESPONSE_OK, False
 
     @staticmethod
-    def pattern_x(smoothie: adapters.SmoothieAdapter, extraction_map: ExtractionMap):
+    def pattern_x(smoothie: adapters.SmoothieAdapter,
+                  extraction_map: ExtractionMap,
+                  data_collector: datacollection.DataCollector):
 
         sm_cur = smoothie.get_adapter_current_coordinates()
         positions = [
@@ -719,7 +728,7 @@ class ExtractionMethods:
                 return msg, False
 
             # do extraction
-            res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map)
+            res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map, data_collector)
             if res != smoothie.RESPONSE_OK:
                 return res, cork_is_stuck
 

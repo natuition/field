@@ -123,14 +123,30 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
 
-def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapter, vesc_engine: adapters.VescAdapter,
-                              smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
-                              periphery_det: detection.YoloOpenCVDetection, precise_det: detection.YoloOpenCVDetection,
-                              client, logger_full: utility.Logger, logger_table: utility.Logger, report_field_names,
-                              trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
-                              working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
-                              nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver, notification: NotificationClient, extraction_manager_v3: ExtractionManagerV3):
+def move_to_point_and_extract(coords_from_to: list,
+                              gps: adapters.GPSUbloxAdapter,
+                              vesc_engine: adapters.VescAdapter,
+                              smoothie: adapters.SmoothieAdapter,
+                              camera: adapters.CameraAdapterIMX219_170,
+                              periphery_det: detection.YoloOpenCVDetection,
+                              precise_det: detection.YoloOpenCVDetection,
+                              client,
+                              logger_full: utility.Logger,
+                              logger_table: utility.Logger,
+                              report_field_names,
+                              trajectory_saver: utility.TrajectorySaver,
+                              undistorted_zone_radius,
+                              working_zone_polygon,
+                              working_zone_points_cv,
+                              view_zone_polygon,
+                              view_zone_points_cv,
+                              img_output_dir,
+                              nav: navigation.GPSComputing,
+                              data_collector: datacollection.DataCollector,
+                              log_cur_dir,
+                              image_saver: utility.ImageSaver,
+                              notification: NotificationClient,
+                              extraction_manager_v3: ExtractionManagerV3):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -280,15 +296,16 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
         # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
         if side != 1:  # TODO: maybe should use both side and distance checking methods at once
             vesc_engine.stop_moving()
+            data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
             # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
             msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
             # print(msg)
             logger_full.write(msg + "\n")
             
-            #put the wheel straight
+            # put the wheel straight
             response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
             if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                msg = "Smoothie response is not ok: " + response
+                msg = "Couldn't turn wheels to center (0), smoothie response:\n" + response
                 print(msg)
                 logger_full.write(msg + "\n")
             
@@ -616,7 +633,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         prev_pos = cur_pos
 
-        
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
@@ -626,19 +642,21 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             frame = camera.get_image()
             frame_t = time.time()
             #print("tick")
-                      
+
+            per_det_start_t = time.time()
             plants_boxes = periphery_det.detect(frame)
-            per_det_t = time.time()
-            detections_period.append(per_det_t-start_t)
+            per_det_end_t = time.time()
+            detections_period.append(per_det_end_t - start_t)
 
             if config.SAVE_DEBUG_IMAGES:
                 image_saver.save_image(frame, img_output_dir,
                                        label="(periphery view scan M=" + str(current_working_mode) + ")",
                                        plants_boxes=plants_boxes)
 
-            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
+            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
+                  str(per_det_end_t - per_det_start_t)
             logger_full.write(msg + "\n")
-            
+
             if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                 break
                 
@@ -694,6 +712,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     last_working_mode = current_working_mode
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
                     # single precise center scan before calling for PDZ scanning and extractions
                     if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ:
@@ -703,9 +722,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                            extraction_manager_v3.extract_all_plants()
+                            extraction_manager_v3.extract_all_plants(data_collector)
                     else:
-                        extraction_manager_v3.extract_all_plants()
+                        extraction_manager_v3.extract_all_plants(data_collector)
 
                     vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
 
@@ -725,6 +744,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     last_working_mode = current_working_mode
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
@@ -740,9 +760,11 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     last_working_mode = current_working_mode
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
                     vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
                     time.sleep(config.FAST_TO_SLOW_TIME)
                     vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
@@ -1423,8 +1445,7 @@ def main():
                     msg = "Smoothie response is not ok: " + response
                     print(msg)
                     logger_full.write(msg + "\n")
-                
-        
+
         # save adapter points history
         try:
             # TODO: reduce history positions to 1 to save RAM
@@ -1444,7 +1465,7 @@ def main():
         logger_full.write(msg + "\n")
         print(msg)
         try:
-            data_collector.save_extractions_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+            data_collector.save_all_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
         except:
             msg = "Failed:\n" + traceback.format_exc()
             logger_full.write(msg + "\n")
