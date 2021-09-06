@@ -221,20 +221,21 @@ class ExtractionManagerV3:
                     plants_boxes
                 ))
 
-                if config.SAVE_DEBUG_IMAGES and len(cur_pos_plant_boxes_undist) > 0:
-                    frame = utility.ImageSaver.draw_data_in_frame(frame,
-                                                                  undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
-                                                                  plants_boxes=cur_pos_plant_boxes_undist)
-                    self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                                  label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),find_plant_in_undistorted_zone",
-                                                  plants_boxes=cur_pos_plant_boxes_undist)
-                else:
-                    frame = utility.ImageSaver.draw_data_in_frame(frame,
-                                                                  undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
-                                                                  plants_boxes=plants_boxes)
-                    self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                                  label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_find_plant_in_undistorted_zone",
-                                                  plants_boxes=plants_boxes)
+                if config.SAVE_DEBUG_IMAGES:
+                    if len(cur_pos_plant_boxes_undist) > 0:
+                        frame = utility.ImageSaver.draw_data_in_frame(frame,
+                                                                      undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                                                                      plants_boxes=cur_pos_plant_boxes_undist)
+                        self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
+                                                      label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),find_plant_in_undistorted_zone",
+                                                      plants_boxes=cur_pos_plant_boxes_undist)
+                    else:
+                        frame = utility.ImageSaver.draw_data_in_frame(frame,
+                                                                      undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                                                                      plants_boxes=plants_boxes)
+                        self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
+                                                      label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_find_plant_in_undistorted_zone",
+                                                      plants_boxes=plants_boxes)
 
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
                 if len(cur_pos_plant_boxes_undist) == 0:
@@ -358,7 +359,7 @@ class ExtractionManagerV3:
                         # go to position
                         res = self.__smoothie.custom_move_to(F=config.XY_F_MAX, X=ext_sm_x, Y=ext_sm_y)
                         if res != self.__smoothie.RESPONSE_OK:
-                            msg = f"Missing plant as could not move cork to position X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
+                            msg = f"Passing this plant by as could not move cork to position X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
                             msg += "\n" + res
                             self.__logger_full.write(msg + "\n")
                             continue

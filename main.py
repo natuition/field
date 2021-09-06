@@ -369,27 +369,18 @@ def move_to_point_and_extract(coords_from_to: list,
         
         latB = coords_from_to[1][0]
         longB = coords_from_to[1][1]
-        
-        if (latB-latnew) != 0 :
-            pierre_angle=math.atan((longB-longnew)/(latB-latnew))# Angle co,signe roues
-        else :
+
+        if (latB-latnew) != 0:
+            pierre_angle = math.atan((longB-longnew)/(latB-latnew))  # Angle co,signe roues
+        else:
             pierre_angle = math.pi/2
 
-        print("pierre_angle",pierre_angle)
-        
-        new_foreseen_point = list()
-        new_foreseen_point.append(latnew)
-        new_foreseen_point.append(longnew)
-        new_foreseen_point.append("new_foreseen_point")
+        if config.VERBOSE:
+            print("pierre_angle", pierre_angle)
+            new_foreseen_point = [latnew, longnew, "new_foreseen_point"]
+            pierre_error = nav.get_distance(new_foreseen_point, cur_pos)
+            print("pierre_error", pierre_error)
 
-        trajectory_saver.save_point(new_foreseen_point)
-
-        pierre_error = nav.get_distance(new_foreseen_point, cur_pos)
-
-        print("pierre_error",pierre_error)
-
-
-    
         #raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
         raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
