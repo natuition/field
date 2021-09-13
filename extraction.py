@@ -96,7 +96,10 @@ class ExtractionManagerV3:
             cam_sm_x, cam_sm_y = self.__camera_positions[i]
 
             # move cork to camera position
-            res = self.__smoothie.custom_move_to(config.XY_F_MAX, X=cam_sm_x, Y=cam_sm_y)
+            res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
+                                                 Y_F=config.Y_F_MAX,
+                                                 X=cam_sm_x,
+                                                 Y=cam_sm_y)
             self.__smoothie.wait_for_all_actions_done()
             if res != self.__smoothie.RESPONSE_OK:
                 msg = f"Could not move cork to camera position (x={cam_sm_x}, y={cam_sm_y}) - \
@@ -187,7 +190,10 @@ class ExtractionManagerV3:
                     "Failed to move cork to the plant rescan position Y_MIN (after calibration), smoothie's response:\n"
                 ]
                 for idx, movement_message in enumerate(movement_messages):
-                    res = self.__smoothie.custom_move_to(config.XY_F_MAX, X=cur_pos_sm_x, Y=cur_pos_sm_y)
+                    res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
+                                                         Y_F=config.Y_F_MAX,
+                                                         X=cur_pos_sm_x,
+                                                         Y=cur_pos_sm_y)
                     self.__smoothie.wait_for_all_actions_done()
                     if res == self.__smoothie.RESPONSE_OK:
                         break
@@ -266,7 +272,10 @@ class ExtractionManagerV3:
                                     continue
 
                                 # do movement
-                                res = self.__smoothie.custom_move_to(config.XY_F_MAX, X=delta_sm_x, Y=delta_sm_y)
+                                res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
+                                                                     Y_F=config.Y_F_MAX,
+                                                                     X=delta_sm_x,
+                                                                     Y=delta_sm_y)
                                 self.__smoothie.wait_for_all_actions_done()
                                 if res != self.__smoothie.RESPONSE_OK:
                                     msg = "Couldn't do delta move to X" + str(delta_sm_x) + " Y" + \
@@ -357,7 +366,10 @@ class ExtractionManagerV3:
                     extraction_pattern = self.__extraction_map.get_strategy(ext_sm_x, ext_sm_y)
                     if extraction_pattern:
                         # go to position
-                        res = self.__smoothie.custom_move_to(F=config.XY_F_MAX, X=ext_sm_x, Y=ext_sm_y)
+                        res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
+                                                             Y_F=config.Y_F_MAX,
+                                                             X=ext_sm_x,
+                                                             Y=ext_sm_y)
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = f"Passing this plant by as could not move cork to position X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
                             msg += "\n" + res
@@ -383,9 +395,10 @@ class ExtractionManagerV3:
                         self.__logger_full.write(msg + "\n")
 
         # set camera back to the Y min X max / 2
-        res = self.__smoothie.custom_move_to(config.XY_F_MAX,
-                                             X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM,
-                                             Y=config.Y_MIN)
+        res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
+                                             Y_F=config.Y_F_MAX,
+                                             X=self.__smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                                             Y=self.__smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
         self.__smoothie.wait_for_all_actions_done()
         if res != self.__smoothie.RESPONSE_OK:
             msg = "Couldn't set camera back to cruise scan position after extractions, smoothie's response:\n" + res
@@ -529,7 +542,7 @@ class ExtractionMethods:
 
         start_t = time.time()
         # extraction, cork down
-        res = smoothie.custom_move_for(F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
+        res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
         smoothie.wait_for_all_actions_done()
         if res != smoothie.RESPONSE_OK:  # or smoothie.checkendstop("Z")==1
             msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
@@ -562,6 +575,7 @@ class ExtractionMethods:
 
         raise NotImplementedError("this function need to be updated as it's using old extraction matrix")
 
+        """
         # mms to move near plant's center
         x = config.ADDITIONAL_EXTRACTIONS_DISTANCE_X
         y = config.ADDITIONAL_EXTRACTIONS_DISTANCE_Y
@@ -603,6 +617,7 @@ class ExtractionMethods:
                     ExtractionManager.save_matrix("last_extraction_map.txt", extraction_map, header=True)
 
         return res, False
+        """
 
     @staticmethod
     def Daisy(smoothie: adapters.SmoothieAdapter, extraction_map: ExtractionMap):
@@ -610,6 +625,7 @@ class ExtractionMethods:
 
         raise NotImplementedError("this function need to be updated as it's using old extraction matrix")
 
+        """
         # drop cork to the center
         res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map)
         if res != smoothie.RESPONSE_OK:
@@ -658,6 +674,7 @@ class ExtractionMethods:
                     ExtractionManager.save_matrix("last_extraction_map.txt", extraction_map, header=True)
 
         return res, False
+        """
 
     @staticmethod
     def Plantain(smoothie: adapters.SmoothieAdapter, extraction_map: ExtractionMap):
@@ -690,7 +707,7 @@ class ExtractionMethods:
                 continue
 
             # move to position
-            res = smoothie.custom_move_to(config.XY_F_MAX, X=sm_x, Y=sm_y)
+            res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
                 msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res
@@ -722,7 +739,7 @@ class ExtractionMethods:
                 continue
 
             # move to position
-            res = smoothie.custom_move_to(config.XY_F_MAX, X=sm_x, Y=sm_y)
+            res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
                 msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res

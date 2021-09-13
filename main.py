@@ -211,9 +211,11 @@ def move_to_point_and_extract(coords_from_to: list,
 
     pierre_angle=0 #Angle du robot vers la cible (en radians) en considérant que le robot est dans l'axe AB
 
-
     # set camera to the Y min
-    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+    res = smoothie.custom_move_to(X_F=config.X_F_MAX,
+                                  Y_F=config.Y_F_MAX,
+                                  X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                                  Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
     if res != smoothie.RESPONSE_OK:
         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
         logger_full.write(msg + "\n")
@@ -303,15 +305,17 @@ def move_to_point_and_extract(coords_from_to: list,
             logger_full.write(msg + "\n")
             
             # put the wheel straight
-            response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+            response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
             if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                 msg = "Couldn't turn wheels to center (0), smoothie response:\n" + response
                 print(msg)
                 logger_full.write(msg + "\n")
-            
+            else:
+                # save wheels angle
+                with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
+                    wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
             break
 
-        
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
             distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
@@ -569,12 +573,16 @@ def move_to_point_and_extract(coords_from_to: list,
             # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = config.A_MIN
-            
-        response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
+
+        response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=order_angle_sm)
         if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-            msg = "Smoothie response is not ok: " + response
+            msg = "Couldn't turn wheels, smoothie response:\n" + response
             print(msg)
             logger_full.write(msg + "\n")
+        else:
+            # save wheels angle
+            with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
+                wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
 
         raw_angle = round(raw_angle, 2)
         angle_kp_ki = round(angle_kp_ki, 2)
@@ -1420,20 +1428,20 @@ def main():
             print(msg)
             logger_full.write(msg + "\n")
         """
-        
-        #put the wheel straight
+
+        # put the wheel straight
         with adapters.SmoothieAdapter(smoothie_address) as smoothie:
-            #put the wheel straight
+            # put the wheel straight
             msg = "Put the wheel straight"
             logger_full.write(msg + "\n")
             if config.VERBOSE:
                 print(msg)
             with open(config.LAST_ANGLE_WHEELS_FILE, "r") as angle_file:
                 angle = float(angle_file.read())
-                smoothie._a_cur.value = angle
-                response = smoothie.nav_turn_wheels_to(0,config.A_F_MAX)
+                smoothie.set_current_coordinates(A=angle)
+                response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
                 if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                    msg = "Smoothie response is not ok: " + response
+                    msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
                     print(msg)
                     logger_full.write(msg + "\n")
 

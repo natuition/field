@@ -195,7 +195,7 @@ class WaitWorkingState(State):
                 x *= config.A_MAX/100
             y = int(data["y"])
             if self.lastValueX != x:
-                self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
+                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x)
                 self.lastValueX = x
             if self.lastValueY != y:
                 if y > 15 or y < -15:
@@ -316,7 +316,7 @@ class CreateFieldState(State):
                 if x > 0:
                     x *= config.A_MAX/100
                 print(f"[{self.__class__.__name__}] -> Move '{x}'.")
-                self.smoothie.custom_move_to(F=config.A_F_UI,A=x)
+                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x)
         elif data["type"] == "field":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
@@ -754,7 +754,7 @@ class FieldCreator:
         time.sleep(6)
         self.vesc_emergency.stop_moving()
 
-        self.smoothie.custom_move_to(F=config.A_F_UI,A=config.A_MIN)
+        self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
         self.smoothie.wait_for_all_actions_done()
 
         self.vesc_emergency.apply_rpm(config.VESC_RPM_UI)
@@ -762,7 +762,7 @@ class FieldCreator:
         time.sleep(8)
         self.vesc_emergency.stop_moving()
 
-        self.smoothie.custom_move_to(F=config.A_F_UI,A=0)
+        self.smoothie.custom_move_to(A_F=config.A_F_UI, A=0)
         self.smoothie.wait_for_all_actions_done()
 
 
