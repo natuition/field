@@ -577,17 +577,18 @@ class SmoothieAdapter:
 
         if mm_axis_val == 0:
             return mm_axis_val
+
         if axis_label == "X":
             return mm_axis_val * config.X_COEFFICIENT_TO_MM
-        if mm_axis_val == "Y":
+        if axis_label == "Y":
             return mm_axis_val * config.Y_COEFFICIENT_TO_MM
-        if mm_axis_val == "Z":
+        if axis_label == "Z":
             return mm_axis_val * config.Z_COEFFICIENT_TO_MM
-        if mm_axis_val == "A":
+        if axis_label == "A":
             return mm_axis_val * config.A_COEFFICIENT_TO_MM
-        if mm_axis_val == "B":
+        if axis_label == "B":
             return mm_axis_val * config.B_COEFFICIENT_TO_MM
-        if mm_axis_val == "C":
+        if axis_label == "C":
             return mm_axis_val * config.C_COEFFICIENT_TO_MM
 
     @staticmethod
@@ -611,27 +612,27 @@ class SmoothieAdapter:
                 raise ValueError("config.X_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.X_COEFFICIENT_TO_MM
 
-        if sm_axis_val == "Y":
+        if axis_label == "Y":
             if config.Y_COEFFICIENT_TO_MM == 0:
                 raise ValueError("config.Y_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.Y_COEFFICIENT_TO_MM
 
-        if sm_axis_val == "Z":
+        if axis_label == "Z":
             if config.Z_COEFFICIENT_TO_MM == 0:
                 raise ValueError("config.Z_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.Z_COEFFICIENT_TO_MM
 
-        if sm_axis_val == "A":
+        if axis_label == "A":
             if config.A_COEFFICIENT_TO_MM == 0:
                 raise ValueError("config.A_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.A_COEFFICIENT_TO_MM
 
-        if sm_axis_val == "B":
+        if axis_label == "B":
             if config.B_COEFFICIENT_TO_MM == 0:
                 raise ValueError("config.B_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.B_COEFFICIENT_TO_MM
 
-        if sm_axis_val == "C":
+        if axis_label == "C":
             if config.C_COEFFICIENT_TO_MM == 0:
                 raise ValueError("config.C_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.C_COEFFICIENT_TO_MM
