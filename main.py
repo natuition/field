@@ -212,10 +212,10 @@ def move_to_point_and_extract(coords_from_to: list,
     pierre_angle=0 #Angle du robot vers la cible (en radians) en considérant que le robot est dans l'axe AB
 
     # set camera to the Y min
-    res = smoothie.custom_move_to(X_F=config.X_F_MAX,
-                                  Y_F=config.Y_F_MAX,
-                                  X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
-                                  Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
+    res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                              Y_F=config.Y_F_MAX,
+                                              X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                                              Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
     if res != smoothie.RESPONSE_OK:
         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
         logger_full.write(msg + "\n")

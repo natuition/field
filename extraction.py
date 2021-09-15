@@ -96,10 +96,10 @@ class ExtractionManagerV3:
             cam_sm_x, cam_sm_y = self.__camera_positions[i]
 
             # move cork to camera position
-            res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
-                                                 Y_F=config.Y_F_MAX,
-                                                 X=cam_sm_x,
-                                                 Y=cam_sm_y)
+            res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                             Y_F=config.Y_F_MAX,
+                                                             X=cam_sm_x,
+                                                             Y=cam_sm_y)
             self.__smoothie.wait_for_all_actions_done()
             if res != self.__smoothie.RESPONSE_OK:
                 msg = f"Could not move cork to camera position (x={cam_sm_x}, y={cam_sm_y}) - \
@@ -184,16 +184,16 @@ class ExtractionManagerV3:
 
             # this loop determines plant (or plants group if they were not detected during PDZ) extractions tries count
             for _ in range(config.EXTRACTION_TRIES_PER_PLANT):
-                # try to move to the plant rescan position, calibrate and try again if failed, exit app otherwise
                 movement_messages = [
                     "Failed to move cork to the plant rescan position, smoothie's response:\n",
                     "Failed to move cork to the plant rescan position Y_MIN (after calibration), smoothie's response:\n"
                 ]
+                # try to move to the plant rescan position, calibrate and try again if failed, exit app otherwise
                 for idx, movement_message in enumerate(movement_messages):
-                    res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
-                                                         Y_F=config.Y_F_MAX,
-                                                         X=cur_pos_sm_x,
-                                                         Y=cur_pos_sm_y)
+                    res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                                     Y_F=config.Y_F_MAX,
+                                                                     X=cur_pos_sm_x,
+                                                                     Y=cur_pos_sm_y)
                     self.__smoothie.wait_for_all_actions_done()
                     if res == self.__smoothie.RESPONSE_OK:
                         break
@@ -271,11 +271,11 @@ class ExtractionManagerV3:
                                         config.Y_MIN < delta_sm_y < config.Y_MAX):
                                     continue
 
-                                # do movement
-                                res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
-                                                                     Y_F=config.Y_F_MAX,
-                                                                     X=delta_sm_x,
-                                                                     Y=delta_sm_y)
+                                # do delta movement
+                                res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                                                 Y_F=config.Y_F_MAX,
+                                                                                 X=delta_sm_x,
+                                                                                 Y=delta_sm_y)
                                 self.__smoothie.wait_for_all_actions_done()
                                 if res != self.__smoothie.RESPONSE_OK:
                                     msg = "Couldn't do delta move to X" + str(delta_sm_x) + " Y" + \
@@ -366,10 +366,10 @@ class ExtractionManagerV3:
                     extraction_pattern = self.__extraction_map.get_strategy(ext_sm_x, ext_sm_y)
                     if extraction_pattern:
                         # go to position
-                        res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
-                                                             Y_F=config.Y_F_MAX,
-                                                             X=ext_sm_x,
-                                                             Y=ext_sm_y)
+                        res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                                         Y_F=config.Y_F_MAX,
+                                                                         X=ext_sm_x,
+                                                                         Y=ext_sm_y)
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = f"Passing this plant by as could not move cork to position X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
                             msg += "\n" + res
@@ -395,10 +395,11 @@ class ExtractionManagerV3:
                         self.__logger_full.write(msg + "\n")
 
         # set camera back to the Y min X max / 2
-        res = self.__smoothie.custom_move_to(X_F=config.X_F_MAX,
-                                             Y_F=config.Y_F_MAX,
-                                             X=self.__smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
-                                             Y=self.__smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
+        res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                         Y_F=config.Y_F_MAX,
+                                                         X=self.__smoothie.smoothie_to_mm(
+                                                             (config.X_MAX - config.X_MIN) / 2, "X"),
+                                                         Y=self.__smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
         self.__smoothie.wait_for_all_actions_done()
         if res != self.__smoothie.RESPONSE_OK:
             msg = "Couldn't set camera back to cruise scan position after extractions, smoothie's response:\n" + res
@@ -423,7 +424,8 @@ class ExtractionManagerV3:
             new_plant_box: detection.DetectedPlantBox
             for init_plant_box in initial_scan_plants:
                 init_plant_box: detection.DetectedPlantBox
-                if new_plant_box.get_distance_from(init_plant_box.center_x, init_plant_box.center_y) <= trigger_distance:
+                if new_plant_box.get_distance_from(init_plant_box.center_x,
+                                                   init_plant_box.center_y) <= trigger_distance:
                     filtered_plants.append(new_plant_box)
                     break
         return filtered_plants
