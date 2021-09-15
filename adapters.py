@@ -44,7 +44,7 @@ class SmoothieAdapter:
             print("Switching smoothie to relative was failed! Smoothie's response:\n", res)
 
         # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
-        res = self.custom_move_for(config.Z_F_EXTRACTION_DOWN, Z=5)
+        res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
         self.wait_for_all_actions_done()
         if res != self.RESPONSE_OK:
             print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
@@ -172,8 +172,9 @@ class SmoothieAdapter:
 
         with self.__sync_locker:
             self.__smc.write("M114.2")
-            response, coordinates = (self.__smc.read_some() + self.__smc.read_some() if type(
-                self.__smc) is connectors.SmoothieV11TelnetConnector else self.__smc.read_some())[:-2].split(" ")[2:], {}
+            response, coordinates = (self.__smc.read_some() + self.__smc.read_some()
+                                     if type(self.__smc) is connectors.SmoothieV11TelnetConnector
+                                     else self.__smc.read_some())[:-2].split(" ")[2:], {}
             for coord in response:
                 coordinates[coord[0]] = float(coord[2:])
                 if convert_to_mms:
@@ -192,7 +193,7 @@ class SmoothieAdapter:
                 return False
         return True
 
-    def custom_move_for(self,
+    def custom_move_for(self, *,
                         X_F=None,
                         Y_F=None,
                         Z_F=None,
@@ -350,7 +351,7 @@ class SmoothieAdapter:
                     self.__c_cur.value += C
             return response
 
-    def custom_move_to(self,
+    def custom_move_to(self, *,
                        X_F=None,
                        Y_F=None,
                        Z_F=None,
@@ -509,6 +510,58 @@ class SmoothieAdapter:
                     self.__c_cur.value += sm_c_mm
             return response
 
+    def custom_separate_xy_move_for(self, *,
+                                    X_F=None,
+                                    Y_F=None,
+                                    X=None,
+                                    Y=None):
+        """Temporary wrapper for custom_move_for function, separates X and Y axes movement if X:Y ratio exceeds given
+        threshold
+
+        Works correct only with X and Y axes.
+        """
+
+        if config.ALLOW_SEPARATE_XY_MOVEMENT and X is not None and Y is not None and X_F is not None \
+                and Y_F is not None and X != 0 and Y != 0 and X / Y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD:
+            # X movement
+            res = self.custom_move_for(X_F=X_F, X=X)
+            if res != self.RESPONSE_OK:
+                err_msg = "Couldn't do separate X movement:\n" + res
+                return err_msg
+            # Y movement
+            res = self.custom_move_for(Y_F=Y_F, Y=Y)
+            if res != self.RESPONSE_OK:
+                err_msg = "Couldn't do separate Y movement:\n" + res
+                return err_msg
+            return res
+        return self.custom_move_for(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
+
+    def custom_separate_xy_move_to(self, *,
+                                   X_F=None,
+                                   Y_F=None,
+                                   X=None,
+                                   Y=None):
+        """Temporary wrapper for custom_move_to function, separates X and Y axes movement if X:Y ratio exceeds given
+        threshold
+
+        Works correct only with X and Y axes.
+        """
+
+        if config.ALLOW_SEPARATE_XY_MOVEMENT and X is not None and Y is not None and X_F is not None \
+                and Y_F is not None and X != 0 and Y != 0 and X / Y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD:
+            # X movement
+            res = self.custom_move_to(X_F=X_F, X=X)
+            if res != self.RESPONSE_OK:
+                err_msg = "Couldn't do separate X movement:\n" + res
+                return err_msg
+            # Y movement
+            res = self.custom_move_to(Y_F=Y_F, Y=Y)
+            if res != self.RESPONSE_OK:
+                err_msg = "Couldn't do separate Y movement:\n" + res
+                return err_msg
+            return res
+        return self.custom_move_to(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
+
     def nav_calibrate_wheels(self):
         """Calibrates nav. wheels and sets their current position to adapter and smoothie.
         NOT TESTED YET!
@@ -556,7 +609,11 @@ class SmoothieAdapter:
             if response != self.RESPONSE_OK:
                 return response
 
-            return self.__calibrate_axis(self.__z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
+            return self.__calibrate_axis(self.__z_cur,
+                                         "Z",
+                                         config.Z_MIN,
+                                         config.Z_MAX,
+                                         config.Z_AXIS_CALIBRATION_TO_MAX)
         else:
             raise RuntimeError(
                 "picking up corkscrew with stoppers usage requires Z axis calibration permission in config"
