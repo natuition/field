@@ -520,21 +520,23 @@ class SmoothieAdapter:
 
         Works correct only with X and Y axes.
         """
-
-        if config.ALLOW_SEPARATE_XY_MOVEMENT and X is not None and Y is not None and X_F is not None \
-                and Y_F is not None and X != 0 and Y != 0 and X / Y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD:
-            # X movement
-            res = self.custom_move_for(X_F=X_F, X=X)
-            if res != self.RESPONSE_OK:
-                err_msg = "Couldn't do separate X movement:\n" + res
-                return err_msg
-            # Y movement
-            res = self.custom_move_for(Y_F=Y_F, Y=Y)
-            if res != self.RESPONSE_OK:
-                err_msg = "Couldn't do separate Y movement:\n" + res
-                return err_msg
-            return res
-        return self.custom_move_for(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
+        with self.__sync_locker:
+            if config.ALLOW_SEPARATE_XY_MOVEMENT and X is not None and Y is not None and X_F is not None \
+                    and Y_F is not None:
+                rel_x, rel_y = abs(X), abs(Y)
+                if rel_x != 0 and rel_y != 0 and rel_x / rel_y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD:
+                    # X movement
+                    res = self.custom_move_for(X_F=X_F, X=X)
+                    if res != self.RESPONSE_OK:
+                        err_msg = "Couldn't do separate X movement:\n" + res
+                        return err_msg
+                    # Y movement
+                    res = self.custom_move_for(Y_F=Y_F, Y=Y)
+                    if res != self.RESPONSE_OK:
+                        err_msg = "Couldn't do separate Y movement:\n" + res
+                        return err_msg
+                    return res
+            return self.custom_move_for(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
 
     def custom_separate_xy_move_to(self, *,
                                    X_F=None,
@@ -547,20 +549,23 @@ class SmoothieAdapter:
         Works correct only with X and Y axes.
         """
 
-        if config.ALLOW_SEPARATE_XY_MOVEMENT and X is not None and Y is not None and X_F is not None \
-                and Y_F is not None and X != 0 and Y != 0 and X / Y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD:
-            # X movement
-            res = self.custom_move_to(X_F=X_F, X=X)
-            if res != self.RESPONSE_OK:
-                err_msg = "Couldn't do separate X movement:\n" + res
-                return err_msg
-            # Y movement
-            res = self.custom_move_to(Y_F=Y_F, Y=Y)
-            if res != self.RESPONSE_OK:
-                err_msg = "Couldn't do separate Y movement:\n" + res
-                return err_msg
-            return res
-        return self.custom_move_to(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
+        with self.__sync_locker:
+            if config.ALLOW_SEPARATE_XY_MOVEMENT and X is not None and Y is not None and X_F is not None \
+                    and Y_F is not None:
+                rel_x, rel_y = abs(X - self.__x_cur.value), abs(Y - self.__y_cur.value)
+                if rel_x != 0 and rel_y != 0 and rel_x / rel_y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD:
+                    # X movement
+                    res = self.custom_move_to(X_F=X_F, X=X)
+                    if res != self.RESPONSE_OK:
+                        err_msg = "Couldn't do separate X movement:\n" + res
+                        return err_msg
+                    # Y movement
+                    res = self.custom_move_to(Y_F=Y_F, Y=Y)
+                    if res != self.RESPONSE_OK:
+                        err_msg = "Couldn't do separate Y movement:\n" + res
+                        return err_msg
+                    return res
+            return self.custom_move_to(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
 
     def nav_calibrate_wheels(self):
         """Calibrates nav. wheels and sets their current position to adapter and smoothie.
