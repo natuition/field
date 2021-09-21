@@ -697,7 +697,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
             # flush updates into the audit output file and log measured time
             if len(plants_boxes) > 0:
-                data_collector.save_detections_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
+                data_collector.save_all_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
 
             dc_t = time.time() - dc_start_t
             msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
@@ -1035,22 +1035,33 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
 
 def main():
     time_start = utility.get_current_time()
-    log_cur_dir = config.LOG_ROOT_DIR + time_start + "/"
-    utility.create_directories(config.LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
-        
+    utility.create_directories(config.LOG_ROOT_DIR)
+
+    # choose log dir dependent continuing previous path or not
+    if config.CONTINUE_PREVIOUS_PATH:
+        last_log_dir = utility.get_last_dir_name(config.LOG_ROOT_DIR)
+        if last_log_dir is not None:
+            log_cur_dir = config.LOG_ROOT_DIR + last_log_dir + "/"
+        else:
+            log_cur_dir = config.LOG_ROOT_DIR + time_start + "/"
+    else:
+        log_cur_dir = config.LOG_ROOT_DIR + time_start + "/"
+
+    utility.create_directories(log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
+
     notification = NotificationClient(time_start)
     image_saver = utility.ImageSaver()
-    data_collector = datacollection.DataCollector(notification)
+    data_collector = datacollection.DataCollector(notification,
+                                                  load_from_file=config.CONTINUE_PREVIOUS_PATH,
+                                                  file_path=log_cur_dir + config.DATACOLLECTOR_SAVE_FILE)
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     view_zone_polygon = Polygon(config.VIEW_ZONE_POLY_POINTS)
     view_zone_points_cv = np.array(config.VIEW_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     nav = navigation.GPSComputing()
     used_points_history = []
-    logger_full = utility.Logger(log_cur_dir + "log full.txt")
-    logger_table = utility.Logger(log_cur_dir + "log table.csv")
-    
-    
+    logger_full = utility.Logger(log_cur_dir + "log full.txt", append_file=config.CONTINUE_PREVIOUS_PATH)
+    logger_table = utility.Logger(log_cur_dir + "log table.csv", append_file=config.CONTINUE_PREVIOUS_PATH)
 
     # get smoothie and vesc addresses
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
@@ -1144,7 +1155,8 @@ def main():
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
         # utility.MemoryManager(config.DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
         with \
-            utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt") as trajectory_saver, \
+            utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt",
+                                    config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                  config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE) as vesc_engine, \
@@ -1465,6 +1477,7 @@ def main():
         print(msg)
         try:
             data_collector.save_all_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+            data_collector.dump_to_file(log_cur_dir + config.DATACOLLECTOR_SAVE_FILE)
         except:
             msg = "Failed:\n" + traceback.format_exc()
             logger_full.write(msg + "\n")

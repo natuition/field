@@ -388,8 +388,7 @@ class ExtractionManagerV3:
                         else:
                             if extraction_pattern == self.__extraction_map.strategies[0]:
                                 self.__data_collector.add_extractions_data(type_name, 1)
-                                self.__data_collector.save_extractions_data(
-                                    self.__log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+                                self.__data_collector.save_all_data(self.__log_cur_dir + config.STATISTICS_OUTPUT_FILE)
                     else:
                         msg = "Did too many extraction tries at this position, no strategies to try left"
                         self.__logger_full.write(msg + "\n")

@@ -15,6 +15,7 @@ from config import config
 import time
 from pytz import timezone
 
+
 class ImageSaver:
     """
     Implements flexible ways to save images and detected objects on them
@@ -92,10 +93,10 @@ class ImageSaver:
 class TrajectorySaver:
     """Provides safe gps points saving (robot's trajectory)"""
 
-    def __init__(self, full_path):
+    def __init__(self, full_path, append_file=False):
         self.__full_path = full_path
-        self.__output_file = open(full_path, "w")
         self.__last_received_point = None
+        self.__output_file = open(full_path, "a" if append_file else "w")
 
     def __enter__(self):
         return self
@@ -210,8 +211,8 @@ class Logger:
     Writes into the file with specified name str data, flushing data on each receiving
     """
 
-    def __init__(self, file_name, add_time=True, time_sep=" "):
-        self._file = open(file_name, "w")
+    def __init__(self, file_name, add_time=True, time_sep=" ", append_file=False):
+        self._file = open(file_name, "a" if append_file else "w")
         self.__add_time = add_time
         self.__time_sep = time_sep
 
@@ -372,3 +373,26 @@ def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySav
         trajectory_saver.save_point(prev_pos)
     
     return prev_pos
+
+
+def get_last_dir_name(parent_dir_path: str):
+    """Looks for directories in a given parent directory, returns the last created dir (Windows) or last changed dir
+    (Linux), or None if no directories were found at given path.
+    """
+
+    all_parent_dir_objects = os.listdir(parent_dir_path)
+    last_dir = None
+    last_dir_creation_time = None
+
+    for cur_obj_name in all_parent_dir_objects:
+        cur_obj_full_path = parent_dir_path + cur_obj_name
+        if os.path.isdir(cur_obj_full_path):
+            cur_dir_creation_time = os.path.getctime(cur_obj_full_path)
+            if last_dir:
+                if cur_dir_creation_time > last_dir_creation_time:
+                    last_dir = cur_obj_name
+                    last_dir_creation_time = cur_dir_creation_time
+            else:
+                last_dir = cur_obj_name
+                last_dir_creation_time = cur_dir_creation_time
+    return last_dir
