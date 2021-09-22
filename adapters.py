@@ -518,13 +518,14 @@ class SmoothieAdapter:
         """Temporary wrapper for custom_move_for function, separates X and Y axes movement if X:Y ratio exceeds given
         threshold
 
-        Works correct only with X and Y axes.
+        Supports only X and Y axes movement.
         """
         with self.__sync_locker:
             if config.ALLOW_SEPARATE_XY_MOVEMENT and X is not None and Y is not None and X_F is not None \
                     and Y_F is not None:
                 rel_x, rel_y = abs(X), abs(Y)
-                if rel_x != 0 and rel_y != 0 and rel_x / rel_y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD:
+                if (rel_x != 0 and rel_y != 0 and rel_x / rel_y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD) or \
+                        (rel_x != 0 and rel_y == 0):
                     # X movement
                     res = self.custom_move_for(X_F=X_F, X=X)
                     if res != self.RESPONSE_OK:
@@ -546,14 +547,15 @@ class SmoothieAdapter:
         """Temporary wrapper for custom_move_to function, separates X and Y axes movement if X:Y ratio exceeds given
         threshold
 
-        Works correct only with X and Y axes.
+        Supports only X and Y axes movement.
         """
 
         with self.__sync_locker:
             if config.ALLOW_SEPARATE_XY_MOVEMENT and X is not None and Y is not None and X_F is not None \
                     and Y_F is not None:
                 rel_x, rel_y = abs(X - self.__x_cur.value), abs(Y - self.__y_cur.value)
-                if rel_x != 0 and rel_y != 0 and rel_x / rel_y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD:
+                if (rel_x != 0 and rel_y != 0 and rel_x / rel_y > config.XY_SEP_MOV_MAX_RATIO_THRESHOLD) or \
+                        (rel_x != 0 and rel_y == 0):
                     # X movement
                     res = self.custom_move_to(X_F=X_F, X=X)
                     if res != self.RESPONSE_OK:
