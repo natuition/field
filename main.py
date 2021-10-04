@@ -234,6 +234,19 @@ def move_to_point_and_extract(coords_from_to: list,
     except:
         pass
 
+    if config.CONTINUE_PREVIOUS_PATH and msgQueue is not None:
+        if os.path.isfile(log_cur_dir + "used_gps_history.txt"):
+            with open(log_cur_dir + "used_gps_history.txt", "r") as gps_his_file:
+                for coord in gps_his_file.readlines():
+                    if coord != "" and coord != "\n":
+                        p_c = coord[1:-1].split(", ")  # parsed coord
+                        msgQueue.send(json.dumps({"last_gps": [float(p_c[0]), float(p_c[1]), p_c[2].replace("'", "")]}))
+        else:
+            msg = f"Could not find {log_cur_dir}/used_gps_history.txt file to send previous points to the web UI"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE:
+                print(msg)
+
     # main navigation control loop
     while True:
 
