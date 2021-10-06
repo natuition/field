@@ -123,6 +123,7 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
 
+
 def move_to_point_and_extract(coords_from_to: list,
                               gps: adapters.GPSUbloxAdapter,
                               vesc_engine: adapters.VescAdapter,
@@ -146,7 +147,8 @@ def move_to_point_and_extract(coords_from_to: list,
                               log_cur_dir,
                               image_saver: utility.ImageSaver,
                               notification: NotificationClient,
-                              extraction_manager_v3: ExtractionManagerV3):
+                              extraction_manager_v3: ExtractionManagerV3,
+                              gps_msg_queue: posix_ipc.MessageQueue):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -227,26 +229,6 @@ def move_to_point_and_extract(coords_from_to: list,
         vesc_engine.apply_rpm(config.VESC_RPM_AUDIT)
         vesc_engine.start_moving()
 
-    msgQueue = None
-
-    try:
-        msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
-    except:
-        pass
-
-    if config.CONTINUE_PREVIOUS_PATH and msgQueue is not None:
-        if os.path.isfile(log_cur_dir + "used_gps_history.txt"):
-            with open(log_cur_dir + "used_gps_history.txt", "r") as gps_his_file:
-                for coord in gps_his_file.readlines():
-                    if coord != "" and coord != "\n":
-                        p_c = coord[1:-1].split(", ")  # parsed coord
-                        msgQueue.send(json.dumps({"last_gps": [float(p_c[0]), float(p_c[1]), p_c[2].replace("'", "")]}))
-        else:
-            msg = f"Could not find {log_cur_dir}/used_gps_history.txt file to send previous points to the web UI"
-            logger_full.write(msg + "\n")
-            if config.VERBOSE:
-                print(msg)
-
     # main navigation control loop
     while True:
 
@@ -279,8 +261,8 @@ def move_to_point_and_extract(coords_from_to: list,
             continue
 
         trajectory_saver.save_point(cur_pos)
-        if msgQueue is not None:
-            msgQueue.send(json.dumps({"last_gps": cur_pos}))
+        if gps_msg_queue is not None:
+            gps_msg_queue.send(json.dumps({"last_gps": cur_pos}))
         """
         if len(used_points_history) > 0:
             if str(used_points_history[-1]) != str(cur_pos):
@@ -1046,6 +1028,31 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
     return field
 
 
+def send_gps_history_from_file(gps_msg_queue: posix_ipc.MessageQueue,
+                               gps_file_dir: str,
+                               gps_file_name: str,
+                               logger_full: utility.Logger):
+    """Loads gps points from a given file (if it exists) and sends them using given message queue
+    """
+
+    if os.path.isfile(gps_file_dir + gps_file_name):
+        with open(gps_file_dir + gps_file_name, "r") as gps_his_file:
+            for line in gps_his_file.readlines():
+                if line.startswith("[") and line.endswith("]\n"):
+                    parsed_point = line[1:-1].split(", ")
+                    try:
+                        gps_msg_queue.send(json.dumps({"last_gps": [float(parsed_point[0]),
+                                                                    float(parsed_point[1]),
+                                                                    parsed_point[2].replace("'", "")]}))
+                    except (IndexError, ValueError):
+                        pass
+    else:
+        msg = f"Could not find {gps_file_dir}/used_gps_history.txt file to send previous points to the web UI"
+        logger_full.write(msg + "\n")
+        if config.VERBOSE:
+            print(msg)
+
+
 def main():
     time_start = utility.get_current_time()
     utility.create_directories(config.LOG_ROOT_DIR)
@@ -1389,14 +1396,30 @@ def main():
                     # print(msg)
                     logger_full.write(msg + "\n\n")
 
+                    try:
+                        gps_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+                    except KeyboardInterrupt:
+                        exit(0)
+                    except:
+                        print(traceback.format_exc())
+                        gps_msg_queue = None
 
+                    # load and send trajectory to the UI if continuing work
+                    if config.CONTINUE_PREVIOUS_PATH:
+                        if gps_msg_queue is not None:
+                            send_gps_history_from_file(gps_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
+                        else:
+                            msg = "GPS message queue connection is not established (None), canceling gps sending to UI"
+                            logger_full.write(msg + "\n")
+                            if config.VERBOSE:
+                                print(msg)
 
                     move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
                                               config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, 
-                                              image_saver, notification, extraction_manager_v3)
+                                              image_saver, notification, extraction_manager_v3, gps_msg_queue)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
