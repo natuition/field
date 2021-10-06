@@ -1146,7 +1146,23 @@ def main():
         notification.setStatus(SyntheseRobot.HS)
         exit(1)
 
-    
+    try:
+        gps_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+    except KeyboardInterrupt:
+        exit(0)
+    except:
+        print(traceback.format_exc())
+        gps_msg_queue = None
+
+    # load and send trajectory to the UI if continuing work
+    if config.CONTINUE_PREVIOUS_PATH:
+        if gps_msg_queue is not None:
+            send_gps_history_from_file(gps_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
+        else:
+            msg = "GPS message queue connection is not established (None), canceling gps sending to UI"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE:
+                print(msg)
 
     # sensors picking
     report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
@@ -1201,6 +1217,9 @@ def main():
 
                 msg = "Loading previous path points"
                 logger_full.write(msg + "\n")
+
+                if config.CONTINUOUS_INFORMATION_SENDING:
+                    notification.set_field(load_coordinates(config.INPUT_GPS_FIELD_FILE))
 
                 # TODO: check if files exist and handle damaged/incorrect data cases
                 with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
@@ -1395,24 +1414,6 @@ def main():
                     msg = "KP: " + str(config.KP) + " KI: " + str(config.KI) + " VESC_RPM_FAST: " + str(config.VESC_RPM_FAST)+" SMALL_RAW_ANGLE_SQUARE_GAIN: " + str(config.SMALL_RAW_ANGLE_SQUARE_GAIN)
                     # print(msg)
                     logger_full.write(msg + "\n\n")
-
-                    try:
-                        gps_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
-                    except KeyboardInterrupt:
-                        exit(0)
-                    except:
-                        print(traceback.format_exc())
-                        gps_msg_queue = None
-
-                    # load and send trajectory to the UI if continuing work
-                    if config.CONTINUE_PREVIOUS_PATH:
-                        if gps_msg_queue is not None:
-                            send_gps_history_from_file(gps_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
-                        else:
-                            msg = "GPS message queue connection is not established (None), canceling gps sending to UI"
-                            logger_full.write(msg + "\n")
-                            if config.VERBOSE:
-                                print(msg)
 
                     move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
                                               precise_detector, client, logger_full, logger_table, report_field_names,
