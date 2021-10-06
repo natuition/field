@@ -623,7 +623,7 @@ class WorkingState(State):
             if self.lastGpsQuality != data[2]:
                 self.lastGpsQuality = data[2]
             self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map')
-            time.sleep(0.5)
+            # time.sleep(0.5)
 
 
 #This state corresponds when the robot has an error.
