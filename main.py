@@ -1031,6 +1031,12 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
         
         b = compute_x1_x2(b, c, spiralSidesInterval, nav)[0]
         a = compute_x1_x2(a, d, spiralSidesInterval, nav)[0]
+
+    if not add_points_to_path(currently_path, [a,rev]):
+            return currently_path
+
+    if not add_points_to_path(currently_path, [b,fwd]):
+        return currently_path
     
     return currently_path
 
@@ -1128,14 +1134,18 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             return path 
 
         # get A'B'C'D' (prepare next ABCD points)
-        b1_int, b2_int = compute_x1_x2_int_points_bend(b, c, nav, logger, SI_speed)
-        d1_int, d2_int = compute_x1_x2_int_points_bend(d, a, nav, logger, SI_speed)
+        # b1_int, b2_int = compute_x1_x2_int_points_bend(b, c, nav, logger, SI_speed)
+        # d1_int, d2_int = compute_x1_x2_int_points_bend(d, a, nav, logger, SI_speed)
+        b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
+        d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
 
         if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
             return path
 
-        a_new, b_new = compute_x1_x2_int_points_bend(d2_int, b1_int, nav, logger, SI_speed)
-        c_new, d_new = compute_x1_x2_int_points_bend(b2_int, d1_int, nav, logger, SI_speed)
+        # a_new, b_new = compute_x1_x2_int_points_bend(d2_int, b1_int, nav, logger, SI_speed)
+        # c_new, d_new = compute_x1_x2_int_points_bend(b2_int, d1_int, nav, logger, SI_speed)
+        a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
+        c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
 
         if not check_points_for_nones(a_new, b_new, c_new, d_new):
             return path
@@ -1161,14 +1171,18 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
 
     while True:
         # get A'B'C'D' (prepare next ABCD points)
-        b1_int, b2_int = compute_x1_x2_int_points_bend(b, c, nav, logger, SI_speed)
-        d1_int, d2_int = compute_x1_x2_int_points_bend(d, a, nav, logger, SI_speed)
+        # b1_int, b2_int = compute_x1_x2_int_points_bend(b, c, nav, logger, SI_speed)
+        # d1_int, d2_int = compute_x1_x2_int_points_bend(d, a, nav, logger, SI_speed)
+        b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
+        d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
 
         if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
-            break
+            return path
 
-        a_new, b_new = compute_x1_x2_int_points_bend(d2_int, b1_int, nav, logger, SI_speed)
-        c_new, d_new = compute_x1_x2_int_points_bend(b2_int, d1_int, nav, logger, SI_speed)
+        # a_new, b_new = compute_x1_x2_int_points_bend(d2_int, b1_int, nav, logger, SI_speed)
+        # c_new, d_new = compute_x1_x2_int_points_bend(b2_int, d1_int, nav, logger, SI_speed)
+        a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
+        c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
 
         if not check_points_for_nones(a_new, b_new, c_new, d_new):
             break
