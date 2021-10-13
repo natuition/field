@@ -55,7 +55,10 @@ def save_gps_coordinates(points: list, file_name: str):
 
     with open(file_name, "w") as file:
         for point in points:
-            str_point = str(point[0]) + " " + str(point[1]) + "\n"
+            if isinstance(point[0],list):
+                str_point = str(point[0][0]) + " " + str(point[0][1]) + " " + str(point[1]) + "\n"
+            else:
+                str_point = str(point[0]) + " " + str(point[1]) + "\n"
             file.write(str_point)
 
 
@@ -886,8 +889,7 @@ def check_points_for_nones(*args):
     return True
 
 def compute_bezier_points(point_0, point_1, point_2):
-    nb_point_bezier = 10
-    t = np.linspace(0,1,nb_point_bezier)
+    t = np.linspace(0,1,config.NUMBER_OF_BEZIER_POINT)
     coords = list()
     for i in t :
         x = (point_0[0]-2*point_1[0]+point_2[0])*(i**2) + (2*point_1[0]-2*point_0[0])*i + point_0[0]
@@ -904,7 +906,6 @@ def build_bezier_path(abcd_points: list, nav: navigation.GPSComputing, logger: u
     b1, b2 = compute_x1_x2_points(b, c, nav, logger)
     c1, c2 = compute_x1_x2_points(c, d, nav, logger)
     d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-    d2_spiral = compute_x2_spiral(d, a, nav, logger)
 
     first_turn = compute_bezier_points(d2,a,a1)
     second_turn = compute_bezier_points(a2,b,b1)
@@ -966,7 +967,6 @@ def build_bezier_path(abcd_points: list, nav: navigation.GPSComputing, logger: u
         b1, b2 = compute_x1_x2_points(b, c, nav, logger)
         c1, c2 = compute_x1_x2_points(c, d, nav, logger)
         d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-        d2_spiral = compute_x2_spiral(d, a, nav, logger)
 
         for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
             if point is None:
@@ -1000,38 +1000,64 @@ def build_bezier_path(abcd_points: list, nav: navigation.GPSComputing, logger: u
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
 
-def f(turning_radius):
+def get_rectangle_isosceles_side(turning_radius):
      return (0.5*(turning_radius*((2**0.5)-1))**2)**0.5 #Bezier refer \Nextcloud\3. Engineering\navigation
 
 def corner_finish_rounds(turning_radius : float):
-    print("black corridor width at full steering %2.0f"%f(turning_radius)," millimeters")
-    return int((f(turning_radius))/config.FIELD_REDUCE_SIZE)+1 #how many corner round due to robot working width
+    print("black corridor width at full steering %2.0f"%get_rectangle_isosceles_side(turning_radius)," millimeters")
+    return int((get_rectangle_isosceles_side(turning_radius))/config.FIELD_REDUCE_SIZE)+1 #how many corner round due to robot working width
 
-def build_bezier_corner_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger,SI_speed: float):
+def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger,SI_speed: float, currently_path: list):
+    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
+
+    fwd = SI_speed
+    rev = - SI_speed
+
+    if config.AUDIT_MODE in config.SPIRAL_SIDES_INTERVAL: 
+        spiralSidesInterval = config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]
+    else:
+        msg = f"Boolean {config.AUDIT_MODE} isn't present in SPIRAL_SIDES_INTERVAL."
+        #print(msg)
+        logger.write(msg + "\n")   
+        return None
+
+    while nav.get_distance(b,c)>spiralSidesInterval:
+
+        if not add_points_to_path(currently_path, [a,rev]):
+            return currently_path
+
+        if not add_points_to_path(currently_path, [b,fwd]):
+            return currently_path
+        
+        b = compute_x1_x2(b, c, spiralSidesInterval, nav)[0]
+        a = compute_x1_x2(a, d, spiralSidesInterval, nav)[0]
+    
+    return currently_path
+
+
+def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger,SI_speed: float):
     path = []
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
     fwd = SI_speed
     rev = - SI_speed
-    
 
     # get moving points A1 - ... - D2 spiral
     a1, a2 = compute_x1_x2_points(a, b, nav, logger)
     b1, b2 = compute_x1_x2_points(b, c, nav, logger)
     c1, c2 = compute_x1_x2_points(c, d, nav, logger)
     d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-    d2_spiral = compute_x2_spiral(d, a, nav, logger)
 
-    first_turn = compute_bezier_points(d2,a,a1)
-    second_turn = compute_bezier_points(a2,b,b1)
-    third_turn = compute_bezier_points(b2,c,c1)
-    fourth_turn = compute_bezier_points(c2,d,d1)
+    first_bezier_turn = compute_bezier_points(d2,a,a1)
+    second_bezier_turn = compute_bezier_points(a2,b,b1)
+    third_bezier_turn = compute_bezier_points(b2,c,c1)
+    fourth_bezier_turn = compute_bezier_points(c2,d,d1)
 
 
     if config.AUDIT_MODE in config.MANEUVER_START_DISTANCE: 
         maneuverStartDistance = config.MANEUVER_START_DISTANCE[config.AUDIT_MODE]
     else:
-        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVER_START_DISTANCE."
+        msg = f"Boolean {config.AUDIT_MODE} isn't present in MANEUVER_START_DISTANCE."
         #print(msg)
         logger.write(msg + "\n")   
         return None
@@ -1051,53 +1077,159 @@ def build_bezier_corner_path(abcd_points: list, nav: navigation.GPSComputing, lo
         #the direction is given along with the point in meter per second, signed
         #go to line forward, step back to the turning point "a1"
 
-        if not add_points_to_path(path,[d,rev,mxt],[a,fwd,"A "+mxt],[a1,rev,mxt]):
+        if not add_points_to_path(path,[a,fwd,"A "+mxt]):#,[a1,rev,mxt]):
             return path                                            
-        
-        print("path length", len(path))
-        
-        for point in first_turn:
-            if not add_points_to_path(path, [point,fwd]):
-                return path
-
-        if not add_points_to_path(path, [a,rev,mxt],[b,fwd,"B "+mxt],[b1,rev,mxt] ):
-            return path                                            
-        for point in second_turn:
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            if not add_points_to_path(path, [point,fwd]):
-                return path
+        for index in range(0,len(first_bezier_turn)):
+            if index == 0:
+                if not add_points_to_path(path, [first_bezier_turn[index],rev]):
+                    return path
+            else:
+                if not add_points_to_path(path, [first_bezier_turn[index],fwd]):
+                    return path
+        if not add_points_to_path(path,[a,rev,mxt]):
+            return path 
 
 
-        if not add_points_to_path(path, [b,rev,mxt],[c,fwd,"C "+mxt],[c1,rev,mxt] ):
+        if not add_points_to_path(path,[b,fwd,"B "+mxt]):
             return path                                            
-        for point in third_turn:
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            if not add_points_to_path(path, [point,fwd]):
-                return path
+        for index in range(0,len(second_bezier_turn)):
+            if index == 0:
+                if not add_points_to_path(path, [second_bezier_turn[index],rev]):
+                    return path
+            else:
+                if not add_points_to_path(path, [second_bezier_turn[index],fwd]):
+                    return path
+        if not add_points_to_path(path, [b,rev,mxt] ):
+            return path  
 
-        if not add_points_to_path(path, [c,rev,mxt],[d,fwd,"D "+mxt],[d1,rev,mxt] ):
+
+        if not add_points_to_path(path,[c,fwd,"C "+mxt]):
             return path                                            
-        for point in fourth_turn:
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            if not add_points_to_path(path, [point,fwd]):
-                return path
+        for index in range(0,len(third_bezier_turn)):
+            if index == 0:
+                if not add_points_to_path(path, [third_bezier_turn[index],rev]):
+                    return path
+            else:
+                if not add_points_to_path(path, [third_bezier_turn[index],fwd]):
+                    return path
+        if not add_points_to_path(path, [c,rev,mxt] ):
+            return path 
+
+        if not add_points_to_path(path, [d,fwd,"D "+mxt]):
+            return path                                            
+        for index in range(0,len(fourth_bezier_turn)):
+            if index == 0:
+                if not add_points_to_path(path, [fourth_bezier_turn[index],rev]):
+                    return path
+            else:
+                if not add_points_to_path(path, [fourth_bezier_turn[index],fwd]):
+                    return path
+        if not add_points_to_path(path, [d,rev,mxt] ):
+            return path 
 
         # get A'B'C'D' (prepare next ABCD points)
-        b1_int, b2_int = compute_x1_x2_int_points_bend(b, c, nav, logger,SI_speed)
-        d1_int, d2_int = compute_x1_x2_int_points_bend(d, a, nav, logger,SI_speed)
+        b1_int, b2_int = compute_x1_x2_int_points_bend(b, c, nav, logger, SI_speed)
+        d1_int, d2_int = compute_x1_x2_int_points_bend(d, a, nav, logger, SI_speed)
 
         if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
             return path
 
-        a_new, b_new = compute_x1_x2_int_points_bend(d2_int, b1_int, nav, logger,SI_speed)
-        c_new, d_new = compute_x1_x2_int_points_bend(b2_int, d1_int, nav, logger,SI_speed)
+        a_new, b_new = compute_x1_x2_int_points_bend(d2_int, b1_int, nav, logger, SI_speed)
+        c_new, d_new = compute_x1_x2_int_points_bend(b2_int, d1_int, nav, logger, SI_speed)
 
         if not check_points_for_nones(a_new, b_new, c_new, d_new):
             return path
 
+        a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int 
+
+        # get moving points A1 - ... - D2 spiral
+        a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
+        b1, b2 = compute_x1_x2_points(b, c, nav, logger)
+        c1, c2 = compute_x1_x2_points(c, d, nav, logger)
+        d1, d2 = compute_x1_x2_points(d, a, nav, logger)
+
+        for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
+            if point is None:
+                return path
+
+        first_bezier_turn = compute_bezier_points(d2,a,a1)
+        second_bezier_turn = compute_bezier_points(a2,b,b1)
+        third_bezier_turn = compute_bezier_points(b2,c,c1)
+        fourth_bezier_turn = compute_bezier_points(c2,d,d1)
+
+    _break = False
+
+    while True:
+        # get A'B'C'D' (prepare next ABCD points)
+        b1_int, b2_int = compute_x1_x2_int_points_bend(b, c, nav, logger, SI_speed)
+        d1_int, d2_int = compute_x1_x2_int_points_bend(d, a, nav, logger, SI_speed)
+
+        if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
+            break
+
+        a_new, b_new = compute_x1_x2_int_points_bend(d2_int, b1_int, nav, logger, SI_speed)
+        c_new, d_new = compute_x1_x2_int_points_bend(b2_int, d1_int, nav, logger, SI_speed)
+
+        if not check_points_for_nones(a_new, b_new, c_new, d_new):
+            break
+
+        # get moving points A1 - ... - D2 spiral
+        a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
+        b1, b2 = compute_x1_x2_points(b, c, nav, logger)
+        c1, c2 = compute_x1_x2_points(c, d, nav, logger)
+        d1, d2 = compute_x1_x2_points(d, a, nav, logger)
+
+        for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
+            if point is None:
+                if not _break:
+                    _break = True
+                    break
+        if _break : 
+            break
+
+        first_bezier_turn = compute_bezier_points(d2,a,a1)
+        second_bezier_turn = compute_bezier_points(a2,b,b1)
+        third_bezier_turn = compute_bezier_points(b2,c,c1)
+        fourth_bezier_turn = compute_bezier_points(c2,d,d1)
+
+        for point in first_bezier_turn:
+            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
+            if not add_points_to_path(path, [point,fwd]):
+                _break = True
+                break
+        if _break : 
+            break
+        
+        for point in second_bezier_turn:
+            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
+            if not add_points_to_path(path, [point,fwd]):
+                _break = True
+                break
+        if _break : 
+            break
+
+        for point in third_bezier_turn:
+            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
+            if not add_points_to_path(path, [point,fwd]):
+                _break = True
+                break
+        if _break : 
+            break
+        
+        for point in fourth_bezier_turn:
+            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
+            if not add_points_to_path(path, [point,fwd]):
+                _break = True
+                break
+        if _break : 
+            break
+
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
+
+    if config.ADD_FORWARD_BACKWARD_PATH_TO_BEZIER_CORNER_PATH:
+        path = add_forward_backward_path([d, a, b, c], nav, logger, SI_speed, path)
+
     return path
-    
 
 def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger):
     path = []
@@ -1444,9 +1576,14 @@ def main():
 
                     # generate path points
                     path_start_index = 1
-                    #path_points = build_path(field_gps_coords, nav, logger_full)
+                    if config.TRADITIONAL_PATH:
+                        path_points = build_path(field_gps_coords, nav, logger_full)
                     #path_points = build_bezier_path(field_gps_coords, nav, logger_full)
-                    path_points = build_bezier_corner_path(field_gps_coords, nav, logger_full, 0.175)
+                    if config.BEZIER_CORNER_PATH:
+                        path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, 0.175)
+                    if config.JUST_FORWARD_BACKWARD_PATH:
+                        a,b,c,d = field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]
+                        path_points = add_forward_backward_path([d,a,b,c], nav, logger_full, 0.175, [])
                     
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
@@ -1475,7 +1612,7 @@ def main():
                     path_index_file.write(str(path_start_index))
 
             if len(path_points) > 0:
-                save_gps_coordinates(path_points, log_cur_dir + "current path points.txt")
+                save_gps_coordinates(path_points, log_cur_dir + "current_path_points.txt")
                 msg = "Current path points are successfully saved."
                 print(msg)
                 logger_full.write(msg + "\n")
@@ -1490,6 +1627,8 @@ def main():
                 logger_full.write(msg + "\n")
                 notification.setStatus(SyntheseRobot.HS)
                 exit(1)
+
+            exit(0)
 
             # set smoothie's A axis to 0 (nav turn wheels)
             response = smoothie.set_current_coordinates(A=0)
