@@ -1753,14 +1753,15 @@ def main():
 
 
 
-                    """move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
+                    if path_points[i][1] > 0 :
+                        move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
                                               config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification, 
-                                              path_points[i][1], True)"""
-
-                    navigation.NavigationV3.move_to_point(from_to, gps, vesc_engine, smoothie, logger_full, logger_table, 
+                                              path_points[i][1], True)
+                    else:
+                        navigation.NavigationV3.move_to_point(from_to, gps, vesc_engine, smoothie, logger_full, logger_table, 
                                                           report_field_names, trajectory_saver, nav, notification, path_points[i][1], True)
 
                     # save path progress (index of next point to move)
