@@ -10,7 +10,6 @@ import detection
 import cv2 as cv
 import math
 import adapters
-import navigation
 from config import config
 import time
 from pytz import timezone
@@ -308,7 +307,7 @@ def distribution_of_values(samples: list, mu, sigma):
 
 
 
-def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySaver,nav: navigation.GPSComputing, logger: Logger=None):
+def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySaver,nav, logger: Logger=None):
 
     #ORIGIN POINT SAVING
     lat = []     #latitude history
