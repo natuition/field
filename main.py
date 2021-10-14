@@ -145,7 +145,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
                               nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver, notification: NotificationClient, speed: float, wheels_straight: bool):
+                              image_saver: utility.ImageSaver, notification: NotificationClient, SI_speed: float, wheels_straight: bool):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -168,7 +168,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     :return:
     """
 
-    speed = speed*-14285
+    SI_speed = SI_speed*-14285
 
     raw_angles_history = []
     detections_period =[]
@@ -215,7 +215,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     # TODO: maybe should add sleep time as camera currently has delay
 
     if config.AUDIT_MODE:
-        vesc_engine.apply_rpm(speed)
+        vesc_engine.apply_rpm(SI_speed)
         vesc_engine.start_moving()
     
     extraction_manager = ExtractionManager(smoothie, camera, working_zone_polygon, working_zone_points_cv,
@@ -723,7 +723,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
                 break
 
-        extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode, speed)
+        extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode, SI_speed)
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -907,10 +907,10 @@ def build_bezier_path(abcd_points: list, nav: navigation.GPSComputing, logger: u
     c1, c2 = compute_x1_x2_points(c, d, nav, logger)
     d1, d2 = compute_x1_x2_points(d, a, nav, logger)
 
-    first_turn = compute_bezier_points(d2,a,a1)
-    second_turn = compute_bezier_points(a2,b,b1)
-    third_turn = compute_bezier_points(b2,c,c1)
-    fourth_turn = compute_bezier_points(c2,d,d1)
+    first_turn = compute_bezier_points(a2,b,b1)
+    second_turn = compute_bezier_points(b2,c,c1)
+    third_turn = compute_bezier_points(c2,d,d1)
+    fourth_turn = compute_bezier_points(d2,a,a1)
 
     for point in first_turn:
         # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
@@ -1048,16 +1048,30 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     fwd = SI_speed
     rev = - SI_speed
 
+    if config.AUDIT_MODE in config.SPIRAL_SIDES_INTERVAL: 
+        spiralSidesInterval = config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]
+    else:
+        msg = f"Boolean {config.AUDIT_MODE} isn't present in SPIRAL_SIDES_INTERVAL."
+        #print(msg)
+        logger.write(msg + "\n")   
+        return None
+
     # get moving points A1 - ... - D2 spiral
     a1, a2 = compute_x1_x2_points(a, b, nav, logger)
     b1, b2 = compute_x1_x2_points(b, c, nav, logger)
     c1, c2 = compute_x1_x2_points(c, d, nav, logger)
     d1, d2 = compute_x1_x2_points(d, a, nav, logger)
+    a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
+    d_spiral, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
-    first_bezier_turn = compute_bezier_points(d2,a,a1)
-    second_bezier_turn = compute_bezier_points(a2,b,b1)
-    third_bezier_turn = compute_bezier_points(b2,c,c1)
-    fourth_bezier_turn = compute_bezier_points(c2,d,d1)
+    if not add_points_to_path(path, [a, fwd]):
+        return path
+
+    first_bezier_turn = compute_bezier_points(a2,b,b1)
+    second_bezier_turn = compute_bezier_points(b2,c,c1)
+    third_bezier_turn = compute_bezier_points(c2,d,d1)
+    #fourth_bezier_turn = compute_bezier_points(d2,a,a1)
+    fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
 
 
     if config.AUDIT_MODE in config.MANEUVER_START_DISTANCE: 
@@ -1083,7 +1097,7 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         #the direction is given along with the point in meter per second, signed
         #go to line forward, step back to the turning point "a1"
 
-        if not add_points_to_path(path,[a,fwd,"A "+mxt]):#,[a1,rev,mxt]):
+        if not add_points_to_path(path,[b,fwd,"B "+mxt]):
             return path                                            
         for index in range(0,len(first_bezier_turn)):
             if index == 0:
@@ -1092,11 +1106,11 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             else:
                 if not add_points_to_path(path, [first_bezier_turn[index],fwd]):
                     return path
-        if not add_points_to_path(path,[a,rev,mxt]):
+        if not add_points_to_path(path,[b,rev,mxt]):
             return path 
 
 
-        if not add_points_to_path(path,[b,fwd,"B "+mxt]):
+        if not add_points_to_path(path,[c,fwd,"C "+mxt]):
             return path                                            
         for index in range(0,len(second_bezier_turn)):
             if index == 0:
@@ -1105,11 +1119,11 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             else:
                 if not add_points_to_path(path, [second_bezier_turn[index],fwd]):
                     return path
-        if not add_points_to_path(path, [b,rev,mxt] ):
+        if not add_points_to_path(path, [c,rev,mxt] ):
             return path  
 
 
-        if not add_points_to_path(path,[c,fwd,"C "+mxt]):
+        if not add_points_to_path(path,[d,fwd,"D "+mxt]):
             return path                                            
         for index in range(0,len(third_bezier_turn)):
             if index == 0:
@@ -1118,10 +1132,10 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             else:
                 if not add_points_to_path(path, [third_bezier_turn[index],fwd]):
                     return path
-        if not add_points_to_path(path, [c,rev,mxt] ):
+        if not add_points_to_path(path, [d,rev,mxt] ):
             return path 
 
-        if not add_points_to_path(path, [d,fwd,"D "+mxt]):
+        if not add_points_to_path(path, [a,fwd,"A "+mxt]):
             return path                                            
         for index in range(0,len(fourth_bezier_turn)):
             if index == 0:
@@ -1130,7 +1144,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             else:
                 if not add_points_to_path(path, [fourth_bezier_turn[index],fwd]):
                     return path
-        if not add_points_to_path(path, [d,rev,mxt] ):
+        #if not add_points_to_path(path, [a,rev,mxt] ):
+        if not add_points_to_path(path, [a_spiral,rev,mxt] ):
             return path 
 
         # get A'B'C'D' (prepare next ABCD points)
@@ -1157,15 +1172,18 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         b1, b2 = compute_x1_x2_points(b, c, nav, logger)
         c1, c2 = compute_x1_x2_points(c, d, nav, logger)
         d1, d2 = compute_x1_x2_points(d, a, nav, logger)
+        a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
+        d_spiral, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
         for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
             if point is None:
                 return path
 
-        first_bezier_turn = compute_bezier_points(d2,a,a1)
-        second_bezier_turn = compute_bezier_points(a2,b,b1)
-        third_bezier_turn = compute_bezier_points(b2,c,c1)
-        fourth_bezier_turn = compute_bezier_points(c2,d,d1)
+        first_bezier_turn = compute_bezier_points(a2,b,b1)
+        second_bezier_turn = compute_bezier_points(b2,c,c1)
+        third_bezier_turn = compute_bezier_points(c2,d,d1)
+        #fourth_bezier_turn = compute_bezier_points(d2,a,a1)
+        fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
 
     _break = False
 
@@ -1192,6 +1210,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         b1, b2 = compute_x1_x2_points(b, c, nav, logger)
         c1, c2 = compute_x1_x2_points(c, d, nav, logger)
         d1, d2 = compute_x1_x2_points(d, a, nav, logger)
+        a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
+        d_spiral, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
         for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
             if point is None:
@@ -1200,11 +1220,12 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
                     break
         if _break : 
             break
-
-        first_bezier_turn = compute_bezier_points(d2,a,a1)
-        second_bezier_turn = compute_bezier_points(a2,b,b1)
-        third_bezier_turn = compute_bezier_points(b2,c,c1)
-        fourth_bezier_turn = compute_bezier_points(c2,d,d1)
+        
+        first_bezier_turn = compute_bezier_points(a2,b,b1)
+        second_bezier_turn = compute_bezier_points(b2,c,c1)
+        third_bezier_turn = compute_bezier_points(c2,d,d1)
+        #fourth_bezier_turn = compute_bezier_points(d2,a,a1)
+        fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
 
         for point in first_bezier_turn:
             # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
@@ -1241,7 +1262,7 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
     if config.ADD_FORWARD_BACKWARD_PATH_TO_BEZIER_CORNER_PATH:
-        path = add_forward_backward_path([d, a, b, c], nav, logger, SI_speed, path)
+        path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed, path)
 
     return path
 
@@ -1642,8 +1663,6 @@ def main():
                 notification.setStatus(SyntheseRobot.HS)
                 exit(1)
 
-            exit(0)
-
             # set smoothie's A axis to 0 (nav turn wheels)
             response = smoothie.set_current_coordinates(A=0)
             if response != smoothie.RESPONSE_OK:
@@ -1685,7 +1704,10 @@ def main():
                 
                 
                 for i in range(path_start_index, len(path_points)):
-                    from_to = [path_points[i - 1], path_points[i]] 
+                    from_to = [path_points[i - 1][0], path_points[i][0]] 
+                    print(from_to)
+                    print(path_points[i][1])
+                    exit(0)
                     """
                     #start_dist1 = nav.get_distance(start_position, BRISACH)
                     #start_dist2 = nav.get_distance(start_position, EVIDENCE)
@@ -1736,7 +1758,7 @@ def main():
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
                                               config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification, 
-                                              config.VESC_RPM_SLOW, True)
+                                              path_points[i][1], True)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
