@@ -1768,6 +1768,13 @@ def main():
                                               config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification, 
                                               path_points[i][1], False)
                     else:
+                        if config.STOP_AND_WHEELS_STRAIGHT_BEFORE_MOVE_BACK :
+                            vesc_engine.stop_moving()
+                            response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+                            if response != smoothie.RESPONSE_OK: 
+                                msg = "Smoothie response is not ok: " + response
+                                print(msg)
+                                logger_full.write(msg + "\n")
                         navigation.NavigationV3.move_to_point(from_to, gps, vesc_engine, smoothie, logger_full, logger_table, 
                                                           report_field_names, trajectory_saver, nav, notification, path_points[i][1], False)
 
