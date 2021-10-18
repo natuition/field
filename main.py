@@ -168,7 +168,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     :return:
     """
 
-    SI_speed = SI_speed*-14285
+    vesc_speed = SI_speed*-14285
+    print(vesc_speed)
+    vesc_engine.apply_rpm(vesc_speed)
 
     raw_angles_history = []
     detections_period =[]
@@ -215,7 +217,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     # TODO: maybe should add sleep time as camera currently has delay
 
     if config.AUDIT_MODE:
-        vesc_engine.apply_rpm(SI_speed)
+        vesc_engine.apply_rpm(vesc_speed)
         vesc_engine.start_moving()
     
     extraction_manager = ExtractionManager(smoothie, camera, working_zone_polygon, working_zone_points_cv,
@@ -503,77 +505,79 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             KP = 0.2*0,55
             KI = 0.0092*0,91
 
-            if vesc_engine._rpm in config.KP:
-                KP = config.KP[vesc_engine._rpm]
+            if SI_speed in config.KP:
+                KP = config.KP[SI_speed]
             else:
-                msg = f"Vesc rpm {vesc_engine._rpm} not present in KP."
-                #print(msg)
+                msg = f"Speed SI {SI_speed} not present in KP."
+                if config.VERBOSE:
+                    print(msg)
                 logger_full.write(msg + "\n")
             
-            if vesc_engine._rpm in config.KI:
-                KI = config.KI[vesc_engine._rpm]
+            if SI_speed in config.KI:
+                KI = config.KI[SI_speed]
             else:
-                msg = f"Vesc rpm {vesc_engine._rpm} not present in KI."
-                #print(msg)
+                msg = f"Speed SI {SI_speed} not present in KI."
+                if config.VERBOSE:
+                    print(msg)
                 logger_full.write(msg + "\n")
 
             angle_kp_ki = raw_angle * KP + sum_angles * KI 
             
-            if vesc_engine._rpm in config.CLOSE_TARGET_THRESHOLD: #check that rpm configuration is present in CLOSE_TARGET_THRESHOLD
+            if SI_speed in config.CLOSE_TARGET_THRESHOLD: #check that rpm configuration is present in CLOSE_TARGET_THRESHOLD
 
-                if distance < config.CLOSE_TARGET_THRESHOLD[vesc_engine._rpm]:
+                if distance < config.CLOSE_TARGET_THRESHOLD[SI_speed]:
 
-                    if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
+                    if SI_speed in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
 
-                        if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
+                        if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[SI_speed]:
 
-                            if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
-                                angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
+                            if SI_speed in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
+                                angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[SI_speed]
 
                             else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_GAIN
-                                msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
+                                msg = f"Speed SI {SI_speed} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
                                 #print(msg)
                                 logger_full.write(msg + "\n")
                     
                     else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
-                        msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
+                        msg = f"Speed SI {SI_speed} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
                         #print(msg)
                         logger_full.write(msg + "\n")
 
-                    if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
+                    if SI_speed in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
 
-                        if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
+                        if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[SI_speed]:
 
-                            if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
-                                angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
+                            if SI_speed in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
+                                angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[SI_speed]
                                 
                             else: #rpm not present in BIG_RAW_ANGLE_SQUARE_GAIN
-                                msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
+                                msg = f"Speed SI {SI_speed} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
                                 #print(msg)
                                 logger_full.write(msg + "\n")
 
                     else: #rpm not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
-                        msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
+                        msg = f"Speed SI {SI_speed} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
                         #print(msg)
                         logger_full.write(msg + "\n")
 
             else: #rpm not present in CLOSE_TARGET_THRESHOLD
-                msg = f"Vesc rpm {vesc_engine._rpm} not present in CLOSE_TARGET_THRESHOLD."
+                msg = f"Speed SI {SI_speed} not present in CLOSE_TARGET_THRESHOLD."
                 #print(msg)
                 logger_full.write(msg + "\n")
 
-            if vesc_engine._rpm in config.FAR_TARGET_THRESHOLD: #check that rpm configuration is present in FAR_TARGET_THRESHOLD
-                if distance > config.FAR_TARGET_THRESHOLD[vesc_engine._rpm]:
+            if SI_speed in config.FAR_TARGET_THRESHOLD: #check that rpm configuration is present in FAR_TARGET_THRESHOLD
+                if distance > config.FAR_TARGET_THRESHOLD[SI_speed]:
 
-                    if vesc_engine._rpm in config.FAR_TARGET_GAIN: #check that rpm configuration is present in FAR_TARGET_GAIN
-                        angle_kp_ki *= config.FAR_TARGET_GAIN[vesc_engine._rpm]   
+                    if SI_speed in config.FAR_TARGET_GAIN: #check that rpm configuration is present in FAR_TARGET_GAIN
+                        angle_kp_ki *= config.FAR_TARGET_GAIN[SI_speed]   
                     else:
-                        msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_GAIN."
+                        msg = f"Speed SI {SI_speed} not present in FAR_TARGET_GAIN."
                         #print(msg)
                         logger_full.write(msg + "\n")  
 
             else:
-                msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_THRESHOLD."
+                msg = f"Speed SI {SI_speed} not present in FAR_TARGET_THRESHOLD."
                 #print(msg)
                 logger_full.write(msg + "\n")     
 
@@ -626,7 +630,10 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 logger_full.write(msg + "\n")
                 order_angle_sm = config.A_MIN
                 
-            response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
+            if SI_speed>=0:
+                response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
+            else:
+                response = smoothie.nav_turn_wheels_to(-order_angle_sm, config.A_F_MAX)
             if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                 msg = "Smoothie response is not ok: " + response
                 print(msg)
@@ -723,7 +730,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
                 break
 
-        extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode, SI_speed)
+        extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode, vesc_speed)
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -743,7 +750,7 @@ def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComput
     if config.AUDIT_MODE in config.MANEUVER_START_DISTANCE: 
         maneuverStartDistance = config.MANEUVER_START_DISTANCE[config.AUDIT_MODE]
     else:
-        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVER_START_DISTANCE."
+        msg = f"Speed SI {config.AUDIT_MODE} not present in MANEUVER_START_DISTANCE."
         #print(msg)
         logger.write(msg + "\n")   
         return None
@@ -778,7 +785,7 @@ def compute_x2_spiral(point_a: list, point_b: list, nav: navigation.GPSComputing
     if config.AUDIT_MODE in config.MANEUVER_START_DISTANCE: 
         maneuverStartDistance = config.MANEUVER_START_DISTANCE[config.AUDIT_MODE]
     else:
-        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVER_START_DISTANCE."
+        msg = f"Speed SI {config.AUDIT_MODE} not present in MANEUVER_START_DISTANCE."
         #print(msg)
         logger.write(msg + "\n")   
         return None
@@ -786,7 +793,7 @@ def compute_x2_spiral(point_a: list, point_b: list, nav: navigation.GPSComputing
     if config.AUDIT_MODE in config.SPIRAL_SIDES_INTERVAL: 
         spiralSidesInterval = config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]
     else:
-        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVSPIRAL_SIDES_INTERVALER_START_DISTANCE."
+        msg = f"Speed SI {config.AUDIT_MODE} not present in MANEUVSPIRAL_SIDES_INTERVALER_START_DISTANCE."
         #print(msg)
         logger.write(msg + "\n")  
         return None
@@ -818,7 +825,7 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
     if config.AUDIT_MODE in config.SPIRAL_SIDES_INTERVAL: 
         spiralSidesInterval = config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]
     else:
-        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVSPIRAL_SIDES_INTERVALER_START_DISTANCE."
+        msg = f"Speed SI {config.AUDIT_MODE} not present in MANEUVSPIRAL_SIDES_INTERVALER_START_DISTANCE."
         #print(msg)
         logger.write(msg + "\n")  
         return None
@@ -852,7 +859,7 @@ def compute_x1_x2_int_points_bend(point_a: list, point_b: list, nav: navigation.
     """if config.AUDIT_MODE in config.SPIRAL_SIDES_INTERVAL: 
         spiralSidesInterval = config.SPIRAL_SIDES_INTERVAL[config.AUDIT_MODE]
     else:
-        msg = f"Vesc rpm {config.AUDIT_MODE} not present in MANEUVSPIRAL_SIDES_INTERVALER_START_DISTANCE."
+        msg = f"Speed SI {config.AUDIT_MODE} not present in MANEUVSPIRAL_SIDES_INTERVALER_START_DISTANCE."
         #print(msg)
         logger.write(msg + "\n")  
         return None
@@ -1615,10 +1622,10 @@ def main():
                         path_points = build_path(field_gps_coords, nav, logger_full)
                     #path_points = build_bezier_path(field_gps_coords, nav, logger_full)
                     if config.BEZIER_CORNER_PATH:
-                        path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, 0.175)
+                        path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, config.VESC_RPM_SLOW_SI)
                     if config.JUST_FORWARD_BACKWARD_PATH:
                         a,b,c,d = field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]
-                        path_points = add_forward_backward_path([d,a,b,c], nav, logger_full, 0.175, [])
+                        path_points = add_forward_backward_path([d,a,b,c], nav, logger_full, config.VESC_RPM_SLOW_SI, [])
                     
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
@@ -1759,10 +1766,10 @@ def main():
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
                                               config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification, 
-                                              path_points[i][1], True)
+                                              path_points[i][1], False)
                     else:
                         navigation.NavigationV3.move_to_point(from_to, gps, vesc_engine, smoothie, logger_full, logger_table, 
-                                                          report_field_names, trajectory_saver, nav, notification, path_points[i][1], True)
+                                                          report_field_names, trajectory_saver, nav, notification, path_points[i][1], False)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
