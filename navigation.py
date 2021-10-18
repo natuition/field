@@ -452,7 +452,9 @@ class NavigationV3:
         :return:
         """
 
-        SI_speed = SI_speed*-14285
+        vesc_speed = SI_speed*-14285
+        print(vesc_speed)
+        vesc_engine.apply_rpm(vesc_speed)
 
         raw_angles_history = []
         detections_period =[]
@@ -497,7 +499,7 @@ class NavigationV3:
         # TODO: maybe should add sleep time as camera currently has delay
 
         if config.AUDIT_MODE:
-            vesc_engine.apply_rpm(SI_speed)
+            vesc_engine.apply_rpm(vesc_speed)
             vesc_engine.start_moving()
 
         msgQueue, notificationQueue = None, None
@@ -764,77 +766,77 @@ class NavigationV3:
                 KP = 0.2*0,55
                 KI = 0.0092*0,91
 
-                if vesc_engine._rpm in config.KP:
-                    KP = config.KP[vesc_engine._rpm]
+                if SI_speed in config.KP:
+                    KP = config.KP[SI_speed]
                 else:
-                    msg = f"Vesc rpm {vesc_engine._rpm} not present in KP."
+                    msg = f"Speed SI {SI_speed} not present in KP."
                     #print(msg)
                     logger_full.write(msg + "\n")
                 
-                if vesc_engine._rpm in config.KI:
-                    KI = config.KI[vesc_engine._rpm]
+                if SI_speed in config.KI:
+                    KI = config.KI[SI_speed]
                 else:
-                    msg = f"Vesc rpm {vesc_engine._rpm} not present in KI."
+                    msg = f"Speed SI {SI_speed} not present in KI."
                     #print(msg)
                     logger_full.write(msg + "\n")
 
                 angle_kp_ki = raw_angle * KP + sum_angles * KI 
                 
-                if vesc_engine._rpm in config.CLOSE_TARGET_THRESHOLD: #check that rpm configuration is present in CLOSE_TARGET_THRESHOLD
+                if SI_speed in config.CLOSE_TARGET_THRESHOLD: #check that rpm configuration is present in CLOSE_TARGET_THRESHOLD
 
-                    if distance < config.CLOSE_TARGET_THRESHOLD[vesc_engine._rpm]:
+                    if distance < config.CLOSE_TARGET_THRESHOLD[SI_speed]:
 
-                        if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
+                        if SI_speed in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
 
-                            if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
+                            if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[SI_speed]:
 
-                                if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
-                                    angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
+                                if SI_speed in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
+                                    angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[SI_speed]
 
                                 else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_GAIN
-                                    msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
+                                    msg = f"Speed SI {SI_speed} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
                                     #print(msg)
                                     logger_full.write(msg + "\n")
                         
                         else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
-                            msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
+                            msg = f"Speed SI {SI_speed} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
                             #print(msg)
                             logger_full.write(msg + "\n")
 
-                        if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
+                        if SI_speed in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
 
-                            if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
+                            if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[SI_speed]:
 
-                                if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
-                                    angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
+                                if SI_speed in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
+                                    angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[SI_speed]
                                     
                                 else: #rpm not present in BIG_RAW_ANGLE_SQUARE_GAIN
-                                    msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
+                                    msg = f"Speed SI {SI_speed} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
                                     #print(msg)
                                     logger_full.write(msg + "\n")
 
                         else: #rpm not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
-                            msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
+                            msg = f"Speed SI {SI_speed} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
                             #print(msg)
                             logger_full.write(msg + "\n")
 
                 else: #rpm not present in CLOSE_TARGET_THRESHOLD
-                    msg = f"Vesc rpm {vesc_engine._rpm} not present in CLOSE_TARGET_THRESHOLD."
+                    msg = f"Speed SI {SI_speed} not present in CLOSE_TARGET_THRESHOLD."
                     #print(msg)
                     logger_full.write(msg + "\n")
 
-                if vesc_engine._rpm in config.FAR_TARGET_THRESHOLD: #check that rpm configuration is present in FAR_TARGET_THRESHOLD
-                    if distance > config.FAR_TARGET_THRESHOLD[vesc_engine._rpm]:
+                if SI_speed in config.FAR_TARGET_THRESHOLD: #check that rpm configuration is present in FAR_TARGET_THRESHOLD
+                    if distance > config.FAR_TARGET_THRESHOLD[SI_speed]:
 
-                        if vesc_engine._rpm in config.FAR_TARGET_GAIN: #check that rpm configuration is present in FAR_TARGET_GAIN
-                            angle_kp_ki *= config.FAR_TARGET_GAIN[vesc_engine._rpm]   
+                        if SI_speed in config.FAR_TARGET_GAIN: #check that rpm configuration is present in FAR_TARGET_GAIN
+                            angle_kp_ki *= config.FAR_TARGET_GAIN[SI_speed]   
                         else:
-                            msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_GAIN."
+                            msg = f"Speed SI {SI_speed} not present in FAR_TARGET_GAIN."
                             #print(msg)
                             logger_full.write(msg + "\n")  
 
                 else:
-                    msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_THRESHOLD."
+                    msg = f"Speed SI {SI_speed} not present in FAR_TARGET_THRESHOLD."
                     #print(msg)
                     logger_full.write(msg + "\n")     
 
@@ -885,8 +887,10 @@ class NavigationV3:
                     # print(msg)
                     logger_full.write(msg + "\n")
                     order_angle_sm = config.A_MIN
-                    
-                response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
+                if SI_speed>=0:
+                    response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
+                else:
+                    response = smoothie.nav_turn_wheels_to(-order_angle_sm, config.A_F_MAX)
                 if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                     msg = "Smoothie response is not ok: " + response
                     print(msg)
