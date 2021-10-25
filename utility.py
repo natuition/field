@@ -322,8 +322,8 @@ def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySav
             msg = f"Get {i+1}/{config.ORIGIN_AVERAGE_SAMPLES} point in {time.time()-prev_maneuver_time} for average_point."
             if logger is not None:
                 logger.write_and_flush(msg+"\n")
-            if config.VERBOSE:
-                print(msg)
+            #if config.VERBOSE:
+            #    print(msg)
         except TimeoutError:
             msg = f"Erro waiting time too long for the {i+1} point in average_point !"
             if logger is not None:

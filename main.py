@@ -145,7 +145,8 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
                               nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver, notification: NotificationClient, SI_speed: float, wheels_straight: bool):
+                              image_saver: utility.ImageSaver, notification: NotificationClient, SI_speed: float, wheels_straight: bool,
+                              next_point: list = None):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -169,7 +170,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     """
 
     vesc_speed = SI_speed*-14285
-    print(vesc_speed)
     vesc_engine.apply_rpm(vesc_speed)
 
     raw_angles_history = []
@@ -192,7 +192,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
     lastNtripRestart = time.time()
 
-    pierre_vitesse=1    # metre par seconde
+    pierre_vitesse=SI_speed    # metre par seconde
     latprec=0
     longprec=0
     latB = coords_from_to[1][0]
@@ -344,22 +344,41 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
             # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
             if side != 1:  # TODO: maybe should use both side and distance checking methods at once
-                vesc_engine.stop_moving()
-                # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-                msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
-                # print(msg)
-                logger_full.write(msg + "\n")
-                
-                #put the wheel straight
-                if wheels_straight:
-                    response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
-                    if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                        msg = "Smoothie response is not ok: " + response
-                        print(msg)
+                if isinstance(next_point,list) and config.TREAT_SEVERAL_POINT:
+                    if next_point[-1] == coords_from_to[1]:
+                        vesc_engine.stop_moving()
+                        # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
+                        msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
+                        # print(msg)
                         logger_full.write(msg + "\n")
-                
-                break
-
+                        
+                        #put the wheel straight
+                        if wheels_straight:
+                            response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+                            if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                                msg = "Smoothie response is not ok: " + response
+                                print(msg)
+                                logger_full.write(msg + "\n")
+                        break
+                    else:
+                        coords_from_to[0] = coords_from_to[1]
+                        coords_from_to[1] = coords_from_to[coords_from_to.index(coords_from_to[0])+1]
+                else:
+                    vesc_engine.stop_moving()
+                    # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
+                    msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
+                    # print(msg)
+                    logger_full.write(msg + "\n")
+                    
+                    #put the wheel straight
+                    if wheels_straight:
+                        response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+                        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                            msg = "Smoothie response is not ok: " + response
+                            print(msg)
+                            logger_full.write(msg + "\n")
+                    break
+                    
             
             # reduce speed if near the target point
             if config.USE_SPEED_LIMIT:
@@ -424,7 +443,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             else :
                 pierre_angle = math.pi/2
 
-            print("pierre_angle",pierre_angle)
+            #print("pierre_angle",pierre_angle)
             
             new_foreseen_point = list()
             new_foreseen_point.append(latnew)
@@ -435,7 +454,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
             pierre_error = nav.get_distance(new_foreseen_point, cur_pos)
 
-            print("pierre_error",pierre_error)
+            #print("pierre_error",pierre_error)
 
 
         
@@ -505,82 +524,38 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             KP = 0.2*0,55
             KI = 0.0092*0,91
 
-            if SI_speed in config.KP:
-                KP = config.KP[SI_speed]
-            else:
-                msg = f"Speed SI {SI_speed} not present in KP."
-                if config.VERBOSE:
-                    print(msg)
-                logger_full.write(msg + "\n")
-            
-            if SI_speed in config.KI:
-                KI = config.KI[SI_speed]
-            else:
-                msg = f"Speed SI {SI_speed} not present in KI."
-                if config.VERBOSE:
-                    print(msg)
-                logger_full.write(msg + "\n")
+            KP = getSpeedDependentConfigParam(config.KP, SI_speed, "KP", logger_full)
+            KI = getSpeedDependentConfigParam(config.KI, SI_speed, "KI", logger_full)
 
             angle_kp_ki = raw_angle * KP + sum_angles * KI 
             
-            if SI_speed in config.CLOSE_TARGET_THRESHOLD: #check that rpm configuration is present in CLOSE_TARGET_THRESHOLD
-
-                if distance < config.CLOSE_TARGET_THRESHOLD[SI_speed]:
-
-                    if SI_speed in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
-
-                        if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[SI_speed]:
-
-                            if SI_speed in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
-                                angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[SI_speed]
-
-                            else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_GAIN
-                                msg = f"Speed SI {SI_speed} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
-                                #print(msg)
-                                logger_full.write(msg + "\n")
+            CLOSE_TARGET_THRESHOLD = getSpeedDependentConfigParam(config.CLOSE_TARGET_THRESHOLD, SI_speed, "CLOSE_TARGET_THRESHOLD", logger_full)
+            
+            if distance < CLOSE_TARGET_THRESHOLD:
+                
+                SMALL_RAW_ANGLE_SQUARE_THRESHOLD = getSpeedDependentConfigParam(config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD, SI_speed, "SMALL_RAW_ANGLE_SQUARE_THRESHOLD", logger_full)
+                
+                if (raw_angle * raw_angle) < SMALL_RAW_ANGLE_SQUARE_THRESHOLD:
                     
-                    else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
-                        msg = f"Speed SI {SI_speed} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
-                        #print(msg)
-                        logger_full.write(msg + "\n")
+                    SMALL_RAW_ANGLE_SQUARE_GAIN = getSpeedDependentConfigParam(config.SMALL_RAW_ANGLE_SQUARE_GAIN, SI_speed, "SMALL_RAW_ANGLE_SQUARE_GAIN", logger_full)
+                    
+                    angle_kp_ki *= SMALL_RAW_ANGLE_SQUARE_GAIN
 
-                    if SI_speed in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
+                    BIG_RAW_ANGLE_SQUARE_THRESHOLD = getSpeedDependentConfigParam(config.BIG_RAW_ANGLE_SQUARE_THRESHOLD, SI_speed, "BIG_RAW_ANGLE_SQUARE_THRESHOLD", logger_full)
 
-                        if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[SI_speed]:
+                    if (raw_angle * raw_angle) > BIG_RAW_ANGLE_SQUARE_THRESHOLD:
 
-                            if SI_speed in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
-                                angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[SI_speed]
-                                
-                            else: #rpm not present in BIG_RAW_ANGLE_SQUARE_GAIN
-                                msg = f"Speed SI {SI_speed} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
-                                #print(msg)
-                                logger_full.write(msg + "\n")
+                        BIG_RAW_ANGLE_SQUARE_GAIN = getSpeedDependentConfigParam(config.BIG_RAW_ANGLE_SQUARE_GAIN, SI_speed, "BIG_RAW_ANGLE_SQUARE_GAIN", logger_full)
 
-                    else: #rpm not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
-                        msg = f"Speed SI {SI_speed} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
-                        #print(msg)
-                        logger_full.write(msg + "\n")
+                        angle_kp_ki *= BIG_RAW_ANGLE_SQUARE_GAIN
 
-            else: #rpm not present in CLOSE_TARGET_THRESHOLD
-                msg = f"Speed SI {SI_speed} not present in CLOSE_TARGET_THRESHOLD."
-                #print(msg)
-                logger_full.write(msg + "\n")
 
-            if SI_speed in config.FAR_TARGET_THRESHOLD: #check that rpm configuration is present in FAR_TARGET_THRESHOLD
-                if distance > config.FAR_TARGET_THRESHOLD[SI_speed]:
+            FAR_TARGET_THRESHOLD = getSpeedDependentConfigParam(config.FAR_TARGET_THRESHOLD, SI_speed, "FAR_TARGET_THRESHOLD", logger_full)
 
-                    if SI_speed in config.FAR_TARGET_GAIN: #check that rpm configuration is present in FAR_TARGET_GAIN
-                        angle_kp_ki *= config.FAR_TARGET_GAIN[SI_speed]   
-                    else:
-                        msg = f"Speed SI {SI_speed} not present in FAR_TARGET_GAIN."
-                        #print(msg)
-                        logger_full.write(msg + "\n")  
-
-            else:
-                msg = f"Speed SI {SI_speed} not present in FAR_TARGET_THRESHOLD."
-                #print(msg)
-                logger_full.write(msg + "\n")     
-
+            if distance > FAR_TARGET_THRESHOLD:
+                
+                FAR_TARGET_GAIN = getSpeedDependentConfigParam(config.FAR_TARGET_GAIN, SI_speed, "FAR_TARGET_GAIN", logger_full)
+                angle_kp_ki *= FAR_TARGET_GAIN  
 
 
             target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
@@ -732,6 +707,16 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
         extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode, vesc_speed)
 
+
+def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: str, logger_full: utility.Logger):
+    if SI_speed in configParam:
+        return configParam[SI_speed]
+    else:
+        msg = f"Speed SI {SI_speed} not present in {paramName}."
+        if config.VERBOSE:
+            print(msg)
+        logger_full.write(msg + "\n")
+        exit(1)
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
     """
@@ -1707,13 +1692,35 @@ def main():
                 TROUVE = [46.13402132, -1.1228246000006645, '1']
                 BRISACH = [46.15437552, -1.118523500000007, '1']
                 EVIDENCE = [46.15457596, -1.118661520000015, '1']
+
+                PT_MARSEILLE_VESTIAIRE = [[46.1577717, -1.1348277], -0.175]
+                PT_MARSEILLE_LYCEE = [[46.1576583, -1.1351262], 0.175]
+                #PT_MARSEILLE_PARKING = [[46.158097, -1.1331085], -0.175]
+                #PT_MARSEILLE_AUBERGE = [[46.1581155, -1.1328618], 0.175]
                 
-                
+                last_direction_of_travel = None #1 -> moving forward #-1 -> moving backward
+
+                arriere = True
                 
                 for i in range(path_start_index, len(path_points)):
                     from_to = [path_points[i - 1][0], path_points[i][0]] 
-                    print(from_to)
-                    print(path_points[i][1])
+
+                    if not arriere:
+                        from_to = [PT_MARSEILLE_VESTIAIRE[0], PT_MARSEILLE_LYCEE[0]] 
+                    else:
+                        from_to = [PT_MARSEILLE_LYCEE[0], PT_MARSEILLE_VESTIAIRE[0]] 
+
+                    #from_to = [PT_MARSEILLE_AUBERGE[0], PT_MARSEILLE_PARKING[0]] 
+                    #from_to = [PT_MARSEILLE_PARKING[0], PT_MARSEILLE_AUBERGE[0]] 
+
+                    speed = path_points[i][1]
+
+                    if not arriere:
+                        speed = PT_MARSEILLE_LYCEE[1]
+                    else:
+                        speed = PT_MARSEILLE_VESTIAIRE[1]
+                    #speed = PT_MARSEILLE_PARKING[1]
+                    #speed = PT_MARSEILLE_AUBERGE[1]
                     
                     """
                     #start_dist1 = nav.get_distance(start_position, BRISACH)
@@ -1758,25 +1765,34 @@ def main():
                     # print(msg)
                     logger_full.write(msg + "\n\n")
 
+                    if last_direction_of_travel is None:
+                        last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
+                    
+                    direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
 
-
-                    if path_points[i][1] > 0 :
-                        move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
-                                              precise_detector, client, logger_full, logger_table, report_field_names,
-                                              trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
-                                              working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
-                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification, 
-                                              path_points[i][1], False)
-                    else:
-                        if config.STOP_AND_WHEELS_STRAIGHT_BEFORE_MOVE_BACK :
+                    if config.WHEELS_STRAIGHT_CAHNGE_DIRECTION_OF_TRAVEL and direction_of_travel != last_direction_of_travel:
                             vesc_engine.stop_moving()
                             response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
                             if response != smoothie.RESPONSE_OK: 
                                 msg = "Smoothie response is not ok: " + response
                                 print(msg)
                                 logger_full.write(msg + "\n")
+                            smoothie.wait_for_all_actions_done()
+
+                    if speed > 0 :
+                        move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
+                                              precise_detector, client, logger_full, logger_table, report_field_names,
+                                              trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
+                                              working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification, 
+                                              speed, False)
+                    else:
                         navigation.NavigationV3.move_to_point(from_to, gps, vesc_engine, smoothie, logger_full, logger_table, 
-                                                          report_field_names, trajectory_saver, nav, notification, path_points[i][1], False)
+                                                          report_field_names, trajectory_saver, nav, notification, speed, False)
+
+                    break
+                    
+                    last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)

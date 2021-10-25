@@ -435,7 +435,7 @@ class NavigationV3:
     def move_to_point(coords_from_to: list, gps: adapters.GPSUbloxAdapter, vesc_engine: adapters.VescAdapter,
                         smoothie: adapters.SmoothieAdapter, logger_full: utility.Logger, logger_table: utility.Logger, 
                         report_field_names, trajectory_saver: utility.TrajectorySaver, nav: GPSComputing, 
-                        notification: NotificationClient, SI_speed: float, wheels_straight: bool):
+                        notification: NotificationClient, SI_speed: float, wheels_straight: bool, next_point: list = None):
         """
         Moves to the given target point and extracts all weeds on the way.
         :param coords_from_to:
@@ -453,7 +453,6 @@ class NavigationV3:
         """
 
         vesc_speed = SI_speed*-14285
-        print(vesc_speed)
         vesc_engine.apply_rpm(vesc_speed)
 
         raw_angles_history = []
@@ -474,7 +473,7 @@ class NavigationV3:
 
         lastNtripRestart = time.time()
 
-        pierre_vitesse=1    # metre par seconde
+        pierre_vitesse=SI_speed    # metre par seconde
         latprec=0
         longprec=0
         latB = coords_from_to[1][0]
@@ -608,21 +607,40 @@ class NavigationV3:
                 _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
                 # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
                 if side != 1:  # TODO: maybe should use both side and distance checking methods at once
-                    vesc_engine.stop_moving()
-                    # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-                    msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
-                    # print(msg)
-                    logger_full.write(msg + "\n")
-                    
-                    #put the wheel straight
-                    if wheels_straight:
-                        response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
-                        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                            msg = "Smoothie response is not ok: " + response
-                            print(msg)
+                    if isinstance(next_point,list) and config.TREAT_SEVERAL_POINT:
+                        if next_point[-1] == coords_from_to[1]:
+                            vesc_engine.stop_moving()
+                            # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
+                            msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
+                            # print(msg)
                             logger_full.write(msg + "\n")
-                    
-                    break
+                            
+                            #put the wheel straight
+                            if wheels_straight:
+                                response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+                                if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                                    msg = "Smoothie response is not ok: " + response
+                                    print(msg)
+                                    logger_full.write(msg + "\n")
+                            break
+                        else:
+                            coords_from_to[0] = coords_from_to[1]
+                            coords_from_to[1] = coords_from_to[coords_from_to.index(coords_from_to[0])+1]
+                    else:
+                        vesc_engine.stop_moving()
+                        # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
+                        msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
+                        # print(msg)
+                        logger_full.write(msg + "\n")
+                        
+                        #put the wheel straight
+                        if wheels_straight:
+                            response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+                            if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                                msg = "Smoothie response is not ok: " + response
+                                print(msg)
+                                logger_full.write(msg + "\n")
+                        break
 
                 
                 # reduce speed if near the target point
@@ -688,7 +706,7 @@ class NavigationV3:
                 else :
                     pierre_angle = math.pi/2
 
-                print("pierre_angle",pierre_angle)
+                #print("pierre_angle",pierre_angle)
                 
                 new_foreseen_point = list()
                 new_foreseen_point.append(latnew)
@@ -699,7 +717,7 @@ class NavigationV3:
 
                 pierre_error = nav.get_distance(new_foreseen_point, cur_pos)
 
-                print("pierre_error",pierre_error)
+                #print("pierre_error",pierre_error)
 
 
             
