@@ -531,7 +531,7 @@ class NavigationV3:
                     if degraded_navigation_mode:
                         vesc_engine.stop_moving()
                     
-                    cur_pos = gps.get_fresh_position()
+                    cur_pos = gps.get_last_position()
                 
                     if degraded_navigation_mode and notificationQueue is not None:                    
                         notificationQueue.send(json.dumps({"message_name": "Degraded_navigation_mode_off"}))
