@@ -145,8 +145,9 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                               trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
                               nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver, notification: NotificationClient, SI_speed: float, wheels_straight: bool,
-                              next_point: list = None):
+                              image_saver: utility.ImageSaver, notification: NotificationClient, SI_speed: float, 
+                              wheels_straight: bool):
+                              #next_point: list = None):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -344,7 +345,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
             # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
             if side != 1:  # TODO: maybe should use both side and distance checking methods at once
-                if isinstance(next_point,list) and config.TREAT_SEVERAL_POINT:
+                """if isinstance(next_point,list) and config.TREAT_SEVERAL_POINT:
                     if next_point[-1] == coords_from_to[1]:
                         vesc_engine.stop_moving()
                         # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
@@ -363,21 +364,21 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                     else:
                         coords_from_to[0] = coords_from_to[1]
                         coords_from_to[1] = coords_from_to[coords_from_to.index(coords_from_to[0])+1]
-                else:
-                    vesc_engine.stop_moving()
-                    # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-                    msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
-                    # print(msg)
-                    logger_full.write(msg + "\n")
-                    
-                    #put the wheel straight
-                    if wheels_straight:
-                        response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
-                        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                            msg = "Smoothie response is not ok: " + response
-                            print(msg)
-                            logger_full.write(msg + "\n")
-                    break
+                else:"""
+                vesc_engine.stop_moving()
+                # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
+                msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
+                # print(msg)
+                logger_full.write(msg + "\n")
+                
+                #put the wheel straight
+                if wheels_straight:
+                    response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+                    if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                        msg = "Smoothie response is not ok: " + response
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                break
                     
             
             # reduce speed if near the target point
