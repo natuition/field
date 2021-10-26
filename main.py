@@ -1,6 +1,7 @@
 """Spiral movement, detection and extraction over given by ABCD points area"""
 
 import os
+import sys
 import adapters
 import navigation
 from config import config
@@ -345,26 +346,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
             # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
             if side != 1:  # TODO: maybe should use both side and distance checking methods at once
-                """if isinstance(next_point,list) and config.TREAT_SEVERAL_POINT:
-                    if next_point[-1] == coords_from_to[1]:
-                        vesc_engine.stop_moving()
-                        # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-                        msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
-                        # print(msg)
-                        logger_full.write(msg + "\n")
-                        
-                        #put the wheel straight
-                        if wheels_straight:
-                            response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
-                            if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                                msg = "Smoothie response is not ok: " + response
-                                print(msg)
-                                logger_full.write(msg + "\n")
-                        break
-                    else:
-                        coords_from_to[0] = coords_from_to[1]
-                        coords_from_to[1] = coords_from_to[coords_from_to.index(coords_from_to[0])+1]
-                else:"""
                 vesc_engine.stop_moving()
                 # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
                 msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
@@ -1688,79 +1669,29 @@ def main():
                 except:
                     pass
                 
-                GARAGE = [46.1336841, -1.1226950200000294, '1']
-                SQUARE = [46.13394686, -1.1225468000000054, '1']
-                TROUVE = [46.13402132, -1.1228246000006645, '1']
-                BRISACH = [46.15437552, -1.118523500000007, '1']
-                EVIDENCE = [46.15457596, -1.118661520000015, '1']
-
-                PT_MARSEILLE_VESTIAIRE = [[46.1577717, -1.1348277], -0.175]
-                PT_MARSEILLE_LYCEE = [[46.1576583, -1.1351262], 0.175]
-                #PT_MARSEILLE_PARKING = [[46.158097, -1.1331085], -0.175]
-                #PT_MARSEILLE_AUBERGE = [[46.1581155, -1.1328618], 0.175]
-                
                 last_direction_of_travel = None #1 -> moving forward #-1 -> moving backward
 
-                arriere = True
+                if config.NAVIGATION_TEST_MODE:
+                    path_end_index = sys.maxsize
+                else:
+                    path_end_index = len(path_points)
                 
-                for i in range(path_start_index, len(path_points)):
-                    from_to = [path_points[i - 1][0], path_points[i][0]] 
+                for i in range(path_start_index, path_end_index):
+                    
+                    if config.NAVIGATION_TEST_MODE:
+                        dist_here_point_a = nav.get_distance(start_position, config.POINT_A)
+                        dist_here_point_b = nav.get_distance(start_position, config.POINT_B)
 
-                    if not arriere:
-                        from_to = [PT_MARSEILLE_VESTIAIRE[0], PT_MARSEILLE_LYCEE[0]] 
+                        if dist_here_point_a>dist_here_point_b:
+                            from_to = [config.POINT_B[0], config.POINT_A[0]]
+                            speed = config.POINT_A[1]
+                        else:
+                            from_to = [config.POINT_A[0], config.POINT_B[0]]
+                            speed = config.POINT_B[1]
+                            
                     else:
-                        from_to = [PT_MARSEILLE_LYCEE[0], PT_MARSEILLE_VESTIAIRE[0]] 
-
-                    #from_to = [PT_MARSEILLE_AUBERGE[0], PT_MARSEILLE_PARKING[0]] 
-                    #from_to = [PT_MARSEILLE_PARKING[0], PT_MARSEILLE_AUBERGE[0]] 
-
-                    speed = path_points[i][1]
-
-                    if not arriere:
-                        speed = PT_MARSEILLE_LYCEE[1]
-                    else:
-                        speed = PT_MARSEILLE_VESTIAIRE[1]
-                    #speed = PT_MARSEILLE_PARKING[1]
-                    #speed = PT_MARSEILLE_AUBERGE[1]
-                    
-                    """
-                    #start_dist1 = nav.get_distance(start_position, BRISACH)
-                    #start_dist2 = nav.get_distance(start_position, EVIDENCE)
-                    #start_dist1 = nav.get_distance(start_position, GARAGE)
-                    #start_dist2 = nav.get_distance(start_position, SQUARE)
-                    start_dist1 = nav.get_distance(start_position, TROUVE)
-                    start_dist2 = nav.get_distance(start_position, SQUARE)
-                    
-                    
-                    #print("distance to brisach",start_dist1)
-                    #print("distance to evidence",start_dist2)
-                    #print("distance to GARAGE",start_dist1)
-                    print("distance to TROUVE",start_dist1)
-                    print("distance to SQUARE",start_dist2)
-                    
-                    
-                    #from_to = [GARAGE, SQUARE]
-                    #from_to = [SQUARE, GARAGE]
-                    #from_to = [EVIDENCE, BRISACH]
-                    if start_dist1>start_dist2:
-                        #from_to = [EVIDENCE, BRISACH]
-                        #from_to = [SQUARE, GARAGE]
-                        from_to = [SQUARE, TROUVE]
-                    else:
-                        #from_to = [BRISACH, EVIDENCE]
-                        #from_to = [GARAGE, SQUARE]
-                        from_to = [TROUVE, SQUARE]
-                          
-                    """
-                    
-                    from_to_dist = nav.get_distance(from_to[0], from_to[1])
-                    
-                    """
-
-                    msg = "Current movement vector: " + str(from_to) + " Vector size: " + str(from_to_dist)
-                    # print(msg)
-                    logger_full.write(msg + "\n\n")
-                    """
+                        from_to = [path_points[i - 1][0], path_points[i][0]] 
+                        speed = path_points[i][1]
 
                     msg = "KP: " + str(config.KP) + " KI: " + str(config.KI) + " VESC_RPM_FAST: " + str(config.VESC_RPM_FAST)+" SMALL_RAW_ANGLE_SQUARE_GAIN: " + str(config.SMALL_RAW_ANGLE_SQUARE_GAIN)
                     # print(msg)
@@ -1791,7 +1722,11 @@ def main():
                         navigation.NavigationV3.move_to_point(from_to, gps, vesc_engine, smoothie, logger_full, logger_table, 
                                                           report_field_names, trajectory_saver, nav, notification, speed, False)
 
-                    break
+
+                    if config.NAVIGATION_TEST_MODE:
+                        test_continue = input("Press enter to restart the test, type anything to exit.")
+                        if test_continue != "":
+                            break
                     
                     last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
 
