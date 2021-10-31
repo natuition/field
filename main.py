@@ -356,7 +356,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 logger_full.write(msg + "\n")
             else:
                 # save wheels angle
-                with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
+                with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
                     wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
             break
 
@@ -623,7 +623,7 @@ def move_to_point_and_extract(coords_from_to: list,
             logger_full.write(msg + "\n")
         else:
             # save wheels angle
-            with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
+            with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
                 wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
 
         raw_angle = round(raw_angle, 2)
