@@ -15,6 +15,7 @@ from config import config
 import time
 from pytz import timezone
 
+
 class ImageSaver:
     """
     Implements flexible ways to save images and detected objects on them
@@ -48,10 +49,12 @@ class ImageSaver:
         if specific_name:
             file_name = specific_name
         else:
-            file_name = get_current_time() + sep + str(self.__counter)
+            file_name = get_current_time()[:-3] + sep + str(self.__counter)
             self.__counter += 1
             if label:
                 file_name += sep + label
+
+        file_name = file_name.replace(" ","_")
 
         # save image
         cv.imwrite(directory + file_name + "." + extension, image)
@@ -63,14 +66,37 @@ class ImageSaver:
                 for plant_box in plants_boxes:
                     txt_file.write(plant_box.get_as_yolo(return_as_text=True) + "\n")
 
+    @staticmethod
+    def draw_data_in_frame(frame, undistorted_zone_radius=None, poly_zone_points_cv=None, pdz_cv_rect=None, plants_boxes=None):
+        if undistorted_zone_radius is not None:
+            frame = ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius, (255, 40, 162))
+            frame = ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, 5, (255, 40, 162), -1)
+        if poly_zone_points_cv is not None:
+            frame = ImageSaver.draw_zone_poly(frame, poly_zone_points_cv, (255, 0, 0))
+        if plants_boxes is not None:
+            frame = detection.draw_boxes(frame, plants_boxes)
+        if pdz_cv_rect is not None:
+            frame = cv.rectangle(frame, pdz_cv_rect[0], pdz_cv_rect[1], (16, 127, 237), 3)
+        return frame
+
+    @staticmethod
+    def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius, color=(0, 0, 255), thickness=3):
+        """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
+        return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, color, thickness=thickness)
+
+    @staticmethod
+    def draw_zone_poly(image, np_poly_points, color=(0, 0, 255)):
+        """Draws received polygon on image. Used for drawing working zone edges on photo"""
+        return cv.polylines(image, [np_poly_points], isClosed=True, color=color, thickness=5)
+
 
 class TrajectorySaver:
     """Provides safe gps points saving (robot's trajectory)"""
 
-    def __init__(self, full_path):
+    def __init__(self, full_path, append_file=False):
         self.__full_path = full_path
-        self.__output_file = open(full_path, "w")
         self.__last_received_point = None
+        self.__output_file = open(full_path, "a" if append_file else "w")
 
     def __enter__(self):
         return self
@@ -185,8 +211,8 @@ class Logger:
     Writes into the file with specified name str data, flushing data on each receiving
     """
 
-    def __init__(self, file_name, add_time=True, time_sep=" "):
-        self._file = open(file_name, "w")
+    def __init__(self, file_name, add_time=True, time_sep=" ", append_file=False):
+        self._file = open(file_name, "a" if append_file else "w")
         self.__add_time = add_time
         self.__time_sep = time_sep
 
@@ -360,3 +386,26 @@ def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySav
         trajectory_saver.save_point(prev_pos)
     
     return prev_pos
+
+
+def get_last_dir_name(parent_dir_path: str):
+    """Looks for directories in a given parent directory, returns the last created dir (Windows) or last changed dir
+    (Linux), or None if no directories were found at given path.
+    """
+
+    all_parent_dir_objects = os.listdir(parent_dir_path)
+    last_dir = None
+    last_dir_creation_time = None
+
+    for cur_obj_name in all_parent_dir_objects:
+        cur_obj_full_path = parent_dir_path + cur_obj_name
+        if os.path.isdir(cur_obj_full_path):
+            cur_dir_creation_time = os.path.getctime(cur_obj_full_path)
+            if last_dir:
+                if cur_dir_creation_time > last_dir_creation_time:
+                    last_dir = cur_obj_name
+                    last_dir_creation_time = cur_dir_creation_time
+            else:
+                last_dir = cur_obj_name
+                last_dir_creation_time = cur_dir_creation_time
+    return last_dir

@@ -20,7 +20,7 @@ from notification import NotificationClient
 from notification import SyntheseRobot
 import posix_ipc
 import json
-from extraction_manager import ExtractionManager
+from extraction import ExtractionManagerV3
 
 """
 import SensorProcessing
@@ -83,18 +83,6 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
     print("Point A saved.")
     return [point_a, point_b]
 
-def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius):
-    """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
-
-    return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, (0, 0, 255), thickness=3)
-
-
-def draw_zone_poly(image, np_poly_points):
-    """Draws received polygon on image. Used for drawing working zone edges on photo"""
-
-    return cv.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
-
-
 def save_image(path_to_save, image, counter, session_label, date, sep="_"):
     """
     Assembles image file name and saves received image under this name to specified directory.
@@ -130,19 +118,37 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
                            (0, 0, 0), 2)
 
         # draw data on frame
-        frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
-        frame = draw_zone_poly(frame, poly_zone_points_cv)
+        frame = utility.ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
+        frame = utility.ImageSaver.draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
 
-def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapter, vesc_engine: adapters.VescAdapter,
-                              smoothie: adapters.SmoothieAdapter, camera: adapters.CameraAdapterIMX219_170,
-                              periphery_det: detection.YoloOpenCVDetection, precise_det: detection.YoloOpenCVDetection,
-                              client, logger_full: utility.Logger, logger_table: utility.Logger, report_field_names,
-                              trajectory_saver: utility.TrajectorySaver, undistorted_zone_radius, working_zone_polygon,
-                              working_zone_points_cv, view_zone_polygon, view_zone_points_cv, img_output_dir,
-                              nav: navigation.GPSComputing, data_collector: datacollection.DataCollector, log_cur_dir,
-                              image_saver: utility.ImageSaver, notification: NotificationClient):
+
+def move_to_point_and_extract(coords_from_to: list,
+                              gps: adapters.GPSUbloxAdapter,
+                              vesc_engine: adapters.VescAdapter,
+                              smoothie: adapters.SmoothieAdapter,
+                              camera: adapters.CameraAdapterIMX219_170,
+                              periphery_det: detection.YoloOpenCVDetection,
+                              precise_det: detection.YoloOpenCVDetection,
+                              client,
+                              logger_full: utility.Logger,
+                              logger_table: utility.Logger,
+                              report_field_names,
+                              trajectory_saver: utility.TrajectorySaver,
+                              undistorted_zone_radius,
+                              working_zone_polygon,
+                              working_zone_points_cv,
+                              view_zone_polygon,
+                              view_zone_points_cv,
+                              img_output_dir,
+                              nav: navigation.GPSComputing,
+                              data_collector: datacollection.DataCollector,
+                              log_cur_dir,
+                              image_saver: utility.ImageSaver,
+                              notification: NotificationClient,
+                              extraction_manager_v3: ExtractionManagerV3,
+                              gps_msg_queue: posix_ipc.MessageQueue):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -156,12 +162,19 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     :param logger_full:
     :param logger_table:
     :param report_field_names:
-    :param used_points_history:
-    :param nav:
-    :param working_zone_polygon:
+    :param trajectory_saver:
     :param undistorted_zone_radius:
+    :param working_zone_polygon:
     :param working_zone_points_cv:
+    :param view_zone_polygon:
+    :param view_zone_points_cv:
     :param img_output_dir:
+    :param nav:
+    :param data_collector:
+    :param log_cur_dir:
+    :param image_saver:
+    :param notification:
+    :param extraction_manager_v3:
     :return:
     """
 
@@ -181,6 +194,7 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     
     prev_maneuver_time = time.time()
     current_working_mode = 1
+    last_working_mode = 0
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
 
     lastNtripRestart = time.time()
@@ -199,9 +213,11 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
     pierre_angle=0 #Angle du robot vers la cible (en radians) en considérant que le robot est dans l'axe AB
 
-
     # set camera to the Y min
-    res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+    res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                              Y_F=config.Y_F_MAX,
+                                              X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                                              Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
     if res != smoothie.RESPONSE_OK:
         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
         logger_full.write(msg + "\n")
@@ -212,16 +228,6 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
     if config.AUDIT_MODE:
         vesc_engine.apply_rpm(config.VESC_RPM_AUDIT)
         vesc_engine.start_moving()
-    
-    extraction_manager = ExtractionManager(smoothie, camera, working_zone_polygon, working_zone_points_cv,
-                                           logger_full, data_collector, image_saver, log_cur_dir, periphery_det, precise_det)
-
-    msgQueue, notificationQueue = None, None
-
-    try:
-        msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
-    except:
-        pass
 
     try:
         notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION)
@@ -305,60 +311,59 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
                 # logger_full.write(msg + "\n")
                 continue
 
-            trajectory_saver.save_point(cur_pos)
-            if msgQueue is not None:
-                msgQueue.send(json.dumps({"last_gps": cur_pos}))
-            """
-            if len(used_points_history) > 0:
-                if str(used_points_history[-1]) != str(cur_pos):
-                    used_points_history.append(cur_pos.copy())
-            else:
-                used_points_history.append(cur_pos.copy())
-            """
+        trajectory_saver.save_point(cur_pos)
+        if gps_msg_queue is not None:
+            gps_msg_queue.send(json.dumps({"last_gps": cur_pos}))
+        """
+        if len(used_points_history) > 0:
+        if str(used_points_history[-1]) != str(cur_pos):
+            used_points_history.append(cur_pos.copy())
+        """
 
-            """
-            if not client.sendData("{};{}".format(cur_pos[0], cur_pos[1])):
-                msg = "[Client] Connection closed !"
+        """
+        if not client.sendData("{};{}".format(cur_pos[0], cur_pos[1])):
+            msg = "[Client] Connection closed !"
+            print(msg)
+            logger_full.write(msg + "\n")
+        """
+
+        distance = nav.get_distance(cur_pos, coords_from_to[1])
+        
+        last_corridor_side = current_corridor_side
+        perpendicular, current_corridor_side = nav.get_deviation(coords_from_to[0],coords_from_to[1],cur_pos)
+        
+        
+                
+        
+        
+        
+        # check if arrived
+        _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
+        # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
+        if side != 1:  # TODO: maybe should use both side and distance checking methods at once
+            vesc_engine.stop_moving()
+            data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+            # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
+            msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
+            # print(msg)
+            logger_full.write(msg + "\n")
+            
+            # put the wheel straight
+            response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
+            if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                msg = "Couldn't turn wheels to center (0), smoothie response:\n" + response
                 print(msg)
                 logger_full.write(msg + "\n")
-            """
+            else:
+                # save wheels angle
+                with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
+                    wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+            break
 
-            distance = nav.get_distance(cur_pos, coords_from_to[1])
-            
-            last_corridor_side = current_corridor_side
-            perpendicular, current_corridor_side = nav.get_deviation(coords_from_to[0],coords_from_to[1],cur_pos)
-            
-            
-                    
-            
-            
-            
-            # check if arrived
-            _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
-            # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
-            if side != 1:  # TODO: maybe should use both side and distance checking methods at once
-                vesc_engine.stop_moving()
-                # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-                msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
-                # print(msg)
-                logger_full.write(msg + "\n")
-                
-                #put the wheel straight
-                response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
-                if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                    msg = "Smoothie response is not ok: " + response
-                    print(msg)
-                    logger_full.write(msg + "\n")
-                
-                break
-
-            
-            # reduce speed if near the target point
-            if config.USE_SPEED_LIMIT:
-                distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
-                close_to_end = distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD
-
-            
+        # reduce speed if near the target point
+        if config.USE_SPEED_LIMIT:
+            distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
+            close_to_end = distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD
 
             msg = "Distance to B: " + str(distance)
             # print(msg)
@@ -405,280 +410,271 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
 
             #Les coordonnées en n deviennent les n-1
 
-            latprec=latnew
-            longprec=longnew
-            
-            latB = coords_from_to[1][0]
-            longB = coords_from_to[1][1]
-            
-            if (latB-latnew) != 0 :
-                pierre_angle=math.atan((longB-longnew)/(latB-latnew))# Angle co,signe roues
-            else :
-                pierre_angle = math.pi/2
+        latprec=latnew
+        longprec=longnew
+        
+        latB = coords_from_to[1][0]
+        longB = coords_from_to[1][1]
 
-            print("pierre_angle",pierre_angle)
-            
-            new_foreseen_point = list()
-            new_foreseen_point.append(latnew)
-            new_foreseen_point.append(longnew)
-            new_foreseen_point.append("new_foreseen_point")
+        if (latB-latnew) != 0:
+            pierre_angle = math.atan((longB-longnew)/(latB-latnew))  # Angle co,signe roues
+        else:
+            pierre_angle = math.pi/2
 
-            trajectory_saver.save_point(new_foreseen_point)
-
+        if config.VERBOSE:
+            print("pierre_angle", pierre_angle)
+            new_foreseen_point = [latnew, longnew, "new_foreseen_point"]
             pierre_error = nav.get_distance(new_foreseen_point, cur_pos)
+            print("pierre_error", pierre_error)
 
-            print("pierre_error",pierre_error)
-
-
+        #raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
+        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
+        raw_angle = raw_angle_legacy + raw_angle_cruise
+            
         
-            #raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
-            raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
-            raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
-            raw_angle = raw_angle_legacy + raw_angle_cruise
-        
-        
-            #NAVIGATION STATE MACHINE
+        #NAVIGATION STATE MACHINE
+          
+        if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
+            raw_angle = last_correct_raw_angle
+            #print("The distance covered is low")
+            point_status = "skipped"
             
-            
-            if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
-                raw_angle = last_correct_raw_angle
-                #print("The distance covered is low")
-                point_status = "skipped"
-                
-                # register the last position where the robot almost stop 
-                # in order to disable the deviation servo for a config.POURSUIT_LIMIT length and then resume in cruise
-                last_skipped_point = cur_pos
-            else:
-                last_correct_raw_angle = raw_angle
-                point_status ="correct"
+            # register the last position where the robot almost stop 
+            # in order to disable the deviation servo for a config.POURSUIT_LIMIT length and then resume in cruise
+            last_skipped_point = cur_pos
+        else:
+
+            last_correct_raw_angle = raw_angle
+            point_status ="correct"
 
             
             
-            almost_start = nav.get_distance(last_skipped_point, cur_pos)
-            
-            if nav_status=="pursuit":
-                if almost_start >=config.PURSUIT_LIMIT:
-                    nav_status="cruise"
-            
-            
-            
-            if nav_status=="cruise":
-                if almost_start < config.PURSUIT_LIMIT:
-                    nav_status="pursuit"
+        almost_start = nav.get_distance(last_skipped_point, cur_pos)
+        
+        if nav_status=="pursuit":
+            if almost_start >=config.PURSUIT_LIMIT:
+                nav_status="cruise"
+        
+        
+        
+        if nav_status=="cruise":
+            if almost_start < config.PURSUIT_LIMIT:
+                nav_status="pursuit"
         
 
         
             
 
-            # sum(e)
-            if len(raw_angles_history) >= config.WINDOW:
-                raw_angles_history.pop(0)
-            raw_angles_history.append(raw_angle)
-            #print("len(raw_angles_history):",len(raw_angles_history))
-            sum_angles = sum(raw_angles_history)
-            if sum_angles > config.SUM_ANGLES_HISTORY_MAX:
-                msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
-                    str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(config.SUM_ANGLES_HISTORY_MAX)
-                # print(msg)
-                logger_full.write(msg + "\n")
-                #Get Ready to go down as soon as the angle get negatif
-                raw_angles_history[len(raw_angles_history)-1]-= sum_angles - config.SUM_ANGLES_HISTORY_MAX   
-                sum_angles = config.SUM_ANGLES_HISTORY_MAX
-            elif sum_angles < -config.SUM_ANGLES_HISTORY_MAX:
-                msg = "Sum angles " + str(sum_angles) + " is less than min allowed value " + \
-                    str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(-config.SUM_ANGLES_HISTORY_MAX)
-                # print(msg)
-                logger_full.write(msg + "\n")
-                #get Ready to go up as soon as the angle get positive:
-                raw_angles_history[len(raw_angles_history)-1]+=  -sum_angles - config.SUM_ANGLES_HISTORY_MAX
-                sum_angles = -config.SUM_ANGLES_HISTORY_MAX
+        # sum(e)
+        if len(raw_angles_history) >= config.WINDOW:
+            raw_angles_history.pop(0)
+        raw_angles_history.append(raw_angle)
+        #print("len(raw_angles_history):",len(raw_angles_history))
+        sum_angles = sum(raw_angles_history)
+        if sum_angles > config.SUM_ANGLES_HISTORY_MAX:
+            msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
+                str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(config.SUM_ANGLES_HISTORY_MAX)
+            # print(msg)
+            logger_full.write(msg + "\n")
+            #Get Ready to go down as soon as the angle get negatif
+            raw_angles_history[len(raw_angles_history)-1]-= sum_angles - config.SUM_ANGLES_HISTORY_MAX   
+            sum_angles = config.SUM_ANGLES_HISTORY_MAX
+        elif sum_angles < -config.SUM_ANGLES_HISTORY_MAX:
+            msg = "Sum angles " + str(sum_angles) + " is less than min allowed value " + \
+                str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(-config.SUM_ANGLES_HISTORY_MAX)
+            # print(msg)
+            logger_full.write(msg + "\n")
+            #get Ready to go up as soon as the angle get positive:
+            raw_angles_history[len(raw_angles_history)-1]+=  -sum_angles - config.SUM_ANGLES_HISTORY_MAX
+            sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
             
-            KP = 0.2*0,55
-            KI = 0.0092*0,91
+        KP = 0.2*0,55
+        KI = 0.0092*0,91
 
-            if vesc_engine._rpm in config.KP:
-                KP = config.KP[vesc_engine._rpm]
-            else:
-                msg = f"Vesc rpm {vesc_engine._rpm} not present in KP."
-                #print(msg)
-                logger_full.write(msg + "\n")
-            
-            if vesc_engine._rpm in config.KI:
-                KI = config.KI[vesc_engine._rpm]
-            else:
-                msg = f"Vesc rpm {vesc_engine._rpm} not present in KI."
-                #print(msg)
-                logger_full.write(msg + "\n")
-
-            angle_kp_ki = raw_angle * KP + sum_angles * KI 
-            
-            if vesc_engine._rpm in config.CLOSE_TARGET_THRESHOLD: #check that rpm configuration is present in CLOSE_TARGET_THRESHOLD
-
-                if distance < config.CLOSE_TARGET_THRESHOLD[vesc_engine._rpm]:
-
-                    if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
-
-                        if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
-
-                            if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
-                                angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
-
-                            else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_GAIN
-                                msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
-                                #print(msg)
-                                logger_full.write(msg + "\n")
-                    
-                    else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
-                        msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
-                        #print(msg)
-                        logger_full.write(msg + "\n")
-
-                    if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
-
-                        if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
-
-                            if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
-                                angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
-                                
-                            else: #rpm not present in BIG_RAW_ANGLE_SQUARE_GAIN
-                                msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
-                                #print(msg)
-                                logger_full.write(msg + "\n")
-
-                    else: #rpm not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
-                        msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
-                        #print(msg)
-                        logger_full.write(msg + "\n")
-
-            else: #rpm not present in CLOSE_TARGET_THRESHOLD
-                msg = f"Vesc rpm {vesc_engine._rpm} not present in CLOSE_TARGET_THRESHOLD."
-                #print(msg)
-                logger_full.write(msg + "\n")
-
-            if vesc_engine._rpm in config.FAR_TARGET_THRESHOLD: #check that rpm configuration is present in FAR_TARGET_THRESHOLD
-                if distance > config.FAR_TARGET_THRESHOLD[vesc_engine._rpm]:
-
-                    if vesc_engine._rpm in config.FAR_TARGET_GAIN: #check that rpm configuration is present in FAR_TARGET_GAIN
-                        angle_kp_ki *= config.FAR_TARGET_GAIN[vesc_engine._rpm]   
-                    else:
-                        msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_GAIN."
-                        #print(msg)
-                        logger_full.write(msg + "\n")  
-
-            else:
-                msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_THRESHOLD."
-                #print(msg)
-                logger_full.write(msg + "\n")     
-
-
-
-            target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
-            #target_angle_sm = 0     #Debug COVID_PLACE
-            ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
-            # sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
-            sm_wheels_pos = "off"
-
-            # compute order angle (smoothie can't turn for huge values immediately also as cancel movement,
-            # so we need to do nav. actions in steps)
-            order_angle_sm = target_angle_sm - ad_wheels_pos
-
-            # check for out of update frequency and smoothie execution speed range (for nav wheels)
-            if order_angle_sm > config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
-                    config.A_ONE_DEGREE_IN_SMOOTHIE:
-                msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(
-                    config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND +
-                    config.A_ONE_DEGREE_IN_SMOOTHIE) + " due to exceeding degrees per tick allowed range."
-                # print(msg)
-                logger_full.write(msg + "\n")
-                order_angle_sm = config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
-                                config.A_ONE_DEGREE_IN_SMOOTHIE
-            elif order_angle_sm < -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
-                                    config.A_ONE_DEGREE_IN_SMOOTHIE):
-                msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(-(
-                        config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
-                        config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
-                # print(msg)
-                logger_full.write(msg + "\n")
-                order_angle_sm = -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
-                                config.A_ONE_DEGREE_IN_SMOOTHIE)
-
-            # convert to global smoothie coordinates
-            order_angle_sm += ad_wheels_pos
-
-            # checking for out of smoothie supported range
-            if order_angle_sm > config.A_MAX:
-                msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MAX = " + \
-                    str(config.A_MAX) + " due to exceeding smoothie allowed values range."
-                # print(msg)
-                logger_full.write(msg + "\n")
-                order_angle_sm = config.A_MAX
-            elif order_angle_sm < config.A_MIN:
-                msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MIN = " + \
-                    str(config.A_MIN) + " due to exceeding smoothie allowed values range."
-                # print(msg)
-                logger_full.write(msg + "\n")
-                order_angle_sm = config.A_MIN
-                
-            response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
-            if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                msg = "Smoothie response is not ok: " + response
-                print(msg)
-                logger_full.write(msg + "\n")
-
-            raw_angle = round(raw_angle, 2)
-            angle_kp_ki = round(angle_kp_ki, 2)
-            order_angle_sm = round(order_angle_sm, 2)
-            sum_angles = round(sum_angles, 2)
-            distance = round(distance, 2)
-            ad_wheels_pos = round(ad_wheels_pos, 2)
-            perpendicular = round(perpendicular, 2)
-            # sm_wheels_pos = round(sm_wheels_pos, 2)
-            gps_quality = cur_pos[2]
-            corridor = ""
-            if current_corridor_side==-1:
-                corridor = "left"
-            elif current_corridor_side==1:
-                corridor = "right"
-            
-            
-            raw_angle_cruise = round(raw_angle_cruise, 2)
-
-            if str(gps_quality) not in ["4","5"] and time.time() - lastNtripRestart > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
-                msg="Restart Ntrip because 60 seconds without corrections"
-                logger_full.write(msg + "\n")
-                if config.VERBOSE: 
-                    print(msg)
-                os.system("sudo systemctl restart ntripClient.service")
-                lastNtripRestart = time.time()
-
-            msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
-                order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
-                8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(8)+corridor+nav_status+str(raw_angle_cruise).ljust(8)
-            print(msg)
+        if vesc_engine._rpm in config.KP:
+            KP = config.KP[vesc_engine._rpm]
+        else:
+            msg = f"Vesc rpm {vesc_engine._rpm} not present in KP."
+            #print(msg)
+            logger_full.write(msg + "\n")
+        
+        if vesc_engine._rpm in config.KI:
+            KI = config.KI[vesc_engine._rpm]
+        else:
+            msg = f"Vesc rpm {vesc_engine._rpm} not present in KI."
+            #print(msg)
             logger_full.write(msg + "\n")
 
-            # load sensors data to csv
-            s = ","
-            msg = str(gps_quality) + s + str(raw_angle) + s + str(angle_kp_ki) + s + str(order_angle_sm) + s + \
-                str(sum_angles) + s + str(distance) + s + str(ad_wheels_pos) + s + str(sm_wheels_pos)
-            vesc_data = vesc_engine.get_sensors_data(report_field_names)
-            if vesc_data is not None:
-                msg += s
-                for key in vesc_data:
-                    msg += str(vesc_data[key]) + s
-                    if config.CONTINUOUS_INFORMATION_SENDING and key == "input_voltage":
-                        notification.set_input_voltage(vesc_data[key])
-                msg = msg[:-1]
-            logger_table.write(msg + "\n")
+        angle_kp_ki = raw_angle * KP + sum_angles * KI 
+        
+        if vesc_engine._rpm in config.CLOSE_TARGET_THRESHOLD: #check that rpm configuration is present in CLOSE_TARGET_THRESHOLD
 
-            prev_pos = cur_pos
+            if distance < config.CLOSE_TARGET_THRESHOLD[vesc_engine._rpm]:
 
-            
-            msg = "Nav calc time: " + str(time.time() - nav_start_t)
-            logger_full.write(msg + "\n\n")
+                if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
 
-        extraction_manager.reset_map()
+                    if (raw_angle * raw_angle) < config.SMALL_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
+
+                        if vesc_engine._rpm in config.SMALL_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in SMALL_RAW_ANGLE_SQUARE_GAIN
+                            angle_kp_ki *= config.SMALL_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
+
+                        else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_GAIN
+                            msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_GAIN."
+                            #print(msg)
+                            logger_full.write(msg + "\n")
+                
+                else: #rpm not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD
+                    msg = f"Vesc rpm {vesc_engine._rpm} not present in SMALL_RAW_ANGLE_SQUARE_THRESHOLD."
+                    #print(msg)
+                    logger_full.write(msg + "\n")
+
+                if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_THRESHOLD: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
+
+                    if (raw_angle * raw_angle) > config.BIG_RAW_ANGLE_SQUARE_THRESHOLD[vesc_engine._rpm]:
+
+                        if vesc_engine._rpm in config.BIG_RAW_ANGLE_SQUARE_GAIN: #check that rpm configuration is present in BIG_RAW_ANGLE_SQUARE_GAIN
+                            angle_kp_ki *= config.BIG_RAW_ANGLE_SQUARE_GAIN[vesc_engine._rpm]
+                            
+                        else: #rpm not present in BIG_RAW_ANGLE_SQUARE_GAIN
+                            msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_GAIN."
+                            #print(msg)
+                            logger_full.write(msg + "\n")
+
+                else: #rpm not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD
+                    msg = f"Vesc rpm {vesc_engine._rpm} not present in BIG_RAW_ANGLE_SQUARE_THRESHOLD."
+                    #print(msg)
+                    logger_full.write(msg + "\n")
+
+        else: #rpm not present in CLOSE_TARGET_THRESHOLD
+            msg = f"Vesc rpm {vesc_engine._rpm} not present in CLOSE_TARGET_THRESHOLD."
+            #print(msg)
+            logger_full.write(msg + "\n")
+
+        if vesc_engine._rpm in config.FAR_TARGET_THRESHOLD: #check that rpm configuration is present in FAR_TARGET_THRESHOLD
+            if distance > config.FAR_TARGET_THRESHOLD[vesc_engine._rpm]:
+
+                if vesc_engine._rpm in config.FAR_TARGET_GAIN: #check that rpm configuration is present in FAR_TARGET_GAIN
+                    angle_kp_ki *= config.FAR_TARGET_GAIN[vesc_engine._rpm]   
+                else:
+                    msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_GAIN."
+                    #print(msg)
+                    logger_full.write(msg + "\n")  
+
+        else:
+            msg = f"Vesc rpm {vesc_engine._rpm} not present in FAR_TARGET_THRESHOLD."
+            #print(msg)
+            logger_full.write(msg + "\n")     
+
+
+
+        target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
+        #target_angle_sm = 0     #Debug COVID_PLACE
+        ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
+        # sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
+        sm_wheels_pos = "off"
+
+        # compute order angle (smoothie can't turn for huge values immediately also as cancel movement,
+        # so we need to do nav. actions in steps)
+        order_angle_sm = target_angle_sm - ad_wheels_pos
+
+        # check for out of update frequency and smoothie execution speed range (for nav wheels)
+        if order_angle_sm > config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
+                config.A_ONE_DEGREE_IN_SMOOTHIE:
+            msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(
+                config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND +
+                config.A_ONE_DEGREE_IN_SMOOTHIE) + " due to exceeding degrees per tick allowed range."
+            # print(msg)
+            logger_full.write(msg + "\n")
+            order_angle_sm = config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
+                            config.A_ONE_DEGREE_IN_SMOOTHIE
+        elif order_angle_sm < -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
+                                config.A_ONE_DEGREE_IN_SMOOTHIE):
+            msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(-(
+                    config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
+                    config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
+            # print(msg)
+            logger_full.write(msg + "\n")
+            order_angle_sm = -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
+                            config.A_ONE_DEGREE_IN_SMOOTHIE)
+
+        # convert to global smoothie coordinates
+        order_angle_sm += ad_wheels_pos
+
+        # checking for out of smoothie supported range
+        if order_angle_sm > config.A_MAX:
+            msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MAX = " + \
+                    str(config.A_MAX) + " due to exceeding smoothie allowed values range."
+            # print(msg)
+            logger_full.write(msg + "\n")
+            order_angle_sm = config.A_MAX
+        elif order_angle_sm < config.A_MIN:
+            msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MIN = " + \
+                    str(config.A_MIN) + " due to exceeding smoothie allowed values range."
+            # print(msg)
+            logger_full.write(msg + "\n")
+            order_angle_sm = config.A_MIN
+
+        response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=order_angle_sm)
+        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+            msg = "Couldn't turn wheels, smoothie response:\n" + response
+            print(msg)
+            logger_full.write(msg + "\n")
+        else:
+            # save wheels angle
+            with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
+                wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+
+        raw_angle = round(raw_angle, 2)
+        angle_kp_ki = round(angle_kp_ki, 2)
+        order_angle_sm = round(order_angle_sm, 2)
+        sum_angles = round(sum_angles, 2)
+        distance = round(distance, 2)
+        ad_wheels_pos = round(ad_wheels_pos, 2)
+        perpendicular = round(perpendicular, 2)
+        # sm_wheels_pos = round(sm_wheels_pos, 2)
+        gps_quality = cur_pos[2]
+        corridor = ""
+        if current_corridor_side==-1:
+            corridor = "left"
+        elif current_corridor_side==1:
+            corridor = "right"
+        
+        raw_angle_cruise = round(raw_angle_cruise, 2)
+
+        if str(gps_quality) not in ["4","5"] and time.time() - lastNtripRestart > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
+            msg="Restart Ntrip because 60 seconds without corrections"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE: 
+                print(msg)
+            os.system("sudo systemctl restart ntripClient.service")
+            lastNtripRestart = time.time()
+
+        msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
+            order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
+            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(8)+corridor+nav_status+str(raw_angle_cruise).ljust(8)
+        print(msg)
+        logger_full.write(msg + "\n")
+
+        # load sensors data to csv
+        s = ","
+        msg = str(gps_quality) + s + str(raw_angle) + s + str(angle_kp_ki) + s + str(order_angle_sm) + s + \
+            str(sum_angles) + s + str(distance) + s + str(ad_wheels_pos) + s + str(sm_wheels_pos)
+        vesc_data = vesc_engine.get_sensors_data(report_field_names)
+        if vesc_data is not None:
+            msg += s
+            for key in vesc_data:
+                msg += str(vesc_data[key]) + s
+                if config.CONTINUOUS_INFORMATION_SENDING and key == "input_voltage":
+                    notification.set_input_voltage(vesc_data[key])
+            msg = msg[:-1]
+        logger_table.write(msg + "\n")
+
+        prev_pos = cur_pos
+
+        msg = "Nav calc time: " + str(time.time() - nav_start_t)
+        logger_full.write(msg + "\n\n")
 
         # EXTRACTION CONTROL
         while True:   # perform detection until either it is time to perform a new navigation, or there is something to goget
@@ -686,21 +682,22 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             frame = camera.get_image()
             frame_t = time.time()
             #print("tick")
-                    
+
+            per_det_start_t = time.time()
             plants_boxes = periphery_det.detect(frame)
-            per_det_t = time.time()
-            detections_period.append(per_det_t-start_t)
-            
+            per_det_end_t = time.time()
+            detections_period.append(per_det_end_t - start_t)
 
             if config.SAVE_DEBUG_IMAGES:
                 image_saver.save_image(frame, img_output_dir,
                                     label="(periphery view scan M=" + str(current_working_mode) + ")",
                                     plants_boxes=plants_boxes)
 
-            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + str(per_det_t - frame_t)
+            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
+                  str(per_det_end_t - per_det_start_t)
             logger_full.write(msg + "\n")
-            
-            if ExtractionManager.any_plant_in_zone(plants_boxes, working_zone_polygon):
+
+            if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                 break
                 
             # do maneuvers not more often than specified value
@@ -717,8 +714,105 @@ def move_to_point_and_extract(coords_from_to: list, gps: adapters.GPSUbloxAdapte
             if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
                 break
 
-        extraction_manager.extraction_control(plants_boxes, img_output_dir, vesc_engine, close_to_end, current_working_mode)
+        working_mode_slow = 1
+        working_mode_switching = 2
+        working_mode_fast = 3
 
+        slow_mode_time = -float("inf")
+                                    
+        if config.AUDIT_MODE:
+            dc_start_t = time.time()
+
+            # count detected plant boxes for each type
+            plants_count = dict()
+            for plant_box in plants_boxes:
+                plant_box_name = plant_box.get_name()
+                if plant_box_name in plants_count:
+                    plants_count[plant_box_name] += 1
+                else:
+                    plants_count[plant_box_name] = 1
+
+            # save info into data collector
+            for plant_label in plants_count:
+                data_collector.add_detections_data(plant_label, math.ceil((plants_count[plant_label])/config.AUDIT_DIVIDER))
+
+            # flush updates into the audit output file and log measured time
+            if len(plants_boxes) > 0:
+                data_collector.save_all_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
+
+            dc_t = time.time() - dc_start_t
+            msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
+                ", audit processing tick time: " + str(dc_t)
+            logger_full.write(msg + "\n")
+        else:
+            # slow mode
+            if current_working_mode == working_mode_slow:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : slow")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+
+                    # single precise center scan before calling for PDZ scanning and extractions
+                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ:
+                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                        frame = camera.get_image()
+                        plants_boxes = precise_det.detect(frame)
+
+                        # do PDZ scan and extract all plants if single precise scan got plants in working area
+                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                            extraction_manager_v3.extract_all_plants(data_collector)
+                    else:
+                        extraction_manager_v3.extract_all_plants(data_collector)
+
+                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+
+                elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
+                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
+                        config.SLOW_FAST_MODE:
+
+                    current_working_mode = working_mode_fast
+                    if not close_to_end:
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+                vesc_engine.start_moving()        
+
+            # switching to fast mode
+            elif current_working_mode == working_mode_switching:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : switching")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                else:
+                    current_working_mode = working_mode_fast
+                    if not close_to_end:
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
+
+            # fast mode
+            elif current_working_mode == working_mode_fast:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : fast")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+                    vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
+                    time.sleep(config.FAST_TO_SLOW_TIME)
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                    vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+                elif close_to_end:
+                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                else:
+                    vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
     """
@@ -980,24 +1074,60 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
     return field
 
 
+def send_gps_history_from_file(gps_msg_queue: posix_ipc.MessageQueue,
+                               gps_file_dir: str,
+                               gps_file_name: str,
+                               logger_full: utility.Logger):
+    """Loads gps points from a given file (if it exists) and sends them using given message queue
+    """
+
+    if os.path.isfile(gps_file_dir + gps_file_name):
+        with open(gps_file_dir + gps_file_name, "r") as gps_his_file:
+            for line in gps_his_file.readlines():
+                if line.startswith("[") and line.endswith("]\n"):
+                    parsed_point = line[1:-1].split(", ")
+                    try:
+                        gps_msg_queue.send(json.dumps({"last_gps": [float(parsed_point[0]),
+                                                                    float(parsed_point[1]),
+                                                                    parsed_point[2].replace("'", "")]}))
+                    except (IndexError, ValueError):
+                        pass
+    else:
+        msg = f"Could not find {gps_file_dir}/used_gps_history.txt file to send previous points to the web UI"
+        logger_full.write(msg + "\n")
+        if config.VERBOSE:
+            print(msg)
+
+
 def main():
     time_start = utility.get_current_time()
-    log_cur_dir = config.LOG_ROOT_DIR + time_start + "/"
-    utility.create_directories(config.LOG_ROOT_DIR, log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
-        
+    utility.create_directories(config.LOG_ROOT_DIR)
+
+    # choose log dir dependent continuing previous path or not
+    if config.CONTINUE_PREVIOUS_PATH:
+        last_log_dir = utility.get_last_dir_name(config.LOG_ROOT_DIR)
+        if last_log_dir is not None:
+            log_cur_dir = config.LOG_ROOT_DIR + last_log_dir + "/"
+        else:
+            log_cur_dir = config.LOG_ROOT_DIR + time_start + "/"
+    else:
+        log_cur_dir = config.LOG_ROOT_DIR + time_start + "/"
+
+    utility.create_directories(log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
+
     notification = NotificationClient(time_start)
     image_saver = utility.ImageSaver()
-    data_collector = datacollection.DataCollector(notification)
+    data_collector = datacollection.DataCollector(notification,
+                                                  load_from_file=config.CONTINUE_PREVIOUS_PATH,
+                                                  file_path=log_cur_dir + config.DATACOLLECTOR_SAVE_FILE)
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     view_zone_polygon = Polygon(config.VIEW_ZONE_POLY_POINTS)
     view_zone_points_cv = np.array(config.VIEW_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     nav = navigation.GPSComputing()
     used_points_history = []
-    logger_full = utility.Logger(log_cur_dir + "log full.txt")
-    logger_table = utility.Logger(log_cur_dir + "log table.csv")
-    
-    
+    logger_full = utility.Logger(log_cur_dir + "log full.txt", append_file=config.CONTINUE_PREVIOUS_PATH)
+    logger_table = utility.Logger(log_cur_dir + "log table.csv", append_file=config.CONTINUE_PREVIOUS_PATH)
 
     # get smoothie and vesc addresses
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
@@ -1062,7 +1192,23 @@ def main():
         notification.setStatus(SyntheseRobot.HS)
         exit(1)
 
-    
+    try:
+        gps_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+    except KeyboardInterrupt:
+        exit(0)
+    except:
+        print(traceback.format_exc())
+        gps_msg_queue = None
+
+    # load and send trajectory to the UI if continuing work
+    if config.CONTINUE_PREVIOUS_PATH:
+        if gps_msg_queue is not None:
+            send_gps_history_from_file(gps_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
+        else:
+            msg = "GPS message queue connection is not established (None), canceling gps sending to UI"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE:
+                print(msg)
 
     # sensors picking
     report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
@@ -1091,7 +1237,8 @@ def main():
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
         # utility.MemoryManager(config.DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
         with \
-            utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt") as trajectory_saver, \
+            utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt",
+                                    config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                  config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE) as vesc_engine, \
@@ -1104,10 +1251,11 @@ def main():
                                              config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
-                                             config.CAMERA_FLIP_METHOD) as camera:
-
-            
-            
+                                             config.CAMERA_FLIP_METHOD) as camera, \
+            ExtractionManagerV3(smoothie, camera, working_zone_points_cv,
+                                logger_full, data_collector, image_saver,
+                                log_cur_dir, periphery_detector, precise_detector,
+                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3 :            
                 
             # load previous path
             if config.CONTINUE_PREVIOUS_PATH:
@@ -1115,6 +1263,9 @@ def main():
 
                 msg = "Loading previous path points"
                 logger_full.write(msg + "\n")
+
+                if config.CONTINUOUS_INFORMATION_SENDING:
+                    notification.set_field(load_coordinates(config.INPUT_GPS_FIELD_FILE))
 
                 # TODO: check if files exist and handle damaged/incorrect data cases
                 with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
@@ -1320,13 +1471,12 @@ def main():
                     # print(msg)
                     logger_full.write(msg + "\n\n")
 
-
-
                     move_to_point_and_extract(from_to, gps, vesc_engine, smoothie, camera, periphery_detector,
                                               precise_detector, client, logger_full, logger_table, report_field_names,
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
-                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, image_saver, notification)
+                                              config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, 
+                                              image_saver, notification, extraction_manager_v3, gps_msg_queue)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
@@ -1383,24 +1533,23 @@ def main():
             print(msg)
             logger_full.write(msg + "\n")
         """
-        
-        #put the wheel straight
+
+        # put the wheel straight
         with adapters.SmoothieAdapter(smoothie_address) as smoothie:
-            #put the wheel straight
+            # put the wheel straight
             msg = "Put the wheel straight"
             logger_full.write(msg + "\n")
             if config.VERBOSE:
                 print(msg)
             with open(config.LAST_ANGLE_WHEELS_FILE, "r") as angle_file:
                 angle = float(angle_file.read())
-                smoothie._a_cur.value = angle
-                response = smoothie.nav_turn_wheels_to(0,config.A_F_MAX)
+                smoothie.set_current_coordinates(A=angle)
+                response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
                 if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                    msg = "Smoothie response is not ok: " + response
+                    msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
                     print(msg)
                     logger_full.write(msg + "\n")
-                
-        
+
         # save adapter points history
         try:
             # TODO: reduce history positions to 1 to save RAM
@@ -1420,7 +1569,8 @@ def main():
         logger_full.write(msg + "\n")
         print(msg)
         try:
-            data_collector.save_extractions_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+            data_collector.save_all_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+            data_collector.dump_to_file(log_cur_dir + config.DATACOLLECTOR_SAVE_FILE)
         except:
             msg = "Failed:\n" + traceback.format_exc()
             logger_full.write(msg + "\n")
@@ -1454,8 +1604,9 @@ def main():
         except:
             pass
 
-        detection.webStream.terminate()
-        detection.webStream.join()
+        if detection.YoloDarknetDetector.webStream is not None:
+            detection.YoloDarknetDetector.webStream.terminate()
+            detection.YoloDarknetDetector.webStream.join()
 
         print("Safe disable is done.")
 

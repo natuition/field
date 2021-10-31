@@ -104,6 +104,7 @@ class YoloDarknetDetector:
     # TODO: check for interpolation (INTER_AREA should be better than INTER_LINEAR)
 
     WEBSTREAM = False
+    webStream = None
 
     def __init__(self,
                  weights_file_path,  # yolo weights path
@@ -168,7 +169,8 @@ class YoloDarknetDetector:
 
             t1 = time.time()
 
-            img = draw_boxes(image, plant_boxes)
+            #img = draw_boxes(image, plant_boxes)
+            img = image
 
             if self.sharedArray is None:
                 try:
@@ -180,6 +182,8 @@ class YoloDarknetDetector:
                 self.sharedArray = np.ndarray(img.shape, dtype=img.dtype, buffer=sharedMem)
 
             self.sharedArray[:] = img[:]
+
+            draw_boxes(self.sharedArray, plant_boxes)
 
             #print(time.time() - t1)
 
@@ -193,9 +197,8 @@ class YoloDarknetDetector:
                 logging.getLogger('werkzeug').disabled = True
                 os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
-                global webStream
-                webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
-                webStream.start()
+                YoloDarknetDetector.webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
+                YoloDarknetDetector.webStream.start()
                 YoloDarknetDetector.WEBSTREAM = True
         
         return plant_boxes
@@ -215,6 +218,14 @@ class DetectedPlantBox:
         self.__center_y = center_y if center_y is not None else int(top + (bottom - top) / 2)
         self.__image_width = img_w
         self.__image_height = img_h
+
+    @property
+    def center_x(self):
+        return self.__center_x
+
+    @property
+    def center_y(self):
+        return self.__center_y
 
     def __str__(self):
         return "Plant Box L=" + str(self.__left) + " T=" + str(self.__top) + " R=" + str(self.__right) + " B=" + \
