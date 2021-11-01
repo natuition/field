@@ -5,14 +5,14 @@ import time
 import datetime
 import os
 import pickle
-
+import json
 
 class DataCollector:
     """This class stores and saves collected data as txt file, or (will be added later) sends data to the local
     database.
     """
 
-    def __init__(self, notification, load_from_file=False, file_path=""):
+    def __init__(self, notification, load_from_file=False, file_path="", ui_msg_queue=None):
         if load_from_file:
             structure = self.__load_from_file(file_path)
             # data
@@ -31,6 +31,7 @@ class DataCollector:
 
         self.__start_time = time.time()
         self.__notification = notification
+        self.__ui_msg_queue = ui_msg_queue
 
     def __load_from_file(self, file_path: str):
         """Using pickle module loads data structure from a binary file with a given name
@@ -57,6 +58,10 @@ class DataCollector:
 
         with open(file_path, "wb") as output_file:
             pickle.dump(structure, output_file)
+
+    def __send_to_ui(self):
+        if self.__ui_msg_queue is not None:
+            self.__ui_msg_queue.send(json.dumps({"datacollector": [self.__detected_plants,self.__extracted_plants]}))
 
     def __format_time(self, seconds):
         """Returns given seconds as formatted DD:HH:MM:SS MSS str time
@@ -86,6 +91,8 @@ class DataCollector:
         else:
             self.__detected_plants[type_label] = count
 
+        self.__send_to_ui()
+
     def add_extractions_data(self, type_label: str, count: int):
         """Adds given extractions data to the stored values
         """
@@ -102,6 +109,8 @@ class DataCollector:
 
         if self.__notification.is_continuous_information_sending():
             self.__notification.set_extracted_plants(self.__extracted_plants)
+
+        self.__send_to_ui()
 
     def add_vesc_moving_time_data(self, seconds: float):
         """Adds given vesc moving time to the stored value

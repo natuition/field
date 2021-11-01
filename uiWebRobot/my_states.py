@@ -9,11 +9,11 @@ from state import State
 from state import Events
 import adapters
 import navigation
-import utility
+import utility, datacollection
 import time
 import subprocess
 import stateMachine
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, send
 import fileinput
 import json
 import serial
@@ -506,11 +506,14 @@ class WorkingState(State):
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit
+        self.allPath = []
+        self.isResume = isResume
+        self.detected_plants = dict()
+        self.extracted_plants = dict()
+
         msg = f"Audit mode enable : {isAudit}"
         self.logger.write_and_flush(msg+"\n")
         print(msg)
-
-        self.isResume = isResume
 
         msg = f"[{self.__class__.__name__}] -> Création queue de message ui main"
         self.logger.write_and_flush(msg+"\n")
@@ -522,20 +525,9 @@ class WorkingState(State):
             pass
 
         self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
-        self._gps_thread_alive = True
-        self._gps_thread = threading.Thread(target=self._gps_thread_tf, daemon=True)
-        self._gps_thread.start()
-        
-        msg = f"[{self.__class__.__name__}] -> Lancement main"
-        self.logger.write_and_flush(msg+"\n")
-        print(msg)
-        self.main = startMain()
-        
-        """ _ , err = self.main.communicate()
-        if err:
-            print('The process raised an error:', err.decode())"""
-
-        self.timeStartMain = datetime.now(timezone.utc)
+        self._main_msg_thread_alive = True
+        self._main_msg_thread = threading.Thread(target=self._main_msg_thread_tf, daemon=True)
+        self._main_msg_thread.start()
 
         self.statusOfUIObject = {
             "joystick": False, #True or False
@@ -562,17 +554,11 @@ class WorkingState(State):
         self.field = None
         self.lastGpsQuality = "1"
 
-        self._statistic_thread_alive = True
-        self._statistic_thread = threading.Thread(target=self._statistic_thread_tf, daemon=True)
-        self._statistic_thread.start()
-
-        msg = f"[{self.__class__.__name__}] -> Attente du lancement du main (10 secondes)"
+        msg = f"[{self.__class__.__name__}] -> Lancement main"
         self.logger.write_and_flush(msg+"\n")
         print(msg)
-        #TODO : faire pour que le main nous dise quand il est start (shared object)
-        time.sleep(10)
-
-        socketio.emit('startMain', {"status": "finish", "audit": isAudit}, namespace='/button', broadcast=True)
+        self.main = startMain()
+        self.timeStartMain = datetime.now(timezone.utc)
         
     
     def on_event(self, event):
@@ -582,8 +568,7 @@ class WorkingState(State):
             self.main.send_signal(signal.SIGINT)
             self.main.wait()
             os.system("sudo systemctl restart nvargus-daemon")
-            self._statistic_thread_alive = False
-            self._gps_thread_alive = False
+            self._main_msg_thread_alive = False
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject["continueButton"] = True
@@ -592,8 +577,7 @@ class WorkingState(State):
             self.statusOfUIObject["stopButton"] = None
             return WaitWorkingState(self.socketio, self.logger, False)
         else:
-            self._statistic_thread_alive = False
-            self._gps_thread_alive = False
+            self._main_msg_thread_alive = False
             return ErrorState(self.socketio, self.logger)
     
     def on_socket_data(self, data):
@@ -601,8 +585,7 @@ class WorkingState(State):
             self.sendLastStatistics()
             return self
         else:
-            self._statistic_thread_alive = False
-            self._gps_thread_alive = False
+            self._main_msg_thread_alive = False
             return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
@@ -612,53 +595,31 @@ class WorkingState(State):
         return self.field
 
     def sendLastStatistics(self):
-        all_subdirs = ["../logs/"+d for d in os.listdir('../logs/.') if os.path.isdir("../logs/"+d)]
-        if len(all_subdirs) > 0:
-            lastLog = max(all_subdirs, key=os.path.getmtime)
-            #lastLog = "../logs/03-03-2021 11-28-19 635103"
-            path = lastLog+"/statistics.txt"
-            file = pathlib.Path(path)
-            if not file.exists():
-                path = lastLog+"/audit.txt"
-                file = pathlib.Path(path)
-            if file.exists():
-                with file.open() as fileCursor:
-                    lines = fileCursor.readlines()
-                    lines = ''.join(lines)
-                    r = re.compile("Last session working time: (.*)|(?:(.*?): (.*)){1,}")
-                    groups = r.findall(lines) 
-                    if groups:
-                        data = {}
-                        timeS = groups[0][0]
-                        weeds = {}
-                        for index in range(0,len(groups)):
-                            if index > 0 : 
-                                weeds[groups[index][1]] = int(groups[index][2])
-                        #data["time"] = timeS
-                        data["time"] = self.timeStartMain.isoformat()
-                        data["weeds"] = weeds
-                        self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
-
-        data = {}
+        data = dict()
+        data["weeds"] = self.extracted_plants
         data["time"] = self.timeStartMain.isoformat()
         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
-    def _statistic_thread_tf(self): 
-        while self._statistic_thread_alive:
-            self.sendLastStatistics()
-            time.sleep(0.9)
-
-    def _gps_thread_tf(self): 
-        self.allPath = []
-        while self._gps_thread_alive:
+    def _main_msg_thread_tf(self): 
+        while self._main_msg_thread_alive:
             msg = self.msgQueue.receive()
-            data = json.loads(msg[0])["last_gps"]
-            self.allPath.append([data[1],data[0]])
-            if self.lastGpsQuality != data[2]:
-                self.lastGpsQuality = data[2]
-            self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map')
-            # time.sleep(0.5)
-
+            data = json.loads(msg[0])
+            if "start" in data:
+                if data["start"]:
+                    msg = f"[{self.__class__.__name__}] -> Main lancé !"
+                    self.logger.write_and_flush(msg+"\n")
+                    print(msg)
+                    self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit}, namespace='/button', broadcast=True)
+            elif "datacollector" in data:
+                self.detected_plants = data["datacollector"][0]
+                self.extracted_plants = data["datacollector"][1]
+                self.sendLastStatistics()
+            elif "last_gps" in data:
+                data = json.loads(msg[0])["last_gps"]
+                self.allPath.append([data[1],data[0]])
+                if self.lastGpsQuality != data[2]:
+                    self.lastGpsQuality = data[2]
+                self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map')
 
 #This state corresponds when the robot has an error.
 class ErrorState(State):

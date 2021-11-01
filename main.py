@@ -148,7 +148,7 @@ def move_to_point_and_extract(coords_from_to: list,
                               image_saver: utility.ImageSaver,
                               notification: NotificationClient,
                               extraction_manager_v3: ExtractionManagerV3,
-                              gps_msg_queue: posix_ipc.MessageQueue):
+                              ui_msg_queue: posix_ipc.MessageQueue):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -312,8 +312,8 @@ def move_to_point_and_extract(coords_from_to: list,
                 continue
 
         trajectory_saver.save_point(cur_pos)
-        if gps_msg_queue is not None:
-            gps_msg_queue.send(json.dumps({"last_gps": cur_pos}))
+        if ui_msg_queue is not None:
+            ui_msg_queue.send(json.dumps({"last_gps": cur_pos}))
         """
         if len(used_points_history) > 0:
         if str(used_points_history[-1]) != str(cur_pos):
@@ -1074,7 +1074,7 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
     return field
 
 
-def send_gps_history_from_file(gps_msg_queue: posix_ipc.MessageQueue,
+def send_gps_history_from_file(ui_msg_queue: posix_ipc.MessageQueue,
                                gps_file_dir: str,
                                gps_file_name: str,
                                logger_full: utility.Logger):
@@ -1087,7 +1087,7 @@ def send_gps_history_from_file(gps_msg_queue: posix_ipc.MessageQueue,
                 if line.startswith("[") and line.endswith("]\n"):
                     parsed_point = line[1:-1].split(", ")
                     try:
-                        gps_msg_queue.send(json.dumps({"last_gps": [float(parsed_point[0]),
+                        ui_msg_queue.send(json.dumps({"last_gps": [float(parsed_point[0]),
                                                                     float(parsed_point[1]),
                                                                     parsed_point[2].replace("'", "")]}))
                     except (IndexError, ValueError):
@@ -1115,11 +1115,20 @@ def main():
 
     utility.create_directories(log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
 
+    try:
+        ui_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+    except KeyboardInterrupt:
+        exit(0)
+    except:
+        print(traceback.format_exc())
+        ui_msg_queue = None
+
     notification = NotificationClient(time_start)
     image_saver = utility.ImageSaver()
     data_collector = datacollection.DataCollector(notification,
                                                   load_from_file=config.CONTINUE_PREVIOUS_PATH,
-                                                  file_path=log_cur_dir + config.DATACOLLECTOR_SAVE_FILE)
+                                                  file_path=log_cur_dir + config.DATACOLLECTOR_SAVE_FILE,
+                                                  ui_msg_queue=ui_msg_queue)
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     working_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
     view_zone_polygon = Polygon(config.VIEW_ZONE_POLY_POINTS)
@@ -1192,18 +1201,10 @@ def main():
         notification.setStatus(SyntheseRobot.HS)
         exit(1)
 
-    try:
-        gps_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
-    except KeyboardInterrupt:
-        exit(0)
-    except:
-        print(traceback.format_exc())
-        gps_msg_queue = None
-
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
-        if gps_msg_queue is not None:
-            send_gps_history_from_file(gps_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
+        if ui_msg_queue is not None:
+            send_gps_history_from_file(ui_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
         else:
             msg = "GPS message queue connection is not established (None), canceling gps sending to UI"
             logger_full.write(msg + "\n")
@@ -1400,6 +1401,11 @@ def main():
             logger_full.write(msg + "\n")
             """
 
+            try:
+                ui_msg_queue.send(json.dumps({"start": True}))
+            except:
+                print(traceback.format_exc())
+
             msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|'
             print(msg)
             logger_full.write(msg + "\n")
@@ -1476,7 +1482,7 @@ def main():
                                               trajectory_saver, config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
                                               working_zone_points_cv, view_zone_polygon, view_zone_points_cv,
                                               config.DEBUG_IMAGES_PATH, nav, data_collector, log_cur_dir, 
-                                              image_saver, notification, extraction_manager_v3, gps_msg_queue)
+                                              image_saver, notification, extraction_manager_v3, ui_msg_queue)
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
