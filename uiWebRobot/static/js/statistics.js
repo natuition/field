@@ -8,6 +8,9 @@ var data = [
     0
 ];
 
+var updaterTime = null;
+var lastTime;
+
 window.onload = function() {
     pieChart = new Chart(pie, {
         type: 'doughnut',
@@ -59,24 +62,40 @@ function removeAllChildNodes(parent) {
     }
 }
 
-socketio.on('statistics', function(dataServ) {
-    var date = new Date(dataServ["time"]);
+function transformTime(){
+    var date = new Date(lastTime);
     var today = new Date(); 
     var timeSec = today-date;
     var timeDate = new Date(timeSec); 
-    var timeValue = String(timeDate.getUTCHours()).padStart(2, '0') + ":" + String(timeDate.getUTCMinutes()).padStart(2, '0') + ":" + String(timeDate.getUTCSeconds()).padStart(2, '0');
+    return String(timeDate.getUTCHours()).padStart(2, '0') + ":" + String(timeDate.getUTCMinutes()).padStart(2, '0') + ":" + String(timeDate.getUTCSeconds()).padStart(2, '0');
+}
+
+function setTimeInHTML(){
+    var timeValue = transformTime();
     var statsTimeCount = document.getElementsByClassName("status__time--top")[0];
     removeAllChildNodes(statsTimeCount);
     var p = document.createElement("p");
     var span = document.createElement("span");
+    span.id = "workTimeValue";
     var timeNode = document.createTextNode("Time: ");
     var timeValueNode = document.createTextNode(timeValue);
-    span.appendChild(timeValueNode)
-    p.appendChild(timeNode)
-    p.appendChild(span)
-    p.id = "workTime"
-    statsTimeCount.appendChild(p)    
-    
+    span.appendChild(timeValueNode);
+    p.appendChild(timeNode);
+    p.appendChild(span);
+    p.id = "workTime";
+    statsTimeCount.appendChild(p);
+}
+
+socketio.on('statistics', function(dataServ) {
+    console.log(dataServ);
+    lastTime = dataServ["time"];
+    if(updaterTime !== null) clearInterval(updaterTime);
+    setTimeInHTML();
+    updaterTime = window.setInterval(()=>{
+        var timeValue = transformTime();
+        console.log(timeValue);
+        $("#workTimeValue").text(timeValue);
+    }, 1000);
     if(dataServ["weeds"] != undefined){
         var number = 1;
         var count = 0;

@@ -871,9 +871,10 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
         msg = "No place for maneuvers; Config spiral interval (that will be multiplied by 2): " + \
               str(spiralSidesInterval) + " Current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
-        # print(msg)
+        if config.VERBOSE:
+            print(msg)
         logger.write(msg + "\n")
-        return None
+        return None, None
 
     point_x1_int = nav.get_point_on_vector(point_a, point_b, spiralSidesInterval)
     point_x2_int = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - spiralSidesInterval)
@@ -1662,7 +1663,7 @@ def main():
                     # generate path points
                     path_start_index = 1
                     if config.TRADITIONAL_PATH:
-                        path_points = build_path(field_gps_coords, nav, logger_full)
+                        path_points = build_path(field_gps_coords, nav, logger_full, config.VESC_RPM_SLOW_SI)
                     if config.BEZIER_CORNER_PATH:
                         path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, config.VESC_RPM_SLOW_SI)
                     if config.FORWARD_BACKWARD_PATH:
@@ -1726,11 +1727,6 @@ def main():
             logger_full.write(msg + "\n")
             """
 
-            try:
-                ui_msg_queue.send(json.dumps({"start": True}))
-            except:
-                print(traceback.format_exc())
-
             msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|'
             print(msg)
             logger_full.write(msg + "\n")
@@ -1748,6 +1744,12 @@ def main():
                     start_position = utility.average_point(gps,trajectory_saver,nav)
                 except:
                     pass
+
+                if ui_msg_queue is not None:
+                    try:
+                        ui_msg_queue.send(json.dumps({"start": True}))
+                    except:
+                        pass
                 
                 last_direction_of_travel = None #1 -> moving forward #-1 -> moving backward
 
@@ -1782,7 +1784,7 @@ def main():
                     
                     direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
 
-                    if config.WHEELS_STRAIGHT_CAHNGE_DIRECTION_OF_TRAVEL and direction_of_travel != last_direction_of_travel:
+                    if config.WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL and direction_of_travel != last_direction_of_travel:
                             vesc_engine.stop_moving()
                             response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
                             if response != smoothie.RESPONSE_OK: 

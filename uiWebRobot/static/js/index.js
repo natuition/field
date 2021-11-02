@@ -130,6 +130,7 @@ socketButton.on('startMain', function(dataServ) {
             }
             document.getElementById('webCamStream').src = 'http://' + document.domain + ':8888';
             document.getElementById('webCamStream').style.width = $(header_map).width() + "px";
+            socketio.emit('data', {type: "getStats"});
         }, 2000);
     }
 });
