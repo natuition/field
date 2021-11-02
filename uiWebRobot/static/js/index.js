@@ -41,11 +41,8 @@ if(choose_field_selector != null){
 
 var header_map = document.querySelector('.ruler');
 document.getElementById('map__header').style.width = $(header_map).width() + "px";
-document.getElementById('webCamStream').style.width = $(header_map).width() + "px";
 
 var audit = false;
-
-document.getElementById('webCamStream').src = 'http://' + document.domain + ':8888';
 
 var reloader = 0;
 
@@ -128,8 +125,6 @@ socketButton.on('startMain', function(dataServ) {
                 statusTitle.classList.add('display-none')
                 statusTitle.classList.remove('display-block')
             }
-            document.getElementById('webCamStream').src = 'http://' + document.domain + ':8888';
-            document.getElementById('webCamStream').style.width = $(header_map).width() + "px";
             socketio.emit('data', {type: "getStats"});
         }, 2000);
     }
@@ -312,7 +307,14 @@ function verif_iframe_start(){
                 url : 'http://' + document.domain + ':8888'
             })
             .done(function() {
-                $("#webCamStream").attr("src", 'http://' + document.domain + ':8888');
+                var ifrm = document.createElement("iframe");
+                ifrm.id = "webCamStream";
+                ifrm.src = 'http://' + document.domain + ':8888';
+                ifrm.width = "414px";
+                ifrm.height = "250px";
+                ifrm.style = "margin: 0 auto;display:block; border: none; border-radius: 20px; max-width: 374px; min-height: 210px; width: 100%; height: 100%;";
+                ifrm.style.width = $(header_map).width() + "px";
+                $( "#conteneur_stats" ).append(ifrm);
                 verif_iframe_stop();
             })
         } catch(e) {}

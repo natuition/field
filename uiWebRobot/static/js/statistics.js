@@ -87,13 +87,11 @@ function setTimeInHTML(){
 }
 
 socketio.on('statistics', function(dataServ) {
-    console.log(dataServ);
     lastTime = dataServ["time"];
     if(updaterTime !== null) clearInterval(updaterTime);
     setTimeInHTML();
     updaterTime = window.setInterval(()=>{
         var timeValue = transformTime();
-        console.log(timeValue);
         $("#workTimeValue").text(timeValue);
     }, 1000);
     if(dataServ["weeds"] != undefined){
