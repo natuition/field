@@ -1,4 +1,4 @@
-const status = document.querySelector('.status')
+const statu = document.querySelector('.status')
 const statusActive = document.querySelector('.status__active')
 const statusTitle = document.querySelector('.status__active--title')
 const generateField = document.querySelector('.ruler')
@@ -112,8 +112,8 @@ socketButton.on('startMain', function(dataServ) {
             $(button).addClass("begin__button--stop");
             $(button).addClass("unselectable");
             $(button).removeAttr('disabled');
-            status.classList.remove('display-flex')
-            status.classList.add('display-none')
+            statu.classList.remove('display-flex')
+            statu.classList.add('display-none')
             generateField.classList.remove('display-flex')
             generateField.classList.add('display-none')
             statusActive.classList.remove('display-none')
@@ -146,8 +146,8 @@ socketButton.on('stop', function(dataServ) {
             $(button).addClass("unselectable");
             $(button).removeAttr('disabled');
 
-            status.classList.remove('display-none')
-            status.classList.add('display-flex')
+            statu.classList.remove('display-none')
+            statu.classList.add('display-flex')
 
             generateField.classList.remove('display-none')
             generateField.classList.add('display-flex')
@@ -168,8 +168,9 @@ socketButton.on('stop', function(dataServ) {
             audit = false;
 
             newFieldButton.classList.remove("disabled");
-            newFieldButton.removeAttribute("disabled")
+            newFieldButton.removeAttribute("disabled");
             wheelButton.classList.remove("disabled-wheel");
+            document.getElementById("webCamStream").remove();
             verif_iframe_start();
 
             document.getElementById('map__header').contentWindow.location.reload();
@@ -298,8 +299,9 @@ function verif_iframe_stop() {
 
 function verif_iframe_start(){
     iframe_verif = setInterval(() => {
-        if(document.getElementById('conteneur_stats') != null)
-        if(document.getElementById('conteneur_stats').classList.contains("display-flex"))
+        if(document.getElementById('conteneur_stats') != null);
+        if(document.getElementById('conteneur_stats').classList.contains("display-flex"));
+        if(document.getElementById("webCamStream")) document.getElementById("webCamStream").remove();
         try {
             $.ajax({
                 type : "HEAD",
