@@ -575,9 +575,11 @@ class WorkingState(State):
             else:
                 self.statusOfUIObject["startButton"] = True
             self.statusOfUIObject["stopButton"] = None
+            self.msgQueue.close()
             return WaitWorkingState(self.socketio, self.logger, False)
         else:
             self._main_msg_thread_alive = False
+            self.msgQueue.close()
             return ErrorState(self.socketio, self.logger)
     
     def on_socket_data(self, data):
@@ -586,6 +588,7 @@ class WorkingState(State):
             return self
         else:
             self._main_msg_thread_alive = False
+            self.msgQueue.close()
             return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):

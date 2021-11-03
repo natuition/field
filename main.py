@@ -1880,11 +1880,15 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
         notification.stop()
+        if ui_msg_queue is not None:
+            ui_msg_queue.close()
     except:
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
         notification.setStatus(SyntheseRobot.HS)
+        if ui_msg_queue is not None:
+            ui_msg_queue.close()
     finally:
         """
         # save used gps points
