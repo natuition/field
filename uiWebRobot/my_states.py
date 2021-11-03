@@ -306,7 +306,7 @@ class CreateFieldState(State):
                 return WaitWorkingState(self.socketio, self.logger, False) 
 
             self.field = self.fieldCreator.calculateField()
-            if not config.TWO_POINTS_FOR_CREATE_FIELD:
+            if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
                 self.manoeuvre = True
                 self.fieldCreator.manoeuvre()
                 self.manoeuvre = False
@@ -708,8 +708,8 @@ class FieldCreator:
         print(msg)
 
         if not config.TWO_POINTS_FOR_CREATE_FIELD:
-            self.C = self.nav.get_coordinate(self.B, self.A, 90, self.length_field)
-            self.D = self.nav.get_coordinate(self.C, self.B, 90, width_field)
+            self.C = self.nav.get_coordinate(self.A, self.B, 90, self.length_field)
+            self.D = self.nav.get_coordinate(self.B, self.C, 90, width_field)
             self.field = [self.B, self.C, self.D, self.A]
         else:
             self.field = [self.B, self.A]
