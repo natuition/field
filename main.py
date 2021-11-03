@@ -1668,7 +1668,10 @@ def main():
                         path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, config.VESC_RPM_SLOW_SI)
                     if config.FORWARD_BACKWARD_PATH:
                         a,b,c,d = field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]
-                        path_points = add_forward_backward_path([d,a,b,c], nav, logger_full, config.VESC_RPM_SLOW_SI, [])
+                        if nav.get_distance(a,b) >= nav.get_distance(b,c):
+                            path_points = add_forward_backward_path([a,b,c,d], nav, logger_full, config.VESC_RPM_SLOW_SI, [])
+                        else:
+                            path_points = add_forward_backward_path([d,a,b,c], nav, logger_full, config.VESC_RPM_SLOW_SI, [])
                     
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
@@ -1705,6 +1708,9 @@ def main():
                 msg = "List of path points is empty, saving canceled."
                 print(msg)
                 logger_full.write(msg + "\n")
+
+            exit(1)
+
             if len(path_points) < 2:
                 msg = "Expected at least 2 points in path, got " + str(len(path_points)) + \
                       " instead (1st point is starting point)."
