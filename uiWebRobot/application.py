@@ -195,7 +195,7 @@ def index():
     if str(stateMachine.currentState) == "ErrorState":
         render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
 
-    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"))    
+    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=config.SLIDER_CREATE_FIELD_MIN, slider_max=config.SLIDER_CREATE_FIELD_MAX, slider_step=config.SLIDER_CREATE_FIELD_STEP)    
 
 @app.route('/map')
 def maps():
