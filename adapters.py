@@ -1308,19 +1308,19 @@ class GPSUbloxAdapter:
         Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
         features)"""
 
-        self._get_fresh_time = time.time()
+        # self._get_fresh_time = time.time()
         
-        while len(self._last_pos_container) < 1:
-            if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
-                raise TimeoutError
-            pass
+        # while len(self._last_pos_container) < 1:
+            # if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
+                # raise TimeoutError
+            # pass
         
         with self._sync_locker:
             self._position_is_fresh = False
             
         while True:
-            if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
-                raise TimeoutError
+            # if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
+                # raise TimeoutError
             with self._sync_locker:
                 if not self._position_is_fresh:
                     continue

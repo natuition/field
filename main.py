@@ -1686,7 +1686,6 @@ def main():
                     print(msg)
                     logger_full.write(msg + "\n")
                     notification.setStatus(SyntheseRobot.HS)
-                    exit(1)
 
                 # TODO: save field in debug
 
