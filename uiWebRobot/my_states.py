@@ -122,7 +122,7 @@ class WaitWorkingState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": True, #True or False
             "audit": False, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": True #True or False     
         }
 
@@ -276,7 +276,7 @@ class CreateFieldState(State):
             "stopButton": True, #True or charging or None
             "wheelButton": False, #True or False
             "audit": 'disable', #True or False or use or not-use or disable
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
@@ -346,8 +346,8 @@ class CreateFieldState(State):
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
             print(msg)
-            self.statusOfUIObject["slider"] = int(data["value"])
-            self.fieldCreator.setFieldSize(int(data["value"])*1000)
+            self.statusOfUIObject["slider"] = float(data["value"])
+            self.fieldCreator.setFieldSize(float(data["value"])*1000)
 
             try:
                 self.fieldCreator.setFirstPoint()
@@ -364,15 +364,15 @@ class CreateFieldState(State):
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
             print(msg)
-            self.statusOfUIObject["slider"] = int(data["value"])
-            self.fieldCreator.setFieldSize(int(data["value"])*1000)
+            self.statusOfUIObject["slider"] = float(data["value"])
+            self.fieldCreator.setFieldSize(float(data["value"])*1000)
             self.field = self.fieldCreator.calculateField()
         elif data["type"] == "validerZone":
             msg = f"[{self.__class__.__name__}] -> Slider value final : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
             print(msg)
-            self.statusOfUIObject["slider"] = int(data["value"])
-            self.fieldCreator.setFieldSize(int(data["value"])*1000)
+            self.statusOfUIObject["slider"] = float(data["value"])
+            self.fieldCreator.setFieldSize(float(data["value"])*1000)
             self.field = self.fieldCreator.calculateField()
             self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
         elif data["type"] == "field_name":
@@ -419,7 +419,7 @@ class StartingState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
@@ -470,7 +470,7 @@ class ResumeState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
@@ -537,7 +537,7 @@ class WorkingState(State):
             "stopButton": True, #True or charging or None
             "wheelButton": False , #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
@@ -639,7 +639,7 @@ class ErrorState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": False, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
@@ -708,8 +708,8 @@ class FieldCreator:
         print(msg)
 
         if not config.TWO_POINTS_FOR_CREATE_FIELD:
-            self.C = self.nav.get_coordinate(self.B, self.A, -90, self.length_field)
-            self.D = self.nav.get_coordinate(self.C, self.B, -90, width_field)
+            self.C = self.nav.get_coordinate(self.B, self.A, 90, self.length_field)
+            self.D = self.nav.get_coordinate(self.C, self.B, 90, width_field)
             self.field = [self.B, self.C, self.D, self.A]
         else:
             self.field = [self.B, self.A]
