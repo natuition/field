@@ -489,7 +489,10 @@ class NavigationV3:
 
 
         # set camera to the Y min
-        res = smoothie.custom_move_to(config.XY_F_MAX, X=config.X_MAX / 2 / config.XY_COEFFICIENT_TO_MM, Y=config.Y_MIN)
+        res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                              Y_F=config.Y_F_MAX,
+                                              X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                                              Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
         if res != smoothie.RESPONSE_OK:
             msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
             logger_full.write(msg + "\n")
