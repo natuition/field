@@ -1789,7 +1789,7 @@ def main():
 
                     if config.WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL and direction_of_travel != last_direction_of_travel:
                             vesc_engine.stop_moving()
-                            response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+                            response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
                             if response != smoothie.RESPONSE_OK: 
                                 msg = "Smoothie response is not ok: " + response
                                 print(msg)
