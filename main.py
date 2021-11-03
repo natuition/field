@@ -154,7 +154,8 @@ def move_to_point_and_extract(coords_from_to: list,
                               extraction_manager_v3: ExtractionManagerV3,
                               ui_msg_queue: posix_ipc.MessageQueue, 
                               SI_speed: float, 
-                              wheels_straight: bool):
+                              wheels_straight: bool, 
+                              **kwargs: dict):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -635,33 +636,37 @@ def move_to_point_and_extract(coords_from_to: list,
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
+        extract = kwargs.get('extract', True)
+
         # EXTRACTION CONTROL
         while True:   # perform detection until either it is time to perform a new navigation, or there is something to goget
             start_t = time.time()
-            frame = camera.get_image()
-            frame_t = time.time()
-            #print("tick")
+            if extract:
+                frame = camera.get_image()
+                frame_t = time.time()
+                #print("tick")
 
-            per_det_start_t = time.time()
-            plants_boxes = periphery_det.detect(frame)
-            per_det_end_t = time.time()
-            detections_period.append(per_det_end_t - start_t)
+                per_det_start_t = time.time()
+                plants_boxes = periphery_det.detect(frame)
+                per_det_end_t = time.time()
+                detections_period.append(per_det_end_t - start_t)
 
-            if config.SAVE_DEBUG_IMAGES:
-                image_saver.save_image(frame, img_output_dir,
-                                    label="(periphery view scan M=" + str(current_working_mode) + ")",
-                                    plants_boxes=plants_boxes)
+                if config.SAVE_DEBUG_IMAGES:
+                    image_saver.save_image(frame, img_output_dir,
+                                        label="(periphery view scan M=" + str(current_working_mode) + ")",
+                                        plants_boxes=plants_boxes)
 
-            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
-                  str(per_det_end_t - per_det_start_t)
-            logger_full.write(msg + "\n")
+                msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
+                    str(per_det_end_t - per_det_start_t)
+                logger_full.write(msg + "\n")
 
-            if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                break
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    break
                 
             # do maneuvers not more often than specified value
             
-            mu_detections_period, sigma_detections_period = utility.mu_sigma(detections_period)
+            if extract:
+                mu_detections_period, sigma_detections_period = utility.mu_sigma(detections_period)
     
             cur_time = time.time()
             detections_time = cur_time - prev_maneuver_time
@@ -670,8 +675,12 @@ def move_to_point_and_extract(coords_from_to: list,
             #is there enough time before the next navigation to complete a last detection :
             # the average detection time is mu_detections_period. Assuming that no period exceed mu+3*standard_deviation
             #print("if estimate next station",detections_time + mu_detections_period + 3*sigma_detections_period,"> threshold ",config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER)
-            if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
-                break
+            if extract:
+                if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
+                    break
+            else:
+                if detections_time > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
+                    break
 
         working_mode_slow = 1
         working_mode_switching = 2
@@ -706,35 +715,36 @@ def move_to_point_and_extract(coords_from_to: list,
         else:
             # slow mode
             if current_working_mode == working_mode_slow:
-                if config.VERBOSE and last_working_mode != current_working_mode:
-                    print("[Working mode] : slow")
-                    last_working_mode = current_working_mode
-                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                    vesc_engine.stop_moving()
-                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+                if extract:
+                    if config.VERBOSE and last_working_mode != current_working_mode:
+                        print("[Working mode] : slow")
+                        last_working_mode = current_working_mode
+                    if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                        vesc_engine.stop_moving()
+                        data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
-                    # single precise center scan before calling for PDZ scanning and extractions
-                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ:
-                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                        frame = camera.get_image()
-                        plants_boxes = precise_det.detect(frame)
+                        # single precise center scan before calling for PDZ scanning and extractions
+                        if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ:
+                            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                            frame = camera.get_image()
+                            plants_boxes = precise_det.detect(frame)
 
-                        # do PDZ scan and extract all plants if single precise scan got plants in working area
-                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                            # do PDZ scan and extract all plants if single precise scan got plants in working area
+                            if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                                extraction_manager_v3.extract_all_plants(data_collector)
+                        else:
                             extraction_manager_v3.extract_all_plants(data_collector)
-                    else:
-                        extraction_manager_v3.extract_all_plants(data_collector)
 
-                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                        vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
 
-                elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
-                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
-                        config.SLOW_FAST_MODE:
+                    elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
+                            time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
+                            config.SLOW_FAST_MODE:
 
-                    current_working_mode = working_mode_fast
-                    if not close_to_end:
-                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
-                vesc_engine.start_moving()        
+                        current_working_mode = working_mode_fast
+                        if not close_to_end:
+                            vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+                    vesc_engine.start_moving()        
 
             # switching to fast mode
             elif current_working_mode == working_mode_switching:
@@ -1808,10 +1818,16 @@ def main():
                                                     notification, extraction_manager_v3, ui_msg_queue,
                                                     speed, False)
                     else:
-                        navigation.NavigationV3.move_to_point(  from_to, gps, vesc_engine, 
-                                                                smoothie, logger_full, logger_table, 
-                                                                report_field_names, trajectory_saver, 
-                                                                nav, notification, speed, False)
+                        move_to_point_and_extract(  from_to, gps, vesc_engine, smoothie, 
+                                                    camera, periphery_detector, precise_detector, 
+                                                    client, logger_full, logger_table, 
+                                                    report_field_names, trajectory_saver, 
+                                                    config.UNDISTORTED_ZONE_RADIUS, working_zone_polygon,
+                                                    working_zone_points_cv, view_zone_polygon, 
+                                                    view_zone_points_cv, config.DEBUG_IMAGES_PATH, 
+                                                    nav, data_collector, log_cur_dir, image_saver, 
+                                                    notification, extraction_manager_v3, ui_msg_queue,
+                                                    speed, False, extract=False)
 
 
                     if config.NAVIGATION_TEST_MODE:
