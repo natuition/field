@@ -16,6 +16,10 @@ function checkAllBoxAreChecked(){
         document.getElementById('wheelsStraight').checked && 
         isCheck == false){
     		console.log("User all check !")
+            $('#checkbutton').attr('disabled', ''); 
+            $('#checkbutton').addClass('unselectable'); 
+            $('#checkbutton').addClass('active'); 
+            $('#AI_selector').attr('disabled', ''); 
             socketio.emit('data', {type: "allChecked", strategy: select_ai.value});
             isCheck = true
     }
