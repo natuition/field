@@ -615,7 +615,7 @@ class NavigationV3:
                     
                     #put the wheel straight
                     if wheels_straight:
-                        response = smoothie.nav_turn_wheels_to(0, config.A_F_MAX)
+                        response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
                         if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                             msg = "Smoothie response is not ok: " + response
                             print(msg)
@@ -886,9 +886,9 @@ class NavigationV3:
                     logger_full.write(msg + "\n")
                     order_angle_sm = config.A_MIN
                 if SI_speed>=0:
-                    response = smoothie.nav_turn_wheels_to(order_angle_sm, config.A_F_MAX)
+                    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=order_angle_sm)
                 else:
-                    response = smoothie.nav_turn_wheels_to(-order_angle_sm, config.A_F_MAX)
+                    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=-order_angle_sm)
                 if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                     msg = "Smoothie response is not ok: " + response
                     print(msg)

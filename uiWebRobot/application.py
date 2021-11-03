@@ -61,7 +61,7 @@ def load_field_list(dir_path):
     field_list = []
     for file in os.listdir(dir_path):
         if file.endswith(".txt"):
-            field_list.append(unquote(file.split(".txt")[0]))
+            field_list.append(unquote(file.split(".txt")[0], encoding='utf-8'))
     return field_list
 
 def get_other_field():
@@ -70,8 +70,8 @@ def get_other_field():
     if len(field_list)>=2:
         coords_other = []
         for field_name in field_list:
-            if field_name != unquote(current_field):
-                with open("../fields/"+quote(field_name,safe="")+".txt") as file:
+            if field_name != unquote(current_field, encoding='utf-8'):
+                with open("../fields/"+quote(field_name,safe="", encoding='utf-8')+".txt", encoding='utf-8') as file:
                     points = file.readlines()
                 
                 coords = list()
@@ -190,7 +190,7 @@ def index():
     else:
         Field_list.sort(key=str.casefold)
         current_field = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
-        current_field = unquote(current_field)
+        current_field = unquote(current_field, encoding='utf-8')
 
     if str(stateMachine.currentState) == "ErrorState":
         render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
