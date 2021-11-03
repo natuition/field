@@ -11,7 +11,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <script defer type="text/javascript" src="{{ url_for('static', filename='js/fontawesome/solid.js') }}"></script>
     <script defer type="text/javascript" src="{{ url_for('static', filename='js/fontawesome/fontawesome.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/offline_subscriber.js') }}"></script>
+    <script type="text/javascript" src="/static/{{ now }}/js/offline_subscriber.js"></script> 
     <title>Violette</title>
 </head>
 <body>
@@ -217,13 +217,21 @@
     </div>
 </div>
 
-<script type="text/javascript" src="{{ url_for('static', filename='js/joy.js') }}"></script>
+<!--<script type="text/javascript" src="{{ url_for('static', filename='js/joy.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/joystick.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/Chart.min.js') }}"></script> 
 <script type="text/javascript" src="{{ url_for('static', filename='js/chartjs-plugin-doughnutlabel.min.js') }}"></script>   
 <script src="{{ url_for('static', filename='js/slider.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/index.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/statistics.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/statistics.js') }}" defer></script>-->
+
+<script type="text/javascript" src="/static/{{ now }}/js/joy.js"></script>
+<script type="text/javascript" src="/static/{{ now }}/js/joystick.js"></script>
+<script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script> 
+<script type="text/javascript" src="/static/{{ now }}/js/chartjs-plugin-doughnutlabel.min.js"></script>   
+<script src="/static/{{ now }}/js/slider.js" defer></script>
+<script src="/static/{{ now }}/js/index.js" defer></script>
+<script src="/static/{{ now }}/js/statistics.js" defer></script>
 
 {% else %}
 
@@ -344,11 +352,13 @@
     </section>
 </div>
 
-<script src="{{ url_for('static', filename='js/checkList.js') }}" defer></script>
+<!-- <script src="{{ url_for('static', filename='js/checkList.js') }}" defer></script>-->
+<script src="/static/{{ now }}/js/checkList.js" defer></script>
 
 {% endif %}
 
-<script src="{{ url_for('static', filename='js/popup.js') }}" defer></script>
+<!-- <script src="{{ url_for('static', filename='js/popup.js') }}" defer></script> -->
+<script src="/static/{{ now }}/js/popup.js" defer></script>
 
 </body>
 </html>

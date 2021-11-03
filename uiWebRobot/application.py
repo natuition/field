@@ -16,6 +16,7 @@ import os
 from urllib.parse import quote, unquote
 import posix_ipc
 from threading import Thread
+from datetime import datetime
 
 __author__ = 'Vincent LAMBERT'
 
@@ -194,7 +195,7 @@ def index():
     if str(stateMachine.currentState) == "ErrorState":
         render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
 
-    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list)    
+    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"))    
 
 @app.route('/map')
 def maps():
@@ -203,14 +204,14 @@ def maps():
     if field is None:
         field = load_coordinates("../field.txt")
     if field is None:
-        return render_template('map.html', myCoords=myCoords)
+        return render_template('map.html', myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
     else:
         coords_other = get_other_field()
         coords_field = formattingFieldPointsForSend(field)
         if coords_other:
-            return render_template('map.html', coords_field=coords_field, myCoords=myCoords, coords_other=coords_other)
+            return render_template('map.html', coords_field=coords_field, myCoords=myCoords, coords_other=coords_other, now=datetime.now().strftime("%H_%M_%S__%f"))
         else:
-            return render_template('map.html', coords_field=coords_field, myCoords=myCoords)
+            return render_template('map.html', coords_field=coords_field, myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
 
 @app.route('/offline.html')
 def offline():
@@ -251,6 +252,14 @@ def worker():
 def socket_io_min():
     response=make_response(send_from_directory('static',filename='js/socket.io.min.js'))
     response.headers['Content-Type'] = 'application/javascript'
+    return response
+
+@app.route('/static/<random_time>/<file_path>/<file_name>')
+def getJsFile(file_path,file_name,random_time):
+    if ".js" in file_name:
+        response=make_response(send_from_directory(app.static_folder,filename=f'{file_path}/{file_name}', mimetype='application/javascript'))
+    else:
+        response=make_response(send_from_directory(app.static_folder,filename=f'{file_path}/{file_name}', mimetype='application/css'))
     return response
 
 if __name__ == "__main__":

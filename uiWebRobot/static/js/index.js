@@ -99,6 +99,7 @@ socketButton.on('continue', function(dataServ) {
 
 socketButton.on('startMain', function(dataServ) {
     if(dataServ["status"] == "finish"){
+        verif_iframe_start();
         $(document.getElementsByClassName('active')[0]).addClass('finished');
         clearStats();
         setTimeout(() => { 
@@ -330,5 +331,3 @@ function verif_iframe_start(){
         } catch(e) {}
     }, 5000);
 }
-
-verif_iframe_start();
