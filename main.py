@@ -1686,7 +1686,7 @@ def main():
                     print(msg)
                     logger_full.write(msg + "\n")
                     notification.setStatus(SyntheseRobot.HS)
-
+                    exit(1)
                 # TODO: save field in debug
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
@@ -1707,8 +1707,6 @@ def main():
                 msg = "List of path points is empty, saving canceled."
                 print(msg)
                 logger_full.write(msg + "\n")
-
-            exit(1)
 
             if len(path_points) < 2:
                 msg = "Expected at least 2 points in path, got " + str(len(path_points)) + \
