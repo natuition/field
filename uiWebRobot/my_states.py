@@ -223,11 +223,11 @@ class WaitWorkingState(State):
 
         if data["type"] == 'removeField':
 
-            os.remove("../fields/"+quote(data["field_name"],safe="")+".txt")
+            os.remove("../fields/"+quote(data["field_name"],safe="", encoding='utf-8')+".txt")
             fields_list = load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="")+".txt' ../field.txt")
+                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="", encoding='utf-8')+".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(fields_list[0])
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
@@ -382,7 +382,7 @@ class CreateFieldState(State):
             fields_list = load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="")+".txt' ../field.txt")
+                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="", encoding='utf-8')+".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(field_name)
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
@@ -734,7 +734,7 @@ class FieldCreator:
 
     def saveField(self, fieldPath: str , fieldName: str):
         cpt = 1
-        fieldName = quote(fieldName,safe="")
+        fieldName = quote(fieldName,safe="", encoding='utf-8')
         if(os.path.exists(fieldPath+fieldName)):
             while os.path.exists(f"{fieldPath+fieldName[:-4]}_{cpt}.txt"):
                 cpt+=1
@@ -847,7 +847,7 @@ def checkHaveGPS(socketio: SocketIO, statusOfUIObject: dict):
 
 def updateFields(field_name):
 
-    field_name = quote(field_name,safe="")
+    field_name = quote(field_name,safe="", encoding='utf-8')
 
     cmd = "ln -sf 'fields/"+field_name+".txt' ../field.txt"
 
