@@ -186,7 +186,6 @@ def move_to_point_and_extract(coords_from_to: list,
     """
 
     vesc_speed = SI_speed*-14285
-    vesc_engine.apply_rpm(vesc_speed)
 
     raw_angles_history = []
     detections_period =[]
@@ -740,7 +739,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     else:
                         extraction_manager_v3.extract_all_plants(data_collector)
 
-                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                    vesc_engine.apply_rpm(vesc_speed)
 
                 elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
                         time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
@@ -782,9 +781,9 @@ def move_to_point_and_extract(coords_from_to: list,
 
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
-                    vesc_engine.set_rpm(config.VESC_RPM_SLOW)
+                    vesc_engine.set_rpm(vesc_speed)
                 elif close_to_end:
-                    vesc_engine.apply_rpm(config.VESC_RPM_SLOW)
+                    vesc_engine.apply_rpm(vesc_speed)
                 else:
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
 
