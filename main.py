@@ -747,6 +747,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
                     current_working_mode = working_mode_fast
                     if not close_to_end:
+                        #TODO : change with SI speed
                         vesc_engine.apply_rpm(config.VESC_RPM_FAST)
                 vesc_engine.start_moving()        
 
@@ -764,6 +765,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 else:
                     current_working_mode = working_mode_fast
                     if not close_to_end:
+                        #TODO : change with SI speed
                         vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
 
             # fast mode
@@ -774,6 +776,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+                    #TODO : change with SI speed
                     vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
                     time.sleep(config.FAST_TO_SLOW_TIME)
                     vesc_engine.stop_moving()
@@ -785,6 +788,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 elif close_to_end:
                     vesc_engine.apply_rpm(vesc_speed)
                 else:
+                    #TODO : change with SI speed
                     vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
 
 def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: str, logger_full: utility.Logger):
