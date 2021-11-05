@@ -223,7 +223,7 @@ def offline():
 
 @app.route('/styles.css')
 def style():
-    response=make_response(send_from_directory('static',filename='css/style.css'))
+    response=make_response(send_from_directory(app.static_folder,path='css/style.css'))
     response.headers['Content-Type'] = 'text/css'
     return response
 
@@ -244,22 +244,22 @@ def handle_exception(e):
 
 @app.route('/sw.js')
 def worker():
-    response=make_response(send_from_directory('static',filename='js/offline_worker.js'))
+    response=make_response(send_from_directory(app.static_folder,path='js/offline_worker.js'))
     response.headers['Content-Type'] = 'application/javascript'
     return response
 
 @app.route('/js/socket.io.min.js')
 def socket_io_min():
-    response=make_response(send_from_directory('static',filename='js/socket.io.min.js'))
+    response=make_response(send_from_directory(app.static_folder,path='js/socket.io.min.js'))
     response.headers['Content-Type'] = 'application/javascript'
     return response
 
 @app.route('/static/<random_time>/<file_path>/<file_name>')
 def getJsFile(file_path,file_name,random_time):
     if ".js" in file_name:
-        response=make_response(send_from_directory(app.static_folder,filename=f'{file_path}/{file_name}', mimetype='application/javascript'))
+        response=make_response(send_from_directory(app.static_folder,path=f'{file_path}/{file_name}', mimetype='application/javascript'))
     else:
-        response=make_response(send_from_directory(app.static_folder,filename=f'{file_path}/{file_name}', mimetype='application/css'))
+        response=make_response(send_from_directory(app.static_folder,path=f'{file_path}/{file_name}', mimetype='application/css'))
     return response
 
 if __name__ == "__main__":
