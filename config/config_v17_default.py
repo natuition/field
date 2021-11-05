@@ -132,7 +132,7 @@ FAST_TO_SLOW_RPM = 2500
 FAST_TO_SLOW_TIME = 5
 
 VESC_RPM_SLOW_SI = 0.175
-MULTIPLIER_MM_S_TO_RPM = -14285
+MULTIPLIER_MM_S_TO_RPM = -14285 #For 12v robot
 
 # ======================================================================================================================
 # GPS SETTINGS
