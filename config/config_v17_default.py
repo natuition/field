@@ -131,8 +131,9 @@ STEP_FORWARD_RPM = -2000  # # step after extraction loops are done #-2500 à rem
 FAST_TO_SLOW_RPM = 2500
 FAST_TO_SLOW_TIME = 5
 
-VESC_RPM_SLOW_SI = 0.175
-MULTIPLIER_MM_S_TO_RPM = -14285 #For 12v robot
+SI_SPEED_FWD = 0.175
+SI_SPEED_REV = -0.7
+MULTIPLIER_SI_SPEED_TO_RPM = -14285
 
 # ======================================================================================================================
 # GPS SETTINGS

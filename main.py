@@ -185,7 +185,7 @@ def move_to_point_and_extract(coords_from_to: list,
     :return:
     """
 
-    vesc_speed = SI_speed*config.MULTIPLIER_MM_S_TO_RPM
+    vesc_speed = SI_speed*config.MULTIPLIER_SI_SPEED_TO_RPM
 
     raw_angles_history = []
     detections_period =[]
@@ -1033,11 +1033,11 @@ def corner_finish_rounds(turning_radius : float):
         print("black corridor width at full steering %2.0f"%get_rectangle_isosceles_side(turning_radius)," millimeters")
     return int((get_rectangle_isosceles_side(turning_radius))/config.FIELD_REDUCE_SIZE)+1 #how many corner round due to robot working width
 
-def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger,SI_speed: float, currently_path: list):
+def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float, currently_path: list):
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
-    fwd = SI_speed
-    rev = - SI_speed
+    fwd = SI_speed_fwd
+    rev = - SI_speed_rev
 
     spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
 
@@ -1061,12 +1061,12 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
     return currently_path
 
 
-def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger,SI_speed: float):
+def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
     path = []
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
-    fwd = SI_speed
-    rev = - SI_speed
+    fwd = SI_speed_fwd
+    rev = - SI_speed_rev
 
     spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
 
@@ -1259,16 +1259,16 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
     if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
-        path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed, path)
+        path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
 
     return path
 
-def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed: float):
+def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
     path = []
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
-    fwd = SI_speed
-    rev = - SI_speed
+    fwd = SI_speed_fwd
+    rev = - SI_speed_rev
 
     # get moving points A1 - ... - D2 spiral
     a1, a2 = compute_x1_x2_points(a, b, nav, logger)
@@ -1331,7 +1331,7 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
     
     if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
-        path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed, path)
+        path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
     
     return path
 
@@ -1681,15 +1681,15 @@ def main():
                     # generate path points
                     path_start_index = 1
                     if config.TRADITIONAL_PATH:
-                        path_points = build_path(field_gps_coords, nav, logger_full, config.VESC_RPM_SLOW_SI)
+                        path_points = build_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
                     if config.BEZIER_CORNER_PATH:
-                        path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, config.VESC_RPM_SLOW_SI)
+                        path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
                     if config.FORWARD_BACKWARD_PATH:
                         a,b,c,d = field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]
                         if nav.get_distance(a,b) >= nav.get_distance(b,c):
-                            path_points = add_forward_backward_path([a,b,c,d], nav, logger_full, config.VESC_RPM_SLOW_SI, [])
+                            path_points = add_forward_backward_path([a,b,c,d], nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV, [])
                         else:
-                            path_points = add_forward_backward_path([d,a,b,c], nav, logger_full, config.VESC_RPM_SLOW_SI, [])
+                            path_points = add_forward_backward_path([d,a,b,c], nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV, [])
                     
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
