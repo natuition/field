@@ -121,7 +121,6 @@ VESC_PORT = "/dev/ttyACM0"
 VESC_BAUDRATE = 115200
 VESC_RPM_UI = -11500
 VESC_RPM_SLOW = -2500
-VESC_RPM_SLOW_SI = 0.175
 VESC_RPM_FAST = -10000 
 VESC_RPM_AUDIT = -10000
 VESC_MOVING_TIME = float("inf")
@@ -132,6 +131,8 @@ STEP_FORWARD_RPM = -2000  # # step after extraction loops are done #-2500 à rem
 FAST_TO_SLOW_RPM = 2500
 FAST_TO_SLOW_TIME = 5
 
+VESC_RPM_SLOW_SI = 0.175
+MULTIPLIER_MM_S_TO_RPM = -14285
 
 # ======================================================================================================================
 # GPS SETTINGS
