@@ -16,8 +16,8 @@ CORK_TO_CAMERA_DISTANCE_Y = 30  # distance between camera and cork on the robot,
 # ======================================================================================================================
 #KP = 0.2    # for -10000 : *0.55   wheels turning degrees multiplier
 #KI = 0.0092 # fpr rpm-1000 : *0.91
-KP = {0.175: 0.2, 0.7: 0.11000000000000001, -0.175:0.10} 
-KI = {0.175: 0.0092, 0.7: 0.008372000000000001, -0.175:0.0025} 
+KP = {0.175: 0.2, 0.7: 0.11000000000000001, -0.175:0.10, -0.7: 0.11000000000000001} 
+KI = {0.175: 0.0092, 0.7: 0.008372000000000001, -0.175:0.0025, -0.7: 0.008372000000000001} 
 
 MANEUVERS_FREQUENCY = 1  # seconds
 # max distance in mm-s of robot's deviation from planned moving vector
@@ -50,13 +50,13 @@ PREVIOUS_PATH_POINTS_FILE = "path_points.dat"
 PREVIOUS_PATH_INDEX_FILE = "path_index.txt"
 
 #Cyril covid
-FAR_TARGET_THRESHOLD = {0.175: 25000, 0.7: 25000, -0.175: 25000} # the output of the KP KI is boost if the target is far than this threshold
-FAR_TARGET_GAIN = {0.175: 1.15, 0.7: 1.15, -0.175: 1.15} # the output of the KP KI is boost by this muliplier if the target is far than the threshold
-CLOSE_TARGET_THRESHOLD = {0.175: 5000, 0.7: 5000, -0.175: 5000} # the output of the KP KI is managed if the target is less than this threshold
-SMALL_RAW_ANGLE_SQUARE_THRESHOLD = {0.175: 100, 0.7: 100, -0.175: 100} # the output of the KP KI is calm by a muliplier if the raw angle is less than the threshold
-SMALL_RAW_ANGLE_SQUARE_GAIN = {0.175: 0.9, 0.7: 1, -0.175: 0.9} # the output of the KP KI is calm by this muliplier if the raw angle is less than the threshold
-BIG_RAW_ANGLE_SQUARE_THRESHOLD = {0.175: 625, 0.7: 625, -0.175: 625} # the output of the KP KI is boost by a muliplier if the raw angle is more than the threshold
-BIG_RAW_ANGLE_SQUARE_GAIN = {0.175: 1.35, 0.7: 1.35, -0.175: 1.35} # the output of the KP KI is boost by this muliplier if the raw angle is more than the threshold
+FAR_TARGET_THRESHOLD = {0.175: 25000, 0.7: 25000, -0.175: 25000, -0.7: 25000} # the output of the KP KI is boost if the target is far than this threshold
+FAR_TARGET_GAIN = {0.175: 1.15, 0.7: 1.15, -0.175: 1.15, -0.7: 1.15} # the output of the KP KI is boost by this muliplier if the target is far than the threshold
+CLOSE_TARGET_THRESHOLD = {0.175: 5000, 0.7: 5000, -0.175: 5000, -0.7: 5000} # the output of the KP KI is managed if the target is less than this threshold
+SMALL_RAW_ANGLE_SQUARE_THRESHOLD = {0.175: 100, 0.7: 100, -0.175: 100, -0.7: 100} # the output of the KP KI is calm by a muliplier if the raw angle is less than the threshold
+SMALL_RAW_ANGLE_SQUARE_GAIN = {0.175: 0.9, 0.7: 1, -0.175: 0.9, -0.7: 1} # the output of the KP KI is calm by this muliplier if the raw angle is less than the threshold
+BIG_RAW_ANGLE_SQUARE_THRESHOLD = {0.175: 625, 0.7: 625, -0.175: 625, -0.7: 625} # the output of the KP KI is boost by a muliplier if the raw angle is more than the threshold
+BIG_RAW_ANGLE_SQUARE_GAIN = {0.175: 1.35, 0.7: 1.35, -0.175: 1.35, -0.7: 1.35} # the output of the KP KI is boost by this muliplier if the raw angle is more than the threshold
 #OPEN_LOOP_TF_AMPLITUDES =  [5,       5,           5*12/14, 5*12/17,  5*12/20,    5*12/23] # 2500 Sinus angle range when the servo system is in open loop
 OPEN_LOOP_TF_AMPLITUDES =  [5*9/9,  5*9/13,      5*9/24,  5*9/28,   5*9/34,      5*9/40] # 10000 Sinus angle range when the servo system is in open loop
 OPEN_LOOP_TF_MAX_SAMPLES = [5,        7,          10,      15,      20,          40] #Sinus  sampling range when the servo system is in open loop
