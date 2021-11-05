@@ -1037,7 +1037,7 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
     fwd = SI_speed_fwd
-    rev = - SI_speed_rev
+    rev = SI_speed_rev
 
     spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
 
@@ -1066,7 +1066,7 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
     fwd = SI_speed_fwd
-    rev = - SI_speed_rev
+    rev = SI_speed_rev
 
     spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
 
@@ -1268,7 +1268,7 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
     fwd = SI_speed_fwd
-    rev = - SI_speed_rev
+    rev = SI_speed_rev
 
     # get moving points A1 - ... - D2 spiral
     a1, a2 = compute_x1_x2_points(a, b, nav, logger)
