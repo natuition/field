@@ -185,7 +185,7 @@ def move_to_point_and_extract(coords_from_to: list,
     :return:
     """
 
-    vesc_speed = SI_speed*-14285
+    vesc_speed = SI_speed*config.MULTIPLIER_MM_S_TO_RPM
 
     raw_angles_history = []
     detections_period =[]
