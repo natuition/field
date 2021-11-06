@@ -648,6 +648,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 plants_boxes = periphery_det.detect(frame)
             else:
                 plants_boxes = list()
+                vesc_engine.apply_rpm(vesc_speed)
             per_det_end_t = time.time()
             detections_period.append(per_det_end_t - start_t)
 
