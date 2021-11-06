@@ -329,10 +329,7 @@ def move_to_point_and_extract(coords_from_to: list,
         last_corridor_side = current_corridor_side
         perpendicular, current_corridor_side = nav.get_deviation(coords_from_to[0],coords_from_to[1],cur_pos)
         
-        
-                
-        
-        
+
         
         # check if arrived
         _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
@@ -357,6 +354,8 @@ def move_to_point_and_extract(coords_from_to: list,
                     with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
                         wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
             break
+
+
 
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
@@ -1782,8 +1781,8 @@ def main():
                 for i in range(path_start_index, path_end_index):
                     
                     if config.NAVIGATION_TEST_MODE:
-                        dist_here_point_a = nav.get_distance(start_position, config.POINT_A)
-                        dist_here_point_b = nav.get_distance(start_position, config.POINT_B)
+                        dist_here_point_a = nav.get_distance(start_position, config.POINT_A[0])
+                        dist_here_point_b = nav.get_distance(start_position, config.POINT_B[0])
 
                         if dist_here_point_a>dist_here_point_b:
                             from_to = [config.POINT_B[0], config.POINT_A[0]]
@@ -1804,6 +1803,9 @@ def main():
                         last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
                     
                     direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
+
+                    if direction_of_travel != last_direction_of_travel:
+                        vesc_engine.set_rpm(speed*config.MULTIPLIER_SI_SPEED_TO_RPM)
 
                     if config.WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL and direction_of_travel != last_direction_of_travel:
                             vesc_engine.stop_moving()
