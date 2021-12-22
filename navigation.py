@@ -960,4 +960,5 @@ class NavigationV3:
             if config.VERBOSE: 
                 print(msg)
             os.system("sudo systemctl restart ntripClient.service")
-        return time.time()
+            return time.time()
+        return lastNtripRestart
