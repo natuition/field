@@ -987,7 +987,7 @@ class CameraAdapterIMX219_170:
                 "video/x-raw(memory:NVMM), "
                 "width=(int)%d, height=(int)%d, "
                 "format=(string)NV12, framerate=(fraction)%d/1 ! "
-                "nvvidconv flip-method=%d ! "
+                "nvvidconv top=%d bottom=%d left=%d right=%d flip-method=%d ! "
                 "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
                 "videoconvert ! "
                 "video/x-raw, format=(string)BGR ! appsink"
@@ -1002,9 +1002,13 @@ class CameraAdapterIMX219_170:
                     capture_width,
                     capture_height,
                     framerate,
+                    crop_h_from,
+                    crop_h_to,
+                    crop_w_from,
+                    crop_w_to,
                     nvidia_flip_method,
-                    display_width,
-                    display_height
+                    crop_w_to-crop_w_from,
+                    crop_h_to-crop_h_from
                 )
         )
 
