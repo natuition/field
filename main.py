@@ -738,7 +738,17 @@ def move_to_point_and_extract(coords_from_to: list,
                             extraction_manager_v3.extract_all_plants(data_collector)
                     else:
                         extraction_manager_v3.extract_all_plants(data_collector)
-
+                        
+                    msg = "Applying force step forward after extractions cycle(s)"
+                    self.logger_full.write(msg + "\n")
+                    if config.VERBOSE:
+                        print(msg)
+                    vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
+                    vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
+                    vesc_engine.start_moving()
+                    vesc_engine.wait_for_stop()
+                    
+                    vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
                     vesc_engine.apply_rpm(vesc_speed)
 
                 elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
