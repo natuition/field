@@ -977,40 +977,72 @@ class CameraAdapterIMX219_170:
         self._cv_rotate_code = cv_rotate_code
         aelock = "aelock=true " if aelock else ""
         # ispdigitalgainrange="14.72 14.72" gainrange="14.72 14.72" exposuretimerange="55000 55000" aelock=true
-        gst_config = (
-                "nvarguscamerasrc "
-                "ispdigitalgainrange=\"%.2f %.2f\" "
-                "gainrange=\"%.2f %.2f\" "
-                "exposuretimerange=\"%d %d\" "
-                "%s"
-                "! "
-                "video/x-raw(memory:NVMM), "
-                "width=(int)%d, height=(int)%d, "
-                "format=(string)NV12, framerate=(fraction)%d/1 ! "
-                "nvvidconv top=%d bottom=%d left=%d right=%d flip-method=%d ! "
-                "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
-                "videoconvert ! "
-                "video/x-raw, format=(string)BGR ! appsink"
-                % (
-                    ispdigitalgainrange_from,
-                    ispdigitalgainrange_to,
-                    gainrange_from,
-                    gainrange_to,
-                    exposuretimerange_from,
-                    exposuretimerange_to,
-                    aelock,
-                    capture_width,
-                    capture_height,
-                    framerate,
-                    crop_h_from,
-                    crop_h_to,
-                    crop_w_from,
-                    crop_w_to,
-                    nvidia_flip_method,
-                    crop_w_to-crop_w_from,
-                    crop_h_to-crop_h_from
-                )
-        )
+        if config.APPLY_IMAGE_CROPPING:
+            gst_config = (
+                    "nvarguscamerasrc "
+                    "ispdigitalgainrange=\"%.2f %.2f\" "
+                    "gainrange=\"%.2f %.2f\" "
+                    "exposuretimerange=\"%d %d\" "
+                    "%s"
+                    "! "
+                    "video/x-raw(memory:NVMM), "
+                    "width=(int)%d, height=(int)%d, "
+                    "format=(string)NV12, framerate=(fraction)%d/1 ! "
+                    "nvvidconv top=%d bottom=%d left=%d right=%d flip-method=%d ! "
+                    "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+                    "videoconvert ! "
+                    "video/x-raw, format=(string)BGR ! appsink"
+                    % (
+                        ispdigitalgainrange_from,
+                        ispdigitalgainrange_to,
+                        gainrange_from,
+                        gainrange_to,
+                        exposuretimerange_from,
+                        exposuretimerange_to,
+                        aelock,
+                        capture_width,
+                        capture_height,
+                        framerate,
+                        crop_h_from,
+                        crop_h_to,
+                        crop_w_from,
+                        crop_w_to,
+                        nvidia_flip_method,
+                        crop_w_to-crop_w_from,
+                        crop_h_to-crop_h_from
+                    )
+            )
+        else:
+            gst_config = (
+                    "nvarguscamerasrc "
+                    "ispdigitalgainrange=\"%.2f %.2f\" "
+                    "gainrange=\"%.2f %.2f\" "
+                    "exposuretimerange=\"%d %d\" "
+                    "%s"
+                    "! "
+                    "video/x-raw(memory:NVMM), "
+                    "width=(int)%d, height=(int)%d, "
+                    "format=(string)NV12, framerate=(fraction)%d/1 ! "
+                    "nvvidconv flip-method=%d ! "
+                    "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+                    "videoconvert ! "
+                    "video/x-raw, format=(string)BGR ! appsink"
+                    % (
+                        ispdigitalgainrange_from,
+                        ispdigitalgainrange_to,
+                        gainrange_from,
+                        gainrange_to,
+                        exposuretimerange_from,
+                        exposuretimerange_to,
+                        aelock,
+                        capture_width,
+                        capture_height,
+                        framerate,
+                        nvidia_flip_method,
+                        display_width,
+                        display_height
+                    )
+            )
 
         if config.APPLY_THREAD_BUFF_CLEANING:
             self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
