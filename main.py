@@ -740,7 +740,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         extraction_manager_v3.extract_all_plants(data_collector)
                         
                     msg = "Applying force step forward after extractions cycle(s)"
-                    self.logger_full.write(msg + "\n")
+                    logger_full.write(msg + "\n")
                     if config.VERBOSE:
                         print(msg)
                     vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
