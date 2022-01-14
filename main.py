@@ -740,7 +740,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         extraction_manager_v3.extract_all_plants(data_collector)
                         
                     msg = "Applying force step forward after extractions cycle(s)"
-                    self.logger_full.write(msg + "\n")
+                    logger_full.write(msg + "\n")
                     if config.VERBOSE:
                         print(msg)
                     vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
@@ -911,6 +911,9 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
 
 def add_points_to_path(path: list, *args):
     for point in args:
+        if isinstance(point, list):
+            if None in point:
+                return False
         if point is None:
             return False
         path.append(point)
@@ -1044,6 +1047,10 @@ def corner_finish_rounds(turning_radius : float):
     return int((get_rectangle_isosceles_side(turning_radius))/config.FIELD_REDUCE_SIZE)+1 #how many corner round due to robot working width
 
 def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float, currently_path: list):
+    
+    if not config.ADD_FORWARD_BACKWARD_TO_END_PATH and not config.FORWARD_BACKWARD_PATH:
+        return currently_path
+    
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
     fwd = SI_speed_fwd
@@ -1268,17 +1275,14 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
 
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
-    if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
-        path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-
-    return path
+    if nav.get_distance(a,b) >= nav.get_distance(b,c):
+        return add_forward_backward_path([a,b,c,d], nav, logger, SI_speed_fwd, SI_speed_rev, path)       
+    else:
+        return add_forward_backward_path([c,b,a,d], nav, logger, SI_speed_rev, SI_speed_fwd, path)
 
 def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
     path = []
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
-
-    fwd = SI_speed_fwd
-    rev = SI_speed_rev
 
     # get moving points A1 - ... - D2 spiral
     a1, a2 = compute_x1_x2_points(a, b, nav, logger)
@@ -1288,27 +1292,21 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
     d2_spiral = compute_x2_spiral(d, a, nav, logger)
 
     # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-    if not add_points_to_path(path, [a,fwd], [a1,fwd], [a2,fwd], [b1,fwd], [b2,fwd], [c1,fwd], [c2,fwd], [d1,fwd], [d2_spiral,fwd]):
-        if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
-            path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed, path)
-        return path
+    if not add_points_to_path(path, [a,SI_speed_fwd], [a1,SI_speed_fwd], [a2,SI_speed_fwd], [b1,SI_speed_fwd], [b2,SI_speed_fwd], [c1,SI_speed_fwd], [c2,SI_speed_fwd], [d1,SI_speed_fwd], [d2_spiral,SI_speed_fwd]):
+        return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
 
     # get A'B'C'D' (prepare next ABCD points)
     b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
     d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
 
     if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
-        if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
-            path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed, path)
-        return path
+        return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
 
     a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
     c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
 
     if not check_points_for_nones(a_new, b_new, c_new, d_new):
-        if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
-            path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed, path)
-        return path
+        return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
 
     a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
@@ -1335,16 +1333,15 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
         d2_spiral = compute_x2_spiral(d, a, nav, logger)
 
         # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-        if not add_points_to_path(path, [a1,fwd], [a2,fwd], [b1,fwd], [b2,fwd], [c1,fwd], [c2,fwd], [d1,fwd], [d2_spiral,fwd]):
+        if not add_points_to_path(path, [a1,SI_speed_fwd], [a2,SI_speed_fwd], [b1,SI_speed_fwd], [b2,SI_speed_fwd], [c1,SI_speed_fwd], [c2,SI_speed_fwd], [d1,SI_speed_fwd], [d2_spiral,SI_speed_fwd]):
             break
 
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
-    
-    if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
-        path = add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-    
-    return path
 
+    if nav.get_distance(a,b) >= nav.get_distance(b,c):
+        return add_forward_backward_path([a,b,c,d], nav, logger, SI_speed_fwd, SI_speed_rev, path)       
+    else:
+        return add_forward_backward_path([c,b,a,d], nav, logger, SI_speed_rev, SI_speed_fwd, path)
 
 def compute_x1_x2(point_a, point_b, distance, nav: navigation.GPSComputing):
     """
@@ -1743,6 +1740,8 @@ def main():
                 logger_full.write(msg + "\n")
                 notification.setStatus(SyntheseRobot.HS)
                 exit(1)
+
+            raise Exception("Path file generated !")
 
             # set smoothie's A axis to 0 (nav turn wheels)
             response = smoothie.set_current_coordinates(A=0)
