@@ -25,20 +25,23 @@ def create_geojson_feature(points: list, name: str, type: FeatureType):
     data["properties"] = dict()
     data["properties"]["name"] = name
     
-    data["properties"]["stroke-width"] = 2
-    data["properties"]["stroke-opacity"] = 0.7
 
     if type == FeatureType.POLYGON:
         data["properties"]["fill"] = "red"
         data["properties"]["fill-opacity"] = 0.3
         data["properties"]["stroke"] = "#E70000"
+        data["properties"]["stroke-width"] = 2
+        data["properties"]["stroke-opacity"] = 0.7
+
         data["geometry"]["type"] = "Polygon"
         data["geometry"]["coordinates"] = list()
         data["geometry"]["coordinates"].append(points)
         data["geometry"]["coordinates"][0].append(points[0])
 
     elif type == FeatureType.LINE:
-        data["properties"]["stroke"] = "#1122FA"
+        data["properties"]["stroke"] = "#00eeff"
+        data["properties"]["stroke-width"] = 2
+        data["properties"]["stroke-opacity"] = 1
         data["geometry"]["type"] = "LineString"
         data["geometry"]["coordinates"] = list(points)
 
@@ -55,7 +58,7 @@ def save_gps_coordinates_geojson(points: list, file_name: str):
     field_i = 1
     line_i = 1
     for point in points:
-        if len(point) > 2:
+        if len(point) > 2 and len(point) < 5:
             collection["features"].append(create_geojson_feature(point,f"field_{field_i}",FeatureType.POLYGON))
             field_i+=1
         else:
@@ -66,27 +69,32 @@ def save_gps_coordinates_geojson(points: list, file_name: str):
         json.dump(collection, outfile, indent=4)
     os.chown(file_name, -1, -1)
 
-def create_field_and_save_geojson(nav: navigation.GPSComputing, start_point: list, end_point: list, length_field_ratio: float):
-    width_field = nav.get_distance(start_point,end_point)
-    length_field = width_field * length_field_ratio
-    c_point = nav.get_coordinate(end_point, start_point, 90, length_field)
-    d_point = nav.get_coordinate(c_point, end_point, 90, width_field)
+def create_field_and_save_geojson(nav: navigation.GPSComputing, start_point: list, end_point: list, width_field: float):
+    length_field = nav.get_distance(start_point,end_point)
+    c_point = nav.get_coordinate(end_point, start_point, 90, width_field)
+    d_point = nav.get_coordinate(c_point, end_point, 90, length_field)
     return [end_point, c_point, d_point, start_point]
 
+def reverse_list_content(points: list):
+    for point in points:
+        point.reverse()
 
 def main():
     nav = navigation.GPSComputing()
-    coords_1 = [5.5083566823460215,52.31748157757785]
-    coords_2 = [5.508513629270207,52.316987180790356]
-    field_1 = create_field_and_save_geojson(nav, coords_1, coords_2, 1)
-    field_2 = create_field_and_save_geojson(nav, field_1[3], field_1[2], 1.5)
-    field_3 = create_field_and_save_geojson(nav, field_2[3], field_2[2], 0.5)
+    coords_1 = [46.15763479582952, -1.13396555185318]
+    coords_2 = [46.15720608290609, -1.1349992081522942]
+    path_robot = [coords_1.copy(), coords_2.copy()]
+    field_1 = create_field_and_save_geojson(nav, coords_1.copy(), coords_2.copy(), 22500)
+    field_2 = create_field_and_save_geojson(nav, coords_1.copy(), coords_2.copy(), 55000)
 
     save_gps_coordinates(field_1,"./fields/field_1.txt")
     save_gps_coordinates(field_2,"./fields/field_2.txt")
-    save_gps_coordinates(field_3,"./fields/field_3.txt")
 
-    save_gps_coordinates_geojson([field_1, field_2, field_3], "./fields/fields.json")
+    reverse_list_content(field_1)
+    reverse_list_content(field_2)
+    reverse_list_content(path_robot)
+
+    save_gps_coordinates_geojson([field_1, field_2, path_robot], "./fields/fields.json")
 
 
 if __name__ == "__main__":

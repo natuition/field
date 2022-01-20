@@ -1741,6 +1741,8 @@ def main():
                 notification.setStatus(SyntheseRobot.HS)
                 exit(1)
 
+            #raise Exception("Path file generated !")
+
             # set smoothie's A axis to 0 (nav turn wheels)
             response = smoothie.set_current_coordinates(A=0)
             if response != smoothie.RESPONSE_OK:
