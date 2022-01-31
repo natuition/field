@@ -18,53 +18,90 @@ thread_lock = threading.Lock()
 global use_detector 
 use_detector = True
 
-#Use for save detection
-#Todo : no working today
-global use_save_detector
-use_save_detector = False
-
 if use_detector:
     global detector
-    detector = detection.YoloDarknetDetector(config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_CONFIG_FILE,
-                                                             config.PERIPHERY_DATA_FILE, config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                                             config.PERIPHERY_HIER_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
-    if use_save_detector:
-        # Define the codec and create VideoWriter object
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        global out
-        out = cv2.VideoWriter('output.avi',fourcc, 20.0, (config.CROP_W_TO-config.CROP_W_FROM,config.CROP_H_TO-config.CROP_H_FROM))
+    #detector = detection.YoloDarknetDetector(config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_CONFIG_FILE,
+    #                                                         config.PERIPHERY_DATA_FILE, config.PERIPHERY_CONFIDENCE_THRESHOLD,
+    #                                                         config.PERIPHERY_HIER_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
+    detector = detection.YoloTRTDetector(config.PERIPHERY_MODEL_PATH, config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
         
-# GStreamer Pipeline to access the Raspberry Pi camera
-GSTREAMER_PIPELINE = 'nvarguscamerasrc exposuretimerange="660000 660000" gainrange="4 4" ispdigitalgainrange="4 4" ! video/x-raw(memory:NVMM), width=3280, height=2464, format=(string)NV12, framerate=21/1 ! nvvidconv flip-method=0 ! video/x-raw, width=3280, height=2464, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink wait-on-eos=false max-buffers=1 drop=True'
+ispdigitalgainrange_from = config.ISP_DIGITAL_GAIN_RANGE_FROM
+ispdigitalgainrange_to = config.ISP_DIGITAL_GAIN_RANGE_TO
+gainrange_from = config.GAIN_RANGE_FROM
+gainrange_to = config.GAIN_RANGE_TO
+exposuretimerange_from = config.EXPOSURE_TIME_RANGE_FROM
+exposuretimerange_to = config.EXPOSURE_TIME_RANGE_TO
+capture_width = config.CAMERA_W
+capture_height = config.CAMERA_H
+framerate = config.CAMERA_FRAMERATE
+crop_h_from = config.CROP_H_FROM
+crop_h_to = config.CROP_H_TO
+crop_w_from = config.CROP_W_FROM
+crop_w_to = config.CROP_W_TO
+nvidia_flip_method = config.CAMERA_FLIP_METHOD
 
-GST_CONFIG = (
-    "nvarguscamerasrc "
-    "ispdigitalgainrange=\"%.2f %.2f\" "
-    "gainrange=\"%.2f %.2f\" "
-    "exposuretimerange=\"%d %d\" "
-    "! "
-    "video/x-raw(memory:NVMM), "
-    "width=(int)%d, height=(int)%d, "
-    "format=(string)NV12, framerate=(fraction)%d/1 ! "
-    "nvvidconv flip-method=%d ! "
-    "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
-    "videoconvert ! "
-    "video/x-raw, format=(string)BGR ! appsink"
-    % (
-        config.ISP_DIGITAL_GAIN_RANGE_FROM,
-        config.ISP_DIGITAL_GAIN_RANGE_TO,
-        config.GAIN_RANGE_FROM,
-        config.GAIN_RANGE_TO,
-        config.EXPOSURE_TIME_RANGE_FROM,
-        config.EXPOSURE_TIME_RANGE_TO,
-        config.CAMERA_W,
-        config.CAMERA_H,
-        config.CAMERA_FRAMERATE,
-        config.CAMERA_FLIP_METHOD,
-        config.CAMERA_W,
-        config.CAMERA_H
+if config.APPLY_IMAGE_CROPPING:
+    GST_CONFIG = (
+        "nvarguscamerasrc "
+        "ispdigitalgainrange=\"%.2f %.2f\" "
+        "gainrange=\"%.2f %.2f\" "
+        "exposuretimerange=\"%d %d\" "
+        "! "
+        "video/x-raw(memory:NVMM), "
+        "width=(int)%d, height=(int)%d, "
+        "format=(string)NV12, framerate=(fraction)%d/1 ! "
+        "nvvidconv top=%d bottom=%d left=%d right=%d flip-method=%d ! "
+        "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=(string)BGR ! appsink"
+        % (
+            ispdigitalgainrange_from,
+            ispdigitalgainrange_to,
+            gainrange_from,
+            gainrange_to,
+            exposuretimerange_from,
+            exposuretimerange_to,
+            capture_width,
+            capture_height,
+            framerate,
+            crop_h_from,
+            crop_h_to,
+            crop_w_from,
+            crop_w_to,
+            nvidia_flip_method,
+            crop_w_to-crop_w_from,
+            crop_h_to-crop_h_from
+        )
     )
-)
+else:
+    GST_CONFIG = (
+        "nvarguscamerasrc "
+        "ispdigitalgainrange=\"%.2f %.2f\" "
+        "gainrange=\"%.2f %.2f\" "
+        "exposuretimerange=\"%d %d\" "
+        "! "
+        "video/x-raw(memory:NVMM), "
+        "width=(int)%d, height=(int)%d, "
+        "format=(string)NV12, framerate=(fraction)%d/1 ! "
+        "nvvidconv flip-method=%d ! "
+        "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=(string)BGR ! appsink"
+        % (
+            ispdigitalgainrange_from,
+            ispdigitalgainrange_to,
+            gainrange_from,
+            gainrange_to,
+            exposuretimerange_from,
+            exposuretimerange_to,
+            capture_width,
+            capture_height,
+            framerate,
+            nvidia_flip_method,
+            capture_width,
+            capture_height
+        )
+    )
 
 def rescale_frame(frame, percent=75):
     width = int(frame.shape[1] * percent/ 100)
@@ -92,15 +129,13 @@ def captureFrames():
         # Create a copy of the frame and store it in the global variable,
         # with thread safe access
         with thread_lock:
-            video_frame = frame.copy()
+            video_frame = frame
         
         key = cv2.waitKey(30) & 0xff
         if key == 27:
             break
 
     video_capture.release()
-    if use_save_detector:
-        out.release()
         
 def encodeFrame():
     global thread_lock
@@ -111,22 +146,19 @@ def encodeFrame():
             if video_frame is None:
                 continue
 
-            frame = video_frame[config.CROP_H_FROM:config.CROP_H_TO, config.CROP_W_FROM:config.CROP_W_TO]
+            frame = video_frame
 
-            if use_detector:
-                global detector
-                plants_boxes = detector.detect(frame, True)
-                frameFinal = detection.draw_boxes(frame, plants_boxes)
-                if use_save_detector:
-                    global out
-                    out.write(frameFinal)
-            else:
-                frameFinal = frame
+        if use_detector:
+            global detector
+            plants_boxes = detector.detect(frame, True)
+            frameFinal = detection.draw_boxes(frame, plants_boxes)
+        else:
+            frameFinal = frame
 
-            frameFinal = rescale_frame(frameFinal, percent=50)
-            return_key, encoded_image = cv2.imencode(".jpg", frameFinal)
-            if not return_key:
-                continue
+        frameFinal = rescale_frame(frameFinal, percent=50)
+        return_key, encoded_image = cv2.imencode(".jpg", frameFinal)
+        if not return_key:
+            continue
 
         # Output image as a byte array
         yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + 
