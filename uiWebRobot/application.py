@@ -32,7 +32,7 @@ def init():
     global ui_languages
     global stateMachine
     global filename_for_send_from_directory
-    filename_for_send_from_directory = "filename" in send_from_directory.__code__.co_varnames
+    filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
     with open("ui_language.json", "r", encoding='utf-8') as read_file:
         ui_languages = json.load(read_file)    
     thread_notification = Thread(target=catch_send_notification, args=(socketio,))
