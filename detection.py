@@ -4,7 +4,10 @@ import os
 import glob
 import math
 import platform
-import darknet
+#import darknet
+import tensorrt as trt
+import pycuda.autoinit
+import pycuda.driver as cuda
 
 from config import config
 import posix_ipc
@@ -203,6 +206,266 @@ class YoloDarknetDetector:
         
         return plant_boxes
 
+class HostDeviceMem(object):
+    def __init__(self, host_mem, device_mem):
+        self.host = host_mem
+        self.device = device_mem
+
+    def __str__(self):
+        return "Host:\n" + str(self.host) + "\nDevice:\n" + str(self.device)
+
+    def __repr__(self):
+        return self.__str__()
+        
+class YoloTRTDetector:
+    # TODO: images are distorted a bit during strict resize wo/o saving ratio, this may affect detections
+    # TODO: check for interpolation (INTER_AREA should be better than INTER_LINEAR)
+
+    WEBSTREAM = False
+    webStream = None
+    Logger = trt.Logger(trt.Logger.WARNING)
+
+    def __init__(self,
+                 trt_model_path,  # serialized engine path
+                 confidence_threshold,  # remove detections with lower than this confidence
+                 nms_threshold):
+        # check for args errors
+        assert 0 < confidence_threshold < 1, "Confidence threshold should be a float between zero and one (non-inclusive)"
+        assert 0 < nms_threshold < 1, "NMS Threshold should be a float between zero and one (non-inclusive)"
+        if not os.path.exists(trt_model_path):
+            raise ValueError("Invalid model path {}".format(os.path.abspath(trt_model_path)))
+
+        self.__confidence_threshold = confidence_threshold
+        self.__nms_threshold = nms_threshold
+        self.__class_names = ('Plantain_great', 'Dandellion', 'Daisy', 'Plantain_narrowleaf', 'Porcelle')
+        self.__width = 416
+        self.__height = 416
+        self.sharedArray = None
+
+        self.__cfx = cuda.Device(0).make_context()
+        self.__engine, self.__context = self._build_engine_from_file(trt_model_path)
+        self.__inputs, self.__outputs, self.__bindings, self.__stream = self._allocate_buffers(self.__engine)
+        self.__cfx.pop()
+
+    def get_classes_names(self):
+        return self.__class_names
+
+    def detect(self, image, disable_frame_show=False):
+        processed_image = self._preprocess(image)
+        self.__inputs[0].host = np.ascontiguousarray(processed_image)
+
+        trt_outputs = self._do_inference()
+        
+        trt_outputs[0] = trt_outputs[0].reshape(1, -1, 1, 4)
+        trt_outputs[1] = trt_outputs[1].reshape(1, -1, len(self.__class_names))
+
+        detections = self._post_processing(trt_outputs)
+
+        # convert detections to Natuition format
+        # implemented detection structure and example:
+        # [label, confidence, (left, top, right, bottom)]
+        # ['Dandellion', '40.87', (356.56658935546875, 433.2556457519531, 96.55016326904297, 83.57292175292969)]
+        plant_boxes = []
+        height_ratio = image.shape[0] / self.__height
+        width_ratio = image.shape[1] / self.__width
+        for detection in detections:
+            left = detection[2][0] * width_ratio
+            top = detection[2][1] * height_ratio
+            right = detection[2][2] * width_ratio
+            bottom = detection[2][3] * height_ratio
+            center_x = left + (right - left) / 2                                                         
+            center_y = top + (bottom - top) / 2
+            
+            plant_boxes.append(DetectedPlantBox(round(left), round(top), round(right), round(bottom), detection[0],
+                                                self.__class_names.index(detection[0]),
+                                                float(detection[1]), image.shape[1], image.shape[0],
+                                                center_x=round(center_x), center_y=round(center_y)))
+
+        if config.FRAME_SHOW and not disable_frame_show:
+
+            t1 = time.time()
+
+            #img = draw_boxes(image, plant_boxes)
+            img = image
+
+            if self.sharedArray is None:
+                try:
+                    sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME, posix_ipc.O_CREX, size=img.nbytes)
+                except posix_ipc.ExistentialError:
+                    sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
+                sharedMem = mmap(fileno=sharedMemory.fd, length=img.nbytes)
+                sharedMemory.close_fd()
+                self.sharedArray = np.ndarray(img.shape, dtype=img.dtype, buffer=sharedMem)
+
+            self.sharedArray[:] = img[:]
+
+            draw_boxes(self.sharedArray, plant_boxes)
+
+            #print(time.time() - t1)
+
+            if not YoloTRTDetector.WEBSTREAM:
+                template_dir = os.path.abspath('./liveMain')
+                app = Flask("webstreaming", template_folder=template_dir)
+                CORS(app)
+                app.add_url_rule('/', view_func=webstreaming.index)
+                app.add_url_rule('/video_feed', view_func=webstreaming.video_feed)
+
+                logging.getLogger('werkzeug').disabled = True
+                os.environ['WERKZEUG_RUN_MAIN'] = 'true'
+
+                YoloTRTDetector.webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
+                YoloTRTDetector.webStream.start()
+                YoloTRTDetector.WEBSTREAM = True
+        
+        return plant_boxes
+
+    def _build_engine_from_file(self, engine_path):
+        runtime = trt.Runtime(self.Logger)
+        with open(engine_path, 'rb') as f:
+            serialized_engine = f.read()
+        
+        engine = runtime.deserialize_cuda_engine(serialized_engine)
+        context = engine.create_execution_context()
+
+        return engine, context
+
+        # Allocates all buffers required for an engine, i.e. host/device inputs/outputs.
+    def _allocate_buffers(self, engine):
+        inputs = []
+        outputs = []
+        bindings = []
+        stream = cuda.Stream()
+        for binding in engine:
+            size = trt.volume(engine.get_binding_shape(binding)) * engine.max_batch_size
+            dtype = trt.nptype(engine.get_binding_dtype(binding))
+            # Allocate host and device buffers
+            host_mem = cuda.pagelocked_empty(size, dtype)
+            device_mem = cuda.mem_alloc(host_mem.nbytes)
+            # Append the device buffer to device bindings.
+            bindings.append(int(device_mem))
+            # Append to the appropriate list.
+            if engine.binding_is_input(binding):
+                inputs.append(HostDeviceMem(host_mem, device_mem))
+            else:
+                outputs.append(HostDeviceMem(host_mem, device_mem))
+
+        return inputs, outputs, bindings, stream
+        
+    def _preprocess(self, image):
+        processed_image = cv.resize(image, (self.__width, self.__height))
+        processed_image = cv.cvtColor(processed_image, cv.COLOR_BGR2RGB)
+        processed_image = processed_image.transpose((2, 0, 1)).astype(np.float32)
+        processed_image /= 255.0
+        return processed_image
+        
+    def _do_inference(self):
+        self.__cfx.push()
+        # copy inputs to GPU
+        [cuda.memcpy_htod_async(inp.device, inp.host, self.__stream) for inp in self.__inputs]
+        # Run inference.
+        self.__context.execute_async(bindings=self.__bindings, stream_handle=self.__stream.handle)
+        # Transfer predictions back from the GPU.
+        [cuda.memcpy_dtoh_async(out.host, out.device, self.__stream) for out in self.__outputs]
+        # Synchronize the stream
+        self.__stream.synchronize()
+
+        # Return only the host outputs.
+        outputs = [out.host for out in self.__outputs]
+
+        self.__cfx.pop()
+
+        return outputs
+    
+    def _post_processing(self, outputs):
+
+        # anchors = [12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401]
+        # num_anchors = 9
+        # anchor_masks = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+        # strides = [8, 16, 32]
+        # anchor_step = len(anchors) // num_anchors
+
+        # [batch, num, 1, 4]
+        box_array = outputs[0]
+        # [batch, num, num_classes]
+        confs = outputs[1]
+
+        if type(box_array).__name__ != 'ndarray':
+            box_array = box_array.cpu().detach().numpy()
+            confs = confs.cpu().detach().numpy()
+
+        num_classes = confs.shape[2]
+
+        # [batch, num, 4]
+        box_array = box_array[:, :, 0]
+
+        # [batch, num, num_classes] --> [batch, num]
+        max_conf = np.max(confs, axis=2)
+        max_id = np.argmax(confs, axis=2)
+
+        argwhere = max_conf[0] > self.__confidence_threshold
+        l_box_array = box_array[0, argwhere, :]
+        l_max_conf = max_conf[0, argwhere]
+        l_max_id = max_id[0, argwhere]
+
+        bboxes = []
+        # nms for each class
+        for j in range(num_classes):
+            cls_argwhere = l_max_id == j
+            ll_box_array = l_box_array[cls_argwhere, :]
+            ll_max_conf = l_max_conf[cls_argwhere]
+            ll_max_id = l_max_id[cls_argwhere]
+            keep = self._nms_cpu(ll_box_array, ll_max_conf, self.__nms_threshold)
+            if (keep.size > 0):
+                ll_box_array = ll_box_array[keep, :]
+                ll_max_conf = ll_max_conf[keep]
+                ll_max_id = ll_max_id[keep]
+                for k in range(ll_box_array.shape[0]):
+                    class_name = self.__class_names[ll_max_id[k]]
+                    confidence = round(ll_max_conf[k] * 100, 2)
+                    x1 = ll_box_array[k, 0] * self.__width
+                    y1 = ll_box_array[k, 1] * self.__height
+                    x2 = ll_box_array[k, 2] * self.__width
+                    y2 = ll_box_array[k, 3] * self.__height
+                    
+                    bboxes.append([class_name, confidence, [x1, y1, x2, y2]])
+
+        return bboxes
+
+    def _nms_cpu(self, boxes, confs, nms_thresh=0.5, min_mode=False):
+        # print(boxes.shape)
+        x1 = boxes[:, 0]
+        y1 = boxes[:, 1]
+        x2 = boxes[:, 2]
+        y2 = boxes[:, 3]
+
+        areas = (x2 - x1) * (y2 - y1)
+        order = confs.argsort()[::-1]
+
+        keep = []
+        while order.size > 0:
+            idx_self = order[0]
+            idx_other = order[1:]
+
+            keep.append(idx_self)
+
+            xx1 = np.maximum(x1[idx_self], x1[idx_other])
+            yy1 = np.maximum(y1[idx_self], y1[idx_other])
+            xx2 = np.minimum(x2[idx_self], x2[idx_other])
+            yy2 = np.minimum(y2[idx_self], y2[idx_other])
+
+            w = np.maximum(0.0, xx2 - xx1)
+            h = np.maximum(0.0, yy2 - yy1)
+            inter = w * h
+
+            if min_mode:
+                over = inter / np.minimum(areas[order[0]], areas[order[1:]])
+            else:
+                over = inter / (areas[order[0]] + areas[order[1:]] - inter)
+
+            inds = np.where(over <= nms_thresh)[0]
+            order = order[inds + 1]
+
+        return np.array(keep)
 
 class DetectedPlantBox:
 

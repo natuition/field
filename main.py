@@ -247,50 +247,167 @@ def move_to_point_and_extract(coords_from_to: list,
     
     number_navigation_cycle_without_gps = 0
 
+    extract = kwargs.get('extract', True)
+
+    working_mode_slow = 1
+    working_mode_switching = 2
+    working_mode_fast = 3
+
+    point_reading_t = time.time()
+
     # main navigation control loop
     while True:
+        # EXTRACTION CONTROL
+        start_t = time.time()
+        frame = camera.get_image()
+        frame_t = time.time()
+
+        per_det_start_t = time.time()
+        if extract:
+            plants_boxes = periphery_det.detect(frame)
+        else:
+            plants_boxes = list()
+            vesc_engine.apply_rpm(vesc_speed)
+        per_det_end_t = time.time()
+        detections_period.append(per_det_end_t - start_t)
+
+        if config.SAVE_DEBUG_IMAGES and extract:
+            image_saver.save_image(frame, img_output_dir,
+                                   label="(periphery view scan M=" + str(current_working_mode) + ")",
+                                   plants_boxes=plants_boxes)
+
+        if extract:
+            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
+                  str(per_det_end_t - per_det_start_t)
+        else:
+            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. off time: " + \
+                  str(per_det_end_t - per_det_start_t)
+        logger_full.write(msg + "\n")
+
+        """
+        # do maneuvers not more often than specified value
+        mu_detections_period, sigma_detections_period = utility.mu_sigma(detections_period)
+
+        cur_time = time.time()
+        detections_time = cur_time - prev_maneuver_time
+        # print(detections_time,"mu detection =%2.13f"%mu_detections_period, " sigma =%E"%sigma_detections_period)
+
+        # is there enough time before the next navigation to complete a last detection :
+        # the average detection time is mu_detections_period. Assuming that no period exceed mu+3*standard_deviation
+        # print("if estimate next station",detections_time + mu_detections_period + 3*sigma_detections_period,"> threshold ",config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER)
+        if extract:
+            if (
+                    detections_time + mu_detections_period + 3 * sigma_detections_period) > config.MANEUVERS_FREQUENCY - config.GPS_CLOCK_JITTER:
+                break
+        else:
+            if detections_time > config.MANEUVERS_FREQUENCY - config.GPS_CLOCK_JITTER:
+                break
+        """
+
+        slow_mode_time = -float("inf")
+
+        if config.AUDIT_MODE:
+            dc_start_t = time.time()
+
+            # count detected plant boxes for each type
+            plants_count = dict()
+            for plant_box in plants_boxes:
+                plant_box_name = plant_box.get_name()
+                if plant_box_name in plants_count:
+                    plants_count[plant_box_name] += 1
+                else:
+                    plants_count[plant_box_name] = 1
+
+            # save info into data collector
+            for plant_label in plants_count:
+                data_collector.add_detections_data(plant_label,
+                                                   math.ceil((plants_count[plant_label]) / config.AUDIT_DIVIDER))
+
+            # flush updates into the audit output file and log measured time
+            if len(plants_boxes) > 0:
+                data_collector.save_all_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
+
+            dc_t = time.time() - dc_start_t
+            msg = "Last scan weeds detected: " + str(len(plants_boxes)) + \
+                  ", audit processing tick time: " + str(dc_t)
+            logger_full.write(msg + "\n")
+        else:
+            # slow mode
+            if current_working_mode == working_mode_slow:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : slow")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+
+                    # single precise center scan before calling for PDZ scanning and extractions
+                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ:
+                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                        frame = camera.get_image()
+                        plants_boxes = precise_det.detect(frame)
+
+                        # do PDZ scan and extract all plants if single precise scan got plants in working area
+                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                            extraction_manager_v3.extract_all_plants(data_collector)
+                    else:
+                        extraction_manager_v3.extract_all_plants(data_collector)
+
+                    vesc_engine.apply_rpm(vesc_speed)
+
+                elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
+                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
+                        config.SLOW_FAST_MODE:
+
+                    current_working_mode = working_mode_fast
+                    if not close_to_end:
+                        # TODO : change with SI speed
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+                vesc_engine.start_moving()
+
+            # switching to fast mode
+            elif current_working_mode == working_mode_switching:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : switching")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                else:
+                    current_working_mode = working_mode_fast
+                    if not close_to_end:
+                        # TODO : change with SI speed
+                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
+
+            # fast mode
+            elif current_working_mode == working_mode_fast:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    print("[Working mode] : fast")
+                    last_working_mode = current_working_mode
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+                    # TODO : change with SI speed
+                    vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
+                    time.sleep(config.FAST_TO_SLOW_TIME)
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                    vesc_engine.set_rpm(vesc_speed)
+                    continue
+                elif close_to_end:
+                    vesc_engine.apply_rpm(vesc_speed)
+                else:
+                    # TODO : change with SI speed
+                    vesc_engine.apply_rpm(config.VESC_RPM_FAST)
 
         # NAVIGATION CONTROL
-        if degraded_navigation_mode:
-            number_navigation_cycle_without_gps += 1
-
-        if (degraded_navigation_mode and number_navigation_cycle_without_gps == config.GPS_CHECK_IN_DEGRADED_MODE*2) or not degraded_navigation_mode:
-
-            try:
-                    
-                if degraded_navigation_mode:
-                    vesc_engine.stop_moving()
-                
-                cur_pos = gps.get_last_position()
-            
-                if degraded_navigation_mode and notificationQueue is not None:                    
-                    notificationQueue.send(json.dumps({"message_name": "Degraded_navigation_mode_off"}))
-                    msg = "Degraded navigation mode off"
-                    logger_full.write(msg + "\n")
-                    if config.VERBOSE:
-                        print(msg)
-                    degraded_navigation_mode = False
-                
-            except TimeoutError:
-                
-                if not degraded_navigation_mode and notificationQueue is not None:                    
-                    notificationQueue.send(json.dumps({"message_name": "Degraded_navigation_mode_on"}))
-                    
-                msg = "Degraded navigation mode on"
-                logger_full.write(msg + "\n")
-                if config.VERBOSE:
-                    print(msg)
-                        
-                degraded_navigation_mode = True
-                start_Nav_while = True
-                number_navigation_cycle_without_gps = 0
-
-            finally:
-                if not vesc_engine._allow_movement:
-                    vesc_engine.start_moving()
-
-        if config.CONTINUOUS_INFORMATION_SENDING and not degraded_navigation_mode:
-            notification.set_current_coordinate(cur_pos)
+        cur_pos = gps.get_last_position()
 
         nav_start_t = time.time()
 
@@ -302,35 +419,42 @@ def move_to_point_and_extract(coords_from_to: list,
         navigations_period.append(navigation_period)  
         prev_maneuver_time = nav_start_t #time reference to decide the number of detection before resuming gps.get
         #print("tock")
-            
-        if not degraded_navigation_mode:
-            
-            if start_Nav_while:
-                prev_pos = cur_pos
-                start_Nav_while=False
 
-            mu_navigations_period, sigma_navigations_period = utility.mu_sigma(navigations_period)
+        if start_Nav_while:
+            prev_pos = cur_pos
+            start_Nav_while=False
 
-            latprec=cur_pos[0]
-            longprec=cur_pos[1]
+        # mu_navigations_period, sigma_navigations_period = utility.mu_sigma(navigations_period)
 
-            if str(cur_pos) == str(prev_pos):
-                # msg = "Got the same position, added to history, calculations skipped. Am I stuck?"
-                # print(msg)
-                # logger_full.write(msg + "\n")
+        latprec=cur_pos[0]
+        longprec=cur_pos[1]
+
+        if str(cur_pos) == str(prev_pos):
+            if time.time() - point_reading_t > config.GPS_POINT_WAIT_TIME_MAX:
+                vesc_engine.stop_moving()
+                data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+                while True:
+                    cur_pos = gps.get_last_position()
+                    if str(cur_pos) != str(prev_pos):
+                        vesc_engine.start_moving()
+                        break
+            else:
                 continue
+
+        point_reading_t = time.time()
 
         trajectory_saver.save_point(cur_pos)
         if ui_msg_queue is not None:
             ui_msg_queue.send(json.dumps({"last_gps": cur_pos}))
 
+        if config.CONTINUOUS_INFORMATION_SENDING and not degraded_navigation_mode:
+            notification.set_current_coordinate(cur_pos)
+
         distance = nav.get_distance(cur_pos, coords_from_to[1])
         
         last_corridor_side = current_corridor_side
         perpendicular, current_corridor_side = nav.get_deviation(coords_from_to[0],coords_from_to[1],cur_pos)
-        
 
-        
         # check if arrived
         _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
         # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
@@ -355,8 +479,6 @@ def move_to_point_and_extract(coords_from_to: list,
                         wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
             break
 
-
-
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
             distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
@@ -371,7 +493,6 @@ def move_to_point_and_extract(coords_from_to: list,
             # print(msg)
             logger_full.write(msg + "\n")
 
-            
             # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
             # (too close points in the same position can produce false huge angles)
 
@@ -428,15 +549,12 @@ def move_to_point_and_extract(coords_from_to: list,
         #if config.VERBOSE:
         #    print(msg)
 
-        #raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
+        # raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
         raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
-        raw_angle = raw_angle_legacy + raw_angle_cruise
-            
-        
-        #NAVIGATION STATE MACHINE
-          
+        raw_angle = raw_angle_legacy/4 + raw_angle_cruise
 
+        # NAVIGATION STATE MACHINE
         if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
             raw_angle = last_correct_raw_angle
             #print("The distance covered is low")
@@ -449,23 +567,15 @@ def move_to_point_and_extract(coords_from_to: list,
             last_correct_raw_angle = raw_angle
             point_status ="correct"
 
-            
-            
         almost_start = nav.get_distance(last_skipped_point, cur_pos)
         
         if nav_status=="pursuit":
             if almost_start >=config.PURSUIT_LIMIT:
                 nav_status="cruise"
-        
-        
-        
+
         if nav_status=="cruise":
             if almost_start < config.PURSUIT_LIMIT:
                 nav_status="pursuit"
-        
-
-        
-            
 
         # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
@@ -490,9 +600,8 @@ def move_to_point_and_extract(coords_from_to: list,
             raw_angles_history[len(raw_angles_history)-1]+=  -sum_angles - config.SUM_ANGLES_HISTORY_MAX
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
-            
-        KP = 0.2*0,55
-        KI = 0.0092*0,91
+        # KP = 0.2*0,55
+        # KI = 0.0092*0,91
 
         KP = getSpeedDependentConfigParam(config.KP, SI_speed, "KP", logger_full)
         KI = getSpeedDependentConfigParam(config.KI, SI_speed, "KI", logger_full)
@@ -630,176 +739,9 @@ def move_to_point_and_extract(coords_from_to: list,
 
         prev_pos = cur_pos
 
-
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
-        extract = kwargs.get('extract', True)
-
-        # EXTRACTION CONTROL
-        while True:   # perform detection until either it is time to perform a new navigation, or there is something to goget
-            start_t = time.time()
-            frame = camera.get_image()
-            frame_t = time.time()
-            #print("tick")
-
-            per_det_start_t = time.time()
-            if extract:
-                plants_boxes = periphery_det.detect(frame)
-            else:
-                plants_boxes = list()
-                vesc_engine.apply_rpm(vesc_speed)
-            per_det_end_t = time.time()
-            detections_period.append(per_det_end_t - start_t)
-
-            if config.SAVE_DEBUG_IMAGES and extract:
-                image_saver.save_image(frame, img_output_dir,
-                                    label="(periphery view scan M=" + str(current_working_mode) + ")",
-                                    plants_boxes=plants_boxes)
-
-            
-            if extract:
-                msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
-                    str(per_det_end_t - per_det_start_t)
-            else:
-                msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. off time: " + \
-                    str(per_det_end_t - per_det_start_t)
-            logger_full.write(msg + "\n")
-
-            if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                break
-                
-            # do maneuvers not more often than specified value
-            
-            mu_detections_period, sigma_detections_period = utility.mu_sigma(detections_period)
-    
-            cur_time = time.time()
-            detections_time = cur_time - prev_maneuver_time
-            #print(detections_time,"mu detection =%2.13f"%mu_detections_period, " sigma =%E"%sigma_detections_period)
-            
-            #is there enough time before the next navigation to complete a last detection :
-            # the average detection time is mu_detections_period. Assuming that no period exceed mu+3*standard_deviation
-            #print("if estimate next station",detections_time + mu_detections_period + 3*sigma_detections_period,"> threshold ",config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER)
-            if extract:
-                if (detections_time + mu_detections_period + 3*sigma_detections_period) > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
-                    break
-            else:
-                if detections_time > config.MANEUVERS_FREQUENCY-config.GPS_CLOCK_JITTER:
-                    break
-
-        working_mode_slow = 1
-        working_mode_switching = 2
-        working_mode_fast = 3
-
-        slow_mode_time = -float("inf")
-                                    
-        if config.AUDIT_MODE:
-            dc_start_t = time.time()
-
-            # count detected plant boxes for each type
-            plants_count = dict()
-            for plant_box in plants_boxes:
-                plant_box_name = plant_box.get_name()
-                if plant_box_name in plants_count:
-                    plants_count[plant_box_name] += 1
-                else:
-                    plants_count[plant_box_name] = 1
-
-            # save info into data collector
-            for plant_label in plants_count:
-                data_collector.add_detections_data(plant_label, math.ceil((plants_count[plant_label])/config.AUDIT_DIVIDER))
-
-            # flush updates into the audit output file and log measured time
-            if len(plants_boxes) > 0:
-                data_collector.save_all_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
-
-            dc_t = time.time() - dc_start_t
-            msg = "Last scan weeds detected: " + str(len(plants_boxes)) +\
-                ", audit processing tick time: " + str(dc_t)
-            logger_full.write(msg + "\n")
-        else:
-            # slow mode
-            if current_working_mode == working_mode_slow:
-                if config.VERBOSE and last_working_mode != current_working_mode:
-                    print("[Working mode] : slow")
-                    last_working_mode = current_working_mode
-                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                    vesc_engine.stop_moving()
-                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
-
-                    # single precise center scan before calling for PDZ scanning and extractions
-                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ:
-                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                        frame = camera.get_image()
-                        plants_boxes = precise_det.detect(frame)
-
-                        # do PDZ scan and extract all plants if single precise scan got plants in working area
-                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                            extraction_manager_v3.extract_all_plants(data_collector)
-                    else:
-                        extraction_manager_v3.extract_all_plants(data_collector)
-                        
-                    msg = "Applying force step forward after extractions cycle(s)"
-                    logger_full.write(msg + "\n")
-                    if config.VERBOSE:
-                        print(msg)
-                    vesc_engine.set_moving_time(config.STEP_FORWARD_TIME)
-                    vesc_engine.set_rpm(config.STEP_FORWARD_RPM)
-                    vesc_engine.start_moving()
-                    vesc_engine.wait_for_stop()
-                    
-                    vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
-                    vesc_engine.apply_rpm(vesc_speed)
-
-                elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
-                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
-                        config.SLOW_FAST_MODE:
-
-                    current_working_mode = working_mode_fast
-                    if not close_to_end:
-                        #TODO : change with SI speed
-                        vesc_engine.apply_rpm(config.VESC_RPM_FAST)
-                vesc_engine.start_moving()        
-
-            # switching to fast mode
-            elif current_working_mode == working_mode_switching:
-                if config.VERBOSE and last_working_mode != current_working_mode:
-                    print("[Working mode] : switching")
-                    last_working_mode = current_working_mode
-                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                    vesc_engine.stop_moving()
-                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
-
-                    current_working_mode = working_mode_slow
-                    slow_mode_time = time.time()
-                else:
-                    current_working_mode = working_mode_fast
-                    if not close_to_end:
-                        #TODO : change with SI speed
-                        vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
-
-            # fast mode
-            elif current_working_mode == working_mode_fast:
-                if config.VERBOSE and last_working_mode != current_working_mode:
-                    print("[Working mode] : fast")
-                    last_working_mode = current_working_mode
-                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                    vesc_engine.stop_moving()
-                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
-                    #TODO : change with SI speed
-                    vesc_engine.apply_rpm(config.FAST_TO_SLOW_RPM)
-                    time.sleep(config.FAST_TO_SLOW_TIME)
-                    vesc_engine.stop_moving()
-                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
-
-                    current_working_mode = working_mode_slow
-                    slow_mode_time = time.time()
-                    vesc_engine.set_rpm(vesc_speed)
-                elif close_to_end:
-                    vesc_engine.apply_rpm(vesc_speed)
-                else:
-                    #TODO : change with SI speed
-                    vesc_engine.apply_rpm(config.VESC_RPM_FAST) 
 
 def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: str, logger_full: utility.Logger):
     if SI_speed in configParam:
@@ -911,9 +853,6 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
 
 def add_points_to_path(path: list, *args):
     for point in args:
-        if isinstance(point, list):
-            if None in point:
-                return False
         if point is None:
             return False
         path.append(point)
@@ -1507,11 +1446,7 @@ def main():
     # load yolo networks
     print("Loading periphery detector...")
     if config.PERIPHERY_WRAPPER == 1:
-        periphery_detector = detection.YoloDarknetDetector(config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_CONFIG_FILE,
-                                                           config.PERIPHERY_DATA_FILE,
-                                                           config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                                           config.PERIPHERY_HIER_THRESHOLD,
-                                                           config.PERIPHERY_NMS_THRESHOLD)
+        periphery_detector = detection.YoloTRTDetector(config.PERIPHERY_MODEL_PATH, config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
     elif config.PERIPHERY_WRAPPER == 2:
         periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                                            config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
@@ -1526,9 +1461,7 @@ def main():
 
     print("Loading precise detector...")
     if config.PRECISE_WRAPPER == 1:
-        precise_detector = detection.YoloDarknetDetector(config.PRECISE_WEIGHTS_FILE, config.PRECISE_CONFIG_FILE,
-                                                         config.PRECISE_DATA_FILE, config.PRECISE_CONFIDENCE_THRESHOLD,
-                                                         config.PRECISE_HIER_THRESHOLD, config.PRECISE_NMS_THRESHOLD)
+        precise_detector = detection.YoloTRTDetector(config.PERIPHERY_MODEL_PATH, config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
         if config.CONTINUOUS_INFORMATION_SENDING:
             notification.set_treated_plant(precise_detector.get_classes_names())
     elif config.PRECISE_WRAPPER == 2:
@@ -1579,13 +1512,15 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
 
+        vesc_speed = config.SI_SPEED_FWD*config.MULTIPLIER_SI_SPEED_TO_RPM
+
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
         # utility.MemoryManager(config.DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
         with \
             utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt",
                                     config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
-            adapters.VescAdapter(config.VESC_RPM_SLOW, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
+            adapters.VescAdapter(vesc_speed, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                  config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE) as vesc_engine, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
             adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
@@ -1740,8 +1675,6 @@ def main():
                 logger_full.write(msg + "\n")
                 notification.setStatus(SyntheseRobot.HS)
                 exit(1)
-
-            #raise Exception("Path file generated !")
 
             # set smoothie's A axis to 0 (nav turn wheels)
             response = smoothie.set_current_coordinates(A=0)
