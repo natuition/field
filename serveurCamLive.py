@@ -39,6 +39,7 @@ crop_h_to = config.CROP_H_TO
 crop_w_from = config.CROP_W_FROM
 crop_w_to = config.CROP_W_TO
 nvidia_flip_method = config.CAMERA_FLIP_METHOD
+aelock = "aelock=true " if config.AE_LOCK else ""
 
 if config.APPLY_IMAGE_CROPPING:
     GST_CONFIG = (
@@ -46,6 +47,7 @@ if config.APPLY_IMAGE_CROPPING:
         "ispdigitalgainrange=\"%.2f %.2f\" "
         "gainrange=\"%.2f %.2f\" "
         "exposuretimerange=\"%d %d\" "
+        "%s"
         "! "
         "video/x-raw(memory:NVMM), "
         "width=(int)%d, height=(int)%d, "
@@ -61,6 +63,7 @@ if config.APPLY_IMAGE_CROPPING:
             gainrange_to,
             exposuretimerange_from,
             exposuretimerange_to,
+            aelock,
             capture_width,
             capture_height,
             framerate,
@@ -79,6 +82,7 @@ else:
         "ispdigitalgainrange=\"%.2f %.2f\" "
         "gainrange=\"%.2f %.2f\" "
         "exposuretimerange=\"%d %d\" "
+        "%s"
         "! "
         "video/x-raw(memory:NVMM), "
         "width=(int)%d, height=(int)%d, "
@@ -94,6 +98,7 @@ else:
             gainrange_to,
             exposuretimerange_from,
             exposuretimerange_to,
+            aelock,
             capture_width,
             capture_height,
             framerate,
