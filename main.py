@@ -1403,7 +1403,6 @@ def main():
     except KeyboardInterrupt:
         exit(0)
     except:
-        print(traceback.format_exc())
         ui_msg_queue = None
 
     notification = NotificationClient(time_start)
