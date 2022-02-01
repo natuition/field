@@ -4,9 +4,9 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=root
+User=violette
 WorkingDirectory=/home/violette/field/
-ExecStart=/usr/bin/python3.6 /home/violette/field/ntripClient.py
+ExecStart=/usr/bin/sudo /usr/bin/python3.6 /home/violette/field/ntripClient.py
 Restart=on-failure
 
 [Install]
