@@ -155,6 +155,7 @@ def move_to_point_and_extract(coords_from_to: list,
                               ui_msg_queue: posix_ipc.MessageQueue, 
                               SI_speed: float, 
                               wheels_straight: bool, 
+                              navigation_prediction: navigation.NavigationPrediction,
                               **kwargs: dict):
     """
     Moves to the given target point and extracts all weeds on the way.
@@ -186,6 +187,7 @@ def move_to_point_and_extract(coords_from_to: list,
     """
 
     vesc_speed = SI_speed*config.MULTIPLIER_SI_SPEED_TO_RPM
+    navigation_prediction.set_SI_speed(SI_speed)
 
     raw_angles_history = []
     detections_period =[]
@@ -207,20 +209,6 @@ def move_to_point_and_extract(coords_from_to: list,
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
 
     lastNtripRestart = time.time()
-
-    pierre_vitesse=SI_speed    # metre par seconde
-    latprec=0
-    longprec=0
-    latB = coords_from_to[1][0]
-    longB = coords_from_to[1][1]
-    pierre_angle_max=math.radians(23)
-    pierre_E=0.86    #empattement entre les deux axes des roues
-    graph_lat=[latprec]
-    graph_long=[longprec]
-
-    #Rq: long=x, lat=y
-
-    pierre_angle=0 #Angle du robot vers la cible (en radians) en considérant que le robot est dans l'axe AB
 
     # set camera to the Y min
     res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
@@ -426,8 +414,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         # mu_navigations_period, sigma_navigations_period = utility.mu_sigma(navigations_period)
 
-        latprec=cur_pos[0]
-        longprec=cur_pos[1]
+        navigation_prediction.set_current_lat_long(cur_pos)
 
         if str(cur_pos) == str(prev_pos):
             if time.time() - point_reading_t > config.GPS_POINT_WAIT_TIME_MAX:
@@ -496,58 +483,7 @@ def move_to_point_and_extract(coords_from_to: list,
             # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
             # (too close points in the same position can produce false huge angles)
 
-            #PIERRE PREDICTION
-        
-            if pierre_angle>pierre_angle_max :
-                pierre_angle=pierre_angle_max
-
-            #Rayon de braquage
-
-            if math.sin(pierre_angle) != 0 :
-                pierre_rayon=pierre_E/math.sin(pierre_angle)
-                theta_rob=pierre_vitesse/pierre_rayon
-            else :
-                theta_rob = 0
-            
-            #Calcul nouvelles coordonnées
-
-            pierre_k=1/(60*1852) #Facteur de conversion metre vers degrès mille nautique
-            distance_deg=pierre_vitesse*navigation_period*pierre_k #Distance en degres parcourue par le robot
-
-            #La vitesse étant constante, on souhaite que le temps entre chaque point soit de 1 sec, comme on a des m/s, "distance=vitesse"
-
-            psi=(math.pi-theta_rob)/2 # Angle de trajectoire - pi/2
-            delta=distance_deg*math.sin(psi) # Différence de latitude entre position courante et future
-            beta=distance_deg*math.cos(psi) # Différence de longitude entre position courante et future
-
-            latnew=latprec+delta
-            longnew=longprec+beta
-
-            graph_lat.append(latnew)
-            graph_long.append(longnew)
-
-            #Les coordonnées en n deviennent les n-1
-
-        latprec=latnew
-        longprec=longnew
-        
-        latB = coords_from_to[1][0]
-        longB = coords_from_to[1][1]
-
-        if (latB-latnew) != 0:
-            pierre_angle = math.atan((longB-longnew)/(latB-latnew))  # Angle co,signe roues
-        else:
-            pierre_angle = math.pi/2
-
-        msg = f"[PREDICTOR] Angle : {pierre_angle}."
-        logger_full.write(msg + "\n")
-        #if config.VERBOSE:
-        #    print(msg)
-        new_foreseen_point = [latnew, longnew, "new_foreseen_point"]
-        msg = f"[PREDICTOR] Error : {nav.get_distance(new_foreseen_point, cur_pos)}."
-        logger_full.write(msg + "\n")
-        #if config.VERBOSE:
-        #    print(msg)
+        navigation_prediction.run_prediction(coords_from_to, cur_pos)
 
         # raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
         raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
@@ -1534,7 +1470,8 @@ def main():
             ExtractionManagerV3(smoothie, camera, working_zone_points_cv,
                                 logger_full, data_collector, image_saver,
                                 log_cur_dir, periphery_detector, precise_detector,
-                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3 :            
+                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3, \
+            navigation.NavigationPrediction(logger_full=logger_full, nav=nav, log_cur_dir=log_cur_dir) as navigation_prediction :            
                 
             # load previous path
             if config.CONTINUE_PREVIOUS_PATH:
@@ -1768,7 +1705,7 @@ def main():
                                                     view_zone_points_cv, config.DEBUG_IMAGES_PATH, 
                                                     nav, data_collector, log_cur_dir, image_saver, 
                                                     notification, extraction_manager_v3, ui_msg_queue,
-                                                    speed, False)
+                                                    speed, False, navigation_prediction)
                     else:
                         move_to_point_and_extract(  from_to, gps, vesc_engine, smoothie, 
                                                     camera, periphery_detector, precise_detector, 
@@ -1779,7 +1716,7 @@ def main():
                                                     view_zone_points_cv, config.DEBUG_IMAGES_PATH, 
                                                     nav, data_collector, log_cur_dir, image_saver, 
                                                     notification, extraction_manager_v3, ui_msg_queue,
-                                                    speed, False, extract=False)
+                                                    speed, False, navigation_prediction, extract=False)
 
 
                     if config.NAVIGATION_TEST_MODE:
