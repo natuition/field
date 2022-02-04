@@ -193,6 +193,8 @@ def move_to_point_and_extract(coords_from_to: list,
     detections_period =[]
     navigations_period =[]
     stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
+    learn_go_straight_index = 0
+    learn_go_straight_history = []
     
     last_skipped_point = coords_from_to[0]
     start_Nav_while =True
@@ -490,6 +492,19 @@ def move_to_point_and_extract(coords_from_to: list,
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
         raw_angle = raw_angle_legacy/4 + raw_angle_cruise
 
+        if config.LEARN_GO_STRAIGHT:
+            if config.MIN_PERPENDICULAR_GO_STRAIGHT >= perpendicular:
+                learn_go_straight_index += 1
+                learn_go_straight_history.append(raw_angle)
+                if len(learn_go_straight_history) >= config.VALUES_LEARN_GO_STRAIGHT:
+                    learn_go_straight = sum(learn_go_straight_history)/len(learn_go_straight_history)
+                    msg = f"Average angle applied to the wheel for the robot to have found : {learn_go_straight}."
+                    logger_full.write_and_flush(msg + "\n")
+                    with open(config.LEARN_GO_STRAIGHT_FILE, "w+") as learn_go_straight_file:
+                        learn_go_straight_file.write(learn_go_straight)
+            else:
+                learn_go_straight_index = 0
+
         # NAVIGATION STATE MACHINE
         if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
             raw_angle = last_correct_raw_angle
@@ -544,7 +559,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         angle_kp_ki = raw_angle * KP + sum_angles * KI 
         
-        CLOSE_TARGET_THRESHOLD = getSpeedDependentConfigParam(config.CLOSE_TARGET_THRESHOLD, SI_speed, "CLOSE_TARGET_THRESHOLD", logger_full)
+        """CLOSE_TARGET_THRESHOLD = getSpeedDependentConfigParam(config.CLOSE_TARGET_THRESHOLD, SI_speed, "CLOSE_TARGET_THRESHOLD", logger_full)
             
         if distance < CLOSE_TARGET_THRESHOLD:
             
@@ -570,7 +585,7 @@ def move_to_point_and_extract(coords_from_to: list,
         if distance > FAR_TARGET_THRESHOLD:
             
             FAR_TARGET_GAIN = getSpeedDependentConfigParam(config.FAR_TARGET_GAIN, SI_speed, "FAR_TARGET_GAIN", logger_full)
-            angle_kp_ki *= FAR_TARGET_GAIN 
+            angle_kp_ki *= FAR_TARGET_GAIN """
 
 
         target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right

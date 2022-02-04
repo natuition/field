@@ -129,6 +129,14 @@ class WaitWorkingState(State):
         if createField:
             self.statusOfUIObject["continueButton"] = False
 
+        self.learn_go_straight_angle = 0
+
+        if config.LEARN_GO_STRAIGHT_UI:
+            if os.path.isfile(f"../{config.LEARN_GO_STRAIGHT_FILE}"):
+                with open(f"../{config.LEARN_GO_STRAIGHT_FILE}", "r") as learn_go_straight_file:
+                    learn_go_straight_angle = float(learn_go_straight_file.read())
+                    self.logger.write_and_flush(f"LEARN_GO_STRAIGHT:{learn_go_straight_angle}")
+
         self.socketio.emit('checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
 
         self.field = None
@@ -205,7 +213,7 @@ class WaitWorkingState(State):
                 x *= config.A_MAX/100
             y = int(data["y"])
             if self.lastValueX != x:
-                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x)
+                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x+self.learn_go_straight_angle)
                 self.lastValueX = x
             if self.lastValueY != y:
                 if y > 15 or y < -15:
