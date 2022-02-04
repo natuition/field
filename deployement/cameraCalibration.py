@@ -7,6 +7,7 @@ import numpy as np
 import sys
 sys.path.append('../')
 from config import config
+import configDeployment
 import utility
 import adapters
 
@@ -56,9 +57,10 @@ class CameraCalibration:
             all_circles_rounded = np.uint16(np.around(all_circles))
             print('I have found ' + str(all_circles_rounded.shape[1]) + ' circles')
             if len(all_circles_rounded) == 1:
-                scene_center_x = all_circles_rounded[0][0][0]
-                scene_center_y = all_circles_rounded[0][0][1]
-                circle_rad = all_circles_rounded[0][0][2]
+                self.scene_center_x = all_circles_rounded[0][0][0]
+                self.scene_center_y = all_circles_rounded[0][0][1]
+                self.set_crop_values()
+                #circle_rad = all_circles_rounded[0][0][2]
             else:
                 print("Warning we found multiple circles.")
             for i in all_circles_rounded[0, :]:
@@ -82,6 +84,14 @@ class CameraCalibration:
                 print(msg)
                 exit(1)
         return smoothie_address
+
+    def set_crop_values(self):
+        rectX = self.scene_center_x - configDeployment.CAMERA_DISPLAY_W/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_W
+        rectY = self.scene_center_y - configDeployment.CAMERA_DISPLAY_H/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_H
+        self.crop_w_from = int(rectX)
+        self.crop_w_to = int(self.crop_w_from + configDeployment.CAMERA_DISPLAY_W)
+        self.crop_h_from = int(rectY)
+        self.crop_h_to = int(self.crop_h_from + configDeployment.CAMERA_DISPLAY_H)
 
 
 if __name__ == "__main__":
