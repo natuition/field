@@ -1741,6 +1741,11 @@ def main():
                         test_continue = input("Press enter to continue the test, type anything to exit.")
                         if test_continue != "":
                             break
+                        try:
+                            start_position = utility.average_point(gps,trajectory_saver,nav)
+                        except:
+                            pass
+                        ui_msg_queue.send(json.dumps({"clear_path": True}))
                     
                     last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
 

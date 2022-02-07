@@ -635,7 +635,8 @@ class WorkingState(State):
             elif "navigation_test_mode_points" in data:
                 data = json.loads(msg[0])["navigation_test_mode_points"]
                 self.socketio.emit('updateLineNavigationTestMode', json.dumps([elem[::-1] for elem in data[0:2]]), namespace='/map')
-
+            elif "clear_path" in data:
+                self.allPath.clear()
 
 #This state corresponds when the robot has an error.
 class ErrorState(State):
