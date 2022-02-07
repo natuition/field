@@ -26,7 +26,7 @@ class CameraCalibration:
     def step1_validate(self):
         self.__cam.send_signal(signal.SIGINT)
         self.__cam.send_signal(signal.SIGINT)
-        self.__cam.wait()
+        #self.__cam.wait()
         os.system("sudo systemctl restart nvargus-daemon")
 
     def step2(self):
@@ -41,7 +41,7 @@ class CameraCalibration:
                 exit(1)
             smoothie.wait_for_all_actions_done()"""
         image_saver = utility.ImageSaver()
-        CAMERA_W = 3280
+        CAMERA_W = 3264
         CAMERA_H = 2464
         CAMERA_FRAMERATE = 21
         with adapters.CameraAdapterIMX219_170(  0, CAMERA_W, 0, CAMERA_H,
