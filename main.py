@@ -1684,6 +1684,9 @@ def main():
                         else:
                             from_to = [config.POINT_A[0], config.POINT_B[0]]
                             speed = config.POINT_B[1]
+
+                        if ui_msg_queue is not None:
+                            ui_msg_queue.send(json.dumps({"navigation_test_mode_points": from_to}))
                             
                     else:
                         from_to = [path_points[i - 1][0], path_points[i][0]] 

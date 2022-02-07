@@ -163,6 +163,30 @@ function createMap(coords_field,coords_other){
                 }
             });
         }
+        //Test_nav_line
+        map.addSource('test_nav_line', {
+            'type': 'geojson',
+            'data': {
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': []
+                }
+            }
+        });    
+        map.addLayer({
+            'id': 'test_nav_lineLayer',
+            'type': 'line',
+            'source': 'test_nav_line',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round',
+            },
+            'paint': {
+                'line-color': '#FF8C15',
+                'line-width': 4
+            }
+        });
         //Path line
         if(typeof(map.getSource('pathRobot')) == "undefined"){
             map.addSource('pathRobot', {
@@ -242,6 +266,43 @@ socketMap.on('updatePath', function(dataServ) {
     });
 
     map.panTo([x_center,y_center]);
+});
+
+socketMap.on('updateLineNavigationTestMode', function(dataServ) {
+    dataServ = JSON.parse(dataServ)
+    if(typeof(map.getSource('test_nav_line')) == "undefined"){
+        map.addSource('test_nav_line', {
+            'type': 'geojson',
+            'data': {
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': dataServ
+                }
+            }
+        });    
+        map.addLayer({
+            'id': 'test_nav_lineLayer',
+            'type': 'line',
+            'source': 'test_nav_line',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round',
+            },
+            'paint': {
+                'line-color': '#FF8C15',
+                'line-width': 4
+            }
+        });
+    }else{
+        map.getSource('test_nav_line').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': dataServ
+            }
+        });
+    }
 });
 
 socketMap.on('newField', function(dataServ) {
