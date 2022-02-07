@@ -1,5 +1,5 @@
 import serial
-ser = serial.Serial('/dev/ttyTHS1', baudrate=38400)  # open serial port
+ser = serial.Serial('/dev/ttyTHS1', baudrate=115200)  # open serial port
 try:
     while True:
         print(ser.readline())     

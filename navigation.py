@@ -458,6 +458,12 @@ class NavigationPrediction:
         self.K = 1/(60*1852) #Conversion factor meter to degree nautical mile
         self.navigation_period = config.MANEUVERS_FREQUENCY #1
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.trajectorySaver.__exit__(exc_type, exc_val, exc_tb)
+
     def set_SI_speed(self, SI_speed: float):
         self.speed = SI_speed #meter per second
 
