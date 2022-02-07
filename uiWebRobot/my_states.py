@@ -218,7 +218,7 @@ class WaitWorkingState(State):
                 self.lastValueX = x
             if self.lastValueY != y:
                 if y > 15 or y < -15:
-                    y = (y/100) * (config.VESC_RPM_UI*0.9) + (config.VESC_RPM_UI/10)
+                    y = (y/100) * (config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM*0.9) + (config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM/10)
                 else:
                     y = 0
                 self.vesc_engine.apply_rpm(y)
@@ -697,7 +697,7 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Moving forward..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
-        self.vesc_emergency.apply_rpm(config.VESC_RPM_UI)
+        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
         self.vesc_emergency.start_moving()
 
     def setSecondPoint(self):
@@ -764,7 +764,7 @@ class FieldCreator:
         return unquote(fieldName[:-4])
 
     def manoeuvre(self):
-        self.vesc_emergency.apply_rpm(-config.VESC_RPM_UI)
+        self.vesc_emergency.apply_rpm(-config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
         self.vesc_emergency.start_moving()
         time.sleep(6)
         self.vesc_emergency.stop_moving()
@@ -772,7 +772,7 @@ class FieldCreator:
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
         self.smoothie.wait_for_all_actions_done()
 
-        self.vesc_emergency.apply_rpm(config.VESC_RPM_UI)
+        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
         self.vesc_emergency.start_moving()
         time.sleep(8)
         self.vesc_emergency.stop_moving()

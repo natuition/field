@@ -5,6 +5,7 @@ from config import config
 import detection
 import os
 from multiprocessing import Process
+import sys
 
 # Image frame sent to the Flask object
 global video_frame
@@ -17,13 +18,6 @@ thread_lock = threading.Lock()
 #Use for detect
 global use_detector 
 use_detector = True
-
-if use_detector:
-    global detector
-    #detector = detection.YoloDarknetDetector(config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_CONFIG_FILE,
-    #                                                         config.PERIPHERY_DATA_FILE, config.PERIPHERY_CONFIDENCE_THRESHOLD,
-    #                                                         config.PERIPHERY_HIER_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
-    detector = detection.YoloTRTDetector(config.PERIPHERY_MODEL_PATH, config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
         
 ispdigitalgainrange_from = config.ISP_DIGITAL_GAIN_RANGE_FROM
 ispdigitalgainrange_to = config.ISP_DIGITAL_GAIN_RANGE_TO
@@ -177,6 +171,18 @@ def streamFrames():
 if __name__ == '__main__':
     print("Reset service cam !")
     os.system("sudo systemctl restart nvargus-daemon")
+
+    use_detector_arg = True
+
+    if len(sys.argv)>1:
+        use_detector_arg = sys.argv[1]=="True"
+
+    if use_detector and use_detector_arg:
+        global detector
+        #detector = detection.YoloDarknetDetector(config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_CONFIG_FILE,
+        #                                                         config.PERIPHERY_DATA_FILE, config.PERIPHERY_CONFIDENCE_THRESHOLD,
+        #                                                         config.PERIPHERY_HIER_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
+        detector = detection.YoloTRTDetector(config.PERIPHERY_MODEL_PATH, config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
 
     process_thread = threading.Thread(target=captureFrames)
     process_thread.daemon = True
