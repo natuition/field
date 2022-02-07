@@ -1740,7 +1740,6 @@ def main():
 
 
                     if config.NAVIGATION_TEST_MODE:
-                        print(config.TEST_RELOAD)
                         test_continue = input("Press enter to continue the test, type anything to exit.")
                         if test_continue != "":
                             break
