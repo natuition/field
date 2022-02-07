@@ -43,6 +43,7 @@ class CameraCalibration:
         image_saver = utility.ImageSaver()
         CAMERA_W = 3280
         CAMERA_H = 2464
+        CAMERA_FRAMERATE = 21
         with adapters.CameraAdapterIMX219_170(  0, CAMERA_W, 0, CAMERA_H,
                                                 config.CV_ROTATE_CODE,
                                                 config.ISP_DIGITAL_GAIN_RANGE_FROM,
@@ -50,8 +51,7 @@ class CameraCalibration:
                                                 config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
                                                 config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
                                                 config.AE_LOCK, 
-                                                CAMERA_W, CAMERA_H, CAMERA_W, CAMERA_H,
-                                                config.CAMERA_FRAMERATE,
+                                                CAMERA_W, CAMERA_H, CAMERA_W, CAMERA_H, CAMERA_FRAMERATE,
                                                 config.CAMERA_FLIP_METHOD) as camera:
             frame = camera.get_image()
             img_origine = frame.copy()
@@ -89,6 +89,7 @@ class CameraCalibration:
                 exit(1)
         return smoothie_address
 
+    @staticmethod
     def __changeConfigValue(path: str, value):
         with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
             for line in file:
@@ -105,19 +106,19 @@ class CameraCalibration:
         crop_w_to = int(crop_w_from + configDeployment.CAMERA_DISPLAY_W)
         crop_h_from = int(rectY)
         crop_h_to = int(crop_h_from + configDeployment.CAMERA_DISPLAY_H)
-        self.__changeConfigValue("CROP_W_FROM",crop_w_from)
-        self.__changeConfigValue("CROP_W_TO",crop_w_to)
-        self.__changeConfigValue("CROP_H_FROM",crop_h_from)
-        self.__changeConfigValue("CROP_H_TO",crop_h_to)
+        CameraCalibration.__changeConfigValue("CROP_W_FROM",crop_w_from)
+        CameraCalibration.__changeConfigValue("CROP_W_TO",crop_w_to)
+        CameraCalibration.__changeConfigValue("CROP_H_FROM",crop_h_from)
+        CameraCalibration.__changeConfigValue("CROP_H_TO",crop_h_to)
 
 
 def main():
     cameraCalibration: CameraCalibration = CameraCalibration()
-    """cameraCalibration.step1()
+    cameraCalibration.step1()
     test_continue = input("Press enter to continue the calibration, type anything to exit.")
     if test_continue != "":
         return
-    cameraCalibration.step1_validate()"""
+    cameraCalibration.step1_validate()
     cameraCalibration.step2()
 
 if __name__ == "__main__":
