@@ -490,9 +490,11 @@ def move_to_point_and_extract(coords_from_to: list,
         navigation_prediction.run_prediction(coords_from_to, cur_pos)
 
         # raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
-        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
-        raw_angle = raw_angle_legacy/4 + raw_angle_cruise
+        raw_angle = raw_angle_legacy*config.CENTROID_FACTOR + raw_angle_cruise
+
+        #raw_angle = butter_lowpass_filter(raw_angle, 0.5, 4, 6)
 
         if config.LEARN_GO_STRAIGHT:
             if config.MIN_PERPENDICULAR_GO_STRAIGHT >= perpendicular:
@@ -1740,6 +1742,11 @@ def main():
 
 
                     if config.NAVIGATION_TEST_MODE:
+                        response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
+                        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                            msg = "Couldn't turn wheels before other navigation test, smoothie response:\n" + response
+                            print(msg)
+                            logger_full.write(msg + "\n")
                         test_continue = input("Press enter to continue the test, type anything to exit.")
                         if test_continue != "":
                             break

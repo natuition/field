@@ -184,7 +184,7 @@ function createMap(coords_field,coords_other){
             },
             'paint': {
                 'line-color': '#FF8C15',
-                'line-width': 4
+                'line-width': 2
             }
         });
         //Path line
@@ -209,7 +209,7 @@ function createMap(coords_field,coords_other){
                 },
                 'paint': {
                     'line-color': 'red',
-                    'line-width': 3
+                    'line-width': 2
                 }
             });
         }
@@ -230,7 +230,7 @@ function createMap(coords_field,coords_other){
                 'type': 'circle',
                 'source': 'lastPos',
                 'paint': {
-                    'circle-radius': 6,
+                    'circle-radius': 4,
                     'circle-color': 'darkred'
                 }
             });
@@ -291,7 +291,7 @@ socketMap.on('updateLineNavigationTestMode', function(dataServ) {
             },
             'paint': {
                 'line-color': '#FF8C15',
-                'line-width': 4
+                'line-width': 2
             }
         });
     }else{
