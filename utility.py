@@ -364,7 +364,6 @@ def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySav
         distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
         #print("| ",get_current_time()," | %2.2f"%distance, " | ", prev_pos, "|")
         distances.append(distance)
-        time.sleep(0.950)
     
     mu_distance, sigma_distance = mu_sigma(distances)
     #print("stat lattitude : \n")
