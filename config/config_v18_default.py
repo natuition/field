@@ -270,7 +270,7 @@ PRECISE_WRAPPER = 1  # 1 = darknet, 2 = opencv from darknet
 # CAMERA SETTINGS
 # ======================================================================================================================
 CAMERA_W = 3280
-CAMERA_H = 2464
+CAMERA_H = 1848
 APPLY_IMAGE_CROPPING = True
 CROP_W_FROM = 498 
 CROP_W_TO = 2498 
