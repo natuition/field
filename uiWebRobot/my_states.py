@@ -134,8 +134,9 @@ class WaitWorkingState(State):
         if config.LEARN_GO_STRAIGHT_UI:
             if os.path.isfile(f"../{config.LEARN_GO_STRAIGHT_FILE}"):
                 with open(f"../{config.LEARN_GO_STRAIGHT_FILE}", "r") as learn_go_straight_file:
-                    learn_go_straight_angle = float(learn_go_straight_file.read())
-                    self.logger.write_and_flush(f"LEARN_GO_STRAIGHT:{learn_go_straight_angle}")
+                    self.learn_go_straight_angle = float(learn_go_straight_file.read())
+                    self.logger.write_and_flush(f"LEARN_GO_STRAIGHT:{self.learn_go_straight_angle}\n")
+                    self.smoothie.custom_move_to(A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
         self.socketio.emit('checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
 

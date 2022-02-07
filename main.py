@@ -501,7 +501,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     msg = f"Average angle applied to the wheel for the robot to have found : {learn_go_straight}."
                     logger_full.write_and_flush(msg + "\n")
                     with open(config.LEARN_GO_STRAIGHT_FILE, "w+") as learn_go_straight_file:
-                        learn_go_straight_file.write(learn_go_straight)
+                        learn_go_straight_file.write(str(learn_go_straight))
             else:
                 learn_go_straight_index = 0
 
