@@ -461,9 +461,14 @@ def move_to_point_and_extract(coords_from_to: list,
         navigation_prediction.run_prediction(coords_from_to, cur_pos)
 
         # raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
-        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
+        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        raw_angle_centroid = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
-        raw_angle = raw_angle_legacy*config.CENTROID_FACTOR + raw_angle_cruise
+        if raw_angle_legacy>config.LOST_THRESHOLD:
+            centroid_factor = config.CENTROID_FACTOR_LOST
+        else:
+            centroid_factor = config.CENTROID_FACTOR_ORIENTED
+        raw_angle = raw_angle_centroid*centroid_factor + raw_angle_cruise/centroid_factor
 
         #raw_angle = butter_lowpass_filter(raw_angle, 0.5, 4, 6)
 
@@ -608,7 +613,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
             order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
-            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(8)+corridor.ljust(8)
+            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(10)+corridor.ljust(9)+str(centroid_factor).ljust(16)
         print(msg)
         logger_full.write(msg + "\n")
 
@@ -1532,7 +1537,7 @@ def main():
             logger_full.write(msg + "\n")
             """
 
-            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|'
+            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|centroid factor'
             print(msg)
             logger_full.write(msg + "\n")
             msg = 'GpsQ,Raw ang,Res ang,Ord ang,Sum ang,Distance,Adapter,Smoothie,'

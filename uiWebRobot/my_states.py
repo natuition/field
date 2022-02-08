@@ -574,8 +574,16 @@ class WorkingState(State):
         if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject["stopButton"] = "charging"
-            self.main.send_signal(signal.SIGINT)
-            self.main.wait()
+            mainOn = True
+            while mainOn:
+                try:
+                    print("Send SIGINT to main")
+                    self.main.send_signal(signal.SIGINT)
+                    self.main.wait(10)
+                    print("Main are close.")
+                    mainOn = False
+                except:
+                    continue
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)

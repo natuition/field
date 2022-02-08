@@ -33,6 +33,10 @@ KI = {
     0: 0.092
 } # SI_speed: value
 
+CENTROID_FACTOR_ORIENTED = 0.55
+CENTROID_FACTOR_LOST = 0.1
+LOST_THRESHOLD = 10
+
 MANEUVERS_FREQUENCY = 0.25  # seconds
 # max distance in mm-s of robot's deviation from planned moving vector
 # if dev. is bigger than this - robot will turn to it's planned moving vector
@@ -335,7 +339,7 @@ CONTINUOUS_INFORMATION_SENDING = True
 ALIVE_SENDING_TIMEOUT = 1
 
 LEARN_GO_STRAIGHT = True
-LEARN_GO_STRAIGHT_UI = True
+LEARN_GO_STRAIGHT_UI = False
 MIN_PERPENDICULAR_GO_STRAIGHT = 100 # in mm
 VALUES_LEARN_GO_STRAIGHT = 40
 
