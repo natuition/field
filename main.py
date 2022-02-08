@@ -1401,8 +1401,7 @@ def main():
                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
                                              config.CAMERA_FLIP_METHOD) as camera, \
-            ExtractionManagerV3(smoothie, camera, working_zone_points_cv,
-                                logger_full, data_collector, image_saver,
+            ExtractionManagerV3(smoothie, camera, logger_full, data_collector, image_saver,
                                 log_cur_dir, periphery_detector, precise_detector,
                                 config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3, \
             navigation.NavigationPrediction(logger_full=logger_full, nav=nav, log_cur_dir=log_cur_dir) as navigation_prediction :            
@@ -1627,6 +1626,9 @@ def main():
                             msg = "Couldn't turn wheels before other navigation test, smoothie response:\n" + response
                             print(msg)
                             logger_full.write(msg + "\n")
+                        else:
+                            with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
+                                wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
                         test_continue = input("Press enter to continue the test, type anything to exit.")
                         if test_continue != "":
                             break
@@ -1696,14 +1698,17 @@ def main():
             logger_full.write(msg + "\n")
             if config.VERBOSE:
                 print(msg)
-            with open(config.LAST_ANGLE_WHEELS_FILE, "r") as angle_file:
-                angle = float(angle_file.read())
+            with open(config.LAST_ANGLE_WHEELS_FILE, "r+") as wheels_angle_file:
+                angle = float(wheels_angle_file.read())
                 smoothie.set_current_coordinates(A=angle)
                 response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
                 if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                     msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
                     print(msg)
                     logger_full.write(msg + "\n")
+                else:
+                    wheels_angle_file.seek(0)
+                    wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
 
         # save adapter points history
         try:
