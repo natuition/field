@@ -33,6 +33,10 @@ KI = {
     0: 0.092
 } # SI_speed: value
 
+CENTROID_FACTOR_ORIENTED = 0.55
+CENTROID_FACTOR_LOST = 0.1
+LOST_THRESHOLD = 10
+
 MANEUVERS_FREQUENCY = 0.25  # seconds
 # max distance in mm-s of robot's deviation from planned moving vector
 # if dev. is bigger than this - robot will turn to it's planned moving vector
@@ -83,9 +87,10 @@ TWO_POINTS_FOR_CREATE_FIELD = False
 # NAVIGATION TEST MODE SETTINGS
 # =====================================================================================================================
 NAVIGATION_TEST_MODE = False
-QUEUE_NAVIGATION_TEST_MODE = "/queue_test_nav"
-POINT_A = [[46.1578135, -1.1341983], -0.175]
-POINT_B = [[46.1574592, -1.1350758], -0.175]
+DISPLAY_INSTRUCTION_PATH = False
+DELTA_DISPLAY_INSTRUCTION_PATH = 5
+POINT_A = [[46.1579425, -1.1344245], 0.5]
+POINT_B = [[46.1577957, -1.1347992], 0.5]
 
 
 # ======================================================================================================================
@@ -334,7 +339,7 @@ CONTINUOUS_INFORMATION_SENDING = True
 ALIVE_SENDING_TIMEOUT = 1
 
 LEARN_GO_STRAIGHT = True
-LEARN_GO_STRAIGHT_UI = True
+LEARN_GO_STRAIGHT_UI = False
 MIN_PERPENDICULAR_GO_STRAIGHT = 100 # in mm
 VALUES_LEARN_GO_STRAIGHT = 40
 

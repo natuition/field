@@ -574,8 +574,16 @@ class WorkingState(State):
         if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject["stopButton"] = "charging"
-            self.main.send_signal(signal.SIGINT)
-            self.main.wait()
+            mainOn = True
+            while mainOn:
+                try:
+                    print("Send SIGINT to main")
+                    self.main.send_signal(signal.SIGINT)
+                    self.main.wait(10)
+                    print("Main are close.")
+                    mainOn = False
+                except:
+                    continue
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
@@ -631,10 +639,10 @@ class WorkingState(State):
                 self.allPath.append([data[1],data[0]])
                 if self.lastGpsQuality != data[2]:
                     self.lastGpsQuality = data[2]
-                self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map')
-            elif "navigation_test_mode_points" in data:
-                data = json.loads(msg[0])["navigation_test_mode_points"]
-                self.socketio.emit('updateLineNavigationTestMode', json.dumps([elem[::-1] for elem in data[0:2]]), namespace='/map')
+                self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map', broadcast=True)
+            elif "display_instruction_path" in data:
+                data = json.loads(msg[0])["display_instruction_path"]
+                self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]), namespace='/map', broadcast=True)
             elif "clear_path" in data:
                 self.allPath.clear()
 

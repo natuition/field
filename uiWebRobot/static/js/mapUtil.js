@@ -163,30 +163,54 @@ function createMap(coords_field,coords_other){
                 }
             });
         }
-        //Test_nav_line
-        map.addSource('test_nav_line', {
-            'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'LineString',
-                    'coordinates': []
+        //Instruction_line
+        if(typeof(map.getSource('instruction_line')) == "undefined"){
+            map.addSource('instruction_line', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': []
+                    }
                 }
-            }
-        });    
-        map.addLayer({
-            'id': 'test_nav_lineLayer',
-            'type': 'line',
-            'source': 'test_nav_line',
-            'layout': {
-                'line-join': 'round',
-                'line-cap': 'round',
-            },
-            'paint': {
-                'line-color': '#FF8C15',
-                'line-width': 2
-            }
-        });
+            });    
+            map.addLayer({
+                'id': 'instruction_lineLayer',
+                'type': 'line',
+                'source': 'instruction_line',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#FF8C15',
+                    'line-width': 2
+                }
+            });
+        }
+        //Instruction_point
+        if(typeof(map.getSource('instruction_point')) == "undefined"){
+            map.addSource('instruction_point', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiPoint',
+                        'coordinates': []
+                    }
+                }
+            });    
+            map.addLayer({
+                'id': 'instruction_pointLayer',
+                'type': 'circle',
+                'source': 'instruction_point',
+                'paint': {
+                    'circle-radius': 3,
+                    'circle-color': '#FF8C15'
+                }
+            });
+        }
         //Path line
         if(typeof(map.getSource('pathRobot')) == "undefined"){
             map.addSource('pathRobot', {
@@ -268,10 +292,11 @@ socketMap.on('updatePath', function(dataServ) {
     map.panTo([x_center,y_center]);
 });
 
-socketMap.on('updateLineNavigationTestMode', function(dataServ) {
+socketMap.on('updateDisplayInstructionPath', function(dataServ) {
     dataServ = JSON.parse(dataServ)
-    if(typeof(map.getSource('test_nav_line')) == "undefined"){
-        map.addSource('test_nav_line', {
+    //Instruction_line
+    if(typeof(map.getSource('instruction_line')) == "undefined"){
+        map.addSource('instruction_line', {
             'type': 'geojson',
             'data': {
                 'type': 'Feature',
@@ -282,9 +307,9 @@ socketMap.on('updateLineNavigationTestMode', function(dataServ) {
             }
         });    
         map.addLayer({
-            'id': 'test_nav_lineLayer',
+            'id': 'instruction_lineLayer',
             'type': 'line',
-            'source': 'test_nav_line',
+            'source': 'instruction_line',
             'layout': {
                 'line-join': 'round',
                 'line-cap': 'round',
@@ -295,10 +320,40 @@ socketMap.on('updateLineNavigationTestMode', function(dataServ) {
             }
         });
     }else{
-        map.getSource('test_nav_line').setData({
+        map.getSource('instruction_line').setData({
             'type': 'Feature',
             'geometry': {
                 'type': 'LineString',
+                'coordinates': dataServ
+            }
+        });
+    }
+    //Instruction_point
+    if(typeof(map.getSource('instruction_point')) == "undefined"){
+        map.addSource('instruction_point', {
+            'type': 'geojson',
+            'data': {
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'MultiPoint',
+                    'coordinates': dataServ
+                }
+            }
+        });    
+        map.addLayer({
+            'id': 'instruction_pointLayer',
+            'type': 'circle',
+            'source': 'instruction_point',
+            'paint': {
+                'circle-radius': 3,
+                'circle-color': '#FF8C15'
+            }
+        });
+    }else{
+        map.getSource('instruction_point').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'MultiPoint',
                 'coordinates': dataServ
             }
         });

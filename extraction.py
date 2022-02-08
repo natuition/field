@@ -17,7 +17,6 @@ class ExtractionManagerV3:
     def __init__(self,
                  smoothie: adapters.SmoothieAdapter,
                  camera: adapters.CameraAdapterIMX219_170,
-                 working_zone_points_cv: np.array,  # not used atm
                  logger_full: utility.Logger,
                  data_collector: datacollection.DataCollector,
                  image_saver: utility.ImageSaver,
@@ -29,7 +28,6 @@ class ExtractionManagerV3:
 
         self.__smoothie = smoothie
         self.__camera = camera
-        self.__working_zone_points_cv = working_zone_points_cv
         self.__logger_full = logger_full
         self.__data_collector = data_collector
         self.__image_saver = image_saver

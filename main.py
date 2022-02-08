@@ -461,9 +461,14 @@ def move_to_point_and_extract(coords_from_to: list,
         navigation_prediction.run_prediction(coords_from_to, cur_pos)
 
         # raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
-        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
+        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        raw_angle_centroid = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
-        raw_angle = raw_angle_legacy*config.CENTROID_FACTOR + raw_angle_cruise
+        if raw_angle_legacy>config.LOST_THRESHOLD:
+            centroid_factor = config.CENTROID_FACTOR_LOST
+        else:
+            centroid_factor = config.CENTROID_FACTOR_ORIENTED
+        raw_angle = raw_angle_centroid*centroid_factor + raw_angle_cruise/centroid_factor
 
         #raw_angle = butter_lowpass_filter(raw_angle, 0.5, 4, 6)
 
@@ -608,7 +613,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
             order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
-            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(8)+corridor.ljust(8)
+            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(10)+corridor.ljust(9)+str(centroid_factor).ljust(16)
         print(msg)
         logger_full.write(msg + "\n")
 
@@ -1401,8 +1406,7 @@ def main():
                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
                                              config.CAMERA_FLIP_METHOD) as camera, \
-            ExtractionManagerV3(smoothie, camera, working_zone_points_cv,
-                                logger_full, data_collector, image_saver,
+            ExtractionManagerV3(smoothie, camera, logger_full, data_collector, image_saver,
                                 log_cur_dir, periphery_detector, precise_detector,
                                 config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3, \
             navigation.NavigationPrediction(logger_full=logger_full, nav=nav, log_cur_dir=log_cur_dir) as navigation_prediction :            
@@ -1533,7 +1537,7 @@ def main():
             logger_full.write(msg + "\n")
             """
 
-            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|'
+            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|centroid factor'
             print(msg)
             logger_full.write(msg + "\n")
             msg = 'GpsQ,Raw ang,Res ang,Ord ang,Sum ang,Distance,Adapter,Smoothie,'
@@ -1577,12 +1581,18 @@ def main():
                             from_to = [config.POINT_A[0], config.POINT_B[0]]
                             speed = config.POINT_B[1]
 
-                        if ui_msg_queue is not None:
-                            ui_msg_queue.send(json.dumps({"navigation_test_mode_points": from_to}))
+                        display_instruction_path = from_to[0:2]
                             
                     else:
                         from_to = [path_points[i - 1][0], path_points[i][0]] 
                         speed = path_points[i][1]
+
+                        i_inf = i-config.DELTA_DISPLAY_INSTRUCTION_PATH if i>=config.DELTA_DISPLAY_INSTRUCTION_PATH else 0
+                        i_sup = i+config.DELTA_DISPLAY_INSTRUCTION_PATH if i+config.DELTA_DISPLAY_INSTRUCTION_PATH<path_end_index else path_end_index-1
+                        display_instruction_path = [elem[0] for elem in path_points[i_inf:i_sup]]
+
+                    if ui_msg_queue is not None and config.DISPLAY_INSTRUCTION_PATH:
+                        ui_msg_queue.send(json.dumps({"display_instruction_path": display_instruction_path}))
 
                     if last_direction_of_travel is None:
                         last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
@@ -1627,6 +1637,9 @@ def main():
                             msg = "Couldn't turn wheels before other navigation test, smoothie response:\n" + response
                             print(msg)
                             logger_full.write(msg + "\n")
+                        else:
+                            with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
+                                wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
                         test_continue = input("Press enter to continue the test, type anything to exit.")
                         if test_continue != "":
                             break
@@ -1696,14 +1709,17 @@ def main():
             logger_full.write(msg + "\n")
             if config.VERBOSE:
                 print(msg)
-            with open(config.LAST_ANGLE_WHEELS_FILE, "r") as angle_file:
-                angle = float(angle_file.read())
+            with open(config.LAST_ANGLE_WHEELS_FILE, "r+") as wheels_angle_file:
+                angle = float(wheels_angle_file.read())
                 smoothie.set_current_coordinates(A=angle)
                 response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
                 if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                     msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
                     print(msg)
                     logger_full.write(msg + "\n")
+                else:
+                    wheels_angle_file.seek(0)
+                    wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
 
         # save adapter points history
         try:
