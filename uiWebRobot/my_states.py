@@ -631,10 +631,10 @@ class WorkingState(State):
                 self.allPath.append([data[1],data[0]])
                 if self.lastGpsQuality != data[2]:
                     self.lastGpsQuality = data[2]
-                self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map')
-            elif "navigation_test_mode_points" in data:
-                data = json.loads(msg[0])["navigation_test_mode_points"]
-                self.socketio.emit('updateLineNavigationTestMode', json.dumps([elem[::-1] for elem in data[0:2]]), namespace='/map')
+                self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map', broadcast=True)
+            elif "display_instruction_path" in data:
+                data = json.loads(msg[0])["display_instruction_path"]
+                self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]), namespace='/map', broadcast=True)
             elif "clear_path" in data:
                 self.allPath.clear()
 

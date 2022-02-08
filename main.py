@@ -1576,12 +1576,18 @@ def main():
                             from_to = [config.POINT_A[0], config.POINT_B[0]]
                             speed = config.POINT_B[1]
 
-                        if ui_msg_queue is not None:
-                            ui_msg_queue.send(json.dumps({"navigation_test_mode_points": from_to}))
+                        display_instruction_path = from_to[0:2]
                             
                     else:
                         from_to = [path_points[i - 1][0], path_points[i][0]] 
                         speed = path_points[i][1]
+
+                        i_inf = i-config.DELTA_DISPLAY_INSTRUCTION_PATH if i>=config.DELTA_DISPLAY_INSTRUCTION_PATH else 0
+                        i_sup = i+config.DELTA_DISPLAY_INSTRUCTION_PATH if i+config.DELTA_DISPLAY_INSTRUCTION_PATH<path_end_index else path_end_index-1
+                        display_instruction_path = [elem[0] for elem in path_points[i_inf:i_sup]]
+
+                    if ui_msg_queue is not None and config.DISPLAY_INSTRUCTION_PATH:
+                        ui_msg_queue.send(json.dumps({"display_instruction_path": display_instruction_path}))
 
                     if last_direction_of_travel is None:
                         last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
