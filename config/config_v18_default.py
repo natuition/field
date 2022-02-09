@@ -67,6 +67,9 @@ ORIGIN_AVERAGE_SAMPLES = 8
 
 WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL = True
 
+FUTURE_NUMBER_OF_POINTS = 3
+
+
 # ======================================================================================================================
 # ROBOT PATH CREATION SETTINGS
 # ======================================================================================================================
@@ -82,6 +85,7 @@ ADD_FORWARD_BACKWARD_TO_END_PATH = True #Adds the path FORWARD_BACKWARD to compl
 NUMBER_OF_BEZIER_POINT = 10 #Allows to determine the number of points put in the bezier turn.
 
 TWO_POINTS_FOR_CREATE_FIELD = False
+
 
 # ======================================================================================================================
 # NAVIGATION TEST MODE SETTINGS
