@@ -474,7 +474,7 @@ def move_to_point_and_extract(coords_from_to: list,
         raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
         raw_angle_centroid = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
-        if raw_angle_legacy>config.LOST_THRESHOLD:
+        if abs(raw_angle_legacy)>config.LOST_THRESHOLD:
             centroid_factor = config.CENTROID_FACTOR_LOST
         else:
             centroid_factor = config.CENTROID_FACTOR_ORIENTED
