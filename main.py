@@ -2,6 +2,7 @@
 
 import os
 import sys
+from turtle import speed
 import adapters
 import navigation
 from config import config
@@ -153,7 +154,8 @@ def move_to_point_and_extract(coords_from_to: list,
                               SI_speed: float, 
                               wheels_straight: bool, 
                               navigation_prediction: navigation.NavigationPrediction,
-                              **kwargs: dict):
+                              extract: bool,
+                              future_points: list):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -229,8 +231,6 @@ def move_to_point_and_extract(coords_from_to: list,
     degraded_navigation_mode = False
     
     number_navigation_cycle_without_gps = 0
-
-    extract = kwargs.get('extract', True)
 
     working_mode_slow = 1
     working_mode_switching = 2
@@ -439,6 +439,16 @@ def move_to_point_and_extract(coords_from_to: list,
                     # save wheels angle
                     with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
                         wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+            break
+
+        #check if can arrived
+        if (vesc_engine._rpm/config.MULTIPLIER_SI_SPEED_TO_RPM)*config.MANEUVERS_FREQUENCY > nav.get_distance(cur_pos, coords_from_to[1]):
+            vesc_engine.stop_moving()
+            data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+            msg = "Will have arrived before the next point to " + str(coords_from_to[1])
+            # print(msg)
+            logger_full.write(msg + "\n")
+            
             break
 
         # reduce speed if near the target point
@@ -1611,6 +1621,9 @@ def main():
                                 logger_full.write(msg + "\n")
                             smoothie.wait_for_all_actions_done()
 
+                    i_inf = i+1 if i+1<path_end_index else path_end_index
+                    i_sup = i+1+config.FUTURE_NUMBER_OF_POINTS if i+config.FUTURE_NUMBER_OF_POINTS<path_end_index else path_end_index
+
                     if speed > 0 :
                         move_to_point_and_extract(  from_to, gps, vesc_engine, smoothie, 
                                                     camera, periphery_detector, precise_detector, 
@@ -1619,7 +1632,7 @@ def main():
                                                     working_zone_polygon, config.DEBUG_IMAGES_PATH, 
                                                     nav, data_collector, log_cur_dir, image_saver, 
                                                     notification, extraction_manager_v3, ui_msg_queue,
-                                                    speed, False, navigation_prediction)
+                                                    speed, False, navigation_prediction, True, path_points[i_inf:i_sup])
                     else:
                         move_to_point_and_extract(  from_to, gps, vesc_engine, smoothie, 
                                                     camera, periphery_detector, precise_detector, 
@@ -1628,7 +1641,7 @@ def main():
                                                     working_zone_polygon, config.DEBUG_IMAGES_PATH, 
                                                     nav, data_collector, log_cur_dir, image_saver, 
                                                     notification, extraction_manager_v3, ui_msg_queue,
-                                                    speed, False, navigation_prediction, extract=False)
+                                                    speed, False, navigation_prediction, False, path_points[i_inf:i_sup])
 
 
                     if config.NAVIGATION_TEST_MODE:
