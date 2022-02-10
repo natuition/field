@@ -76,7 +76,7 @@ class CheckState(State):
                         changeConfigValue(content.split("=")[0],content.split("=")[1])
             return self
         else:
-            return ErrorState(self.socketio, self.logger)
+            self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
 
 
     def getStatusOfControls(self):
