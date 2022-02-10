@@ -99,7 +99,7 @@ socketButton.on('continue', function(dataServ) {
 
 socketButton.on('startMain', function(dataServ) {
     if(dataServ["status"] == "finish"){
-        verif_iframe_start();
+        //verif_iframe_start();
         $(document.getElementsByClassName('active')[0]).addClass('finished');
         clearStats();
         setTimeout(() => { 
@@ -171,8 +171,8 @@ socketButton.on('stop', function(dataServ) {
             newFieldButton.classList.remove("disabled");
             newFieldButton.removeAttribute("disabled");
             wheelButton.classList.remove("disabled-wheel");
-            document.getElementById("webCamStream").remove();
-            verif_iframe_start();
+            //document.getElementById("webCamStream").remove();
+            //verif_iframe_start();
 
             document.getElementById('map__header').contentWindow.location.reload();
         }, 2000);

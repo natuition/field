@@ -178,7 +178,7 @@
         <span class="check"><i class="fas fa-check scale"></i></span>
         </button>
 
-        {% if statusOfUIObject['audit'] == 'use' %}
+        <!-- {% if statusOfUIObject['audit'] == 'use' %}
         <img id="Audit" class="unselectable audit fix" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
         {% elif statusOfUIObject['audit'] == 'not-use' %}
         <img id="Audit" class="unselectable fix" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
@@ -188,7 +188,7 @@
         <img id="Audit" class="unselectable audit" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
         {% else %}
         <img id="Audit" class="unselectable" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
-        {% endif %}
+        {% endif %} -->
 
         {% if Field_list is none %}
             <button name="Continue" id="Continue" class="begin__button--continue unselectable disabled" disabled>
