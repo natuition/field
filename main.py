@@ -471,7 +471,7 @@ def move_to_point_and_extract(coords_from_to: list,
         navigation_prediction.run_prediction(coords_from_to, cur_pos)
 
         # raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
-        raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        #raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
         raw_angle_centroid = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
 
