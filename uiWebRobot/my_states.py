@@ -46,8 +46,23 @@ class CheckState(State):
 
         self.field = None
 
-        #self.thread = threading.Thread(target=checkHaveGPS, args=[self.socketio,self.statusOfUIObject], daemon=True)
-        #self.thread.start()
+        msg = f"[{self.__class__.__name__}] -> initVesc"
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
+        self.vesc_engine = initVesc(self.logger)
+
+        self.voltage_thread = threading.Thread(target=self.voltage_thread_tf, daemon=True)
+        self.voltage_thread_alive = True
+        self.voltage_thread.start()
+
+    def voltage_thread_tf(self):
+        last_update = 0
+        while self.voltage_thread_alive:
+            if time.time() - last_update > 60:
+                vesc_data = self.vesc_engine.get_sensors_data(['input_voltage'])
+                if vesc_data is not None:
+                        input_voltage = vesc_data["input_voltage"]
+                        self.socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
 
     def on_event(self, event):
         if event == Events.LIST_VALIDATION:
@@ -57,7 +72,7 @@ class CheckState(State):
             os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
                 os.system("sudo systemctl restart ntripClient.service")
-            return WaitWorkingState(self.socketio, self.logger, False, None, None, None)
+            return WaitWorkingState(self.socketio, self.logger, False, None, self.vesc_engine, None)
         else:
             try:
                 self.cam.send_signal(signal.SIGINT)
