@@ -57,7 +57,7 @@ class CheckState(State):
             os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
                 os.system("sudo systemctl restart ntripClient.service")
-            return WaitWorkingState(self.socketio, self.logger, False)
+            return WaitWorkingState(self.socketio, self.logger, False, None, None, None)
         else:
             try:
                 self.cam.send_signal(signal.SIGINT)
@@ -89,24 +89,31 @@ class CheckState(State):
 #This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
 class WaitWorkingState(State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger, createField: bool):
+    def __init__(self, socketio: SocketIO, logger: utility.Logger, createField: bool, smoothie: adapters.SmoothieAdapter, vesc_engine: adapters.VescAdapter, gps : adapters.GPSUbloxAdapter):
         self.socketio = socketio
         self.logger = logger
+        self.smoothie = smoothie
+        self.vesc_engine = vesc_engine
+        self.gps = gps
+
         try:
             #msg = f"[{self.__class__.__name__}] -> initGPS"
             #self.logger.write_and_flush(msg+"\n")
             #print(msg)
             #self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
-            msg = f"[{self.__class__.__name__}] -> initVesc"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
-            self.vesc_engine = initVesc(self.logger)
+            if self.vesc_engine is None:
+                msg = f"[{self.__class__.__name__}] -> initVesc"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.vesc_engine = initVesc(self.logger)
+            self.vesc_engine.apply_rpm(0)
             self.vesc_engine.start_moving()
 
-            msg = f"[{self.__class__.__name__}] -> initSmoothie"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
-            self.smoothie = initSmoothie(self.logger)
+            if self.smoothie is None:
+                msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.smoothie = initSmoothie(self.logger)
         except:
             self.on_event(Events.ERROR)
 
@@ -152,10 +159,7 @@ class WaitWorkingState(State):
             self.statusOfUIObject["continueButton"] = False
             self.statusOfUIObject["joystick"] = False
             self.statusOfUIObject["audit"] = 'disable'
-            self.smoothie.disconnect()
-            self.vesc_engine.disconnect()
-            #self.gps.disconnect()
-            return CreateFieldState(self.socketio, self.logger)
+            return CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine, self.gps)
         elif event in [Events.START_MAIN,Events.START_AUDIT]:
             self.statusOfUIObject["startButton"] = "charging"
             self.statusOfUIObject["fieldButton"] = False
@@ -165,12 +169,13 @@ class WaitWorkingState(State):
                 self.statusOfUIObject["audit"] = 'not-use'
             elif event == Events.START_AUDIT:
                 self.statusOfUIObject["audit"] = 'use'
-            self.smoothie.disconnect()
-            self.vesc_engine.disconnect()
-            #self.gps.disconnect()
-            if event == Events.START_AUDIT:
-                return StartingState(self.socketio, self.logger, True)
-            return StartingState(self.socketio, self.logger)
+            if self.smoothie is not None:
+                self.smoothie.disconnect()
+            if self.vesc_engine is not None:
+                self.vesc_engine.disconnect()
+            if self.gps is not None:
+                self.gps.disconnect()
+            return StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
         elif event in [Events.CONTINUE_MAIN,Events.CONTINUE_AUDIT]:
             self.statusOfUIObject["continueButton"] = "charging"
             self.statusOfUIObject["startButton"] = False
@@ -180,12 +185,13 @@ class WaitWorkingState(State):
                 self.statusOfUIObject["audit"] = 'not-use'
             elif event == Events.CONTINUE_AUDIT:
                 self.statusOfUIObject["audit"] = 'use'
-            self.smoothie.disconnect()
-            self.vesc_engine.disconnect()
-            #self.gps.disconnect()
-            if event == Events.CONTINUE_AUDIT:
-                return ResumeState(self.socketio, self.logger, True)
-            return ResumeState(self.socketio, self.logger)
+            if self.smoothie is not None:
+                self.smoothie.disconnect()
+            if self.vesc_engine is not None:
+                self.vesc_engine.disconnect()
+            if self.gps is not None:
+                self.gps.disconnect()
+            return ResumeState(self.socketio, self.logger, (event == Events.CONTINUE_AUDIT))
         elif event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
@@ -197,9 +203,12 @@ class WaitWorkingState(State):
             return self
         else:
             try:
-                self.smoothie.disconnect()
-                self.vesc_engine.disconnect()
-                #self.gps.disconnect()
+                if self.smoothie is not None:
+                    self.smoothie.disconnect()
+                if self.vesc_engine is not None:
+                    self.vesc_engine.disconnect()
+                if self.gps is not None:
+                    self.gps.disconnect()
             except:
                 pass
             return ErrorState(self.socketio, self.logger)
@@ -255,20 +264,26 @@ class WaitWorkingState(State):
 #This state corresponds when the robot is generating the work area.
 class CreateFieldState(State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger):
+    def __init__(self, socketio: SocketIO, logger: utility.Logger, smoothie: adapters.SmoothieAdapter, vesc_engine: adapters.VescAdapter, gps : adapters.GPSUbloxAdapter):
         self.socketio = socketio
         self.logger = logger
+        self.smoothie = smoothie
+        self.vesc_engine = vesc_engine
+        self.gps = gps
+
         self.socketio.emit('field', {"status": "pushed"}, namespace='/button', broadcast=True)
         try:
-            msg = f"[{self.__class__.__name__}] -> initSmoothie"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
-            self.smoothie = initSmoothie(self.logger)
+            if self.smoothie is None:
+                msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.smoothie = initSmoothie(self.logger)
 
-            msg = f"[{self.__class__.__name__}] -> initGPS"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
-            self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+            if self.gps is None:
+                msg = f"[{self.__class__.__name__}] -> initGPS"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
 
             msg = f"[{self.__class__.__name__}] -> initGPSComputing"
             self.logger.write_and_flush(msg+"\n")
@@ -289,7 +304,7 @@ class CreateFieldState(State):
             "removeFieldButton": False #True or False  
         }
 
-        self.fieldCreator = FieldCreator(self.logger, self.gps, self.nav, self.smoothie, self.socketio)
+        self.fieldCreator = FieldCreator(self.logger, self.gps, self.nav, self.vesc_engine, self.smoothie, self.socketio)
 
         self.field = None
         self.manoeuvre = False
@@ -310,9 +325,7 @@ class CreateFieldState(State):
             except TimeoutError:
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))     
-                self.smoothie.disconnect()
-                self.gps.disconnect() 
-                return WaitWorkingState(self.socketio, self.logger, False) 
+                return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)  
 
             self.field = self.fieldCreator.calculateField()
             if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
@@ -322,14 +335,12 @@ class CreateFieldState(State):
             self.statusOfUIObject["stopButton"] = None
             self.statusOfUIObject["fieldButton"] = "validate"
             self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
-            self.smoothie.disconnect()
-            self.gps.disconnect()
             return self
         elif event == Events.VALIDATE_FIELD:
             return self
         elif event == Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
-            return WaitWorkingState(self.socketio, self.logger, True)
+            return WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine, self.gps)
         elif event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
@@ -365,9 +376,7 @@ class CreateFieldState(State):
             except TimeoutError:
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))  
-                self.smoothie.disconnect()
-                self.gps.disconnect()
-                return WaitWorkingState(self.socketio, self.logger, False)
+                return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
 
         elif data["type"] == "modifyZone":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
@@ -413,6 +422,7 @@ class StartingState(State):
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit
+
         self.socketio.emit('start', {"status": "pushed"}, namespace='/button', broadcast=True)
         msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{False},AUDIT_MODE:{isAudit})"
         self.logger.write_and_flush(msg+"\n")
@@ -464,6 +474,7 @@ class ResumeState(State):
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit
+
         self.socketio.emit('continue', {"status": "pushed"}, namespace='/button', broadcast=True)
         msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{True},AUDIT_MODE:{isAudit})"
         self.logger.write_and_flush(msg+"\n")
@@ -593,7 +604,7 @@ class WorkingState(State):
                 self.statusOfUIObject["startButton"] = True
             self.statusOfUIObject["stopButton"] = None
             self.msgQueue.close()
-            return WaitWorkingState(self.socketio, self.logger, False)
+            return WaitWorkingState(self.socketio, self.logger, False, None, None, None)
         else:
             self._main_msg_thread_alive = False
             self.msgQueue.close()
@@ -680,7 +691,7 @@ class ErrorState(State):
 
 class FieldCreator:
 
-    def __init__(self, logger: utility.Logger, gps: adapters.GPSUbloxAdapter, nav: navigation.GPSComputing, smoothie: adapters.SmoothieAdapter, socketio: SocketIO):
+    def __init__(self, logger: utility.Logger, gps: adapters.GPSUbloxAdapter, nav: navigation.GPSComputing, vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, socketio: SocketIO):
         self.A = [0,0]
         self.B = [0,0]
         self.C = [0,0]
@@ -690,6 +701,7 @@ class FieldCreator:
         self.logger = logger
         self.gps = gps
         self.nav = nav
+        self.vesc_emergency = vesc_engine
         self.smoothie = smoothie
         self.socketio = socketio
 
@@ -701,7 +713,8 @@ class FieldCreator:
 
         self.socketio.emit('newPos', json.dumps([self.A[1],self.A[0]]), namespace='/map')
 
-        self.vesc_emergency = initVesc(self.logger)
+        if self.vesc_emergency is None:
+            self.vesc_emergency = initVesc(self.logger)
         msg = f"[{self.__class__.__name__}] -> Moving forward..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
@@ -773,20 +786,22 @@ class FieldCreator:
 
     def manoeuvre(self):
         self.vesc_emergency.apply_rpm(-config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
+        self.vesc_emergency.set_moving_time(6)
         self.vesc_emergency.start_moving()
-        time.sleep(6)
-        self.vesc_emergency.stop_moving()
+        self.vesc_emergency.wait_for_stop()
 
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
         self.smoothie.wait_for_all_actions_done()
 
         self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
+        self.vesc_emergency.set_moving_time(7)
         self.vesc_emergency.start_moving()
-        time.sleep(8)
-        self.vesc_emergency.stop_moving()
+        self.vesc_emergency.wait_for_stop()
 
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=0)
         self.smoothie.wait_for_all_actions_done()
+
+        self.vesc_emergency.set_moving_time(config.VESC_MOVING_TIME)
 
 
 ###### Function for all state ######
@@ -802,6 +817,7 @@ def initVesc(logger: utility.Logger):
         print(msg)
         exit(1)
     vesc_engine = adapters.VescAdapter(0, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE)
+    vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
     return vesc_engine
 
 def initSmoothie(logger: utility.Logger):
