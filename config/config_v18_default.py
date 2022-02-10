@@ -14,8 +14,8 @@ KP = {
     0.7: 0.11000000000000001,
     -0.7: 0.0360000000000001,
 
-    0.5: 0.293*0.275,
-    -0.5: 0.293*0.275,
+    0.5: 0.293*0.277,
+    -0.5: 0.293*0.14,
 
     0: 0.2
 } # SI_speed: value
@@ -28,14 +28,15 @@ KI = {
     -0.7: 0.000000001,
     
     0.5: 0.00125,
-    -0.5: 0.00125,
+    -0.5: 0.00003,
 
     0: 0.092
 } # SI_speed: value
 
-CENTROID_FACTOR_ORIENTED = 0.55
-CENTROID_FACTOR_LOST = 0.1
-LOST_THRESHOLD = 10
+CENTROID_FACTOR_ORIENTED = 0.585
+CENTROID_FACTOR_LOST = 0.2 
+
+CORNER_THRESHOLD = 1500
 
 MANEUVERS_FREQUENCY = 0.25  # seconds
 # max distance in mm-s of robot's deviation from planned moving vector
@@ -43,14 +44,14 @@ MANEUVERS_FREQUENCY = 0.25  # seconds
 WINDOW = float("inf")   # anyway, the integral is used for only some hundreds of time
 # AB moving vector used as A----A1--B, where A1 is point when robot starts moving to next point.
 # this determines A1-B distance
-MANEUVER_START_DISTANCE = {False:4000, True:4000} 
+MANEUVER_START_DISTANCE = {False:5000, True:4000} 
 USE_SPEED_LIMIT = True  # when distance to target point is less than specified in the config
 DECREASE_SPEED_TRESHOLD = 5000  # millimeters
 SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history), should be positive here, in config
 # distance between sides of spiral robot movements, expected to be equal to working area width, may be any positive val
-SPIRAL_SIDES_INTERVAL = {False: 333, True: 3000} 
+SPIRAL_SIDES_INTERVAL = {False: 450, True: 3000} 
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
-PREV_CUR_POINT_MIN_DIST = 100  # pass by cur points dist between them and prev point is lesser than this, mms
+PREV_CUR_POINT_MIN_DIST = 10  # pass by cur points dist between them and prev point is lesser than this, mms
 
 #Field creation with main
 USE_EMERGENCY_FIELD_GENERATION = False  # allows to generate field by moving forward for a given duration
@@ -74,15 +75,15 @@ FUTURE_NUMBER_OF_POINTS = 3
 # ROBOT PATH CREATION SETTINGS
 # ======================================================================================================================
 #Only one of the following three parameters must be true
-TRADITIONAL_PATH = True #Snail path
-BEZIER_CORNER_PATH = False #Snail path and use of bezier curve for turns
+TRADITIONAL_PATH = False #Snail path
+BEZIER_CORNER_PATH = True #Snail path and use of bezier curve for turns
 FORWARD_BACKWARD_PATH = False #Path where the robot goes straight in extraction then reverses without extraction ....
 
 #This params work only if TRADITIONAL_PATH or BEZIER_CORNER_PATH are true. 
 ADD_FORWARD_BACKWARD_TO_END_PATH = True #Adds the path FORWARD_BACKWARD to complete the missing center.
 
 #This params work only if BEZIER_CORNER_PATH are true.
-NUMBER_OF_BEZIER_POINT = 10 #Allows to determine the number of points put in the bezier turn.
+NUMBER_OF_BEZIER_POINT = 11 #Allows to determine the number of points put in the bezier turn.
 
 TWO_POINTS_FOR_CREATE_FIELD = False
 
@@ -92,8 +93,8 @@ TWO_POINTS_FOR_CREATE_FIELD = False
 # =====================================================================================================================
 NAVIGATION_TEST_MODE = False
 DISPLAY_INSTRUCTION_PATH = False
-DELTA_DISPLAY_INSTRUCTION_PATH = 5
-POINT_A = [[46.1579425, -1.1344245], 0.5]
+DELTA_DISPLAY_INSTRUCTION_PATH = 15
+POINT_A = [[46.1579425, -1.1344245], -0.5]
 POINT_B = [[46.1577957, -1.1347992], 0.5]
 
 
@@ -137,7 +138,7 @@ VESC_CHECK_FREQ = 0.001  # freq of checking need to stop
 STEP_FORWARD_TIME = 1 # step after extraction loops are done
 FAST_TO_SLOW_TIME = 5
 
-SI_SPEED_UI = 0.8
+SI_SPEED_UI = 1 #0.8 for 12v
 SI_SPEED_FWD = 0.5
 SI_SPEED_REV = -0.5
 SI_SPEED_FAST = 0.7
@@ -148,7 +149,7 @@ MULTIPLIER_SI_SPEED_TO_RPM = -14285
 # GPS SETTINGS
 # ======================================================================================================================
 GPS_PORT = "/dev/ttyTHS1"
-GPS_BAUDRATE = 19200 
+GPS_BAUDRATE = 115200 
 GPS_POSITIONS_TO_KEEP = 1000
 NO_GPS_TIMEOUT = 15
 GPS_CHECK_IN_DEGRADED_MODE = 30 #Check if gps returned every GPS_CHECK_IN_DEGRADED_MODE navigation cycle.
@@ -170,13 +171,13 @@ X_F_MAX = 20000
 X_COEFFICIENT_TO_MM = 1
 
 Y_MIN = 0
-Y_MAX = 220 
+Y_MAX = 216 
 Y_F_MIN = 0
-Y_F_MAX = 6000
+Y_F_MAX = 20000
 Y_COEFFICIENT_TO_MM = 1
 
 # smoothie movement separation update
-ALLOW_SEPARATE_XY_MOVEMENT = True
+ALLOW_SEPARATE_XY_MOVEMENT = False
 XY_SEP_MOV_MAX_RATIO_THRESHOLD = 1
 
 Z_MIN = -float("inf")
@@ -244,17 +245,17 @@ EXTRACTION_TUNING_MAX_COUNT = 3 # Number of try to get closer to a plant
 # ======================================================================================================================
 # YOLO PERIPHERY NETWORK SETTINGS
 # ======================================================================================================================
-PERIPHERY_CONFIDENCE_THRESHOLD = 0.99 # Confidence threshold
-PERIPHERY_HIER_THRESHOLD = 0.5  # works only in darknet wrapper
-PERIPHERY_NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
+PERIPHERY_CONFIDENCE_THRESHOLD = 0.99
+PERIPHERY_HIER_THRESHOLD = 0.5
+PERIPHERY_NMS_THRESHOLD = 0.4
 PERIPHERY_INPUT_SIZE = (416, 416)
 PERIPHERY_CONFIG_FILE = "yolo/Y0016_416.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/Y0016.weights"
 PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
-PERIPHERY_DNN_BACKEND = 5  # cv.dnn: DNN_BACKEND_CUDA = 5; DNN_BACKEND_OPENCV = 3
-PERIPHERY_DNN_TARGET = 6  # cv.dnn: DNN_TARGET_CUDA = 6; DNN_TARGET_CUDA_FP16 = 7; DNN_TARGET_CPU = 0
-PERIPHERY_WRAPPER = 1  # 1 = darknet, 2 = opencv from darknet
-PERIPHERY_DATA_FILE = "yolo/Y0016.data" 
+PERIPHERY_DNN_BACKEND = 5
+PERIPHERY_DNN_TARGET = 6
+PERIPHERY_WRAPPER = 1
+PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 
 PERIPHERY_MODEL_PATH = "yolo/Y0016.trt"
 
@@ -262,17 +263,17 @@ PERIPHERY_MODEL_PATH = "yolo/Y0016.trt"
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
-PRECISE_CONFIDENCE_THRESHOLD = 0.99    # Confidence threshold
-PRECISE_HIER_THRESHOLD = 0.5  # works only in darknet wrapper
-PRECISE_NMS_THRESHOLD = 0.4      # Non-maximum suppression threshold
+PRECISE_CONFIDENCE_THRESHOLD = 0.99
+PRECISE_HIER_THRESHOLD = 0.5
+PRECISE_NMS_THRESHOLD = 0.4
 PRECISE_INPUT_SIZE = (832, 832)
 PRECISE_CONFIG_FILE = "yolo/Y0016_832.cfg"
 PRECISE_WEIGHTS_FILE = "yolo/Y0016.weights"
 PRECISE_CLASSES_FILE = "yolo/Y0016.names"
-PRECISE_DATA_FILE = "yolo/Y0016.data" 
-PRECISE_DNN_BACKEND = 5  # cv.dnn: DNN_BACKEND_CUDA = 5; DNN_BACKEND_OPENCV = 3
-PRECISE_DNN_TARGET = 6  # cv.dnn: DNN_TARGET_CUDA = 6; DNN_TARGET_CUDA_FP16 = 7; DNN_TARGET_CPU = 0
-PRECISE_WRAPPER = 1  # 1 = darknet, 2 = opencv from darknet
+PRECISE_DATA_FILE = "yolo/Y0016.data"
+PRECISE_DNN_BACKEND = 5
+PRECISE_DNN_TARGET = 6
+PRECISE_WRAPPER = 1
 
 
 # ======================================================================================================================
@@ -281,10 +282,10 @@ PRECISE_WRAPPER = 1  # 1 = darknet, 2 = opencv from darknet
 CAMERA_W = 3264
 CAMERA_H = 1848
 APPLY_IMAGE_CROPPING = True
-CROP_W_FROM = 498 
-CROP_W_TO = 2498 
-CROP_H_FROM = 160 
-CROP_H_TO = 1660 
+CROP_W_FROM = 566
+CROP_W_TO = 2566
+CROP_H_FROM = 0
+CROP_H_TO = 1500
 CAMERA_FRAMERATE = 28
 CAMERA_FLIP_METHOD = 0
 SCENE_CENTER_X = 1000
@@ -388,7 +389,7 @@ ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
 # ======================================================================================================================
 # NTRIP CLIENT SETTINGS
 # ======================================================================================================================
-NTRIP = False 
+NTRIP = True 
 NTRIP_RESTART_TIMEOUT = 60
 NTRIP_USER = "centipede"
 NTRIP_PASSWORD = "centipede"
@@ -397,4 +398,4 @@ NTRIP_PORT = 2101
 NTRIP_MOUNTPOINT = "LIENSS"
 
 NTRIP_OUTPUT_PORT = "/dev/ttyACM1"
-NTRIP_OUTPUT_BAUDRATE = 38400
+NTRIP_OUTPUT_BAUDRATE = 115200

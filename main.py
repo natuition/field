@@ -442,7 +442,7 @@ def move_to_point_and_extract(coords_from_to: list,
             break
 
         #check if can arrived
-        if (vesc_engine._rpm/config.MULTIPLIER_SI_SPEED_TO_RPM)*config.MANEUVERS_FREQUENCY > nav.get_distance(cur_pos, coords_from_to[1]):
+        if vesc_engine._rpm/config.MULTIPLIER_SI_SPEED_TO_RPM*config.MANEUVERS_FREQUENCY > nav.get_distance(cur_pos, coords_from_to[1]):
             vesc_engine.stop_moving()
             data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
             msg = "Will have arrived before the next point to " + str(coords_from_to[1])
@@ -474,11 +474,16 @@ def move_to_point_and_extract(coords_from_to: list,
         raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
         raw_angle_centroid = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
-        if abs(raw_angle_legacy)>config.LOST_THRESHOLD:
+
+        if nav.get_distance(coords_from_to[0],coords_from_to[1]) < config.CORNER_THRESHOLD and nav.get_distance(coords_from_to[1],future_points[0][0]) < config.CORNER_THRESHOLD:
+        #if abs(raw_angle_legacy)>config.LOST_THRESHOLD:
             centroid_factor = config.CENTROID_FACTOR_LOST
+            cruise_factor = 1/centroid_factor
         else:
             centroid_factor = config.CENTROID_FACTOR_ORIENTED
-        raw_angle = raw_angle_centroid*centroid_factor + raw_angle_cruise/centroid_factor
+            cruise_factor = 1
+
+        raw_angle = raw_angle_centroid*centroid_factor + raw_angle_cruise*cruise_factor
 
         #raw_angle = butter_lowpass_filter(raw_angle, 0.5, 4, 6)
 
@@ -623,7 +628,8 @@ def move_to_point_and_extract(coords_from_to: list,
 
         msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
             order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
-            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(10)+corridor.ljust(9)+str(centroid_factor).ljust(16)
+            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(10)+corridor.ljust(9)+str(centroid_factor).ljust(16)+str(
+            cruise_factor).ljust(14)
         print(msg)
         logger_full.write(msg + "\n")
 
@@ -1547,7 +1553,7 @@ def main():
             logger_full.write(msg + "\n")
             """
 
-            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|centroid factor'
+            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|centroid factor|cruise factor'
             print(msg)
             logger_full.write(msg + "\n")
             msg = 'GpsQ,Raw ang,Res ang,Ord ang,Sum ang,Distance,Adapter,Smoothie,'
@@ -1655,6 +1661,7 @@ def main():
                                 wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
                         test_continue = input("Press enter to continue the test, type anything to exit.")
                         if test_continue != "":
+                            notification.stop()
                             break
                         try:
                             start_position = utility.average_point(gps,trajectory_saver,nav)
