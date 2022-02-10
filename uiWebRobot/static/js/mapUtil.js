@@ -232,7 +232,7 @@ function createMap(coords_field,coords_other){
                     'line-cap': 'round',
                 },
                 'paint': {
-                    'line-color': 'red',
+                    'line-color': '#e55e5e',
                     'line-width': 2
                 }
             });
@@ -254,8 +254,14 @@ function createMap(coords_field,coords_other){
                 'type': 'circle',
                 'source': 'lastPos',
                 'paint': {
-                    'circle-radius': 4,
-                    'circle-color': 'darkred'
+                    'circle-radius': 3,
+                    'circle-color': [
+                        'match',
+                        ['get', 'Quality'],
+                        '4',
+                        '#e55e5e',// red for quality 4
+                        '#fbb03b' // orange for other
+                    ]
                 }
             });
         }
@@ -265,31 +271,34 @@ function createMap(coords_field,coords_other){
 
 socketMap.on('updatePath', function(dataServ) {
     dataServ = JSON.parse(dataServ)
-    var coords = dataServ
-    x_center = coords[coords.length - 1][0]
-    y_center = coords[coords.length - 1][1]
+    var coords = dataServ[0]
+    var last_coord = coords[coords.length - 1]
+    var quality = dataServ[1]
 
     if(typeof(map.getSource('pathRobot')) == "undefined" || typeof(map.getSource('lastPos')) == "undefined"){
         createMap(dataServ["field"],dataServ["other_fields"]);
     }
     
-    map.getSource('pathRobot').setData({
-        'type': 'Feature',
-        'geometry': {
-            'type': 'LineString',
-            'coordinates': dataServ
-        }
-    });
+    if(coords.length>1){
+        map.getSource('pathRobot').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': dataServ
+            }
+        });
+    }
     
     map.getSource('lastPos').setData({ 
         'type': 'Feature',
         'geometry': {
             'type': 'Point',
-            'coordinates': [x_center,y_center]
-        }
+            'coordinates': last_coord
+        },
+        "properties": Object.assign({}, {'Quality':Object.keys(quality)[0]}, quality)
     });
 
-    map.panTo([x_center,y_center]);
+    if(coords.length>1) map.panTo(last_coord);
 });
 
 socketMap.on('updateDisplayInstructionPath', function(dataServ) {

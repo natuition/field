@@ -97,10 +97,12 @@ class WaitWorkingState(State):
         self.gps = gps
 
         try:
-            #msg = f"[{self.__class__.__name__}] -> initGPS"
-            #self.logger.write_and_flush(msg+"\n")
-            #print(msg)
-            #self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+            if self.gps is None:
+                msg = f"[{self.__class__.__name__}] -> initGPS"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+
             if self.vesc_engine is None:
                 msg = f"[{self.__class__.__name__}] -> initVesc"
                 self.logger.write_and_flush(msg+"\n")
@@ -149,11 +151,21 @@ class WaitWorkingState(State):
 
         self.field = None
 
-        #lastPos = self.gps.get_last_position()
-        #socketio.emit('newPos', json.dumps([lastPos[1],lastPos[0]]), namespace='/map')
+        self.__send_last_pos_thread_alive = True
+        self._send_last_pos_thread = threading.Thread(target=self.send_last_pos_thread_tf, daemon=True)
+        self._send_last_pos_thread.start()
+    
+    def send_last_pos_thread_tf(self):
+        while self.__send_last_pos_thread_alive:
+            try:
+                lastPos = self.gps.get_last_position()
+                self.socketio.emit('updatePath', json.dumps([[lastPos[1],lastPos[0]], lastPos[2]]), namespace='/map', broadcast=True)
+            except:
+                time.sleep(1)
 
     def on_event(self, event):
         if event == Events.CREATE_FIELD:
+            self.__send_last_pos_thread_alive = False
             self.statusOfUIObject["fieldButton"] = "charging"
             self.statusOfUIObject["startButton"] = False
             self.statusOfUIObject["continueButton"] = False
@@ -161,6 +173,7 @@ class WaitWorkingState(State):
             self.statusOfUIObject["audit"] = 'disable'
             return CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine, self.gps)
         elif event in [Events.START_MAIN,Events.START_AUDIT]:
+            self.__send_last_pos_thread_alive = False
             self.statusOfUIObject["startButton"] = "charging"
             self.statusOfUIObject["fieldButton"] = False
             self.statusOfUIObject["continueButton"] = False
@@ -177,6 +190,7 @@ class WaitWorkingState(State):
                 self.gps.disconnect()
             return StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
         elif event in [Events.CONTINUE_MAIN,Events.CONTINUE_AUDIT]:
+            self.__send_last_pos_thread_alive = False
             self.statusOfUIObject["continueButton"] = "charging"
             self.statusOfUIObject["startButton"] = False
             self.statusOfUIObject["fieldButton"] = False
@@ -202,6 +216,7 @@ class WaitWorkingState(State):
             self.statusOfUIObject["audit"] = False
             return self
         else:
+            self.__send_last_pos_thread_alive = False
             try:
                 if self.smoothie is not None:
                     self.smoothie.disconnect()
@@ -650,7 +665,7 @@ class WorkingState(State):
                 self.allPath.append([data[1],data[0]])
                 if self.lastGpsQuality != data[2]:
                     self.lastGpsQuality = data[2]
-                self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map', broadcast=True)
+                self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
             elif "display_instruction_path" in data:
                 data = json.loads(msg[0])["display_instruction_path"]
                 self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]), namespace='/map', broadcast=True)
