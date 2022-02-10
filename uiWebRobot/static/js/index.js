@@ -331,3 +331,8 @@ function verif_iframe_start(){
         } catch(e) {}
     }, 5000);
 }
+
+
+window.addEventListener("load", function(event) {
+    socketio.emit('data', {type: "getInputVoltage"});
+});

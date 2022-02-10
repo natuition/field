@@ -14,6 +14,7 @@
     <script type="text/javascript" src="/static/{{ now }}/js/offline_subscriber.js"></script> 
     <script type="text/javascript" src="/static/{{ now }}/fontawesome/solid.js"></script> 
     <script type="text/javascript" src="/static/{{ now }}/fontawesome/fontawesome.js"></script> 
+    <script src="/static/{{ now }}/js/voltage_indicator.js"></script>
     <title>Violette</title>
 </head>
 <body>
@@ -36,8 +37,13 @@
             <div class="header__info--logo">
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
             </div>
-            <div class="header__info--model">
-                <p>{{sn}}</p>
+            <div class="header__info--model--voltage">
+                <div class="header__info--voltage">
+                    <p id="voltage_indicator">00.0 V</p>
+                </div>
+                <div class="header__info--model">
+                    <p>{{ sn }}</p>
+                </div>
             </div>
         </div>
         <div class="header__map" style="max-width: 374px">
@@ -244,8 +250,13 @@
             <div class="header__info--logo">
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
             </div>
-            <div class="header__info--model">
-                <p>{{ sn }}</p>
+            <div class="header__info--model--voltage">
+                <div class="header__info--voltage">
+                    <p id="voltage_indicator">00.0 V</p>
+                </div>
+                <div class="header__info--model">
+                    <p>{{ sn }}</p>
+                </div>
             </div>
         </div>
         <div class="header__title">

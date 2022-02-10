@@ -143,6 +143,8 @@ def on_socket_data(data):
                 stateMachine.on_event(Events.CONTINUE_MAIN)
         elif data["type"] == "stop":
             stateMachine.on_event(Events.STOP)
+        elif data["type"] == "getInputVoltage":
+            stateMachine.on_socket_data(data)
         elif data["type"] == "allChecked":
             stateMachine.on_socket_data(data)
             stateMachine.on_event(Events.LIST_VALIDATION)

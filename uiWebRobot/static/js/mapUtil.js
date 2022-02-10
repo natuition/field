@@ -6,6 +6,8 @@ socketMap.on("reconnect_attempt", (attempt) => {
 
 var map;
 
+var firstFocus = false
+
 window.onload = ()=>{
     if (typeof coords_field != "undefined"){
         if (typeof coords_other != "undefined"){
@@ -20,6 +22,7 @@ window.onload = ()=>{
             document.addEventListener("DOMContentLoaded",createMap([],[]));
         }
     }
+
 }
 
 function createMap(coords_field,coords_other){
@@ -265,41 +268,41 @@ function createMap(coords_field,coords_other){
                 }
             });
         }
+
+        socketMap.on('updatePath', function(dataServ) {
+            dataServ = JSON.parse(dataServ)
+            var coords = dataServ[0]
+            var last_coord = coords[coords.length - 1]
+            var quality = dataServ[1]
+        
+            if(coords.length>1){
+                map.getSource('pathRobot').setData({
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': dataServ
+                    }
+                });
+            }
+            
+            map.getSource('lastPos').setData({ 
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': last_coord
+                },
+                "properties": Object.assign({}, {'Quality':Object.keys(quality)[0]}, quality)
+            });
+        
+            if(coords.length>1 || !firstFocus){
+                map.panTo(last_coord);
+                firstFocus = true;
+            }
+        });
+
     });
 
 }
-
-socketMap.on('updatePath', function(dataServ) {
-    dataServ = JSON.parse(dataServ)
-    var coords = dataServ[0]
-    var last_coord = coords[coords.length - 1]
-    var quality = dataServ[1]
-
-    if(typeof(map.getSource('pathRobot')) == "undefined" || typeof(map.getSource('lastPos')) == "undefined"){
-        createMap(dataServ["field"],dataServ["other_fields"]);
-    }
-    
-    if(coords.length>1){
-        map.getSource('pathRobot').setData({
-            'type': 'Feature',
-            'geometry': {
-                'type': 'LineString',
-                'coordinates': dataServ
-            }
-        });
-    }
-    
-    map.getSource('lastPos').setData({ 
-        'type': 'Feature',
-        'geometry': {
-            'type': 'Point',
-            'coordinates': last_coord
-        },
-        "properties": Object.assign({}, {'Quality':Object.keys(quality)[0]}, quality)
-    });
-
-    if(coords.length>1) map.panTo(last_coord);
-});
 
 socketMap.on('updateDisplayInstructionPath', function(dataServ) {
     dataServ = JSON.parse(dataServ)

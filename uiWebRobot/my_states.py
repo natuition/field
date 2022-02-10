@@ -51,18 +51,19 @@ class CheckState(State):
         print(msg)
         self.vesc_engine = initVesc(self.logger)
 
-        self.voltage_thread = threading.Thread(target=self.voltage_thread_tf, daemon=True)
-        self.voltage_thread_alive = True
-        self.voltage_thread.start()
+        self.__voltage_thread = threading.Thread(target=self.__voltage_thread_tf, daemon=True)
+        self.__voltage_thread_alive = True
+        self.__voltage_thread.start()
 
-    def voltage_thread_tf(self):
+    def __voltage_thread_tf(self):
         last_update = 0
-        while self.voltage_thread_alive:
-            if time.time() - last_update > 60:
+        while self.__voltage_thread_alive:
+            if time.time() - last_update > 60*5:
                 vesc_data = self.vesc_engine.get_sensors_data(['input_voltage'])
                 if vesc_data is not None:
-                        input_voltage = vesc_data["input_voltage"]
-                        self.socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
+                        last_update = time.time()
+                        self.input_voltage = vesc_data["input_voltage"]
+                        self.socketio.emit('update', self.input_voltage, namespace='/voltage', broadcast=True)
 
     def on_event(self, event):
         if event == Events.LIST_VALIDATION:
@@ -89,9 +90,11 @@ class CheckState(State):
                     content = re.sub('[^0-9a-zA-Z._="/]+', '', content)
                     if content:
                         changeConfigValue(content.split("=")[0],content.split("=")[1])
-            return self
+        elif data["type"] == 'getInputVoltage':
+            self.socketio.emit('update', self.input_voltage, namespace='/voltage', broadcast=True)
         else:
             self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+        return self
 
 
     def getStatusOfControls(self):
@@ -169,18 +172,34 @@ class WaitWorkingState(State):
         self.__send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=self.send_last_pos_thread_tf, daemon=True)
         self._send_last_pos_thread.start()
+
+        self.__voltage_thread = threading.Thread(target=self.__voltage_thread_tf, daemon=True)
+        self.__voltage_thread_alive = True
+        self.__voltage_thread.start()
     
     def send_last_pos_thread_tf(self):
         while self.__send_last_pos_thread_alive:
             try:
                 lastPos = self.gps.get_last_position()
-                self.socketio.emit('updatePath', json.dumps([[lastPos[1],lastPos[0]], lastPos[2]]), namespace='/map', broadcast=True)
+                self.socketio.emit('updatePath', json.dumps([[[lastPos[1],lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+                time.sleep(1)
             except:
                 time.sleep(1)
+
+    def __voltage_thread_tf(self):
+        last_update = 0
+        while self.__voltage_thread_alive:
+            if time.time() - last_update > 60*5:
+                vesc_data = self.vesc_engine.get_sensors_data(['input_voltage'])
+                if vesc_data is not None:
+                        last_update = time.time()
+                        self.input_voltage = vesc_data["input_voltage"]
+                        self.socketio.emit('update', self.input_voltage, namespace='/voltage', broadcast=True)
 
     def on_event(self, event):
         if event == Events.CREATE_FIELD:
             self.__send_last_pos_thread_alive = False
+            self.__voltage_thread_alive = False
             self.statusOfUIObject["fieldButton"] = "charging"
             self.statusOfUIObject["startButton"] = False
             self.statusOfUIObject["continueButton"] = False
@@ -189,6 +208,7 @@ class WaitWorkingState(State):
             return CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine, self.gps)
         elif event in [Events.START_MAIN,Events.START_AUDIT]:
             self.__send_last_pos_thread_alive = False
+            self.__voltage_thread_alive = False
             self.statusOfUIObject["startButton"] = "charging"
             self.statusOfUIObject["fieldButton"] = False
             self.statusOfUIObject["continueButton"] = False
@@ -206,6 +226,7 @@ class WaitWorkingState(State):
             return StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
         elif event in [Events.CONTINUE_MAIN,Events.CONTINUE_AUDIT]:
             self.__send_last_pos_thread_alive = False
+            self.__voltage_thread_alive = False
             self.statusOfUIObject["continueButton"] = "charging"
             self.statusOfUIObject["startButton"] = False
             self.statusOfUIObject["fieldButton"] = False
@@ -232,6 +253,7 @@ class WaitWorkingState(State):
             return self
         else:
             self.__send_last_pos_thread_alive = False
+            self.__voltage_thread_alive = False
             try:
                 if self.smoothie is not None:
                     self.smoothie.disconnect()
@@ -262,14 +284,17 @@ class WaitWorkingState(State):
                     y = 0
                 self.vesc_engine.apply_rpm(y)
                 self.lastValueY = y
+
+        elif data["type"] == 'getInputVoltage':
+            self.socketio.emit('update', self.input_voltage, namespace='/voltage', broadcast=True)
                 
-        if data["type"] == 'getField':
+        elif data["type"] == 'getField':
             
             coords, other_fields, current_field_name = updateFields(data["field_name"])
             fields_list = load_field_list("../fields")
             self.socketio.emit('newField', json.dumps({"field" : coords, "other_fields" : other_fields, "current_field_name" : current_field_name, "fields_list": fields_list}), namespace='/map')
 
-        if data["type"] == 'removeField':
+        elif data["type"] == 'removeField':
 
             os.remove("../fields/"+quote(data["field_name"],safe="", encoding='utf-8')+".txt")
             fields_list = load_field_list("../fields")
@@ -436,6 +461,7 @@ class CreateFieldState(State):
                 coords, other_fields, current_field_name = list(), list(), ""
 
             self.socketio.emit('newField', json.dumps({"field" : coords, "other_fields" : other_fields, "current_field_name" : current_field_name, "fields_list": fields_list}), namespace='/map')
+        
         return self
 
     def getStatusOfControls(self):
@@ -488,6 +514,8 @@ class StartingState(State):
             return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
+        if data["type"] == 'getInputVoltage':
+            return self
         return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
@@ -540,6 +568,8 @@ class ResumeState(State):
             return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
+        if data["type"] == 'getInputVoltage':
+            return self
         return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
@@ -644,6 +674,8 @@ class WorkingState(State):
         if data["type"] == "getStats":
             self.sendLastStatistics()
             return self
+        elif data["type"] == 'getInputVoltage':
+            return self
         else:
             self._main_msg_thread_alive = False
             self.msgQueue.close()
@@ -676,16 +708,19 @@ class WorkingState(State):
                 self.extracted_plants = data["datacollector"][1]
                 self.sendLastStatistics()
             elif "last_gps" in data:
-                data = json.loads(msg[0])["last_gps"]
+                data = data["last_gps"]
                 self.allPath.append([data[1],data[0]])
                 if self.lastGpsQuality != data[2]:
                     self.lastGpsQuality = data[2]
                 self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
             elif "display_instruction_path" in data:
-                data = json.loads(msg[0])["display_instruction_path"]
+                data = data["display_instruction_path"]
                 self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]), namespace='/map', broadcast=True)
             elif "clear_path" in data:
                 self.allPath.clear()
+            elif "input_voltage" in data:
+                data = data["input_voltage"]
+                self.socketio.emit('update', data, namespace='/voltage', broadcast=True)
 
 #This state corresponds when the robot has an error.
 class ErrorState(State):

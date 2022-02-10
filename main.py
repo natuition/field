@@ -302,6 +302,8 @@ def move_to_point_and_extract(coords_from_to: list,
                     last_working_mode = current_working_mode
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
+                    voltage_thread = threading.Thread(target=send_voltage_thread_tf, daemon=True)
+                    voltage_thread.start()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
                     # single precise center scan before calling for PDZ scanning and extractions
@@ -652,6 +654,15 @@ def move_to_point_and_extract(coords_from_to: list,
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
+def send_voltage_thread_tf(vesc_engine, ui_msg_queue):
+    vesc_data = None
+    while vesc_data is None:
+        vesc_data = self.vesc_engine.get_sensors_data(['input_voltage'])
+        if vesc_data is not None:
+                input_voltage = vesc_data["input_voltage"]
+                ui_msg_queue.send(json.dumps({"input_voltage": input_voltage}))
+        else:
+            time.sleep(1)
 
 def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: str, logger_full: utility.Logger):
     if SI_speed in configParam:

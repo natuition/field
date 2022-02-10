@@ -46,3 +46,7 @@ socketio.on('checklist', function(dataServ) {
         document.location.reload();
     }
 });
+
+window.addEventListener("load", function(event) {
+    socketio.emit('data', {type: "getInputVoltage"});
+});
