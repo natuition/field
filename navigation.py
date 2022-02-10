@@ -429,6 +429,27 @@ class GPSComputing:
         corners = self._corner_sort([corner_point, corner_1, corner_2, corner_3])
         return corners
 
+class AntiTheftZone:
+
+    def __init__(self, field: list):
+        field = field
+        self.nav = GPSComputing()
+        d1 = self.nav.get_distance(field[0],field[1])
+        middle_d1 = self.nav.get_point_on_vector(field[0],field[1], d1/2)
+        middle_opposite_d1 = self.nav.get_point_on_vector(field[2],field[3], d1/2)
+        d2 = self.nav.get_distance(middle_d1,middle_opposite_d1)
+        self.center = self.nav.get_point_on_vector(middle_d1,middle_opposite_d1, d2/2)
+        self.circumcircle_radius = self.hypotenuse(d1/2,d2/2)
+
+    def get_center(self):
+        return self.center
+
+    def hypotenuse(self,a,b):
+        return math.sqrt(a**2+b**2)
+
+    def coordianate_are_in_zone(self, coords: list):
+        return self.nav.get_distance(self.center,coords) <= self.circumcircle_radius + config.ANTI_THEFT_ZONE_RADIUS
+
 class NavigationV3:
 
     @staticmethod
