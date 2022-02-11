@@ -61,7 +61,7 @@ class NotificationClient:
 
     def _close(self):
         try:
-            self.socket.send("".encode("utf-8"))
+            self.socket.send(f"CLOSE;{utility.get_current_time()}".encode("utf-8"))
             self.socket.close() 
         except:
             pass

@@ -882,10 +882,16 @@ class FieldCreator:
 
 def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage):
     last_update = 0
+    vesc_data = None
     while voltage_thread_alive:
         if time.time() - last_update > 60*5 and voltage_thread_alive:
             if vesc_engine is not None:
-                vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
+                try:
+                    vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
+                except:
+                    voltage_thread_alive = False
                 if vesc_data is not None and voltage_thread_alive:
                         last_update = time.time()
                         sendInputVoltage(socketio, vesc_data["input_voltage"])
