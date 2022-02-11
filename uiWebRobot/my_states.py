@@ -211,10 +211,13 @@ class WaitWorkingState(State):
                 self.statusOfUIObject["audit"] = 'use'
             if self.smoothie is not None:
                 self.smoothie.disconnect()
+                self.smoothie = None
             if self.vesc_engine is not None:
                 self.vesc_engine.disconnect()
+                self.vesc_engine = None
             if self.gps is not None:
                 self.gps.disconnect()
+                self.gps = None
             return StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
         elif event in [Events.CONTINUE_MAIN,Events.CONTINUE_AUDIT]:
             self.__send_last_pos_thread_alive = False
@@ -229,10 +232,13 @@ class WaitWorkingState(State):
                 self.statusOfUIObject["audit"] = 'use'
             if self.smoothie is not None:
                 self.smoothie.disconnect()
+                self.smoothie = None
             if self.vesc_engine is not None:
                 self.vesc_engine.disconnect()
+                self.vesc_engine = None
             if self.gps is not None:
                 self.gps.disconnect()
+                self.gps = None
             return ResumeState(self.socketio, self.logger, (event == Events.CONTINUE_AUDIT))
         elif event == Events.WHEEL:
             self.smoothie.freewheels()
@@ -249,10 +255,13 @@ class WaitWorkingState(State):
             try:
                 if self.smoothie is not None:
                     self.smoothie.disconnect()
+                    self.smoothie = None
                 if self.vesc_engine is not None:
                     self.vesc_engine.disconnect()
+                    self.vesc_engine = None
                 if self.gps is not None:
                     self.gps.disconnect()
+                    self.gps = None
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:
@@ -399,8 +408,15 @@ class CreateFieldState(State):
             return self
         else:
             try:
-                self.smoothie.disconnect()
-                self.gps.disconnect()
+                if self.smoothie is not None:
+                    self.smoothie.disconnect()
+                    self.smoothie = None
+                if self.vesc_engine is not None:
+                    self.vesc_engine.disconnect()
+                    self.vesc_engine = None
+                if self.gps is not None:
+                    self.gps.disconnect()
+                    self.gps = None
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:
@@ -868,13 +884,13 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage
     last_update = 0
     while voltage_thread_alive:
         if time.time() - last_update > 60*5 and voltage_thread_alive:
-            vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
-            if vesc_data is not None and voltage_thread_alive:
-                    last_update = time.time()
-                    sendInputVoltage(socketio, vesc_data["input_voltage"])
-                    input_voltage["input_voltage"] = vesc_data["input_voltage"]
-        else:
-            time.sleep(1)
+            if vesc_engine is not None:
+                vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
+                if vesc_data is not None and voltage_thread_alive:
+                        last_update = time.time()
+                        sendInputVoltage(socketio, vesc_data["input_voltage"])
+                        input_voltage["input_voltage"] = vesc_data["input_voltage"]
+        time.sleep(1)
 
 def sendInputVoltage(socketio, input_voltage):
     input_voltage = round(input_voltage * 2) / 2

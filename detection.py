@@ -242,10 +242,15 @@ class YoloTRTDetector:
         self.__height = 416
         self.sharedArray = None
 
-        self.__cfx = cuda.Device(0).make_context()
-        self.__engine, self.__context = self._build_engine_from_file(trt_model_path)
-        self.__inputs, self.__outputs, self.__bindings, self.__stream = self._allocate_buffers(self.__engine)
-        self.__cfx.pop()
+        self.__cfx = None
+
+        try:
+            self.__cfx = cuda.Device(0).make_context()
+            self.__engine, self.__context = self._build_engine_from_file(trt_model_path)
+            self.__inputs, self.__outputs, self.__bindings, self.__stream = self._allocate_buffers(self.__engine)
+        finally:
+            if self.__cfx:
+                self.__cfx.pop()
 
     def get_classes_names(self):
         return self.__class_names
@@ -359,20 +364,23 @@ class YoloTRTDetector:
         return processed_image
         
     def _do_inference(self):
-        self.__cfx.push()
-        # copy inputs to GPU
-        [cuda.memcpy_htod_async(inp.device, inp.host, self.__stream) for inp in self.__inputs]
-        # Run inference.
-        self.__context.execute_async(bindings=self.__bindings, stream_handle=self.__stream.handle)
-        # Transfer predictions back from the GPU.
-        [cuda.memcpy_dtoh_async(out.host, out.device, self.__stream) for out in self.__outputs]
-        # Synchronize the stream
-        self.__stream.synchronize()
+        try:
+            self.__cfx.push()
+            # copy inputs to GPU
+            [cuda.memcpy_htod_async(inp.device, inp.host, self.__stream) for inp in self.__inputs]
+            # Run inference.
+            self.__context.execute_async(bindings=self.__bindings, stream_handle=self.__stream.handle)
+            # Transfer predictions back from the GPU.
+            [cuda.memcpy_dtoh_async(out.host, out.device, self.__stream) for out in self.__outputs]
+            # Synchronize the stream
+            self.__stream.synchronize()
 
-        # Return only the host outputs.
-        outputs = [out.host for out in self.__outputs]
+            # Return only the host outputs.
+            outputs = [out.host for out in self.__outputs]
 
-        self.__cfx.pop()
+        finally:
+            if self.__cfx:
+                self.__cfx.pop()
 
         return outputs
     

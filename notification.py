@@ -63,12 +63,6 @@ class NotificationClient:
         try:
             self.socket.send("".encode("utf-8"))
             self.socket.close() 
-        except KeyboardInterrupt:
-            try:
-                self.socket.close() 
-            except:
-                pass
-            raise KeyboardInterrupt
         except:
             pass
         print("[Notification] Disconnected") 
@@ -105,9 +99,6 @@ class NotificationClient:
                 self.socket.connect((self.ip, self.port))
                 print("[Notification] Connected")
                 self.connected = True
-            except KeyboardInterrupt:
-                self._keep_thread_alive = False
-                raise KeyboardInterrupt
             except:
                 sleep(10)
 
@@ -155,14 +146,7 @@ class NotificationClient:
                         self.socket.connect((self.ip, self.port))
                         reconnect = True
                         print("[Notification] Reconnected")
-                    except KeyboardInterrupt:
-                        self.stop()
-                        raise KeyboardInterrupt
                     except:
                         continue
-            except KeyboardInterrupt:
-                self.stop()
-                raise KeyboardInterrupt
             except Exception:
                 self.stop()
-
