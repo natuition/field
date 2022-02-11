@@ -37,6 +37,8 @@ class CheckState(State):
             self.logger.write_and_flush(msg+"\n")
             print(msg)
             self.cam = startLiveCam()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             self.on_event(Events.ERROR)
         
@@ -58,7 +60,6 @@ class CheckState(State):
     def on_event(self, event):
         if event == Events.LIST_VALIDATION:
             self.cam.send_signal(signal.SIGINT)
-            self.cam.send_signal(signal.SIGINT)
             self.cam.wait()
             os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
@@ -68,6 +69,8 @@ class CheckState(State):
             try:
                 self.cam.send_signal(signal.SIGINT)
                 self.cam.wait()
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
             except:
                 pass
             return ErrorState(self.socketio, self.logger)
@@ -124,6 +127,8 @@ class WaitWorkingState(State):
                 self.logger.write_and_flush(msg+"\n")
                 print(msg)
                 self.smoothie = initSmoothie(self.logger)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             self.on_event(Events.ERROR)
 
@@ -173,6 +178,9 @@ class WaitWorkingState(State):
                 lastPos = self.gps.get_last_position()
                 self.socketio.emit('updatePath', json.dumps([[[lastPos[1],lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
                 time.sleep(1)
+            except KeyboardInterrupt:
+                self.__send_last_pos_thread_alive = False
+                raise KeyboardInterrupt
             except:
                 time.sleep(1)
 
@@ -241,6 +249,8 @@ class WaitWorkingState(State):
                     self.vesc_engine.disconnect()
                 if self.gps is not None:
                     self.gps.disconnect()
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
             except:
                 pass
             return ErrorState(self.socketio, self.logger)
@@ -324,6 +334,8 @@ class CreateFieldState(State):
             self.logger.write_and_flush(msg+"\n")
             print(msg)
             self.nav = navigation.GPSComputing()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             self.on_event(Events.ERROR)
 
@@ -346,6 +358,8 @@ class CreateFieldState(State):
 
         try:
             self.notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             self.notificationQueue = None
     
@@ -383,6 +397,8 @@ class CreateFieldState(State):
             try:
                 self.smoothie.disconnect()
                 self.gps.disconnect()
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
             except:
                 pass
             return ErrorState(self.socketio, self.logger)   
@@ -581,6 +597,8 @@ class WorkingState(State):
 
         try:
             posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             pass
 
@@ -625,16 +643,10 @@ class WorkingState(State):
         if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject["stopButton"] = "charging"
-            mainOn = True
-            while mainOn:
-                try:
-                    print("Send SIGINT to main")
-                    self.main.send_signal(signal.SIGINT)
-                    self.main.wait(10)
-                    print("Main are close.")
-                    mainOn = False
-                except:
-                    continue
+            print("Send SIGINT to main")
+            self.main.send_signal(signal.SIGINT)
+            self.main.wait()
+            print("Main are close.")
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)

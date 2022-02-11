@@ -98,6 +98,8 @@ def formattingFieldPointsForSend(corners):
 def catch_send_notification(socketio: SocketIO):
     try:
         posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_NOTIFICATION)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
     except:
         pass
 
@@ -113,6 +115,8 @@ def catch_send_notification(socketio: SocketIO):
             message = ui_languages[message_name][ui_language]
             
             socketio.emit('notification', {"message_name":message_name,"message":message} , namespace='/broadcast', broadcast=True)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             continue
 
