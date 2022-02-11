@@ -53,8 +53,9 @@ class CheckState(State):
         print(msg)
         self.vesc_engine = initVesc(self.logger)
 
-        self.__voltage_thread = threading.Thread(target=self.__voltage_thread_tf, args=(self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
         self.__voltage_thread_alive = True
+        self.input_voltage = {"input_voltage": "?"}
+        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
         self.__voltage_thread.start()
 
     def on_event(self, event):
@@ -84,7 +85,7 @@ class CheckState(State):
                     if content:
                         changeConfigValue(content.split("=")[0],content.split("=")[1])
         elif data["type"] == 'getInputVoltage':
-            sendInputVoltage(self.socketio, self.input_voltage)
+            sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
         else:
             self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
         return self
@@ -168,8 +169,9 @@ class WaitWorkingState(State):
         self._send_last_pos_thread = threading.Thread(target=self.send_last_pos_thread_tf, daemon=True)
         self._send_last_pos_thread.start()
 
-        self.__voltage_thread = threading.Thread(target=self.__voltage_thread_tf, args=(self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
         self.__voltage_thread_alive = True
+        self.input_voltage = {"input_voltage": "?"}
+        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
         self.__voltage_thread.start()
     
     def send_last_pos_thread_tf(self):
@@ -276,7 +278,7 @@ class WaitWorkingState(State):
                 self.lastValueY = y
 
         elif data["type"] == 'getInputVoltage':
-            sendInputVoltage(self.socketio, self.input_voltage)
+            sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
                 
         elif data["type"] == 'getField':
             
@@ -711,8 +713,7 @@ class WorkingState(State):
             elif "clear_path" in data:
                 self.allPath.clear()
             elif "input_voltage" in data:
-                data = data["input_voltage"]
-                sendInputVoltage(self.socketio, data)
+                sendInputVoltage(self.socketio, data["input_voltage"])
 
 #This state corresponds when the robot has an error.
 class ErrorState(State):
@@ -863,15 +864,15 @@ class FieldCreator:
 
 ###### Function for all state ######
 
-def __voltage_thread_tf(__voltage_thread_alive, vesc_engine, socketio, input_voltage):
+def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage):
     last_update = 0
-    while __voltage_thread_alive:
+    while voltage_thread_alive:
         if time.time() - last_update > 60*5:
-            vesc_data = vesc_engine.get_sensors_data(['input_voltage'])
+            vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
             if vesc_data is not None:
                     last_update = time.time()
-                    input_voltage = vesc_data["input_voltage"]
-                    sendInputVoltage(socketio, input_voltage)
+                    sendInputVoltage(socketio, vesc_data["input_voltage"])
+                    input_voltage["input_voltage"] = vesc_data["input_voltage"]
 
 def sendInputVoltage(socketio, input_voltage):
     input_voltage = round(input_voltage * 2) / 2
