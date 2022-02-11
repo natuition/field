@@ -647,10 +647,8 @@ class WorkingState(State):
         if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject["stopButton"] = "charging"
-            print("Send SIGINT to main")
             self.main.send_signal(signal.SIGINT)
             self.main.wait()
-            print("Main are close.")
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
@@ -932,34 +930,12 @@ def changeConfigValue(path: str, value):
 
          
 def startMain():
-    #mainSP = subprocess.Popen(["python3","main.py"], cwd="/home/violette/field")#, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
     mainSP = subprocess.Popen(["python3","main.py"], cwd=os.getcwd().split("/uiWebRobot")[0])
     return mainSP
 
 def startLiveCam():
-    #camSP = subprocess.Popen(["python3","serveurCamLive.py"], cwd="/home/violette/field")
     camSP = subprocess.Popen(["python3","serveurCamLive.py"], cwd=os.getcwd().split("/uiWebRobot")[0])
     return camSP
-
-def checkHaveGPS(socketio: SocketIO, statusOfUIObject: dict):
-    GPSSerial = serial.Serial(port=config.GPS_PORT, baudrate=config.GPS_BAUDRATE)
-
-    Matrame = "B5 62 06 00 14 00 03 00 00 00 00 00 00 00 00 00 00 00 23 00 03 00 00 00 00 00 43 AE"
-    GPSSerial.write(bytearray.fromhex(Matrame))
-
-    while True:
-        try:
-            data = str(GPSSerial.readline())
-        except:
-            continue
-        if "GNGGA" in data and ",,," not in data:
-            data = data.split(",")
-            if data[6] != 0:
-                print("GPS work")
-                statusOfUIObject["GPSWork"] = True
-                socketio.emit('checklist', {"status","GPSWork"}, namespace='/server')
-                GPSSerial.close()
-                break
 
 def updateFields(field_name):
 
