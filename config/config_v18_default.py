@@ -350,6 +350,8 @@ VALUES_LEARN_GO_STRAIGHT = 40
 
 GPS_POINT_WAIT_TIME_MAX = 1000
 
+ANTI_THEFT_ZONE_RADIUS = 5000
+
 
 # ======================================================================================================================
 # DETECTION MANAGER SETTINGS

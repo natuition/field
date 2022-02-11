@@ -60,6 +60,7 @@ class CheckState(State):
 
     def on_event(self, event):
         if event == Events.LIST_VALIDATION:
+            self.__voltage_thread_alive = False
             self.cam.send_signal(signal.SIGINT)
             self.cam.wait()
             os.system("sudo systemctl restart nvargus-daemon")
@@ -67,6 +68,7 @@ class CheckState(State):
                 os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState(self.socketio, self.logger, False, None, self.vesc_engine, None)
         else:
+            self.__voltage_thread_alive = False
             try:
                 self.cam.send_signal(signal.SIGINT)
                 self.cam.wait()
@@ -867,12 +869,14 @@ class FieldCreator:
 def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage):
     last_update = 0
     while voltage_thread_alive:
-        if time.time() - last_update > 60*5:
+        if time.time() - last_update > 60*5 and voltage_thread_alive:
             vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
-            if vesc_data is not None:
+            if vesc_data is not None and voltage_thread_alive:
                     last_update = time.time()
                     sendInputVoltage(socketio, vesc_data["input_voltage"])
                     input_voltage["input_voltage"] = vesc_data["input_voltage"]
+        else:
+            time.sleep(1)
 
 def sendInputVoltage(socketio, input_voltage):
     input_voltage = round(input_voltage * 2) / 2

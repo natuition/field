@@ -22,7 +22,7 @@ class NotificationClient:
         self.status = SyntheseRobot.OP
         self.socket = socket(AF_INET, SOCK_STREAM)
         self.socket.settimeout(10)
-        self.current_coordinate = None
+        self.current_coordinate = []
         self.treated_plant = None
         self.field = None
         self.input_voltage = None
