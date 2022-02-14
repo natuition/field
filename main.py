@@ -233,8 +233,7 @@ def move_to_point_and_extract(coords_from_to: list,
     number_navigation_cycle_without_gps = 0
 
     working_mode_slow = 1
-    working_mode_switching = 2
-    working_mode_fast = 3
+    working_mode_fast = 2
 
     point_reading_t = time.time()
 
@@ -335,27 +334,23 @@ def move_to_point_and_extract(coords_from_to: list,
                         config.SLOW_FAST_MODE:
 
                     current_working_mode = working_mode_fast
+
                     if not close_to_end:
-                        # TODO : change with SI speed
+
+                        t1 = time.time()
+                        res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                            Y_F=config.Y_F_MAX,
+                                            X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                                            Y=smoothie.smoothie_to_mm((config.Y_MAX - config.Y_MIN)*config.SLOW_FAST_MODE_HEAD_FACTOR, "Y"))
+                        if res != smoothie.RESPONSE_OK:
+                            msg = "INIT: Failed to move camera to Y max, smoothie response:\n" + res
+                            logger_full.write(msg + "\n")
+                        smoothie.wait_for_all_actions_done()
+                        print(time.time()-t1)
+
                         vesc_engine.apply_rpm(vesc_speed_fast)
+
                 vesc_engine.start_moving()
-
-            # switching to fast mode
-            elif current_working_mode == working_mode_switching:
-                if config.VERBOSE and last_working_mode != current_working_mode:
-                    print("[Working mode] : switching")
-                    last_working_mode = current_working_mode
-                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                    vesc_engine.stop_moving()
-                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
-
-                    current_working_mode = working_mode_slow
-                    slow_mode_time = time.time()
-                else:
-                    current_working_mode = working_mode_fast
-                    if not close_to_end:
-                        # TODO : change with SI speed
-                        vesc_engine.apply_rpm(vesc_speed_fast)
 
             # fast mode
             elif current_working_mode == working_mode_fast:
@@ -365,20 +360,24 @@ def move_to_point_and_extract(coords_from_to: list,
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
-                    # TODO : change with SI speed
-                    vesc_engine.apply_rpm(vesc_speed)
-                    time.sleep(config.FAST_TO_SLOW_TIME)
-                    vesc_engine.stop_moving()
-                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+                    
+                    res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                        Y_F=config.Y_F_MAX,
+                                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                                        Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
+
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
+                        logger_full.write(msg + "\n")
+                    smoothie.wait_for_all_actions_done()
 
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
                     vesc_engine.set_rpm(vesc_speed)
                     continue
-                elif close_to_end:
-                    vesc_engine.apply_rpm(vesc_speed)
+                #elif close_to_end:
+                #    vesc_engine.apply_rpm(vesc_speed)
                 else:
-                    # TODO : change with SI speed
                     vesc_engine.apply_rpm(vesc_speed_fast)
 
         # NAVIGATION CONTROL
