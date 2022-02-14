@@ -237,6 +237,8 @@ def move_to_point_and_extract(coords_from_to: list,
 
     point_reading_t = time.time()
 
+    slow_mode_time = time.time()
+
     # main navigation control loop
     while True:
         # EXTRACTION CONTROL
@@ -265,8 +267,6 @@ def move_to_point_and_extract(coords_from_to: list,
             msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. off time: " + \
                   str(per_det_end_t - per_det_start_t)
         logger_full.write(msg + "\n")
-
-        slow_mode_time = -float("inf")
 
         if config.AUDIT_MODE:
             dc_start_t = time.time()
@@ -337,7 +337,6 @@ def move_to_point_and_extract(coords_from_to: list,
 
                     if not close_to_end:
 
-                        t1 = time.time()
                         res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                             Y_F=config.Y_F_MAX,
                                             X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
@@ -345,8 +344,6 @@ def move_to_point_and_extract(coords_from_to: list,
                         if res != smoothie.RESPONSE_OK:
                             msg = "INIT: Failed to move camera to Y max, smoothie response:\n" + res
                             logger_full.write(msg + "\n")
-                        smoothie.wait_for_all_actions_done()
-                        print(time.time()-t1)
 
                         vesc_engine.apply_rpm(vesc_speed_fast)
 
@@ -360,6 +357,8 @@ def move_to_point_and_extract(coords_from_to: list,
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+
+                    smoothie.wait_for_all_actions_done()
                     
                     res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                         Y_F=config.Y_F_MAX,
