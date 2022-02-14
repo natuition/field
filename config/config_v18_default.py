@@ -135,8 +135,11 @@ VESC_RPM_SLOW = -2500
 VESC_MOVING_TIME = float("inf")
 VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when moving
 VESC_CHECK_FREQ = 0.001  # freq of checking need to stop
-STEP_FORWARD_TIME = 1 # step after extraction loops are done
 FAST_TO_SLOW_TIME = 5
+
+# step after extraction loops are done
+STEP_FORWARD_TIME = 1 
+SI_SPEED_STEP_FORWARD = 0.5
 
 SI_SPEED_UI = 1 #0.8 for 12v
 SI_SPEED_FWD = 0.5
