@@ -182,7 +182,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
     vesc_speed = SI_speed*config.MULTIPLIER_SI_SPEED_TO_RPM
     speed_fast = config.SI_SPEED_FAST*config.MULTIPLIER_SI_SPEED_TO_RPM
-    vesc_speed_fast = speed_fast if vesc_speed>=0 else -speed_fast
+    vesc_speed_fast = speed_fast if SI_speed>=0 else -speed_fast
     navigation_prediction.set_SI_speed(SI_speed)
 
     raw_angles_history = []
@@ -301,7 +301,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     last_working_mode = current_working_mode
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
-                    voltage_thread = threading.Thread(target=send_voltage_thread_tf, daemon=True)
+                    voltage_thread = threading.Thread(target=send_voltage_thread_tf, args=(vesc_engine, ui_msg_queue), daemon=True)
                     voltage_thread.start()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
@@ -314,8 +314,10 @@ def move_to_point_and_extract(coords_from_to: list,
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                             extraction_manager_v3.extract_all_plants(data_collector)
+                            slow_mode_time = time.time()
                     else:
                         extraction_manager_v3.extract_all_plants(data_collector)
+                        slow_mode_time = time.time()
 
                     msg = "Applying force step forward after extractions cycle(s)"
                     logger_full.write(msg + "\n")
@@ -412,6 +414,16 @@ def move_to_point_and_extract(coords_from_to: list,
                         break
             else:
                 continue
+
+        if config.GPS_QUALITY_IGNORE and cur_pos[2] != "4":
+            vesc_engine.stop_moving()
+            data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+            navigation.NavigationV3.check_reboot_Ntrip("1", 0, logger_full)
+            while True:
+                cur_pos = gps.get_last_position()
+                if cur_pos[2] == "4":
+                    vesc_engine.start_moving()
+                    break
 
         point_reading_t = time.time()
 
@@ -665,10 +677,11 @@ def move_to_point_and_extract(coords_from_to: list,
 def send_voltage_thread_tf(vesc_engine, ui_msg_queue):
     vesc_data = None
     while vesc_data is None:
-        vesc_data = self.vesc_engine.get_sensors_data(['input_voltage'])
+        vesc_data = vesc_engine.get_sensors_data(['input_voltage'])
         if vesc_data is not None:
                 input_voltage = vesc_data["input_voltage"]
-                ui_msg_queue.send(json.dumps({"input_voltage": input_voltage}))
+                if ui_msg_queue is not None:
+                    ui_msg_queue.send(json.dumps({"input_voltage": input_voltage}))
         else:
             time.sleep(1)
 
