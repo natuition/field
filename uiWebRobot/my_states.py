@@ -39,7 +39,8 @@ class CheckState(State):
             self.cam = startLiveCam()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
-        except:
+        except Exception as e:
+            print(e)
             self.on_event(Events.ERROR)
         
         self.statusOfUIObject = {
@@ -61,7 +62,7 @@ class CheckState(State):
     def on_event(self, event):
         if event == Events.LIST_VALIDATION:
             self.__voltage_thread_alive = False
-            self.cam.send_signal(signal.SIGINT)
+            os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
             self.cam.wait()
             os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
@@ -70,7 +71,7 @@ class CheckState(State):
         else:
             self.__voltage_thread_alive = False
             try:
-                self.cam.send_signal(signal.SIGINT)
+                os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
                 self.cam.wait()
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
@@ -663,7 +664,7 @@ class WorkingState(State):
         if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject["stopButton"] = "charging"
-            self.main.send_signal(signal.SIGINT)
+            os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
             self.main.wait()
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
@@ -899,7 +900,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage
         time.sleep(1)
 
 def sendInputVoltage(socketio, input_voltage):
-    input_voltage = round(input_voltage * 2) / 2
+    input_voltage = round(float(input_voltage) * 2) / 2
     socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
 
 def initVesc(logger: utility.Logger):
@@ -952,11 +953,11 @@ def changeConfigValue(path: str, value):
 
          
 def startMain():
-    mainSP = subprocess.Popen(["python3","main.py"], cwd=os.getcwd().split("/uiWebRobot")[0])
+    mainSP = subprocess.Popen("python3 main.py", stdin=subprocess.PIPE, cwd=os.getcwd().split("/uiWebRobot")[0], shell=True, preexec_fn=os.setsid)
     return mainSP
 
 def startLiveCam():
-    camSP = subprocess.Popen(["python3","serveurCamLive.py"], cwd=os.getcwd().split("/uiWebRobot")[0])
+    camSP = subprocess.Popen("python3 serveurCamLive.py", stdin=subprocess.PIPE, cwd=os.getcwd().split("/uiWebRobot")[0], shell=True, preexec_fn=os.setsid)
     return camSP
 
 def updateFields(field_name):
