@@ -276,11 +276,12 @@ function createMap(coords_field,coords_other){
             var quality = dataServ[1]
         
             if(coords.length>1){
+                console.log("ok")
                 map.getSource('pathRobot').setData({
                     'type': 'Feature',
                     'geometry': {
                         'type': 'LineString',
-                        'coordinates': dataServ
+                        'coordinates': coords
                     }
                 });
             }
