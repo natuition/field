@@ -34,7 +34,7 @@ class Self_Testing:
                 print(msg)
                 exit(1)
         self.smoothie = adapters.SmoothieAdapter(smoothie_address)
-        self.vesc = adapters.VescAdapter(config.VESC_RPM_SLOW, 10, config.VESC_ALIVE_FREQ,
+        self.vesc = adapters.VescAdapter(config.VESC_RPM_SLOW, 5, config.VESC_ALIVE_FREQ,
                                          config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE)
         self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
         self.camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
@@ -104,7 +104,7 @@ class Self_Testing:
         Function to check the moving the steering wheels to the right
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(A_F=config.A_F_MAX, A=config.A_MIN)
+        response = self.smoothie.custom_move_to(A_F=config.A_F_MAX, A=config.A_MIN)
         return response
 
     def test_steering_wheels_left(self):
@@ -112,7 +112,7 @@ class Self_Testing:
         Function to check the moving the steering wheels to the left
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(A_F=config.A_F_MAX, A=config.A_MAX)
+        response = self.smoothie.custom_move_to(A_F=config.A_F_MAX, A=config.A_MAX)
         return response
 
     def test_steering_wheels_center(self):
@@ -172,10 +172,10 @@ class Self_Testing:
         self.logger.write(msg + '\n')
         print(msg)
         try:
-            response = self.smoothie.ext_align_cork_center(config.XY_F_MAX)
-            self.smoothie.wait_for_all_actions_done()
-            print(response)
-            self.logger.write(response + '\n')
+            #response = self.smoothie.ext_align_cork_center(config.XY_F_MAX)
+            #self.smoothie.wait_for_all_actions_done()
+            #print(response)
+            #self.logger.write(response + '\n')
             msg = 'Has the corkscrew been centered? (y/n)'
             self.logger.write(msg + '\n')
             key = input(msg + '\n')
@@ -373,7 +373,7 @@ class Self_Testing:
             response = None
             key = None
             error = None
-            msg = 'Start moving the robot forward (-2800)...'
+            msg = f'Start moving the robot forward ({config.VESC_RPM_SLOW})...'
             self.logger.write(msg + '\n')
             print(msg)
             try:
@@ -399,7 +399,7 @@ class Self_Testing:
             response = None
             key = None
             error = None
-            msg = 'Start moving the robot back (2800)...'
+            msg = f'Start moving the robot back ({-config.VESC_RPM_SLOW})...'
             self.logger.write(msg + '\n')
             print(msg)
             try:
