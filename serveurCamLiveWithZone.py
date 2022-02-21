@@ -17,7 +17,7 @@ def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius):
 def draw_zone_poly(image, np_poly_points):
     """Draws received polygon on image. Used for drawing working zone edges on photo"""
 
-    return cv2.polylines(image, [np_poly_points], isClosed=True, color=(0, 0, 255), thickness=5)
+    return cv2.polylines(image, [np_poly_points], isClosed=True, color=(0, 255, 255), thickness=5)
 
 def generateGstConfig():
     aelock = "aelock=true " if config.AE_LOCK else ""
@@ -120,13 +120,14 @@ def encodeFrame():
 
             if current_app.detector:
                 plants_boxes = current_app.detector.detect(frame, True)
-                undistorted_zone_radius = config.UNDISTORTED_ZONE_RADIUS
-                poly_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
-                frame = draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
-                frame = draw_zone_poly(frame, poly_zone_points_cv)
                 frameFinal = detection.draw_boxes(frame, plants_boxes)
             else:
                 frameFinal = frame
+
+            undistorted_zone_radius = config.UNDISTORTED_ZONE_RADIUS
+            poly_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
+            frameFinal = draw_zone_circle(frameFinal, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
+            frameFinal = draw_zone_poly(frameFinal, poly_zone_points_cv)
 
             frameFinal = rescale_frame(frameFinal, percent=50)
             return_key, encoded_image = cv2.imencode(".jpg", frameFinal)

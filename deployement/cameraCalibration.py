@@ -6,6 +6,7 @@ import numpy as np
 import fileinput
 import pwd
 import grp
+import time
 
 import sys
 sys.path.append('../')
@@ -25,26 +26,15 @@ class CameraCalibration:
         self.__cam = self.__startLiveCam()
 
     def step1_validate(self):
-        self.__cam.send_signal(signal.SIGINT)
-        self.__cam.send_signal(signal.SIGINT)
-        #self.__cam.wait()
+        os.killpg(os.getpgid(self.__cam.pid), signal.SIGINT)
+        self.__cam.wait()
         os.system("sudo systemctl restart nvargus-daemon")
 
     def step2(self):
-        """with adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
-            res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
-                                                        Y_F=config.Y_F_MAX,
-                                                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
-                                                        Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
-            if res != smoothie.RESPONSE_OK:
-                msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
-                print(msg)
-                exit(1)
-            smoothie.wait_for_all_actions_done()"""
         image_saver = utility.ImageSaver()
         CAMERA_W = 3264
         CAMERA_H = 2464
-        CAMERA_FRAMERATE = 21
+        CAMERA_FRAMERATE = 16
         with    adapters.CameraAdapterIMX219_170(  0, CAMERA_W, 0, CAMERA_H,
                                                     config.CV_ROTATE_CODE,
                                                     config.ISP_DIGITAL_GAIN_RANGE_FROM,
@@ -55,6 +45,7 @@ class CameraCalibration:
                                                     CAMERA_W, CAMERA_H, CAMERA_W, CAMERA_H, CAMERA_FRAMERATE,
                                                     config.CAMERA_FLIP_METHOD) as camera, \
                 adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
+            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
             frame = camera.get_image()
             img_origine = frame.copy()
             frame = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
@@ -87,8 +78,8 @@ class CameraCalibration:
 
             if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, self.scene_center_x, self.scene_center_y, config.UNDISTORTED_ZONE_RADIUS):
                 print("ok")
-                x = float(abs((self.target_x-self.scene_center_x)/config.ONE_MM_IN_PX))
-                y = float(abs((self.target_y-self.scene_center_y)/config.ONE_MM_IN_PX))
+                x = float(abs((self.target_x-self.scene_center_x)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
+                y = float(abs((self.target_y-self.scene_center_y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
                 res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
                                                             Y_F=config.Y_F_MAX,
                                                             X=smoothie.smoothie_to_mm(x, "X"),
@@ -104,7 +95,7 @@ class CameraCalibration:
             image_saver.save_image(img_origine, "./", specific_name="scene_center")
 
     def __startLiveCam(self):
-        camSP = subprocess.Popen(["python3","serveurCamLive.py", "False"], cwd=os.getcwd().split("/deployement")[0])
+        camSP = subprocess.Popen("python3 serveurCamLive.py False", stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
         return camSP
 
     def __get_smoothie_vesc_addresses(self):
