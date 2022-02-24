@@ -21,16 +21,16 @@ class CameraCalibration:
     def __init__(self):
         pass
 
-    def step1(self):
+    def focus_adjustment_step(self):
         os.system("sudo systemctl restart nvargus-daemon")
         self.__cam = self.__startLiveCam()
 
-    def step1_validate(self):
+    def focus_adjustment_step_validate(self):
         os.killpg(os.getpgid(self.__cam.pid), signal.SIGINT)
         self.__cam.wait()
         os.system("sudo systemctl restart nvargus-daemon")
 
-    def step2(self):
+    def step_crop_picture(self):
         image_saver = utility.ImageSaver()
         CAMERA_W = 3264
         CAMERA_H = 2464
@@ -63,6 +63,28 @@ class CameraCalibration:
             for i in all_circles_rounded[0, :]:
                 cv2.circle(img_origine, (i[0],i[1]),i[2],(50,200,200),5)
 
+            image_saver.save_image(img_origine, "./", specific_name="scene_center")
+
+    def offset_calibration_step(self):
+        image_saver = utility.ImageSaver()
+        with adapters.CameraAdapterIMX219_170(  config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                                config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                                config.ISP_DIGITAL_GAIN_RANGE_FROM,
+                                                config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                                config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                                config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                                config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                                config.CAMERA_H, config.CAMERA_FRAMERATE,
+                                                config.CAMERA_FLIP_METHOD) as camera, \
+             adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
+
+            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+            
+            frame = camera.get_image()
+            img_origine = frame.copy()
+            frame = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+            frame = cv2.GaussianBlur(frame, (21,21), cv2.BORDER_DEFAULT)
+
             all_circles = cv2.HoughCircles(frame,cv2.HOUGH_GRADIENT,0.9, 2500, param1 = 30, param2 = 10, minRadius = 50, maxRadius = 70)
             all_circles_rounded = np.uint16(np.around(all_circles))
             print('I have found ' + str(all_circles_rounded.shape[1]) + ' circles')
@@ -73,13 +95,13 @@ class CameraCalibration:
             else:
                 print("Warning we found multiple circles.")
             for i in all_circles_rounded[0, :]:
-                cv2.circle(img_origine, (i[0],i[1]),i[2],(50,200,200),5)
-                cv2.circle(img_origine, (i[0],i[1]),2,(50,200,200),5)
+                cv2.circle(img_origine, (i[0],i[1]),i[2],(255,0,255),5)
+                cv2.circle(img_origine, (i[0],i[1]),1,(255,0,255),5)
 
-            if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, self.scene_center_x, self.scene_center_y, config.UNDISTORTED_ZONE_RADIUS):
-                print("ok")
-                x = float(abs((self.target_x-self.scene_center_x)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
-                y = float(abs((self.target_y-self.scene_center_y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
+            if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
+                print("Target is in undistorted zone go on top.")
+                x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
+                y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
                 res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
                                                             Y_F=config.Y_F_MAX,
                                                             X=smoothie.smoothie_to_mm(x, "X"),
@@ -90,12 +112,12 @@ class CameraCalibration:
                     exit(1)
                 smoothie.wait_for_all_actions_done()
             else:
-                print("nok")
+                print("Target isn't in undistorted zone.")
 
-            image_saver.save_image(img_origine, "./", specific_name="scene_center")
+            image_saver.save_image(img_origine, "./", specific_name="target_detection")
 
     def __startLiveCam(self):
-        camSP = subprocess.Popen("python3 serveurCamLive.py False", stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
+        camSP = subprocess.Popen("python3 serveurCamLive.py False", stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
         return camSP
 
     def __get_smoothie_vesc_addresses(self):
@@ -138,12 +160,16 @@ class CameraCalibration:
 
 def main():
     cameraCalibration: CameraCalibration = CameraCalibration()
-    """cameraCalibration.step1()
-    test_continue = input("Press enter to continue the calibration, type anything to exit.")
+    cameraCalibration.focus_adjustment_step()
+    test_continue = input("Press enter to continue to the next step, type anything to exit.")
     if test_continue != "":
         return
-    cameraCalibration.step1_validate()"""
-    cameraCalibration.step2()
+    cameraCalibration.focus_adjustment_step_validate()
+    cameraCalibration.step_crop_picture()
+    test_continue = input("Press enter to continue to the next step, type anything to exit.")
+    if test_continue != "":
+        return
+    cameraCalibration.offset_calibration_step()
 
 if __name__ == "__main__":
     main()

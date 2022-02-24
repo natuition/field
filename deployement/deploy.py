@@ -53,21 +53,6 @@ def on_x_y_dir(data):
         smoothie.custom_move_for(A_F=config.A_F_MAX, A=data["a"])
         print(f"a:{data['a']}")
     if "inv" in data:
-        translate_axis_grec = {"x":"alpha_dir_pin","y":"beta_dir_pin","a":"delta_dir_pin"}
-        for axis, invert in data["inv"].items():
-            if invert:
-                smoothie.get_connector().write(f"config-get sd {translate_axis_grec[axis.lower()]}")
-                response = smoothie.get_connector().read_some()
-                matches = re.findall(f"{translate_axis_grec[axis.lower()]} is set to (.*?)\n", response)
-                if matches:
-                    value = matches[0][:-1]
-                    if "!" in value:
-                        value = value[:-1]
-                    else:
-                        value = value+"!"
-                    cmd = f"config-set sd {translate_axis_grec[axis.lower()]} {value}"
-                    smoothie.get_connector().write(cmd)
-                    response = smoothie.get_connector().read_some()
-                    print(response.replace("\n",""))
+        
 if __name__ == "__main__":
     app.run(host="0.0.0.0",port="80",debug=True, use_reloader=False)
