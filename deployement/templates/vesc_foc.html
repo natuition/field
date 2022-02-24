@@ -13,7 +13,9 @@
             height: 100%;
         }
     </style>
-
+    <script>
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/x_y_dir';
+    </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
     <script type="text/javascript" src="/static/bootstrap/bootstrap.js"></script> 
     <script type="text/javascript" src="/static/js/jquery.js"></script> 
@@ -32,7 +34,7 @@
             <input class="form-check-input" type="checkbox" id="zDone" onclick="enableNext()">
             <label class="form-check-label" for="zDone">Vesc z done</label>
         </div>
-        <button type="button" id="next" class="btn btn-danger" onclick="alert('click')">Next</button>
+        <button type="button" id="next" class="btn btn-danger" onclick="window.location.href=next_page_href">Next</button>
     </div>
     <script>
         function enableNext(){

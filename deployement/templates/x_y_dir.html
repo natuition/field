@@ -19,6 +19,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <script>
         var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/x_y_dir';
     </script>
 </head>
 <body>
@@ -66,7 +67,7 @@
             <input class="form-check-input" type="checkbox" id="dirDone" onclick="enableNext()">
             <label class="form-check-label" for="dirDone">Dir axis done</label>
         </div>
-        <button type="button" id="next" class="btn btn-danger" onclick="alert('next')">Next</button>
+        <button type="button" id="next" class="btn btn-danger" onclick="window.location.href=next_page_href">Next</button>
     </div>
     <script>
         function invertSwitch(){
