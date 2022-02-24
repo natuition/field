@@ -17,7 +17,7 @@ class SmoothieAdapter:
     RESPONSE_HALT = "!!\r\n"
     RESPONSE_IGNORED = "ok - ignored\n"
 
-    def __init__(self, smoothie_host):
+    def __init__(self, smoothie_host, calibration_at_init=True):
         if type(smoothie_host) is not str:
             raise TypeError("invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
 
@@ -43,15 +43,16 @@ class SmoothieAdapter:
             # TODO: what if so?
             print("Switching smoothie to relative was failed! Smoothie's response:\n", res)
 
-        # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
-        res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
-        self.wait_for_all_actions_done()
-        if res != self.RESPONSE_OK:
-            print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
+        if calibration_at_init:
+            # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
+            res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
+            self.wait_for_all_actions_done()
+            if res != self.RESPONSE_OK:
+                print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
 
-        res = self.ext_calibrate_cork()
-        if res != self.RESPONSE_OK:
-            print("Initial cork calibration was failed, smoothie response:\n", res)  # TODO: what if so??
+            res = self.ext_calibrate_cork()
+            if res != self.RESPONSE_OK:
+                print("Initial cork calibration was failed, smoothie response:\n", res)  # TODO: what if so??
 
     def __enter__(self):
         return self

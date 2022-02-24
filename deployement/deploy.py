@@ -9,8 +9,14 @@ import grp
 import os
 
 import sys
-sys.path.append('../')
-from config import config
+"""sys.path.append('../')
+from config import config"""
+
+sys.path.append('../config')
+module_config = __import__("config")
+config_vars = {k: v for k, v in module_config.__dict__.items() if not k.startswith('_')}
+config = type("config", (object, ), config_vars)
+
 import adapters
 import utility
 
@@ -39,14 +45,14 @@ def vesc_foc():
 def x_y_dir():
     global smoothie
     if smoothie is None:
-        smoothie = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"])
+        smoothie = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
     return render_template('x_y_dir.html', A_MAX=config.A_MAX, Y_MAX=config.Y_MAX, X_MAX=config.X_MAX)
 
 @socketio.on('x_y_dir', namespace='/server')
 def on_x_y_dir(data):
     global smoothie
     if smoothie is None:
-        smoothie = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"])
+        smoothie = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
     if "x" in data:
         smoothie.custom_move_for(X_F=config.X_F_MAX, X=data["x"])
         print(f"x:{data['x']}")
@@ -57,10 +63,22 @@ def on_x_y_dir(data):
         smoothie.custom_move_for(A_F=config.A_F_MAX, A=data["a"])
         print(f"a:{data['a']}")
     if "inv" in data:
-        axis_to_config = {"X":config.X_COEFFICIENT_TO_MM,"Y":config.Y_COEFFICIENT_TO_MM,"A":config.A_COEFFICIENT_TO_MM}
+        translate_axis_grec = {"X":"alpha_dir_pin","Y":"beta_dir_pin","A":"delta_dir_pin"}
         for axis, invert in data["inv"].items():
             if invert:
-                changeConfigValue(f"{axis}_COEFFICIENT_TO_MM",axis_to_config[axis])
+                smoothie.get_connector().write(f"config-get sd {translate_axis_grec[axis.lower()]}")
+                response = smoothie.get_connector().read_some()
+                matches = re.findall(f"{translate_axis_grec[axis.lower()]} is set to (.*?)\n", response)
+                if matches:
+                    value = matches[0][:-1]
+                    if "!" in value:
+                        value = value[:-1]
+                    else:
+                        value = value+"!"
+                    cmd = f"config-set sd {translate_axis_grec[axis.lower()]} {value}"
+                    smoothie.get_connector().write(cmd)
+                    response = smoothie.get_connector().read_some()
+                    print(response.replace("\n",""))
 
 def changeConfigValue(path: str, value):
     with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:

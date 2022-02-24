@@ -1,0 +1,13 @@
+[Unit]
+Description=stream
+After=network.target
+
+[Service]
+Type=simple
+User=violette
+WorkingDirectory=/home/violette/field/deployement/
+ExecStart=/usr/bin/sudo /usr/bin/python3.6 /home/violette/field/deployement/deploy.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
