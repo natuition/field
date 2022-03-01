@@ -396,7 +396,9 @@ ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
 # NTRIP CLIENT SETTINGS
 # ======================================================================================================================
 NTRIP = True 
-NTRIP_RESTART_TIMEOUT = 60
+FIND_MOUNTPOINT = True
+SEND_LOCATION_TO_NTRIP = False
+
 NTRIP_USER = "centipede"
 NTRIP_PASSWORD = "centipede"
 NTRIP_CASTER = "caster.centipede.fr"
@@ -405,3 +407,7 @@ NTRIP_MOUNTPOINT = "LIENSS"
 
 NTRIP_OUTPUT_PORT = "/dev/ttyACM1"
 NTRIP_OUTPUT_BAUDRATE = 115200
+
+NTRIP_RESTART_TIMEOUT = 60
+MAX_DISTANCE_MOUNTPOINT = 1000
+RTK_ID_SEND = [1077,1087,1127,1230,1005]
