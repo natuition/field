@@ -44,13 +44,12 @@ MANEUVERS_FREQUENCY = 0.25  #seconds
 WINDOW = float("inf")   # anyway, the integral is used for only some hundreds of time
 # AB moving vector used as A----A1--B, where A1 is point when robot starts moving to next point.
 # this determines A1-B distance
-MANEUVER_START_DISTANCE = {False:5000, True:4000}
-# this parameter depends on whether the audit mode is false or true
+MANEUVER_START_DISTANCE = {False:5000, True:4000} # this parameter depends on whether the audit mode is false or true
 USE_SPEED_LIMIT = True  # when distance to target point is less than specified in the config
 DECREASE_SPEED_TRESHOLD = 5000  # millimeters
 SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history), should be positive here, in config
-SPIRAL_SIDES_INTERVAL = {False: 450, True: 3000} 
-# distance between sides of spiral robot movements, expected to be equal to working area width, may be any positive val
+SPIRAL_SIDES_INTERVAL = {False: 450, True: 3000} # distance between sides of spiral robot movements, 
+# expected to be equal to working area width, may be any positive val
 # this parameter depends on whether the audit mode is false or true
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
 PREV_CUR_POINT_MIN_DIST = 10  # pass by cur points dist between them and prev point is lesser than this, mms
@@ -181,7 +180,7 @@ X_F_MAX = 20000
 X_COEFFICIENT_TO_MM = 1
 
 Y_MIN = 0
-Y_MAX = 216 
+Y_MAX = 210 
 Y_F_MIN = 0
 Y_F_MAX = 20000
 Y_COEFFICIENT_TO_MM = 1
@@ -219,8 +218,8 @@ AFTER_CALIBRATION_AXIS_OFFSET = 0
 CORK_CALIBRATION_MIN_TIME = 3600 
 
 # NAVIGATION
-A_MIN = -5 
-A_MAX = 5 
+A_MIN = -10 
+A_MAX = 10 
 B_MIN = -float("inf")
 B_MAX = float("inf")
 C_MIN = -float("inf")
@@ -296,7 +295,7 @@ CROP_W_FROM = 566
 CROP_W_TO = 2566
 CROP_H_FROM = 0
 CROP_H_TO = 1500
-CAMERA_FRAMERATE = 28
+CAMERA_FRAMERATE = 16
 CAMERA_FLIP_METHOD = 0
 SCENE_CENTER_X = 1000
 SCENE_CENTER_Y = 980
@@ -418,3 +417,6 @@ NTRIP_OUTPUT_BAUDRATE = 115200
 NTRIP_RESTART_TIMEOUT = 60
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
 RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
+
+GPS_QUALITY_IGNORE = False #If this is activated, stops the robot when it no longer has quality 4. 
+# It restarts the ntrip service and waits to find quality 4
