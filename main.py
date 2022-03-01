@@ -417,12 +417,14 @@ def move_to_point_and_extract(coords_from_to: list,
 
         if config.GPS_QUALITY_IGNORE and cur_pos[2] != "4":
             vesc_engine.stop_moving()
+            logger_full.write_and_flush("Stopping the robot for lack of quality gps 4, waiting for it...\n")
             data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
             navigation.NavigationV3.check_reboot_Ntrip("1", 0, logger_full)
             while True:
                 cur_pos = gps.get_last_position()
                 if cur_pos[2] == "4":
                     vesc_engine.start_moving()
+                    logger_full.write_and_flush("The gps has regained quality 4, relaunch of the robot.\n")
                     break
 
         point_reading_t = time.time()
