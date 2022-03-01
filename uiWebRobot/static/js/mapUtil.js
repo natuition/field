@@ -274,7 +274,7 @@ function createMap(coords_field,coords_other){
             var coords = dataServ[0]
             var last_coord = coords[coords.length - 1]
             var quality = dataServ[1]
-        
+            
             if(coords.length>1){
                 console.log("ok")
                 map.getSource('pathRobot').setData({
@@ -292,7 +292,9 @@ function createMap(coords_field,coords_other){
                     'type': 'Point',
                     'coordinates': last_coord
                 },
-                "properties": Object.assign({}, {'Quality':Object.keys(quality)[0]}, quality)
+                "properties": {
+                    'quality': quality
+                },
             });
         
             if(coords.length>1 || !firstFocus){

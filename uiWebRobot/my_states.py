@@ -31,12 +31,12 @@ class CheckState(State):
     def __init__(self, socketio: SocketIO, logger: utility.Logger):
         self.socketio = socketio
         self.logger = logger
-        
+        self.cam = None
         try:
             msg = f"[{self.__class__.__name__}] -> startLiveCam"
             self.logger.write_and_flush(msg+"\n")
             print(msg)
-            self.cam = startLiveCam()
+            #self.cam = startLiveCam()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
@@ -56,23 +56,25 @@ class CheckState(State):
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
-        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
+        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(lambda : self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
         self.__voltage_thread.start()
 
     def on_event(self, event):
         if event == Events.LIST_VALIDATION:
             self.__voltage_thread_alive = False
-            os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
-            self.cam.wait()
-            os.system("sudo systemctl restart nvargus-daemon")
+            if self.cam:
+                os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
+                self.cam.wait()
+                os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
                 os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState(self.socketio, self.logger, False, None, self.vesc_engine, None)
         else:
             self.__voltage_thread_alive = False
             try:
-                os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
-                self.cam.wait()
+                if self.cam:
+                    os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
+                    self.cam.wait()
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:
@@ -169,25 +171,13 @@ class WaitWorkingState(State):
         self.field = None
 
         self.__send_last_pos_thread_alive = True
-        self._send_last_pos_thread = threading.Thread(target=self.send_last_pos_thread_tf, daemon=True)
+        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
         self._send_last_pos_thread.start()
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
-        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
+        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(lambda : self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
         self.__voltage_thread.start()
-    
-    def send_last_pos_thread_tf(self):
-        while self.__send_last_pos_thread_alive:
-            try:
-                lastPos = self.gps.get_last_position()
-                self.socketio.emit('updatePath', json.dumps([[[lastPos[1],lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
-                time.sleep(1)
-            except KeyboardInterrupt:
-                self.__send_last_pos_thread_alive = False
-                raise KeyboardInterrupt
-            except:
-                time.sleep(1)
 
     def on_event(self, event):
         if event == Events.CREATE_FIELD:
@@ -376,6 +366,10 @@ class CreateFieldState(State):
             raise KeyboardInterrupt
         except:
             self.notificationQueue = None
+
+        self.__send_last_pos_thread_alive = True
+        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
+        self._send_last_pos_thread.start()
     
     def on_event(self, event):
         if event == Events.STOP:
@@ -387,7 +381,8 @@ class CreateFieldState(State):
                 self.fieldCreator.setSecondPoint()
             except TimeoutError:
                 if self.notificationQueue is not None:
-                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))     
+                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
+                self.__send_last_pos_thread_alive = False     
                 return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)  
 
             self.field = self.fieldCreator.calculateField()
@@ -403,12 +398,14 @@ class CreateFieldState(State):
             return self
         elif event == Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
+            self.__send_last_pos_thread_alive = False  
             return WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine, self.gps)
         elif event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
         else:
             try:
+                self.__send_last_pos_thread_alive = False 
                 if self.smoothie is not None:
                     self.smoothie.disconnect()
                     self.smoothie = None
@@ -447,7 +444,8 @@ class CreateFieldState(State):
                 self.statusOfUIObject["fieldButton"] = None
             except TimeoutError:
                 if self.notificationQueue is not None:
-                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))  
+                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"})) 
+                self.__send_last_pos_thread_alive = False  
                 return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
 
         elif data["type"] == "modifyZone":
@@ -884,20 +882,31 @@ class FieldCreator:
 def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage):
     last_update = 0
     vesc_data = None
-    while voltage_thread_alive:
-        if time.time() - last_update > 60*5 and voltage_thread_alive:
+    while voltage_thread_alive():
+        if time.time() - last_update > 60*5 and voltage_thread_alive():
             if vesc_engine is not None:
                 try:
                     vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except:
-                    voltage_thread_alive = False
-                if vesc_data is not None and voltage_thread_alive:
+                    break
+                if vesc_data is not None and voltage_thread_alive():
                         last_update = time.time()
                         sendInputVoltage(socketio, vesc_data["input_voltage"])
                         input_voltage["input_voltage"] = vesc_data["input_voltage"]
         time.sleep(1)
+
+def send_last_pos_thread_tf(send_last_pos_thread_alive, gps, socketio):
+    while send_last_pos_thread_alive():
+        try:
+            lastPos = gps.get_last_position()
+            socketio.emit('updatePath', json.dumps([[[lastPos[1],lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            time.sleep(1)
 
 def sendInputVoltage(socketio, input_voltage):
     input_voltage = round(float(input_voltage) * 2) / 2
