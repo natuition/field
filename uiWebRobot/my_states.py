@@ -36,7 +36,7 @@ class CheckState(State):
             msg = f"[{self.__class__.__name__}] -> startLiveCam"
             self.logger.write_and_flush(msg+"\n")
             print(msg)
-            #self.cam = startLiveCam()
+            self.cam = startLiveCam()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
