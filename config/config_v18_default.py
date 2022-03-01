@@ -18,7 +18,7 @@ KP = {
     -0.5: 0.293*0.14,
 
     0: 0.2
-} # SI_speed: value
+} # SI_speed: value of KP at this speed (warning - is important for si_speed)
 
 KI = {
     0.175: 0.0092, 
@@ -31,25 +31,27 @@ KI = {
     -0.5: 0.00003,
 
     0: 0.092
-} # SI_speed: value
+} # SI_speed: value of KP at this speed (warning - is important for si_speed)
 
-CENTROID_FACTOR_ORIENTED = 0.585
-CENTROID_FACTOR_LOST = 0.2 
+CENTROID_FACTOR_ORIENTED = 0.585 #multiply factor at the angle of the centroid calculate when the robot is going in the right direction
+CENTROID_FACTOR_LOST = 0.2 #multiply factor at the angle of the centroid calculate when the robot isn't going in the right direction
 
-CORNER_THRESHOLD = 1500
+CORNER_THRESHOLD = 1500 #threshold which represents the maximum deviation of the points in the turns for it to be recognized
 
-MANEUVERS_FREQUENCY = 0.25  # seconds
+MANEUVERS_FREQUENCY = 0.25  #seconds
 # max distance in mm-s of robot's deviation from planned moving vector
 # if dev. is bigger than this - robot will turn to it's planned moving vector
 WINDOW = float("inf")   # anyway, the integral is used for only some hundreds of time
 # AB moving vector used as A----A1--B, where A1 is point when robot starts moving to next point.
 # this determines A1-B distance
-MANEUVER_START_DISTANCE = {False:5000, True:4000} 
+MANEUVER_START_DISTANCE = {False:5000, True:4000}
+# this parameter depends on whether the audit mode is false or true
 USE_SPEED_LIMIT = True  # when distance to target point is less than specified in the config
 DECREASE_SPEED_TRESHOLD = 5000  # millimeters
 SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history), should be positive here, in config
-# distance between sides of spiral robot movements, expected to be equal to working area width, may be any positive val
 SPIRAL_SIDES_INTERVAL = {False: 450, True: 3000} 
+# distance between sides of spiral robot movements, expected to be equal to working area width, may be any positive val
+# this parameter depends on whether the audit mode is false or true
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
 PREV_CUR_POINT_MIN_DIST = 10  # pass by cur points dist between them and prev point is lesser than this, mms
 
@@ -68,7 +70,7 @@ ORIGIN_AVERAGE_SAMPLES = 8
 
 WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL = True
 
-FUTURE_NUMBER_OF_POINTS = 3
+FUTURE_NUMBER_OF_POINTS = 3 #number of points that is given to the move to point function in addition to the one that is aimed
 
 
 # ======================================================================================================================
@@ -91,11 +93,15 @@ TWO_POINTS_FOR_CREATE_FIELD = False
 # ======================================================================================================================
 # NAVIGATION TEST MODE SETTINGS
 # =====================================================================================================================
-NAVIGATION_TEST_MODE = False
-DISPLAY_INSTRUCTION_PATH = False
-DELTA_DISPLAY_INSTRUCTION_PATH = 15
-POINT_A = [[46.1579425, -1.1344245], -0.5]
-POINT_B = [[46.1577957, -1.1347992], 0.5]
+NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
+#The robot will aim for the furthest point, 
+#when it reaches this point it will wait for a press on enter to go to the furthest point from it.
+DISPLAY_INSTRUCTION_PATH = False #Allows to display the robot guide points on the ui.
+DELTA_DISPLAY_INSTRUCTION_PATH = 15 #Number of guide points display on the ui.
+POINT_A = [[46.1579425, -1.1344245], -0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+# the speed represents the speed the robot will apply to reach this point.
+POINT_B = [[46.1577957, -1.1347992], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+# the speed represents the speed the robot will apply to reach this point.
 
 
 # ======================================================================================================================
@@ -128,7 +134,7 @@ DATA_GATHERING_DIR = "gathered_data/"
 # ======================================================================================================================
 # VESC SETTINGS
 # ======================================================================================================================
-VESC_PORT = "/dev/ttyACM0"
+VESC_PORT = "/dev/ttyACM0" #Deprecated for most scripts that use a function to find it dynamically.
 VESC_BAUDRATE = 115200
 
 VESC_RPM_SLOW = -2500
@@ -145,7 +151,7 @@ SI_SPEED_UI = 1 #0.8 for 12v
 SI_SPEED_FWD = 0.5
 SI_SPEED_REV = -0.5
 SI_SPEED_FAST = 0.7
-MULTIPLIER_SI_SPEED_TO_RPM = -14285
+MULTIPLIER_SI_SPEED_TO_RPM = -14285 #multiplier to go from speed to rpm vesc
 
 
 # ======================================================================================================================
@@ -164,6 +170,7 @@ SER2NET_CONNECT_GPS_PORT = False
 # SMOOTHIE SETTINGS
 # ======================================================================================================================
 SMOOTHIE_HOST = "/dev/ttyACM1" # smoothie's ip address for telnet or port for usb serial connector
+# Deprecated for most scripts that use a function to find it dynamically.
 SMOOTHIE_BAUDRATE = 115200
 SMOOTHIE_BACKEND = 2  # 1 = telnet, 2 = serial
 
@@ -322,10 +329,10 @@ ALLOW_GATHERING = False
 
 ROBOT_SN = "SNXXX" 
 UI_LANGUAGE = "en"
-SLIDER_CREATE_FIELD_MIN = 15
-SLIDER_CREATE_FIELD_MAX = 150
-SLIDER_CREATE_FIELD_DEFAULT_VALUE = 25
-SLIDER_CREATE_FIELD_STEP = 1
+SLIDER_CREATE_FIELD_MIN = 15 #minimum of the slider allowing to configure the second segment of the terrain on the ui.
+SLIDER_CREATE_FIELD_MAX = 150 #maximum of the slider allowing to configure the second segment of the terrain on the ui
+SLIDER_CREATE_FIELD_DEFAULT_VALUE = 25 #default value of the slider allowing to configure the second segment of the terrain on the ui
+SLIDER_CREATE_FIELD_STEP = 1 #step of the slider allowing to configure the second segment of the terrain on the ui
 
 FRAME_SHOW = False
 SHARED_MEMORY_NAME_DETECTED_FRAME = "/detected_frame"
@@ -396,18 +403,18 @@ ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
 # NTRIP CLIENT SETTINGS
 # ======================================================================================================================
 NTRIP = True 
-FIND_MOUNTPOINT = True
-SEND_LOCATION_TO_NTRIP = False
+FIND_MOUNTPOINT = True #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum.
+SEND_LOCATION_TO_NTRIP = False #Allows us to send our coordinates to the rtk caster
 
 NTRIP_USER = "centipede"
 NTRIP_PASSWORD = "centipede"
 NTRIP_CASTER = "caster.centipede.fr"
 NTRIP_PORT = 2101
-NTRIP_MOUNTPOINT = "LIENSS"
+NTRIP_MOUNTPOINT = "LIENSS" #Mountpoint of the caster, if SEND_LOCATION_TO_NTRIP=true the program will take the closest.
 
 NTRIP_OUTPUT_PORT = "/dev/ttyACM1"
 NTRIP_OUTPUT_BAUDRATE = 115200
 
 NTRIP_RESTART_TIMEOUT = 60
-MAX_DISTANCE_MOUNTPOINT = 1000
-RTK_ID_SEND = [1077,1087,1127,1230,1005]
+MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
+RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
