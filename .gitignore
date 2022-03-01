@@ -134,3 +134,7 @@ path_points.dat
 uiWebRobot/logs/
 *.txt
 deployement/scene_center.jpg
+
+manual_photos_maker/
+test_max_detect/
+field.txt
