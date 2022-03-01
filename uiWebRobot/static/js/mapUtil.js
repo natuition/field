@@ -260,7 +260,7 @@ function createMap(coords_field,coords_other){
                     'circle-radius': 3,
                     'circle-color': [
                         'match',
-                        ['get', 'Quality'],
+                        ['get', 'quality'],
                         '4',
                         '#e55e5e',// red for quality 4
                         '#fbb03b' // orange for other
@@ -274,9 +274,9 @@ function createMap(coords_field,coords_other){
             var coords = dataServ[0]
             var last_coord = coords[coords.length - 1]
             var quality = dataServ[1]
-            
+
             if(coords.length>1){
-                console.log("ok")
+
                 map.getSource('pathRobot').setData({
                     'type': 'Feature',
                     'geometry': {
