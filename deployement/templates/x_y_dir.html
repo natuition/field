@@ -26,45 +26,54 @@
     <h1 style="text-align: center; padding: 10px 0;">Setup direction of axis X, Y and DIR.</h1>
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
         <label class="form-check-label" for="xDone">X axis :</label>
-        <button type="button" id="x_remove" class="btn btn-secondary m-1" onclick="socketio.emit('x_y_dir', {x: - {{ X_MAX }}*0.2 })">Left</button>
-        <button type="button" id="x_add" class="btn btn-secondary m-1" onclick="socketio.emit('x_y_dir', {x: {{ X_MAX }}*0.2 })">Right</button>
+        <div class="btn-group-vertical m-1">
+            <button type="button" id="x_add" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {x: {{ X_MAX }}*0.2 })">Right</button>
+            <button type="button" id="x_remove" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {x: - {{ X_MAX }}*0.2 })">Left</button>
+        </div>
         <label class="ms-2 form-check-label" for="flexSwitchCheckDefault">Invert axis : </label>
         <div class="ms-1 form-check form-switch d-flex align-items-center">
-            <input class="form-check-input" type="checkbox" role="switch" id="invX" onclick="invertSwitch();">
+            <input class="form-check-input switch" type="checkbox" role="switch" id="invX" onclick="invertSwitch();">
         </div>
     </div>
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
         <label class="form-check-label" for="xDone">Y axis :</label>
-        <button type="button" id="y_add" class="btn btn-secondary m-1" onclick="socketio.emit('x_y_dir', {y: {{ Y_MAX }}*0.2})">Up</button>
-        <button type="button" id="y_remove" class="btn btn-secondary m-1" onclick="socketio.emit('x_y_dir', {y: -{{ Y_MAX }}*0.2})">Down</button>
+        <div class="btn-group-vertical m-1">
+            <button type="button" id="y_add" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {y: {{ Y_MAX }}*0.2})">Up</button>
+            <button type="button" id="y_remove" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {y: -{{ Y_MAX }}*0.2})">Down</button>
+        </div>
         <label class="ms-2 form-check-label" for="flexSwitchCheckDefault">Invert axis : </label>
         <div class="ms-1 form-check form-switch d-flex align-items-center">
-            <input class="form-check-input" type="checkbox" role="switch" id="invY" onclick="invertSwitch();">
+            <input class="form-check-input switch" type="checkbox" role="switch" id="invY" onclick="invertSwitch();">
         </div>
     </div>
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
         <label class="form-check-label" for="xDone">Dir axis :</label>
-        <button type="button" id="dir_add" class="btn btn-secondary m-1" onclick="socketio.emit('x_y_dir', {a: {{ A_MAX }}*0.2})">Left</button>
-        <button type="button" id="dir_remove" class="btn btn-secondary m-1" onclick="socketio.emit('x_y_dir', {a: -{{ A_MAX }}*0.2})">Right</button>
+        <div class="btn-group-vertical m-1">
+            <button type="button" id="dir_add" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {a: {{ A_MAX }}*0.2})">Left</button>
+            <button type="button" id="dir_remove" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {a: -{{ A_MAX }}*0.2})">Right</button>
+        </div>
         <label class="ms-2 form-check-label" for="flexSwitchCheckDefault">Invert axis : </label>
         <div class="ms-1 form-check form-switch d-flex align-items-center">
-            <input class="form-check-input" type="checkbox" role="switch" id="invDir" onclick="invertSwitch();">
+            <input class="form-check-input switch" type="checkbox" role="switch" id="invDir" onclick="invertSwitch();">
         </div>
     </div>
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
-        <button type="button" id="invert" class="btn btn-secondary d-none" onclick="socketio.emit('x_y_dir', {'inv': {'X':$('#invX').is(':checked'),'Y':$('#invY').is(':checked'),'A':$('#invDir').is(':checked')}})">Apply invert</button>
+        <button type="button" id="invert" class="btn btn-secondary d-none" onclick="socketio.emit('x_y_dir', {'inv': {'X':$('#invX').is(':checked'),'Y':$('#invY').is(':checked'),'A':$('#invDir').is(':checked')}});disableAfterApplyInvert();">
+            <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            <span id="content_apply_invert">Apply invert</span>
+        </button>
     </div>
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="xDone" onclick="enableNext()">
+            <input class="form-check-input check" type="checkbox" id="xDone" onclick="enableNext()">
             <label class="form-check-label" for="xDone">X axis done</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="yDone" onclick="enableNext()">
+            <input class="form-check-input check" type="checkbox" id="yDone" onclick="enableNext()">
             <label class="form-check-label" for="yDone">Y axis done</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="dirDone" onclick="enableNext()">
+            <input class="form-check-input check" type="checkbox" id="dirDone" onclick="enableNext()">
             <label class="form-check-label" for="dirDone">Dir axis done</label>
         </div>
         <button type="button" id="next" class="btn btn-danger" onclick="window.location.href=next_page_href">Next</button>
@@ -101,8 +110,23 @@
                 });
             }
         }
+        function disableAfterApplyInvert(){
+            $('.btn').attr({disabled: true});
+            $('.switch').attr({disabled: true});
+            $('.check').attr({disabled: true});
+            $('.next').attr({disabled: true});
+            $('#invert').attr({
+                class: "btn btn-secondary d-block",
+                disabled: true
+            });
+            $('#content_apply_invert').text('Wait 30 seconds please');
+            $('#spinner').attr({
+                class: "spinner-border spinner-border-sm"
+            });
+        }
         $(document).ready(function(){
             $('#next').prop('disabled', true);
+            if({{ IN_RESET }}) disableAfterApplyInvert();
         });
         socketio.on('reload', function(dataServ) {
             location.reload(true); 
