@@ -8,12 +8,11 @@ import pwd
 import grp
 import os
 
+import importlib
 import sys
-"""sys.path.append('../')
-from config import config"""
+sys.path.append('../')
 
-sys.path.append('../config')
-module_config = __import__("config")
+module_config = importlib.import_module("..config", 'config.config')
 config_vars = {k: v for k, v in module_config.__dict__.items() if not k.startswith('_')}
 config = type("config", (object, ), config_vars)
 
