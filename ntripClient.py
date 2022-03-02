@@ -278,6 +278,7 @@ if __name__ == '__main__':
                 ntripArgs['mountpoint'] = mountpoint["Mountpoint"]
             else:
                 print(f"Not found mountpoint {config.MAX_DISTANCE_MOUNTPOINT} kilometers around, the mountpoint in config named '{config.NTRIP_MOUNTPOINT}' is use.")
+            sys.stdout.flush()
         except (UnableToConnect, ExceededTimeoutError):
             pass
 

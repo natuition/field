@@ -722,6 +722,13 @@ class WorkingState(State):
                 if self.lastGpsQuality != data[2]:
                     self.lastGpsQuality = data[2]
                 self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
+            elif "last_gps_list" in data:
+                last_gps_list = data["last_gps_list"]
+                self.allPath = self.allPath + last_gps_list
+                last_gps_quality = data["last_gps_quality"]
+                if self.lastGpsQuality != last_gps_quality:
+                    self.lastGpsQuality = last_gps_quality
+                self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
             elif "display_instruction_path" in data:
                 data = data["display_instruction_path"]
                 self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]), namespace='/map', broadcast=True)

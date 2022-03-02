@@ -1310,15 +1310,18 @@ def send_gps_history_from_file(ui_msg_queue: posix_ipc.MessageQueue,
 
     if os.path.isfile(gps_file_dir + gps_file_name):
         with open(gps_file_dir + gps_file_name, "r") as gps_his_file:
+            all_points = list()
+            last_gps_quality = 0
             for line in gps_his_file.readlines():
                 if line.startswith("[") and line.endswith("]\n"):
                     parsed_point = line[1:-1].split(", ")
-                    try:
-                        ui_msg_queue.send(json.dumps({"last_gps": [float(parsed_point[0]),
-                                                                    float(parsed_point[1]),
-                                                                    parsed_point[2].replace("'", "")]}))
-                    except (IndexError, ValueError):
-                        pass
+                    all_points.append([float(parsed_point[1]), float(parsed_point[0])])
+                    last_gps_quality = parsed_point[2].replace("'", "")
+            if all_points:
+                try:
+                    ui_msg_queue.send(json.dumps({"last_gps_list": all_points, "last_gps_quality": last_gps_quality}))
+                except (IndexError, ValueError):
+                    pass
     else:
         msg = f"Could not find {gps_file_dir}/used_gps_history.txt file to send previous points to the web UI"
         logger_full.write(msg + "\n")
