@@ -166,6 +166,28 @@ function createMap(coords_field,coords_other){
                 }
             });
         }
+        //Field start point
+        if(typeof(map.getSource('field_start')) == "undefined"){
+            map.addSource('field_start', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': coords_field[coords_field.length - 2]
+                    }
+                }
+            });    
+            map.addLayer({
+                'id': 'field_startLayer',
+                'type': 'circle',
+                'source': 'field_start',
+                'paint': {
+                    'circle-radius': 6,
+                    'circle-color': '#0620FB'
+                }
+            });
+        }
         //Instruction_line
         if(typeof(map.getSource('instruction_line')) == "undefined"){
             map.addSource('instruction_line', {
@@ -471,6 +493,14 @@ socketMap.on('newField', function(dataServ) {
             'geometry': {
                 'type': 'LineString',
                 'coordinates': dataServ["field"]
+            }
+        });
+
+        map.getSource('field_start').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Point',
+                'coordinates': dataServ["field"][dataServ["field"].length - 2]
             }
         });
 
