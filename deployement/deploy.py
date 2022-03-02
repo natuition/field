@@ -22,6 +22,7 @@ config = type("config", (object, ), config_vars)
 
 import adapters
 import utility
+from cameraCalibration import CameraCalibration
 
 app = Flask(__name__)
 app.config['DEBUG'] = False
@@ -33,6 +34,7 @@ Payload.max_decode_packets = 500
 socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
 
 smoothie: adapters.SmoothieAdapter= None
+cameraCalibration: CameraCalibration = None
 
 @app.route("/show_pdf/<filename>")
 def show_pdf(filename):
@@ -56,6 +58,14 @@ def x_y_dir():
         smoothie = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
     print(smoothie)
     return render_template('x_y_dir.html', A_MAX=config.A_MAX, Y_MAX=config.Y_MAX, X_MAX=config.X_MAX, IN_RESET=json.dumps(in_reset))
+
+@app.route("/camera")
+def camera():
+    global cameraCalibration
+    if cameraCalibration is None:
+        cameraCalibration = CameraCalibration()
+        cameraCalibration.focus_adjustment_step()
+    return render_template('camera.html')
 
 @socketio.on('x_y_dir', namespace='/server')
 def on_x_y_dir(data):
