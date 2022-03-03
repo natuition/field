@@ -19,7 +19,7 @@ import adapters
 class CameraCalibration:
 
     def __init__(self):
-        pass
+        self.crop_w_from ,self.crop_w_to, self.crop_h_from, self.crop_h_to =  config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM, config.CROP_H_TO
 
     def focus_adjustment_step(self):
         os.system("sudo systemctl restart nvargus-daemon")
@@ -43,8 +43,7 @@ class CameraCalibration:
                                                     config.EXPOSURE_TIME_RANGE_FROM/5, config.EXPOSURE_TIME_RANGE_TO/5,
                                                     config.AE_LOCK, 
                                                     CAMERA_W, CAMERA_H, CAMERA_W, CAMERA_H, CAMERA_FRAMERATE,
-                                                    config.CAMERA_FLIP_METHOD) as camera, \
-                adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
+                                                    config.CAMERA_FLIP_METHOD) as camera:
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
             frame = camera.get_image()
             img_origine = frame.copy()
@@ -61,14 +60,14 @@ class CameraCalibration:
             else:
                 print("Warning we found multiple circles.")
             for i in all_circles_rounded[0, :]:
-                cv2.circle(img_origine, (i[0],i[1]),i[2],(50,200,200),5)
+                cv2.circle(img_origine, (i[0],i[1]),i[2],(255,0,255),3)
 
             image_saver.save_image(img_origine, "./", specific_name="scene_center")
 
-    def offset_calibration_step(self):
+    def offset_calibration_step_detect(self):
         image_saver = utility.ImageSaver()
-        with adapters.CameraAdapterIMX219_170(  config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
-                                                config.CROP_H_TO, config.CV_ROTATE_CODE,
+        with adapters.CameraAdapterIMX219_170(  self.crop_w_from ,self.crop_w_to, self.crop_h_from, 
+                                                self.crop_h_to, config.CV_ROTATE_CODE,
                                                 config.ISP_DIGITAL_GAIN_RANGE_FROM,
                                                 config.ISP_DIGITAL_GAIN_RANGE_TO,
                                                 config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
@@ -95,11 +94,21 @@ class CameraCalibration:
             else:
                 print("Warning we found multiple circles.")
             for i in all_circles_rounded[0, :]:
-                cv2.circle(img_origine, (i[0],i[1]),i[2],(255,0,255),5)
-                cv2.circle(img_origine, (i[0],i[1]),1,(255,0,255),5)
+                cv2.circle(img_origine, (i[0],i[1]),i[2],(255,0,255),3)
+                cv2.circle(img_origine, (i[0],i[1]),2,(255,0,255),3)
 
             if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
-                print("Target is in undistorted zone go on top.")
+                finalMsg = "Target is in undistorted zone go on top :"
+            else:
+                finalMsg = "Target isn't in undistorted zone :"
+
+            image_saver.save_image(img_origine, "./", specific_name="target_detection")
+
+            return finalMsg
+    
+    def offset_calibration_step_move():
+        with adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
+            if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
                 x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
                 y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
                 res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
@@ -111,10 +120,6 @@ class CameraCalibration:
                     print(msg)
                     exit(1)
                 smoothie.wait_for_all_actions_done()
-            else:
-                print("Target isn't in undistorted zone.")
-
-            image_saver.save_image(img_origine, "./", specific_name="target_detection")
 
     def __startLiveCam(self):
         camSP = subprocess.Popen("python3 serveurCamLive.py False", stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
@@ -148,14 +153,14 @@ class CameraCalibration:
     def set_crop_values(self):
         rectX = self.scene_center_x - configDeployment.CAMERA_DISPLAY_W/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_W
         rectY = self.scene_center_y - configDeployment.CAMERA_DISPLAY_H/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_H
-        crop_w_from = int(rectX)
-        crop_w_to = int(crop_w_from + configDeployment.CAMERA_DISPLAY_W)
-        crop_h_from = int(rectY)
-        crop_h_to = int(crop_h_from + configDeployment.CAMERA_DISPLAY_H)
-        CameraCalibration.__changeConfigValue("CROP_W_FROM",crop_w_from)
-        CameraCalibration.__changeConfigValue("CROP_W_TO",crop_w_to)
-        CameraCalibration.__changeConfigValue("CROP_H_FROM",crop_h_from)
-        CameraCalibration.__changeConfigValue("CROP_H_TO",crop_h_to)
+        self.crop_w_from = int(rectX)
+        self.crop_w_to = int(self.crop_w_from + configDeployment.CAMERA_DISPLAY_W)
+        self.crop_h_from = int(rectY)
+        self.crop_h_to = int(self.crop_h_from + configDeployment.CAMERA_DISPLAY_H)
+        CameraCalibration.__changeConfigValue("CROP_W_FROM",self.crop_w_from)
+        CameraCalibration.__changeConfigValue("CROP_W_TO",self.crop_w_to)
+        CameraCalibration.__changeConfigValue("CROP_H_FROM",self.crop_h_from)
+        CameraCalibration.__changeConfigValue("CROP_H_TO",self.crop_h_to)
 
 
 def main():

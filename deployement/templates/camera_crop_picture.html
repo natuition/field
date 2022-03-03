@@ -18,28 +18,30 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <script>
-        var next_page_href = 'http://' + document.domain + ':' + location.port + '/x_y_dir';
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/camera_crop_picture';
+        var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
     </script>
 </head>
 <body>
-    <h1 style="text-align: center; padding: 10px 0;">Setup motor FOC for vesc propulsion and vesc z.</h1>
-    <div style="width: 99%; height: 80%; margin: 0 auto;">
-        <iframe src="/show_pdf/setup_motor_foc" style="width: 100%; height: 100%;" frameborder="0"></iframe>
+    <h1 style="text-align: center; padding: 10px 0;">Round detection for crop camera</h1>
+    <div style="width: 1000px; height: 80%; margin: 0 auto; border-radius: 100px; overflow: hidden;">
+        <div id="spinner" style="height: 100%;" class="d-flex justify-content-center align-items-center">
+            <div class="spinner-border" style="width: 5rem; height: 5rem;" role="status"></div>
+        </div>
+        <img id="fig_image" class="d-none" style="width: 100%; height: 100%; margin: 0 auto;">
     </div>
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="propDone" onclick="enableNext()">
-            <label class="form-check-label" for="propDone">Vesc propulsion done</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="zDone" onclick="enableNext()">
-            <label class="form-check-label" for="zDone">Vesc z done</label>
+            <input class="form-check-input" type="checkbox" id="roundDetectionDone" onclick="enableNext()">
+            <label class="form-check-label" for="roundDetectionDone">Round detection done</label>
         </div>
         <button type="button" id="next" class="btn btn-danger" onclick="window.location.href=next_page_href">Next</button>
     </div>
     <script>
+        var url_cam = 'http://' + document.domain + ':8080/video';
+
         function enableNext(){
-            if($("#propDone").is(':checked')&&$('#zDone').is(':checked')){
+            if($("#roundDetectionDone").is(':checked')){
                 $('#next').prop('class', "btn btn-success");
                 $('#next').prop('disabled', false);
             } else{
@@ -49,6 +51,16 @@
         }
         $(document).ready(function(){
             $('#next').prop('disabled', true);
+            socketio.emit('run_round_detection', {run_detection: true})
+        });
+
+        socketio.on('image', function(data) {
+            var arrayBufferView = new Uint8Array(data['image_data']);
+            var blob = new Blob( [ arrayBufferView ], { type: "image/jpeg" } );
+            var img_url = URL.createObjectURL(blob);
+            document.getElementById("fig_image").src = img_url;
+            $('#spinner').remove();
+            $('#fig_image').removeAttr("class");
         });
     </script>
 </body>

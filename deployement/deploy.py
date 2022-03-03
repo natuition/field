@@ -11,6 +11,7 @@ import logging
 import time
 import serial
 import json
+from flask_cors import CORS
 
 import importlib
 import sys
@@ -25,6 +26,7 @@ import utility
 from cameraCalibration import CameraCalibration
 
 app = Flask(__name__)
+CORS(app)
 app.config['DEBUG'] = False
 app.logger.disabled = True
 log = logging.getLogger('werkzeug')
@@ -59,13 +61,51 @@ def x_y_dir():
     print(smoothie)
     return render_template('x_y_dir.html', A_MAX=config.A_MAX, Y_MAX=config.Y_MAX, X_MAX=config.X_MAX, IN_RESET=json.dumps(in_reset))
 
-@app.route("/camera")
-def camera():
+@app.route("/camera_focus")
+def camera_focus():
     global cameraCalibration
     if cameraCalibration is None:
         cameraCalibration = CameraCalibration()
         cameraCalibration.focus_adjustment_step()
-    return render_template('camera.html')
+    return render_template('camera_focus.html')
+
+@app.route("/camera_crop_picture")
+def camera_crop_picture():
+    global cameraCalibration
+    if cameraCalibration is None:
+        cameraCalibration = CameraCalibration()
+    else:
+        try:
+            cameraCalibration.focus_adjustment_step_validate()
+        except:
+            pass
+    return render_template('camera_crop_picture.html')
+
+@app.route("/camera_target_detection")
+def camera_target_detection():
+    return render_template('camera_target_detection.html')
+
+@socketio.on('run_round_detection', namespace='/server')
+def on_run_round_detection(data):
+    global cameraCalibration
+    if cameraCalibration is None:
+        cameraCalibration = CameraCalibration()
+    if data["run_detection"]:
+        cameraCalibration.step_crop_picture()
+        with open('./scene_center.jpg', 'rb') as f:
+            image_data = f.read()
+        socketio.emit('image', {'image_data': image_data}, namespace='/server', broadcast=True)
+
+@socketio.on('run_target_detection', namespace='/server')
+def on_run_target_detection(data):
+    global cameraCalibration
+    if cameraCalibration is None:
+        cameraCalibration = CameraCalibration()
+    if data["run_detection"]:
+        res = cameraCalibration.offset_calibration_step_detect()
+        with open('./target_detection.jpg', 'rb') as f:
+            image_data = f.read()
+        socketio.emit('image', {'image_data': image_data, "res": res}, namespace='/server', broadcast=True)
 
 @socketio.on('x_y_dir', namespace='/server')
 def on_x_y_dir(data):

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Page Title</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        html, body
+        {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script>
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/camera_crop_picture';
+        var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+    </script>
+</head>
+<body>
+    <h1 style="text-align: center; padding: 10px 0;">Target detection</h1>
+    <div class="text-center" style="width: 1000px; height: 80%; margin: 0 auto;">
+        <div id="run_detection_div" class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+            <label class="form-check-label">Target detection :</label>
+            <div class="btn-group-vertical m-1">
+                <button type="button" id="run_detection" class="btn btn-secondary" onclick="runDetect();">Run</button>
+            </div>
+        </div>
+        <div id="spinner" style="height: 100%;" class="d-none justify-content-center align-items-center mt-3">
+            <div class="spinner-border" style="width: 5rem; height: 5rem;" role="status"></div>
+        </div>
+        <img id="fig_image" class="d-none" style="width: 100%; height: 85%; margin: 0 auto;">
+        <div id="retry_detection_div" class="d-none justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+            <label id="fig_image_txt" class="form-check-label"></label>
+            <div class="btn-group-vertical m-1">
+                <button type="button" id="retry_detection" class="btn btn-secondary" onclick="runDetect();">Retry</button>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="targetDetectionDone" onclick="enableNext()">
+            <label class="form-check-label" for="targetDetectionDone">Target detection done</label>
+        </div>
+        <button type="button" id="next" class="btn btn-danger" onclick="window.location.href=next_page_href">Next</button>
+    </div>
+    <script>
+        var url_cam = 'http://' + document.domain + ':8080/video';
+
+        function enableNext(){
+            if($("#targetDetectionDone").is(':checked')){
+                $('#next').prop('class', "btn btn-success");
+                $('#next').prop('disabled', false);
+            } else{
+                $('#next').prop('disabled', true);
+                $('#next').prop('class', "btn btn-danger");
+            }
+        }
+        $(document).ready(function(){
+            $('#next').prop('disabled', true);
+        });
+
+        function runDetect(){
+            $('#run_detection').attr({disabled: true});
+            $('#run_detection').text('Running...');
+            $('#spinner').attr({class:"d-flex justify-content-center align-items-center mt-3"})
+            $('#fig_image').attr({class: "d-none"});
+            $('#retry_detection_div').attr({class: "d-none justify-content-center align-items-center"});
+            socketio.emit('run_target_detection', {run_detection: true})
+        }
+
+        socketio.on('image', function(data) {
+            var arrayBufferView = new Uint8Array(data['image_data']);
+            var blob = new Blob( [ arrayBufferView ], { type: "image/jpeg" } );
+            var img_url = URL.createObjectURL(blob);
+            document.getElementById("fig_image").src = img_url;
+            $('#spinner').attr({class: "d-none justify-content-center align-items-center mt-3"});
+            $('#run_detection_div').attr({class: "d-none justify-content-center align-items-center"});
+            $('#fig_image').removeAttr("class");
+            $('#retry_detection_div').attr({class: "d-flex justify-content-center align-items-center"});
+            $('#fig_image_txt').text(data['res']);
+        });
+    </script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import detection
 import os
 from multiprocessing import Process
 import sys
+from flask_cors import CORS
 
 def generateGstConfig():
     aelock = "aelock=true " if config.AE_LOCK else ""
@@ -123,6 +124,7 @@ def encodeFrame():
 
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/video")
 def streamFrames():
