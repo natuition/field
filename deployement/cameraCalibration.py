@@ -107,9 +107,11 @@ class CameraCalibration:
 
             image_saver.save_image(img_origine, "./", specific_name="target_detection")
 
+            print(self.target_x, self.target_y)
+
             return finalMsg
     
-    def offset_calibration_step_move():
+    def offset_calibration_step_move(self):
         with adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
             if self.target_x and self.target_y:
                 if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
@@ -156,7 +158,7 @@ class CameraCalibration:
 
     def set_crop_values(self):
         rectX = self.scene_center_x - configDeployment.CAMERA_DISPLAY_W/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_W
-        rectY = self.scene_center_y - configDeployment.CAMERA_DISPLAY_H/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_H
+        rectY = self.scene_center_y - configDeployment.CAMERA_DISPLAY_H/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_H - 230
         self.crop_w_from = int(rectX)
         self.crop_w_to = int(self.crop_w_from + configDeployment.CAMERA_DISPLAY_W)
         self.crop_h_from = int(rectY)
@@ -169,16 +171,11 @@ class CameraCalibration:
 
 def main():
     cameraCalibration: CameraCalibration = CameraCalibration()
-    cameraCalibration.focus_adjustment_step()
+    cameraCalibration.offset_calibration_step_detect()
     test_continue = input("Press enter to continue to the next step, type anything to exit.")
     if test_continue != "":
         return
-    cameraCalibration.focus_adjustment_step_validate()
-    cameraCalibration.step_crop_picture()
-    test_continue = input("Press enter to continue to the next step, type anything to exit.")
-    if test_continue != "":
-        return
-    cameraCalibration.offset_calibration_step()
+    cameraCalibration.offset_calibration_step_move()
 
 if __name__ == "__main__":
     main()
