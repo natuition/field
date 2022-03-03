@@ -18,7 +18,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <script>
-        var next_page_href = 'http://' + document.domain + ':' + location.port + '/camera_crop_picture';
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/camera_target_detection';
         var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
     </script>
 </head>

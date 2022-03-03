@@ -12,6 +12,10 @@
             margin: 0;
             height: 100%;
         }
+        #fig_image:hover {
+            /*transform: scale(2);*/
+            object-fit: none;
+        }
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script> 
@@ -34,7 +38,7 @@
         <div id="spinner" style="height: 100%;" class="d-none justify-content-center align-items-center mt-3">
             <div class="spinner-border" style="width: 5rem; height: 5rem;" role="status"></div>
         </div>
-        <img id="fig_image" class="d-none" style="width: 100%; height: 85%; margin: 0 auto;">
+        <img id="fig_image" class="d-none" style="width: 80%; height: 80%; margin: 0 auto;">
         <div id="retry_detection_div" class="d-none justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
             <label id="fig_image_txt" class="form-check-label"></label>
             <div class="btn-group-vertical m-1">

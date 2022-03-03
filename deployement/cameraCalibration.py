@@ -20,6 +20,7 @@ class CameraCalibration:
 
     def __init__(self):
         self.crop_w_from ,self.crop_w_to, self.crop_h_from, self.crop_h_to =  config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM, config.CROP_H_TO
+        self.target_x, self.target_y = None, None
 
     def focus_adjustment_step(self):
         os.system("sudo systemctl restart nvargus-daemon")
@@ -60,7 +61,7 @@ class CameraCalibration:
             else:
                 print("Warning we found multiple circles.")
             for i in all_circles_rounded[0, :]:
-                cv2.circle(img_origine, (i[0],i[1]),i[2],(255,0,255),3)
+                cv2.circle(img_origine, (i[0],i[1]),i[2],(204,0,102),3)
 
             image_saver.save_image(img_origine, "./", specific_name="scene_center")
 
@@ -71,7 +72,7 @@ class CameraCalibration:
                                                 config.ISP_DIGITAL_GAIN_RANGE_FROM,
                                                 config.ISP_DIGITAL_GAIN_RANGE_TO,
                                                 config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                                config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                                config.EXPOSURE_TIME_RANGE_FROM/5, config.EXPOSURE_TIME_RANGE_TO/5,
                                                 config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                                 config.CAMERA_H, config.CAMERA_FRAMERATE,
                                                 config.CAMERA_FLIP_METHOD) as camera, \
@@ -94,11 +95,13 @@ class CameraCalibration:
             else:
                 print("Warning we found multiple circles.")
             for i in all_circles_rounded[0, :]:
-                cv2.circle(img_origine, (i[0],i[1]),i[2],(255,0,255),3)
-                cv2.circle(img_origine, (i[0],i[1]),2,(255,0,255),3)
+                cv2.circle(img_origine, (i[0],i[1]),i[2],(102,0,204),3)
+                cv2.circle(img_origine, (i[0],i[1]),2,(102,0,204),3)
+                cv2.circle(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),config.UNDISTORTED_ZONE_RADIUS,(204,0,102),3)
+                cv2.circle(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),2,(204,0,102),3)
 
             if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
-                finalMsg = "Target is in undistorted zone go on top :"
+                finalMsg = "Target is in undistorted zone :"
             else:
                 finalMsg = "Target isn't in undistorted zone :"
 
@@ -108,18 +111,19 @@ class CameraCalibration:
     
     def offset_calibration_step_move():
         with adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
-            if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
-                x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
-                y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
-                res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
-                                                            Y_F=config.Y_F_MAX,
-                                                            X=smoothie.smoothie_to_mm(x, "X"),
-                                                            Y=smoothie.smoothie_to_mm(y, "Y"))
-                if res != smoothie.RESPONSE_OK:
-                    msg = "INIT: Failed to move camera, smoothie response:\n" + res
-                    print(msg)
-                    exit(1)
-                smoothie.wait_for_all_actions_done()
+            if self.target_x and self.target_y:
+                if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
+                    x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
+                    y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
+                    res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
+                                                                Y_F=config.Y_F_MAX,
+                                                                X=smoothie.smoothie_to_mm(x, "X"),
+                                                                Y=smoothie.smoothie_to_mm(y, "Y"))
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "INIT: Failed to move camera, smoothie response:\n" + res
+                        print(msg)
+                        exit(1)
+                    smoothie.wait_for_all_actions_done()
 
     def __startLiveCam(self):
         camSP = subprocess.Popen("python3 serveurCamLive.py False", stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
