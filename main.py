@@ -1108,10 +1108,19 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         b1, b2 = compute_x1_x2_points(b, c, nav, logger)
         c1, c2 = compute_x1_x2_points(c, d, nav, logger)
         d1, d2 = compute_x1_x2_points(d, a, nav, logger)
+
+        for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
+            if point is None:
+                if not _break:
+                    _break = True
+                    break
+        if _break : 
+            break
+
         a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
         d_spiral, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
-        for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
+        for point in [a1_spiral,d_spiral,a_spiral]:
             if point is None:
                 if not _break:
                     _break = True
@@ -1525,6 +1534,7 @@ def main():
                     if config.TRADITIONAL_PATH:
                         path_points = build_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
                     if config.BEZIER_CORNER_PATH:
+                        print(field_gps_coords)
                         path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
                     if config.FORWARD_BACKWARD_PATH:
                         a,b,c,d = field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]
