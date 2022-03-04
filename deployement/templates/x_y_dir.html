@@ -19,7 +19,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <script>
         var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
-        var next_page_href = 'http://' + document.domain + ':' + location.port + '/x_y_dir';
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/camera_focus';
     </script>
 </head>
 <body>
@@ -49,8 +49,8 @@
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
         <label class="form-check-label" for="xDone">Dir axis :</label>
         <div class="btn-group-vertical m-1">
-            <button type="button" id="dir_add" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {a: {{ A_MAX }}*0.2})">Left</button>
-            <button type="button" id="dir_remove" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {a: -{{ A_MAX }}*0.2})">Right</button>
+            <button type="button" id="dir_add" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {a: {{ A_MAX }}*0.5})">Left</button>
+            <button type="button" id="dir_remove" class="btn btn-secondary" onclick="socketio.emit('x_y_dir', {a: -{{ A_MAX }}*0.5})">Right</button>
         </div>
         <label class="ms-2 form-check-label" for="flexSwitchCheckDefault">Invert axis : </label>
         <div class="ms-1 form-check form-switch d-flex align-items-center">

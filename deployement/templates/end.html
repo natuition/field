@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Page Title</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        html, body
+        {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+</head>
+<body>
+    <h1 style="text-align: center; padding: 10px 0;">Setup is finish, good job.</h1>
+</body>
+</html>

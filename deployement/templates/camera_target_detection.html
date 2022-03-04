@@ -22,13 +22,13 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <script>
-        var next_page_href = 'http://' + document.domain + ':' + location.port + '/camera_crop_picture';
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/camera_target_move';
         var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
     </script>
 </head>
 <body>
     <h1 style="text-align: center; padding: 10px 0;">Target detection</h1>
-    <div class="text-center" style="width: 1000px; height: 80%; margin: 0 auto;">
+    <div class="text-center" style="height: 80%; margin: 0 auto;">
         <div id="run_detection_div" class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
             <label class="form-check-label">Target detection :</label>
             <div class="btn-group-vertical m-1">
@@ -38,7 +38,7 @@
         <div id="spinner" style="height: 100%;" class="d-none justify-content-center align-items-center mt-3">
             <div class="spinner-border" style="width: 5rem; height: 5rem;" role="status"></div>
         </div>
-        <img id="fig_image" class="d-none" style="width: 80%; height: 80%; margin: 0 auto;">
+        <img id="fig_image" class="d-none" style="height: 80%; margin: 0 auto;">
         <div id="retry_detection_div" class="d-none justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
             <label id="fig_image_txt" class="form-check-label"></label>
             <div class="btn-group-vertical m-1">

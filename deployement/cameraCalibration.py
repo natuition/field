@@ -65,7 +65,7 @@ class CameraCalibration:
 
             image_saver.save_image(img_origine, "./", specific_name="scene_center")
 
-    def offset_calibration_step_detect(self):
+    def offset_calibration_step_detect(self, smoothie):
         image_saver = utility.ImageSaver()
         with adapters.CameraAdapterIMX219_170(  self.crop_w_from ,self.crop_w_to, self.crop_h_from, 
                                                 self.crop_h_to, config.CV_ROTATE_CODE,
@@ -75,8 +75,7 @@ class CameraCalibration:
                                                 config.EXPOSURE_TIME_RANGE_FROM/5, config.EXPOSURE_TIME_RANGE_TO/5,
                                                 config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                                 config.CAMERA_H, config.CAMERA_FRAMERATE,
-                                                config.CAMERA_FLIP_METHOD) as camera, \
-             adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
+                                                config.CAMERA_FLIP_METHOD) as camera:
 
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
             
@@ -111,21 +110,20 @@ class CameraCalibration:
 
             return finalMsg
     
-    def offset_calibration_step_move(self):
-        with adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
-            if self.target_x and self.target_y:
-                if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
-                    x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
-                    y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
-                    res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
-                                                                Y_F=config.Y_F_MAX,
-                                                                X=smoothie.smoothie_to_mm(x, "X"),
-                                                                Y=smoothie.smoothie_to_mm(y, "Y"))
-                    if res != smoothie.RESPONSE_OK:
-                        msg = "INIT: Failed to move camera, smoothie response:\n" + res
-                        print(msg)
-                        exit(1)
-                    smoothie.wait_for_all_actions_done()
+    def offset_calibration_step_move(self, smoothie):
+        if self.target_x and self.target_y:
+            if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
+                x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
+                y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
+                res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
+                                                            Y_F=config.Y_F_MAX,
+                                                            X=smoothie.smoothie_to_mm(x, "X"),
+                                                            Y=smoothie.smoothie_to_mm(y, "Y"))
+                if res != smoothie.RESPONSE_OK:
+                    msg = "INIT: Failed to move camera, smoothie response:\n" + res
+                    print(msg)
+                    exit(1)
+                smoothie.wait_for_all_actions_done()
 
     def __startLiveCam(self):
         camSP = subprocess.Popen("python3 serveurCamLive.py False", stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
@@ -171,11 +169,12 @@ class CameraCalibration:
 
 def main():
     cameraCalibration: CameraCalibration = CameraCalibration()
-    cameraCalibration.offset_calibration_step_detect()
-    test_continue = input("Press enter to continue to the next step, type anything to exit.")
-    if test_continue != "":
-        return
-    cameraCalibration.offset_calibration_step_move()
+    with adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
+        cameraCalibration.offset_calibration_step_detect(smoothie)
+        test_continue = input("Press enter to continue to the next step, type anything to exit.")
+        if test_continue != "":
+            return
+        cameraCalibration.offset_calibration_step_move(smoothie)
 
 if __name__ == "__main__":
     main()

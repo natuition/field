@@ -35,8 +35,9 @@ log.disabled = True
 Payload.max_decode_packets = 500
 socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
 
-smoothie: adapters.SmoothieAdapter= None
-cameraCalibration: CameraCalibration = None
+smoothie: adapters.SmoothieAdapter = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
+cameraCalibration: CameraCalibration = CameraCalibration()
+offset_x, offset_y = 0,0
 
 @app.route("/show_pdf/<filename>")
 def show_pdf(filename):
@@ -55,41 +56,50 @@ def vesc_foc():
 @app.route("/x_y_dir")
 def x_y_dir():
     global smoothie
-    print(smoothie, in_reset)
     if smoothie is None and not in_reset:
         smoothie = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
-    print(smoothie)
     return render_template('x_y_dir.html', A_MAX=config.A_MAX, Y_MAX=config.Y_MAX, X_MAX=config.X_MAX, IN_RESET=json.dumps(in_reset))
 
 @app.route("/camera_focus")
 def camera_focus():
     global cameraCalibration
-    if cameraCalibration is None:
-        cameraCalibration = CameraCalibration()
-        cameraCalibration.focus_adjustment_step()
+    cameraCalibration.focus_adjustment_step()
     return render_template('camera_focus.html')
 
 @app.route("/camera_crop_picture")
 def camera_crop_picture():
     global cameraCalibration
-    if cameraCalibration is None:
-        cameraCalibration = CameraCalibration()
-    else:
-        try:
-            cameraCalibration.focus_adjustment_step_validate()
-        except:
-            pass
+    try:
+        cameraCalibration.focus_adjustment_step_validate()
+    except:
+        pass
     return render_template('camera_crop_picture.html')
 
 @app.route("/camera_target_detection")
 def camera_target_detection():
+    global smoothie
+    res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
+    smoothie.wait_for_all_actions_done()
+    if res != smoothie.RESPONSE_OK:
+        print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
+
+    res = smoothie.ext_calibrate_cork()
+    if res != smoothie.RESPONSE_OK:
+        print("Initial cork calibration was failed, smoothie response:\n", res)
     return render_template('camera_target_detection.html')
+
+@app.route("/camera_target_move")
+def camera_target_move():
+    return render_template('camera_target_move.html')
+
+@app.route("/end")
+def end():
+    print(offset_x, offset_y)
+    return render_template('end.html')
 
 @socketio.on('run_round_detection', namespace='/server')
 def on_run_round_detection(data):
     global cameraCalibration
-    if cameraCalibration is None:
-        cameraCalibration = CameraCalibration()
     if data["run_detection"]:
         cameraCalibration.step_crop_picture()
         with open('./scene_center.jpg', 'rb') as f:
@@ -99,28 +109,44 @@ def on_run_round_detection(data):
 @socketio.on('run_target_detection', namespace='/server')
 def on_run_target_detection(data):
     global cameraCalibration
-    if cameraCalibration is None:
-        cameraCalibration = CameraCalibration()
+    global smoothie
     if data["run_detection"]:
-        res = cameraCalibration.offset_calibration_step_detect()
+        res = cameraCalibration.offset_calibration_step_detect(smoothie)
         with open('./target_detection.jpg', 'rb') as f:
             image_data = f.read()
         socketio.emit('image', {'image_data': image_data, "res": res}, namespace='/server', broadcast=True)
+
+@socketio.on('run_move_to_target', namespace='/server')
+def on_run_target_detection(data):
+    global cameraCalibration
+    global smoothie
+    if data["run_move_to_target"]:
+        cameraCalibration.offset_calibration_step_move(smoothie)
+        socketio.emit('move', {'move': True}, namespace='/server', broadcast=True)
+
+@socketio.on('move_step', namespace='/server')
+def on_move_step(data):
+    global offset_x
+    global offset_y
+    if "x" in data:
+        offset_x += data["x"]
+    if "y" in data:
+        offset_y += data["y"]
 
 @socketio.on('x_y_dir', namespace='/server')
 def on_x_y_dir(data):
     global smoothie
     global in_reset
-    if "x" in data and not in_reset:
+    if "x" in data and not in_reset and smoothie is not None:
         smoothie.custom_move_for(X_F=config.X_F_MAX, X=data["x"])
-        print(f"x:{data['x']}")
-    if "y" in data and not in_reset:
+        #print(f"x:{data['x']}")
+    if "y" in data and not in_reset and smoothie is not None:
         smoothie.custom_move_for( Y_F=config.Y_F_MAX, Y=data["y"])
-        print(f"y:{data['y']}")
-    if "a" in data and not in_reset:
+        #print(f"y:{data['y']}")
+    if "a" in data and not in_reset and smoothie is not None:
         smoothie.custom_move_for(A_F=config.A_F_MAX, A=data["a"])
-        print(f"a:{data['a']}")
-    if "inv" in data and not in_reset:
+        #print(f"a:{data['a']}")
+    if "inv" in data and not in_reset and smoothie is not None:
         translate_axis_grec = {"x":"alpha_dir_pin","y":"beta_dir_pin","a":"delta_dir_pin"}
         for axis, invert in data["inv"].items():
             if invert:
@@ -150,7 +176,7 @@ def on_x_y_dir(data):
         time.sleep(30)
         print("Search smoothie...")
         while True:
-            print(utility.get_smoothie_vesc_addresses())
+            #print(utility.get_smoothie_vesc_addresses())
             if "smoothie" in utility.get_smoothie_vesc_addresses():
                 if smoothie is None:
                     print("Smoothie find.")
