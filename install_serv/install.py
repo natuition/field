@@ -69,7 +69,7 @@ def changeConfigValue(path: str, value):
     os.chown("../config/config.py", -1, -1)
 
 def startLiveCam():
-    camSP = subprocess.Popen(["python3","cameraLive.py"], cwd="/home/violette/field")
+    camSP = subprocess.Popen("python3 serveurCamLive.py False", stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
     return camSP
 
 def test_smoothie(smoothie, command, url):
@@ -110,16 +110,6 @@ def testes(smoothie, es):
 # --------------------------------------------------------
 
 @app.route('/', methods=['POST', 'GET'])
-def index():
-    if request.method == 'POST':
-        if request.form['x'] == 'testbench':
-              return redirect(url_for('init'))
-        elif request.form['x'] == 'robot':
-              return redirect(url_for('robot'))
-    else:
-        return render_template('prod.html')
-
-@app.route('/init', methods=['POST', 'GET'])
 def init():
     if request.method == 'POST':
         LOG['PIC']= request.form['Tech']
@@ -134,6 +124,7 @@ def init():
 
 @app.route('/cam', methods=['POST', 'GET'])
 def cam():
+    global camSP
     if request.method == 'GET':
         os.system("sudo systemctl restart nvargus-daemon")
         camSP=startLiveCam()
@@ -143,7 +134,8 @@ def cam():
         LOG['CAMERA']= 'OK'
         if LOG_PRINT:
             print(LOG)
-        os.system("sudo systemctl restart nvargus-daemon")
+        os.killpg(os.getpgid(camSP.pid), signal.SIGINT)
+        camSP.wait()
         return redirect(url_for('xyd'))
 
 @app.route('/xyd', methods=['POST', 'GET'])
