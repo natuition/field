@@ -83,18 +83,22 @@ class CheckState(State):
 
     def on_socket_data(self, data):
         if data["type"] == 'allChecked':
-            with open("../yolo/"+data["strategy"]+".conf") as file:
-                for line in file.readlines():
-                    content = line.split("#")[0]
-                    content = re.sub('[^0-9a-zA-Z._="/]+', '', content)
-                    if content:
-                        changeConfigValue(content.split("=")[0],content.split("=")[1])
+            try:
+                with open("../yolo/"+data["strategy"]+".conf") as file:
+                    for line in file.readlines():
+                        content = line.split("#")[0]
+                        content = re.sub('[^0-9a-zA-Z._="/]+', '', content)
+                        if content:
+                            changeConfigValue(content.split("=")[0],content.split("=")[1])
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except:
+                return ErrorState(self.socketio, self.logger)
         elif data["type"] == 'getInputVoltage':
             sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
         else:
             self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
         return self
-
 
     def getStatusOfControls(self):
         return self.statusOfUIObject
@@ -760,6 +764,8 @@ class ErrorState(State):
         }
 
         self.field = None
+
+        self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject

@@ -500,7 +500,7 @@ socketMap.on('newField', function(dataServ) {
             'type': 'Feature',
             'geometry': {
                 'type': 'Point',
-                'coordinates': dataServ["field"][dataServ["field"].length - 2]
+                'coordinates': dataServ["field"][dataServ["field"].length - 1]
             }
         });
 

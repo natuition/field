@@ -976,7 +976,7 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     c1, c2 = compute_x1_x2_points(c, d, nav, logger)
     d1, d2 = compute_x1_x2_points(d, a, nav, logger)
     a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
-    d_spiral, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
+    _ , a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
     if not add_points_to_path(path, [a, fwd]):
         return path
@@ -984,23 +984,18 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     first_bezier_turn = compute_bezier_points(a2,b,b1)
     second_bezier_turn = compute_bezier_points(b2,c,c1)
     third_bezier_turn = compute_bezier_points(c2,d,d1)
-    #fourth_bezier_turn = compute_bezier_points(d2,a,a1)
     fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
 
     maneuverStartDistance = getAuditDependentConfigParam(config.MANEUVER_START_DISTANCE,"MANEUVER_START_DISTANCE",logger)
 
-
     turning_radius = maneuverStartDistance   # minimum turning radius given in millimeter
     rnd = 0
     rnds = corner_finish_rounds(turning_radius)
-    print(" corner rounds :" ,str(rnds))
 
     for rnd in range(rnds+1):             # example a 3meter radius requires 4 corners finish
         # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
         mxt = "corner rnd "+str(rnd)+"/"+str(rnds)
-        
-        print(mxt)
-        
+                
         #the direction is given along with the point in meter per second, signed
         #go to line forward, step back to the turning point "a1"
 
@@ -1075,12 +1070,21 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         b1, b2 = compute_x1_x2_points(b, c, nav, logger)
         c1, c2 = compute_x1_x2_points(c, d, nav, logger)
         d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-        a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
-        d_spiral, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
         for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
             if point is None:
                 return path
+
+        a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
+        _, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
+
+        for point in [a1_spiral, a_spiral]:
+            if point is None:
+                if not _break:
+                    _break = True
+                    break
+        if _break : 
+            break
 
         first_bezier_turn = compute_bezier_points(a2,b,b1)
         second_bezier_turn = compute_bezier_points(b2,c,c1)
@@ -1118,9 +1122,9 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             break
 
         a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
-        d_spiral, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
+        _ , a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
-        for point in [a1_spiral,d_spiral,a_spiral]:
+        for point in [a1_spiral, a_spiral]:
             if point is None:
                 if not _break:
                     _break = True
