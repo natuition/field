@@ -54,7 +54,7 @@
             <input class="form-check-input" type="checkbox" id="targetMoveDone" onclick="enableNext()">
             <label class="form-check-label" for="targetMoveDone">Move to target done</label>
         </div>
-        <button type="button" id="next" class="btn btn-danger" onclick="window.location.href=next_page_href">Next</button>
+        <button type="button" id="next" class="btn btn-danger" onclick="socketio.emit('validate_log', {'key': 'Camera offset', 'value': 'OK'});sleep(1000).then(() => {window.location.href=next_page_href});">Next</button>
     </div>
     <script>
         function enableNext(){
@@ -94,6 +94,9 @@
             }
         });
 
+        function sleep (time) {
+            return new Promise((resolve) => setTimeout(resolve, time));
+        }
     </script>
 </body>
 </html>

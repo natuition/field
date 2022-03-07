@@ -6,11 +6,19 @@
     <title>Server deployement</title>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <style>
-        html, body
-        {
-            padding: 0;
-            margin: 0;
-            height: 100%;
+        .KO{
+            color: red!important;
+        }
+        .OK{
+            color: green!important;
+        }
+        @media print {
+            .noPrint{
+                display:none;
+            }
+        }
+        body{
+            margin: 10px !important;
         }
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
@@ -20,6 +28,22 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
 </head>
 <body>
-    <h1 style="text-align: center; padding: 10px 0;">Setup is finish, good job.</h1>
+    <img class="d-block mx-auto w-25 mb-3" src="{{ url_for('static', filename='logo_doc.png') }}" alt="logo">
+    <h2>Final report :</h2>
+    <form method="POST" action="/final">
+        <table class="table table-hover table-striped">
+            {% for key, value in answer.items() %}
+            <tr>
+                <th> {{ key }} </th>
+                <td class="{{ value }}"> {{ value }} </td>
+
+            </tr>
+            {% endfor %}
+        </table>
+
+    </form>
+    <button onclick="window.print();" class="noPrint">
+        Print Me
+    </button>
 </body>
 </html>

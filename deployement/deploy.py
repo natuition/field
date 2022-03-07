@@ -35,10 +35,25 @@ log.disabled = True
 Payload.max_decode_packets = 500
 socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
 
+#Global vars
 smoothie: adapters.SmoothieAdapter = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
 cameraCalibration: CameraCalibration = CameraCalibration()
 offset_x, offset_y = 0,0
 technicien = None
+d = utility.get_current_time().split(" ")[0].split("-")
+h = utility.get_current_time().split(" ")[1].split("-")
+Date = f"{d[0]}/{d[1]}/{d[2]} à {h[0]}h {h[1]}min"
+
+LOG = {
+    'Date': Date, 
+    'Technicien': 'KO',
+    'Vesc foc': 'KO',
+    'X Y DIR setup': 'KO',
+    'Camera focus': 'KO',
+    'Camera crop': 'KO',
+    'Camera offset': 'KO'
+}
+
 
 @app.route("/show_pdf/<filename>")
 def show_pdf(filename):
@@ -59,14 +74,21 @@ def register():
     result = request.form
     global technicien
     technicien = result['technicien']
+    LOG["Technicien"] = technicien
     return redirect("/vesc_foc")
 
 @app.route("/vesc_foc")
 def vesc_foc():
+    global technicien
+    if technicien is None:
+        return redirect("/")
     return render_template('vesc_foc.html')
 
 @app.route("/x_y_dir")
 def x_y_dir():
+    global technicien
+    if technicien is None:
+        return redirect("/")
     global smoothie
     if smoothie is None and not in_reset:
         smoothie = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
@@ -74,12 +96,18 @@ def x_y_dir():
 
 @app.route("/camera_focus")
 def camera_focus():
+    global technicien
+    if technicien is None:
+        return redirect("/")
     global cameraCalibration
     cameraCalibration.focus_adjustment_step()
     return render_template('camera_focus.html')
 
 @app.route("/camera_crop_picture")
 def camera_crop_picture():
+    global technicien
+    if technicien is None:
+        return redirect("/")
     global cameraCalibration
     try:
         cameraCalibration.focus_adjustment_step_validate()
@@ -89,6 +117,9 @@ def camera_crop_picture():
 
 @app.route("/camera_target_detection")
 def camera_target_detection():
+    global technicien
+    if technicien is None:
+        return redirect("/")
     global smoothie
     res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
     smoothie.wait_for_all_actions_done()
@@ -102,12 +133,26 @@ def camera_target_detection():
 
 @app.route("/camera_target_move")
 def camera_target_move():
+    global technicien
+    global cameraCalibration
+    if technicien is None:
+        return redirect("/")
+    if cameraCalibration.target_x is None:
+        return redirect("/camera_target_detection")
     return render_template('camera_target_move.html')
 
 @app.route("/end")
 def end():
+    global technicien
+    if technicien is None:
+        return redirect("/")
     print(offset_x, offset_y)
-    return render_template('end.html')
+    return render_template('end.html', answer = LOG)
+
+@socketio.on('validate_log', namespace='/server')
+def on_validate_log(data):
+    global LOG
+    LOG[data["key"]] = data["value"]
 
 @socketio.on('run_round_detection', namespace='/server')
 def on_run_round_detection(data):

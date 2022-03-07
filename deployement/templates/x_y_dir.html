@@ -77,7 +77,7 @@
             <input class="form-check-input check" type="checkbox" id="dirDone" onclick="enableNext()">
             <label class="form-check-label" for="dirDone">Dir axis done</label>
         </div>
-        <button type="button" id="next" class="btn btn-danger" onclick="window.location.href=next_page_href">Next</button>
+        <button type="button" id="next" class="btn btn-danger" onclick="socketio.emit('validate_log', {'key': 'X Y DIR setup', 'value': 'OK'});window.location.href=next_page_href">Next</button>
     </div>
     <script>
         function invertSwitch(){

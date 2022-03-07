@@ -36,7 +36,7 @@
             <input class="form-check-input" type="checkbox" id="roundDetectionDone" onclick="enableNext()">
             <label class="form-check-label" for="roundDetectionDone">Round detection done</label>
         </div>
-        <button type="button" id="next" class="btn btn-danger" onclick="window.location.href=next_page_href">Next</button>
+        <button type="button" id="next" class="btn btn-danger" onclick="socketio.emit('validate_log', {'key': 'Camera crop', 'value': 'OK'});window.location.href=next_page_href">Next</button>
     </div>
     <script>
         var url_cam = 'http://' + document.domain + ':8080/video';
