@@ -128,7 +128,6 @@ def cam():
     if request.method == 'GET':
         os.system("sudo systemctl restart nvargus-daemon")
         camSP=startLiveCam()
-        time.sleep(5)
         return render_template('cam.html')
     else:
         LOG['CAMERA']= 'OK'
