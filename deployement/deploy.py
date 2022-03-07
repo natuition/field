@@ -13,6 +13,7 @@ import serial
 import json
 from flask_cors import CORS
 import shutil
+import subprocess
 
 import importlib
 import sys
@@ -168,11 +169,21 @@ def on_client_config(data):
             shutil.copyfile(f"./services/{service}", f"/etc/systemd/system/{service}")
             os.system(f"sudo systemctl enable {service}")
         LOG["Client configuration apply"] = "OK"
-        utility.create_directories(f"configFinal{config.ROBOT_SN}")
-        os.system(f"sudo rm ./configFinal{config.ROBOT_SN}/*")
+        utility.create_directories(f"configFinal{config.ROBOT_SN}","/media/smoothie")
+        #python_conf
+        os.system(f"sudo rm -f ./configFinal{config.ROBOT_SN}/*")
         d = utility.get_current_time().split(" ")[0].split("-")
         config_final_path = f"./configFinal{config.ROBOT_SN}/config_{d[0]}_{d[1]}_{d[2]}.py"
         shutil.copyfile(f"../config/config.py", config_final_path)
+        shutil.chown(config_final_path, "violette", "violette")
+        #smoothie_conf
+        disks = json.loads(subprocess.check_output(['lsblk', '-Jo', 'KNAME,SIZE,TYPE']).decode("utf-8"))["blockdevices"]
+        disk = [disk for disk in disks if disk["type"]=="part" and disk["size"]=="14,9G"][0]
+        os.system(f"sudo mount /dev/{disk['kname']} /media/smoothie")
+        d = utility.get_current_time().split(" ")[0].split("-")
+        config_final_path = f"./configFinal{config.ROBOT_SN}/config_{d[0]}_{d[1]}_{d[2]}.txt"
+        shutil.copyfile(f"/media/smoothie/config", config_final_path)
+        os.system(f"sudo umount -l /dev/{disk['kname']}")
         shutil.chown(config_final_path, "violette", "violette")
         socketio.emit('apply_config', {'apply_done': True}, namespace='/server', broadcast=True)
 
