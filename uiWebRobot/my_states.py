@@ -773,6 +773,12 @@ class ErrorState(State):
     def getField(self):
         return self.field
 
+    def on_socket_data(self, data):
+        return self
+
+    def on_event(self, event):
+        return self
+
 ###### Class for all state/ functions ######
 
 class FieldCreator:
