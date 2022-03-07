@@ -20,7 +20,11 @@ import utility
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-app.config['DEBUG'] = True
+CORS(app)
+app.config['DEBUG'] = False
+app.logger.disabled = True
+log = logging.getLogger('werkzeug')
+log.disabled = True
 
 socketio = SocketIO(app, async_mode=None, logger=True, engineio_logger=True)
 
