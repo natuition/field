@@ -12,6 +12,7 @@ import time
 import serial
 import json
 from flask_cors import CORS
+import shutil
 
 import importlib
 import sys
@@ -49,7 +50,8 @@ LOG = {
     'X Y DIR setup': 'KO',
     'Camera focus': 'KO',
     'Camera crop': 'KO',
-    'Camera offset': 'KO'
+    'Camera offset': 'KO',
+    'Client configuration apply': 'KO'
 }
 
 
@@ -143,6 +145,14 @@ def camera_target_move():
         return redirect("/camera_target_detection")
     return render_template('camera_target_move.html')
 
+@app.route("/client_config")
+def client_config():
+    global technicien
+    if technicien is None:
+        return redirect("/")
+    #offset_x, offset_y
+    return render_template('client_config.html')
+
 @app.route("/end")
 def end():
     global technicien
@@ -150,6 +160,15 @@ def end():
         return redirect("/")
     print(offset_x, offset_y)
     return render_template('end.html', answer = LOG)
+
+@socketio.on('client_config', namespace='/server')
+def on_client_config(data):
+    if data["apply"]:
+        for service in ["ntripClient.service","UI.service","configBackup.service"]:
+            shutil.copyfile(f"./services/{service}", f"/etc/systemd/system/{service}")
+            os.system(f"sudo systemctl enable {service}")
+        LOG["Client configuration apply"] = "OK"
+        socketio.emit('apply_config', {'apply_done': True}, namespace='/server', broadcast=True)
 
 @socketio.on('validate_log', namespace='/server')
 def on_validate_log(data):
