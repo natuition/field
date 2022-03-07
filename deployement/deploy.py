@@ -169,7 +169,11 @@ def on_client_config(data):
             os.system(f"sudo systemctl enable {service}")
         LOG["Client configuration apply"] = "OK"
         utility.create_directories(f"configFinal{config.ROBOT_SN}")
-        shutil.copyfile(f"../config/config.py", f"./configFinal{config.ROBOT_SN}/config.py")
+        os.system(f"sudo rm ./configFinal{config.ROBOT_SN}/*")
+        d = utility.get_current_time().split(" ")[0].split("-")
+        config_final_path = f"./configFinal{config.ROBOT_SN}/config_{d[0]}_{d[1]}_{d[2]}.py"
+        shutil.copyfile(f"../config/config.py", config_final_path)
+        shutil.chown(config_final_path, "violette", "violette")
         socketio.emit('apply_config', {'apply_done': True}, namespace='/server', broadcast=True)
 
 @socketio.on('validate_log', namespace='/server')
