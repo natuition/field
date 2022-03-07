@@ -1,19 +1,42 @@
 <!DOCTYPE html>
 <html>
+
 <body>
 
-<h1>Robot camera view :</h1>
+  <h1>Robot camera view :</h1>
 
-<form method="POST" action="/cam">
-  <img id="frameCam" src="http://192.168.11.137:8080/video" style="margin: 25px 0px 0px 45px; width: 80%; border-radius: 20px;" >
-  <br>
-  <input type="submit" value="Next">
-</form>
+  <form method="POST" action="/cam">
+    <img id="frameCam" src="http://192.168.11.137:8080/video"
+      style="margin: 25px 0px 0px 45px; width: 80%; border-radius: 20px;">
+    <br>
+    <input type="submit" value="Next">
+  </form>
 
 </body>
+
 </html>
 
 <script>
-  url = window.location.origin+":8080/video"
-  document.getElementById("frameCam").setAttribute("src",url);
+  var url_cam = 'http://' + document.domain + ':8080/video';
+  var iframe_verif;
+
+  function verif_iframe_stop() {
+    clearInterval(iframe_verif);
+  }
+
+  function verif_iframe_start() {
+    iframe_verif = setInterval(() => {
+      try {
+        $.ajax({
+          type: "HEAD",
+          async: true,
+          url: url_cam
+        })
+          .done(function () {
+            document.getElementById("camera_video").src = url_cam;
+            verif_iframe_stop();
+          })
+      } catch (e) { }
+    }, 1000);
+  }
 </script>
