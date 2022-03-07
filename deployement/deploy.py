@@ -150,7 +150,8 @@ def client_config():
     global technicien
     if technicien is None:
         return redirect("/")
-    #offset_x, offset_y
+    changeConfigValue("CORK_TO_CAMERA_DISTANCE_X",config.CORK_TO_CAMERA_DISTANCE_X+offset_x)
+    changeConfigValue("CORK_TO_CAMERA_DISTANCE_Y",config.CORK_TO_CAMERA_DISTANCE_Y+offset_y)
     return render_template('client_config.html')
 
 @app.route("/end")
@@ -158,7 +159,6 @@ def end():
     global technicien
     if technicien is None:
         return redirect("/")
-    print(offset_x, offset_y)
     return render_template('end.html', answer = LOG)
 
 @socketio.on('client_config', namespace='/server')
