@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>Robot camera view :</h1>
+
+<form method="POST" action="/cam">
+  <img id="frameCam" src="http://192.168.11.137:8080/video" style="margin: 25px 0px 0px 45px; width: 80%; border-radius: 20px;" >
+  <br>
+  <input type="submit" value="Next">
+</form>
+
+</body>
+</html>
+
+<script>
+  url = window.location.origin+":8080/video"
+  document.getElementById("frameCam").setAttribute("src",url);
+</script>

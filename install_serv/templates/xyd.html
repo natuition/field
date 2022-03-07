@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        .btn {
+            margin-bottom: 5px;
+        }
+    </style>
+    <link href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/application.js') }}"></script>
+</head>
+
+<body style="margin: 5px;">
+
+    <h2>Smoothie cabling check</h2>
+    <h2>Smoothie answer: <p id="answer"> {{ answer }} </p>
+    </h2>
+
+    <form id="smoothie_check" method="POST" action="/xyd">
+        <button type="button" value="x+" name="x" class="btn btn-primary"
+            onclick="document.getElementById('x+').removeAttribute('disabled'); send_action(this.value);">
+            x+
+        </button>
+        <input type="checkbox" id="x+" name="x+" disabled> <br>
+        <button type="button" value="x-" name="x" class="btn btn-primary"
+            onclick="document.getElementById('x-').removeAttribute('disabled'); send_action(this.value);">
+            x-
+        </button>
+        <input type="checkbox" id="x-" name="x-" disabled> <br>
+        <button type="button" value="y+" name="x" class="btn btn-primary"
+            onclick="document.getElementById('y+').removeAttribute('disabled'); send_action(this.value);">
+            y+
+        </button>
+        <input type="checkbox" id="y+" name="y+" disabled> <br>
+        <button type="button" value="y-" name="x" class="btn btn-primary"
+            onclick="document.getElementById('y-').removeAttribute('disabled'); send_action(this.value);">
+            y-
+        </button>
+        <input type="checkbox" id="y-" name="y-" disabled> <br>
+        <button type="button" value="d+" name="x" class="btn btn-primary"
+            onclick="document.getElementById('d+').removeAttribute('disabled'); send_action(this.value);">
+            d+
+        </button>
+        <input type="checkbox" id="d+" name="d+" disabled> <br>
+        <button type="button" value="d-" name="x" class="btn btn-primary"
+            onclick="document.getElementById('d-').removeAttribute('disabled'); send_action(this.value);">
+            d-
+        </button>
+        <input type="checkbox" id="d-" name="d-" disabled> <br>
+        <button type="button" value="esx" name="x" class="btn btn-primary"
+            onclick="document.getElementById('esx').removeAttribute('disabled'); send_action(this.value);">
+            esx
+        </button>
+        <input type="checkbox" id="esx" name="esx" disabled> <br>
+        <button type="button" value="esy" name="x" class="btn btn-primary"
+            onclick="document.getElementById('esy').removeAttribute('disabled'); send_action(this.value);">
+            esy
+        </button>
+        <input type="checkbox" id="esy" name="esy" disabled> <br>
+        <button type="button" value="esz" name="x" class="btn btn-primary"
+            onclick="document.getElementById('esz').removeAttribute('disabled'); send_action(this.value);">
+            esz
+        </button>
+        <input type="checkbox" id="esz" name="esz" disabled> <br>
+        <input type="submit" name="x" value="next"> <br>
+        </div>
+    </form>
+</body>
+
+</html>
