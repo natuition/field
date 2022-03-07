@@ -77,8 +77,8 @@ class CheckState(State):
                     self.cam.wait()
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-            except:
-                pass
+            except Exception as e:
+                self.logger.write_and_flush(e+"\n")
             return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
@@ -92,7 +92,8 @@ class CheckState(State):
                             changeConfigValue(content.split("=")[0],content.split("=")[1])
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-            except:
+            except Exception as e:
+                self.logger.write_and_flush(e+"\n")
                 return ErrorState(self.socketio, self.logger)
         elif data["type"] == 'getInputVoltage':
             sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
@@ -259,8 +260,8 @@ class WaitWorkingState(State):
                     self.gps = None
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-            except:
-                pass
+            except Exception as e:
+                self.logger.write_and_flush(e+"\n")
             return ErrorState(self.socketio, self.logger)
     
     def on_socket_data(self, data):
@@ -421,8 +422,8 @@ class CreateFieldState(State):
                     self.gps = None
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-            except:
-                pass
+            except Exception as e:
+                self.logger.write_and_flush(e+"\n")
             return ErrorState(self.socketio, self.logger)   
 
     def on_socket_data(self, data):
