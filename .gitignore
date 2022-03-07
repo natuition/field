@@ -133,8 +133,7 @@ path_index.txt
 path_points.dat
 uiWebRobot/logs/
 *.txt
-deployement/scene_center.jpg
-
+deployement/*.jpg
 manual_photos_maker/
 test_max_detect/
-field.txt
+deployement/configFinalSN*
