@@ -40,9 +40,7 @@ smoothie: adapters.SmoothieAdapter = adapters.SmoothieAdapter(utility.get_smooth
 cameraCalibration: CameraCalibration = CameraCalibration()
 offset_x, offset_y = 0,0
 technicien = None
-d = utility.get_current_time().split(" ")[0].split("-")
-h = utility.get_current_time().split(" ")[1].split("-")
-Date = f"{d[0]}/{d[1]}/{d[2]} à {h[0]}h {h[1]}min"
+Date = None
 
 LOG = {
     'Date': Date, 
@@ -75,6 +73,10 @@ def register():
     global technicien
     technicien = result['technicien']
     LOG["Technicien"] = technicien
+    d = utility.get_current_time().split(" ")[0].split("-")
+    h = utility.get_current_time().split(" ")[1].split("-")
+    Date = f"{d[0]}/{d[1]}/{d[2]} à {h[0]}h {h[1]}min"
+    LOG["Date"] = Date
     return redirect("/vesc_foc")
 
 @app.route("/vesc_foc")
