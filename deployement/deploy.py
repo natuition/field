@@ -1,5 +1,5 @@
 from tkinter import E
-from flask import Flask, send_from_directory, make_response, render_template
+from flask import Flask, send_from_directory, make_response, render_template, redirect, request
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 import re
@@ -38,6 +38,7 @@ socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
 smoothie: adapters.SmoothieAdapter = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
 cameraCalibration: CameraCalibration = CameraCalibration()
 offset_x, offset_y = 0,0
+technicien = None
 
 @app.route("/show_pdf/<filename>")
 def show_pdf(filename):
@@ -50,6 +51,17 @@ def show_pdf(filename):
     return response
 
 @app.route("/")
+def home():
+    return render_template('home.html')
+
+@app.route('/register',methods = ['POST'])
+def register():
+    result = request.form
+    global technicien
+    technicien = result['technicien']
+    return redirect("/vesc_foc")
+
+@app.route("/vesc_foc")
 def vesc_foc():
     return render_template('vesc_foc.html')
 

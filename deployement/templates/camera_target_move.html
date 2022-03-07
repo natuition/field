@@ -3,7 +3,7 @@
 <head>
     <meta charset='utf-8'>
     <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-    <title>Page Title</title>
+    <title>Server deployement</title>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <style>
         html, body
@@ -17,6 +17,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script> 
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
     <script>
         var next_page_href = 'http://' + document.domain + ':' + location.port + '/end';
         var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');

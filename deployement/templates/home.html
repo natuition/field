@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Server deployement</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+</head>
+
+<body>
+    <h1 style="text-align: center; padding: 10px 0;">Register this deployement</h1>
+    <form class="w-75 m-auto" action="/register" method="post">
+        <div class="form-group">
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="basic-addon1">Technicien :</span>
+                </div>
+                <input type="text" class="form-control" id="technicien_input" name="technicien" placeholder="Enter your technician abbreviation" required="required" pattern="[A-Za-z0-9]{1,20}">
+            </div>
+        </div>
+        <div class="text-end">
+            <button type="submit" class="btn btn-outline-success">Submit</button>
+        </div>
+    </form>
+</body>
+
+</html>
