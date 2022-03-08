@@ -14,6 +14,7 @@ function checkAllBoxAreChecked(){
         document.getElementById('Z').checked &&
         document.getElementById('camera').checked && 
         document.getElementById('wheelsStraight').checked && 
+        document.getElementById("voltage_indicator").getAttribute("bumper_disable") &&
         isCheck == false){
     		console.log("User all check !")
             $('#checkbutton').attr('disabled', ''); 
@@ -32,7 +33,8 @@ function activateNext(){
         document.getElementById('opencover').checked &&
         document.getElementById('Z').checked &&
         document.getElementById('camera').checked && 
-        document.getElementById('wheelsStraight').checked){
+        document.getElementById('wheelsStraight').checked &&
+        document.getElementById("voltage_indicator").getAttribute("bumper_disable") == "true"){
             $('#checkbutton').removeAttr('disabled');   
             $('#checkbutton').removeClass('disabled');
     }else{

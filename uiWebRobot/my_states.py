@@ -40,8 +40,7 @@ class CheckState(State):
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
-            print(e)
-            self.on_event(Events.ERROR)
+            raise e
         
         self.statusOfUIObject = {
             "GPSWork" : False
@@ -78,7 +77,7 @@ class CheckState(State):
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                self.logger.write_and_flush(e+"\n")
+                self.logger.write_and_flush(str(e)+"\n")
             return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
@@ -140,9 +139,8 @@ class WaitWorkingState(State):
                 self.smoothie = initSmoothie(self.logger)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
-        except:
-            self.on_event(Events.ERROR)
-
+        except Exception as e:
+            raise e
 
         self.lastValueX = 0
         self.lastValueY = 0
@@ -345,8 +343,8 @@ class CreateFieldState(State):
             self.nav = navigation.GPSComputing()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
-        except:
-            self.on_event(Events.ERROR)
+        except Exception as e:
+            raise e
 
         self.statusOfUIObject = {
             "joystick": True, #True or False
@@ -745,9 +743,10 @@ class WorkingState(State):
 #This state corresponds when the robot has an error.
 class ErrorState(State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger):
+    def __init__(self, socketio: SocketIO, logger: utility.Logger, reason: str = None):
         self.socketio = socketio
         self.logger = logger
+        self.reason = reason
         msg = f"[{self.__class__.__name__}] -> Error"
         self.logger.write_and_flush(msg+"\n")
         print(msg)
@@ -768,6 +767,10 @@ class ErrorState(State):
 
         self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
 
+        msg = f"[{self.__class__.__name__}] -> Reload web page !"
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
+
     def getStatusOfControls(self):
         return self.statusOfUIObject
 
@@ -779,6 +782,9 @@ class ErrorState(State):
 
     def on_event(self, event):
         return self
+
+    def getReason(self):
+        return self.reason
 
 ###### Class for all state/ functions ######
 
@@ -903,7 +909,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage
     last_update = 0
     vesc_data = None
     while voltage_thread_alive():
-        if time.time() - last_update > 60*5 and voltage_thread_alive():
+        if time.time() - last_update > 5 and voltage_thread_alive():
             if vesc_engine is not None:
                 try:
                     vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
@@ -929,7 +935,10 @@ def send_last_pos_thread_tf(send_last_pos_thread_alive, gps, socketio):
             time.sleep(1)
 
 def sendInputVoltage(socketio, input_voltage):
-    input_voltage = round(float(input_voltage) * 2) / 2
+    try:
+        input_voltage = round(float(input_voltage) * 2) / 2
+    except ValueError:
+        pass
     socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
 
 def initVesc(logger: utility.Logger):
