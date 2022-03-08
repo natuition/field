@@ -42,6 +42,7 @@ class SmoothieAdapter:
         if res != self.RESPONSE_OK:
             # TODO: what if so?
             print("Switching smoothie to relative was failed! Smoothie's response:\n", res)
+            raise Exception("Switching smoothie to relative was failed!")
 
         if calibration_at_init:
             # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
@@ -53,6 +54,7 @@ class SmoothieAdapter:
             res = self.ext_calibrate_cork()
             if res != self.RESPONSE_OK:
                 print("Initial cork calibration was failed, smoothie response:\n", res)  # TODO: what if so??
+                raise Exception("Initial cork calibration was failed!")
 
     def __enter__(self):
         return self
