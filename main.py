@@ -970,6 +970,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
 
     spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
 
+    _break = False
+
     # get moving points A1 - ... - D2 spiral
     a1, a2 = compute_x1_x2_points(a, b, nav, logger)
     b1, b2 = compute_x1_x2_points(b, c, nav, logger)
@@ -1090,8 +1092,6 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         second_bezier_turn = compute_bezier_points(b2,c,c1)
         third_bezier_turn = compute_bezier_points(c2,d,d1)
         fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
-
-    _break = False
 
     while True:
         # get A'B'C'D' (prepare next ABCD points)
@@ -1314,33 +1314,20 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapter, gps: adapters.GP
     return field
 
 
-def send_gps_history_from_file(ui_msg_queue: posix_ipc.MessageQueue,
-                               gps_file_dir: str,
-                               gps_file_name: str,
-                               logger_full: utility.Logger):
-    """Loads gps points from a given file (if it exists) and sends them using given message queue
+def send_name_of_file_of_gps_history(ui_msg_queue: posix_ipc.MessageQueue,
+                                     gps_file_dir: str,
+                                     gps_file_name: str,
+                                     logger_full: utility.Logger):
+    """Send name of file if it exists using given message queue
     """
 
     if os.path.isfile(gps_file_dir + gps_file_name):
-        with open(gps_file_dir + gps_file_name, "r") as gps_his_file:
-            all_points = list()
-            last_gps_quality = 0
-            for line in gps_his_file.readlines():
-                if line.startswith("[") and line.endswith("]\n"):
-                    parsed_point = line[1:-1].split(", ")
-                    all_points.append([float(parsed_point[1]), float(parsed_point[0])])
-                    last_gps_quality = parsed_point[2].replace("'", "")
-            if all_points:
-                try:
-                    ui_msg_queue.send(json.dumps({"last_gps_list": all_points, "last_gps_quality": last_gps_quality}))
-                except (IndexError, ValueError):
-                    pass
+        ui_msg_queue.send(json.dumps({"last_gps_list_file": gps_file_dir + gps_file_name}))
     else:
         msg = f"Could not find {gps_file_dir}/used_gps_history.txt file to send previous points to the web UI"
         logger_full.write(msg + "\n")
         if config.VERBOSE:
             print(msg)
-
 
 def main():
     time_start = utility.get_current_time()
@@ -1436,7 +1423,7 @@ def main():
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
         if ui_msg_queue is not None:
-            send_gps_history_from_file(ui_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
+            send_name_of_file_of_gps_history(ui_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
         else:
             msg = "GPS message queue connection is not established (None), canceling gps sending to UI"
             logger_full.write(msg + "\n")
