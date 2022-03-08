@@ -392,8 +392,8 @@ FILTER_EXTRACTED_PLANTS = True
 FILTER_EXT_PLANTS_TRIGGER_DIST = 25  # px; trigger distance for previous option key
 
 MAKE_MANEUVER_AFTER_FIELD_CREATE = True
-MANEUVER_TIME_BACKWARD = 3 #6
-MANEUVER_TIME_FORWARD = 3 #7
+MANEUVER_TIME_BACKWARD = 3 #6 for 12V, 3 for 24V
+MANEUVER_TIME_FORWARD = 4 #7 for 12V, 4 for 24V
 
 # ======================================================================================================================
 # PREDICTION SETTINGS
