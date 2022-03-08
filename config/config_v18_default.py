@@ -391,6 +391,9 @@ DEBUG_MATRIX_FILE = False
 FILTER_EXTRACTED_PLANTS = True
 FILTER_EXT_PLANTS_TRIGGER_DIST = 25  # px; trigger distance for previous option key
 
+MAKE_MANEUVER_AFTER_FIELD_CREATE = True
+MANEUVER_TIME_BACKWARD = 3 #6
+MANEUVER_TIME_FORWARD = 3 #7
 
 # ======================================================================================================================
 # PREDICTION SETTINGS

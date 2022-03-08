@@ -41,7 +41,7 @@ function createMap(coords_field,coords_other){
         x_center /= cpt
         y_center /= cpt
 
-        var zoom = 17;
+        var zoom = 17.5;
 
     }else{
         y_center = 48.85304;
@@ -174,7 +174,7 @@ function createMap(coords_field,coords_other){
                     'type': 'Feature',
                     'geometry': {
                         'type': 'Point',
-                        'coordinates': coords_field[coords_field.length - 2]
+                        'coordinates': coords_field[coords_field.length - 1]
                     }
                 }
             });    
@@ -183,8 +183,8 @@ function createMap(coords_field,coords_other){
                 'type': 'circle',
                 'source': 'field_start',
                 'paint': {
-                    'circle-radius': 6,
-                    'circle-color': '#0620FB'
+                    'circle-radius': 3,
+                    'circle-color': '#2BFAFA'
                 }
             });
         }

@@ -391,7 +391,8 @@ class CreateFieldState(State):
             self.field = self.fieldCreator.calculateField()
             if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
                 self.manoeuvre = True
-                self.fieldCreator.manoeuvre()
+                if config.MAKE_MANEUVER_AFTER_FIELD_CREATE:
+                    self.fieldCreator.manoeuvre()
                 self.manoeuvre = False
             self.statusOfUIObject["stopButton"] = None
             self.statusOfUIObject["fieldButton"] = "validate"
@@ -885,7 +886,7 @@ class FieldCreator:
 
     def manoeuvre(self):
         self.vesc_emergency.apply_rpm(-config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
-        self.vesc_emergency.set_moving_time(6)
+        self.vesc_emergency.set_moving_time(config.MANEUVER_TIME_BACKWARD)
         self.vesc_emergency.start_moving()
         self.vesc_emergency.wait_for_stop()
 
@@ -893,7 +894,7 @@ class FieldCreator:
         self.smoothie.wait_for_all_actions_done()
 
         self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
-        self.vesc_emergency.set_moving_time(7)
+        self.vesc_emergency.set_moving_time(config.MANEUVER_TIME_FORWARD)
         self.vesc_emergency.start_moving()
         self.vesc_emergency.wait_for_stop()
 

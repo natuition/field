@@ -12,5 +12,8 @@ socketVoltage.on('update', function(data) {
         voltage_indicator.setAttribute("bumper_disable", false);
         $("#voltage_indicator").parent().css("background-color", "#FF3232" );
     }
-    activateNext();
+    if (typeof activateNext !== "undefined") { 
+        activateNext();
+    }
+    
 });
