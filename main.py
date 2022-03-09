@@ -297,7 +297,9 @@ def move_to_point_and_extract(coords_from_to: list,
             # slow mode
             if current_working_mode == working_mode_slow:
                 if config.VERBOSE and last_working_mode != current_working_mode:
-                    print("[Working mode] : slow")
+                    msg = "[Working mode] : slow"
+                    logger_full.write_and_flush(msg+"\n")
+                    print(msg)
                     last_working_mode = current_working_mode
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
@@ -354,7 +356,9 @@ def move_to_point_and_extract(coords_from_to: list,
             # fast mode
             elif current_working_mode == working_mode_fast:
                 if config.VERBOSE and last_working_mode != current_working_mode:
-                    print("[Working mode] : fast")
+                    msg = "[Working mode] : fast"
+                    logger_full.write_and_flush(msg+"\n")
+                    print(msg)
                     last_working_mode = current_working_mode
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
