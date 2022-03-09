@@ -20,7 +20,7 @@ const wheelButton = document.querySelector('#Wheel');
 const removeFieldButton = document.querySelector('#RemoveField');
 const choose_field_selector = document.querySelector('#field_selector');
 
-if(auditButton != null) auditButton.addEventListener('click', changeMode);
+//if(auditButton != null) auditButton.addEventListener('click', changeMode);
 if(newFieldButton != null) newFieldButton.addEventListener('click', clickHandler);
 else{
     newFieldButton = document.querySelector('#ValidateZone');
