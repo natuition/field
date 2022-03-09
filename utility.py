@@ -10,7 +10,6 @@ import detection
 import cv2 as cv
 import math
 import adapters
-import navigation
 from config import config
 import time
 from pytz import timezone
@@ -334,7 +333,7 @@ def distribution_of_values(samples: list, mu, sigma):
 
 
 
-def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySaver,nav: navigation.GPSComputing, logger: Logger=None):
+def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySaver,nav, logger: Logger=None):
 
     #ORIGIN POINT SAVING
     lat = []     #latitude history
@@ -349,8 +348,8 @@ def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySav
             msg = f"Get {i+1}/{config.ORIGIN_AVERAGE_SAMPLES} point in {time.time()-prev_maneuver_time} for average_point."
             if logger is not None:
                 logger.write_and_flush(msg+"\n")
-            if config.VERBOSE:
-                print(msg)
+            #if config.VERBOSE:
+            #    print(msg)
         except TimeoutError:
             msg = f"Erro waiting time too long for the {i+1} point in average_point !"
             if logger is not None:
@@ -365,7 +364,6 @@ def average_point( gps: adapters.GPSUbloxAdapter,trajectory_saver: TrajectorySav
         distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
         #print("| ",get_current_time()," | %2.2f"%distance, " | ", prev_pos, "|")
         distances.append(distance)
-        time.sleep(0.950)
     
     mu_distance, sigma_distance = mu_sigma(distances)
     #print("stat lattitude : \n")

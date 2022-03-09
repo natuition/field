@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet">
+  <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+</head>
+
+<body>
+
+  <h2>GPS</h2>
+  <h2>
+    <p> {{ answer }} </p>
+  </h2>
+  <form method="POST" action="/gps">
+    <label for="App">config</label>
+    <input type="checkbox" id="config" name="config"> <br>
+    <input type="submit" name='x' value="test_gps">
+    <input type="checkbox" id="test_gps" name="test_gps"> <br>
+    <!-- Rounded switch -->
+    <label class="switch">
+      <input type="checkbox">
+      <span class="slider round"></span>
+    </label>
+    <input type="submit" name='x' value='next'>
+
+  </form>
+
+</body>
+
+</html>

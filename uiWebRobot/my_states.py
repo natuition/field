@@ -31,14 +31,16 @@ class CheckState(State):
     def __init__(self, socketio: SocketIO, logger: utility.Logger):
         self.socketio = socketio
         self.logger = logger
-        
+        self.cam = None
         try:
             msg = f"[{self.__class__.__name__}] -> startLiveCam"
             self.logger.write_and_flush(msg+"\n")
             print(msg)
             self.cam = startLiveCam()
-        except:
-            self.on_event(Events.ERROR)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise e
         
         self.statusOfUIObject = {
             "GPSWork" : False
@@ -46,38 +48,57 @@ class CheckState(State):
 
         self.field = None
 
-        #self.thread = threading.Thread(target=checkHaveGPS, args=[self.socketio,self.statusOfUIObject], daemon=True)
-        #self.thread.start()
+        msg = f"[{self.__class__.__name__}] -> initVesc"
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
+        self.vesc_engine = initVesc(self.logger)
+
+        self.__voltage_thread_alive = True
+        self.input_voltage = {"input_voltage": "?"}
+        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(lambda : self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
+        self.__voltage_thread.start()
 
     def on_event(self, event):
         if event == Events.LIST_VALIDATION:
-            self.cam.send_signal(signal.SIGINT)
-            self.cam.send_signal(signal.SIGINT)
-            self.cam.wait()
-            os.system("sudo systemctl restart nvargus-daemon")
+            self.__voltage_thread_alive = False
+            if self.cam:
+                os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
+                self.cam.wait()
+                os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
                 os.system("sudo systemctl restart ntripClient.service")
-            return WaitWorkingState(self.socketio, self.logger, False)
+            return WaitWorkingState(self.socketio, self.logger, False, None, self.vesc_engine, None)
         else:
+            self.__voltage_thread_alive = False
             try:
-                self.cam.send_signal(signal.SIGINT)
-                self.cam.wait()
-            except:
-                pass
+                if self.cam:
+                    os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
+                    self.cam.wait()
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                self.logger.write_and_flush(str(e)+"\n")
             return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         if data["type"] == 'allChecked':
-            with open("../yolo/"+data["strategy"]+".conf") as file:
-                for line in file.readlines():
-                    content = line.split("#")[0]
-                    content = re.sub('[^0-9a-zA-Z._="/]+', '', content)
-                    if content:
-                        changeConfigValue(content.split("=")[0],content.split("=")[1])
-            return self
+            try:
+                with open("../yolo/"+data["strategy"]+".conf") as file:
+                    for line in file.readlines():
+                        content = line.split("#")[0]
+                        content = re.sub('[^0-9a-zA-Z._="/]+', '', content)
+                        if content:
+                            changeConfigValue(content.split("=")[0],content.split("=")[1])
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                self.logger.write_and_flush(e+"\n")
+                return ErrorState(self.socketio, self.logger)
+        elif data["type"] == 'getInputVoltage':
+            sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
         else:
-            return ErrorState(self.socketio, self.logger)
-
+            self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+        return self
 
     def getStatusOfControls(self):
         return self.statusOfUIObject
@@ -89,27 +110,37 @@ class CheckState(State):
 #This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
 class WaitWorkingState(State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger, createField: bool):
+    def __init__(self, socketio: SocketIO, logger: utility.Logger, createField: bool, smoothie: adapters.SmoothieAdapter, vesc_engine: adapters.VescAdapter, gps : adapters.GPSUbloxAdapter):
         self.socketio = socketio
         self.logger = logger
+        self.smoothie = smoothie
+        self.vesc_engine = vesc_engine
+        self.gps = gps
+
         try:
-            #msg = f"[{self.__class__.__name__}] -> initGPS"
-            #self.logger.write_and_flush(msg+"\n")
-            #print(msg)
-            #self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
-            msg = f"[{self.__class__.__name__}] -> initVesc"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
-            self.vesc_engine = initVesc(self.logger)
+            if self.gps is None:
+                msg = f"[{self.__class__.__name__}] -> initGPS"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+
+            if self.vesc_engine is None:
+                msg = f"[{self.__class__.__name__}] -> initVesc"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.vesc_engine = initVesc(self.logger)
+            self.vesc_engine.apply_rpm(0)
             self.vesc_engine.start_moving()
 
-            msg = f"[{self.__class__.__name__}] -> initSmoothie"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
-            self.smoothie = initSmoothie(self.logger)
-        except:
-            self.on_event(Events.ERROR)
-
+            if self.smoothie is None:
+                msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.smoothie = initSmoothie(self.logger)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise e
 
         self.lastValueX = 0
         self.lastValueY = 0
@@ -122,32 +153,48 @@ class WaitWorkingState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": True, #True or False
             "audit": False, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": True #True or False     
         }
 
         if createField:
             self.statusOfUIObject["continueButton"] = False
 
+        self.learn_go_straight_angle = 0
+
+        if config.LEARN_GO_STRAIGHT_UI:
+            if os.path.isfile(f"../{config.LEARN_GO_STRAIGHT_FILE}"):
+                with open(f"../{config.LEARN_GO_STRAIGHT_FILE}", "r") as learn_go_straight_file:
+                    self.learn_go_straight_angle = float(learn_go_straight_file.read())
+                    self.logger.write_and_flush(f"LEARN_GO_STRAIGHT:{self.learn_go_straight_angle}\n")
+                    self.smoothie.custom_move_to(A_F=config.A_F_UI, A=self.learn_go_straight_angle)
+
         self.socketio.emit('checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
 
         self.field = None
 
-        #lastPos = self.gps.get_last_position()
-        #socketio.emit('newPos', json.dumps([lastPos[1],lastPos[0]]), namespace='/map')
+        self.__send_last_pos_thread_alive = True
+        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
+        self._send_last_pos_thread.start()
+
+        self.__voltage_thread_alive = True
+        self.input_voltage = {"input_voltage": "?"}
+        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(lambda : self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
+        self.__voltage_thread.start()
 
     def on_event(self, event):
         if event == Events.CREATE_FIELD:
+            self.__send_last_pos_thread_alive = False
+            self.__voltage_thread_alive = False
             self.statusOfUIObject["fieldButton"] = "charging"
             self.statusOfUIObject["startButton"] = False
             self.statusOfUIObject["continueButton"] = False
             self.statusOfUIObject["joystick"] = False
             self.statusOfUIObject["audit"] = 'disable'
-            self.smoothie.disconnect()
-            self.vesc_engine.disconnect()
-            #self.gps.disconnect()
-            return CreateFieldState(self.socketio, self.logger)
+            return CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine, self.gps)
         elif event in [Events.START_MAIN,Events.START_AUDIT]:
+            self.__send_last_pos_thread_alive = False
+            self.__voltage_thread_alive = False
             self.statusOfUIObject["startButton"] = "charging"
             self.statusOfUIObject["fieldButton"] = False
             self.statusOfUIObject["continueButton"] = False
@@ -156,13 +203,19 @@ class WaitWorkingState(State):
                 self.statusOfUIObject["audit"] = 'not-use'
             elif event == Events.START_AUDIT:
                 self.statusOfUIObject["audit"] = 'use'
-            self.smoothie.disconnect()
-            self.vesc_engine.disconnect()
-            #self.gps.disconnect()
-            if event == Events.START_AUDIT:
-                return StartingState(self.socketio, self.logger, True)
-            return StartingState(self.socketio, self.logger)
+            if self.smoothie is not None:
+                self.smoothie.disconnect()
+                self.smoothie = None
+            if self.vesc_engine is not None:
+                self.vesc_engine.disconnect()
+                self.vesc_engine = None
+            if self.gps is not None:
+                self.gps.disconnect()
+                self.gps = None
+            return StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
         elif event in [Events.CONTINUE_MAIN,Events.CONTINUE_AUDIT]:
+            self.__send_last_pos_thread_alive = False
+            self.__voltage_thread_alive = False
             self.statusOfUIObject["continueButton"] = "charging"
             self.statusOfUIObject["startButton"] = False
             self.statusOfUIObject["fieldButton"] = False
@@ -171,12 +224,16 @@ class WaitWorkingState(State):
                 self.statusOfUIObject["audit"] = 'not-use'
             elif event == Events.CONTINUE_AUDIT:
                 self.statusOfUIObject["audit"] = 'use'
-            self.smoothie.disconnect()
-            self.vesc_engine.disconnect()
-            #self.gps.disconnect()
-            if event == Events.CONTINUE_AUDIT:
-                return ResumeState(self.socketio, self.logger, True)
-            return ResumeState(self.socketio, self.logger)
+            if self.smoothie is not None:
+                self.smoothie.disconnect()
+                self.smoothie = None
+            if self.vesc_engine is not None:
+                self.vesc_engine.disconnect()
+                self.vesc_engine = None
+            if self.gps is not None:
+                self.gps.disconnect()
+                self.gps = None
+            return ResumeState(self.socketio, self.logger, (event == Events.CONTINUE_AUDIT))
         elif event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
@@ -187,12 +244,22 @@ class WaitWorkingState(State):
             self.statusOfUIObject["audit"] = False
             return self
         else:
+            self.__send_last_pos_thread_alive = False
+            self.__voltage_thread_alive = False
             try:
-                self.smoothie.disconnect()
-                self.vesc_engine.disconnect()
-                #self.gps.disconnect()
-            except:
-                pass
+                if self.smoothie is not None:
+                    self.smoothie.disconnect()
+                    self.smoothie = None
+                if self.vesc_engine is not None:
+                    self.vesc_engine.disconnect()
+                    self.vesc_engine = None
+                if self.gps is not None:
+                    self.gps.disconnect()
+                    self.gps = None
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                self.logger.write_and_flush(e+"\n")
             return ErrorState(self.socketio, self.logger)
     
     def on_socket_data(self, data):
@@ -205,29 +272,32 @@ class WaitWorkingState(State):
                 x *= config.A_MAX/100
             y = int(data["y"])
             if self.lastValueX != x:
-                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x)
+                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x+self.learn_go_straight_angle)
                 self.lastValueX = x
             if self.lastValueY != y:
                 if y > 15 or y < -15:
-                    y = (y/100) * (config.VESC_RPM_UI*0.9) + (config.VESC_RPM_UI/10)
+                    y = (y/100) * (config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM*0.9) + (config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM/10)
                 else:
                     y = 0
                 self.vesc_engine.apply_rpm(y)
                 self.lastValueY = y
+
+        elif data["type"] == 'getInputVoltage':
+            sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
                 
-        if data["type"] == 'getField':
+        elif data["type"] == 'getField':
             
             coords, other_fields, current_field_name = updateFields(data["field_name"])
             fields_list = load_field_list("../fields")
             self.socketio.emit('newField', json.dumps({"field" : coords, "other_fields" : other_fields, "current_field_name" : current_field_name, "fields_list": fields_list}), namespace='/map')
 
-        if data["type"] == 'removeField':
+        elif data["type"] == 'removeField':
 
-            os.remove("../fields/"+quote(data["field_name"],safe="")+".txt")
+            os.remove("../fields/"+quote(data["field_name"],safe="", encoding='utf-8')+".txt")
             fields_list = load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="")+".txt' ../field.txt")
+                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="", encoding='utf-8')+".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(fields_list[0])
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
@@ -246,27 +316,35 @@ class WaitWorkingState(State):
 #This state corresponds when the robot is generating the work area.
 class CreateFieldState(State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger):
+    def __init__(self, socketio: SocketIO, logger: utility.Logger, smoothie: adapters.SmoothieAdapter, vesc_engine: adapters.VescAdapter, gps : adapters.GPSUbloxAdapter):
         self.socketio = socketio
         self.logger = logger
+        self.smoothie = smoothie
+        self.vesc_engine = vesc_engine
+        self.gps = gps
+
         self.socketio.emit('field', {"status": "pushed"}, namespace='/button', broadcast=True)
         try:
-            msg = f"[{self.__class__.__name__}] -> initSmoothie"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
-            self.smoothie = initSmoothie(self.logger)
+            if self.smoothie is None:
+                msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.smoothie = initSmoothie(self.logger)
 
-            msg = f"[{self.__class__.__name__}] -> initGPS"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
-            self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+            if self.gps is None:
+                msg = f"[{self.__class__.__name__}] -> initGPS"
+                self.logger.write_and_flush(msg+"\n")
+                print(msg)
+                self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
 
             msg = f"[{self.__class__.__name__}] -> initGPSComputing"
             self.logger.write_and_flush(msg+"\n")
             print(msg)
             self.nav = navigation.GPSComputing()
-        except:
-            self.on_event(Events.ERROR)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise e
 
         self.statusOfUIObject = {
             "joystick": True, #True or False
@@ -276,19 +354,25 @@ class CreateFieldState(State):
             "stopButton": True, #True or charging or None
             "wheelButton": False, #True or False
             "audit": 'disable', #True or False or use or not-use or disable
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
-        self.fieldCreator = FieldCreator(self.logger, self.gps, self.nav, self.smoothie, self.socketio)
+        self.fieldCreator = FieldCreator(self.logger, self.gps, self.nav, self.vesc_engine, self.smoothie, self.socketio)
 
         self.field = None
         self.manoeuvre = False
 
         try:
             self.notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             self.notificationQueue = None
+
+        self.__send_last_pos_thread_alive = True
+        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
+        self._send_last_pos_thread.start()
     
     def on_event(self, event):
         if event == Events.STOP:
@@ -300,36 +384,45 @@ class CreateFieldState(State):
                 self.fieldCreator.setSecondPoint()
             except TimeoutError:
                 if self.notificationQueue is not None:
-                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))     
-                self.smoothie.disconnect()
-                self.gps.disconnect() 
-                return WaitWorkingState(self.socketio, self.logger, False) 
+                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
+                self.__send_last_pos_thread_alive = False     
+                return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)  
 
             self.field = self.fieldCreator.calculateField()
-            if not config.TWO_POINTS_FOR_CREATE_FIELD:
+            if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
                 self.manoeuvre = True
-                self.fieldCreator.manoeuvre()
+                if config.MAKE_MANEUVER_AFTER_FIELD_CREATE:
+                    self.fieldCreator.manoeuvre()
                 self.manoeuvre = False
             self.statusOfUIObject["stopButton"] = None
             self.statusOfUIObject["fieldButton"] = "validate"
             self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
-            self.smoothie.disconnect()
-            self.gps.disconnect()
             return self
         elif event == Events.VALIDATE_FIELD:
             return self
         elif event == Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
-            return WaitWorkingState(self.socketio, self.logger, True)
+            self.__send_last_pos_thread_alive = False  
+            return WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine, self.gps)
         elif event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
         else:
             try:
-                self.smoothie.disconnect()
-                self.gps.disconnect()
-            except:
-                pass
+                self.__send_last_pos_thread_alive = False 
+                if self.smoothie is not None:
+                    self.smoothie.disconnect()
+                    self.smoothie = None
+                if self.vesc_engine is not None:
+                    self.vesc_engine.disconnect()
+                    self.vesc_engine = None
+                if self.gps is not None:
+                    self.gps.disconnect()
+                    self.gps = None
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                self.logger.write_and_flush(e+"\n")
             return ErrorState(self.socketio, self.logger)   
 
     def on_socket_data(self, data):
@@ -346,8 +439,8 @@ class CreateFieldState(State):
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
             print(msg)
-            self.statusOfUIObject["slider"] = int(data["value"])
-            self.fieldCreator.setFieldSize(int(data["value"])*1000)
+            self.statusOfUIObject["slider"] = float(data["value"])
+            self.fieldCreator.setFieldSize(float(data["value"])*1000)
 
             try:
                 self.fieldCreator.setFirstPoint()
@@ -355,24 +448,23 @@ class CreateFieldState(State):
                 self.statusOfUIObject["fieldButton"] = None
             except TimeoutError:
                 if self.notificationQueue is not None:
-                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))  
-                self.smoothie.disconnect()
-                self.gps.disconnect()
-                return WaitWorkingState(self.socketio, self.logger, False)
+                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"})) 
+                self.__send_last_pos_thread_alive = False  
+                return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
 
         elif data["type"] == "modifyZone":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
             print(msg)
-            self.statusOfUIObject["slider"] = int(data["value"])
-            self.fieldCreator.setFieldSize(int(data["value"])*1000)
+            self.statusOfUIObject["slider"] = float(data["value"])
+            self.fieldCreator.setFieldSize(float(data["value"])*1000)
             self.field = self.fieldCreator.calculateField()
         elif data["type"] == "validerZone":
             msg = f"[{self.__class__.__name__}] -> Slider value final : {data['value']}."
             self.logger.write_and_flush(msg+"\n")
             print(msg)
-            self.statusOfUIObject["slider"] = int(data["value"])
-            self.fieldCreator.setFieldSize(int(data["value"])*1000)
+            self.statusOfUIObject["slider"] = float(data["value"])
+            self.fieldCreator.setFieldSize(float(data["value"])*1000)
             self.field = self.fieldCreator.calculateField()
             self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
         elif data["type"] == "field_name":
@@ -382,12 +474,13 @@ class CreateFieldState(State):
             fields_list = load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="")+".txt' ../field.txt")
+                os.system("ln -sf 'fields/"+quote(fields_list[0],safe="", encoding='utf-8')+".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(field_name)
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
 
             self.socketio.emit('newField', json.dumps({"field" : coords, "other_fields" : other_fields, "current_field_name" : current_field_name, "fields_list": fields_list}), namespace='/map')
+        
         return self
 
     def getStatusOfControls(self):
@@ -404,6 +497,7 @@ class StartingState(State):
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit
+
         self.socketio.emit('start', {"status": "pushed"}, namespace='/button', broadcast=True)
         msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{False},AUDIT_MODE:{isAudit})"
         self.logger.write_and_flush(msg+"\n")
@@ -419,7 +513,7 @@ class StartingState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
@@ -439,6 +533,8 @@ class StartingState(State):
             return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
+        if data["type"] == 'getInputVoltage':
+            return self
         return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
@@ -455,6 +551,7 @@ class ResumeState(State):
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit
+
         self.socketio.emit('continue', {"status": "pushed"}, namespace='/button', broadcast=True)
         msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{True},AUDIT_MODE:{isAudit})"
         self.logger.write_and_flush(msg+"\n")
@@ -470,7 +567,7 @@ class ResumeState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
@@ -490,6 +587,8 @@ class ResumeState(State):
             return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
+        if data["type"] == 'getInputVoltage':
+            return self
         return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
@@ -521,6 +620,8 @@ class WorkingState(State):
 
         try:
             posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             pass
 
@@ -537,7 +638,7 @@ class WorkingState(State):
             "stopButton": True, #True or charging or None
             "wheelButton": False , #True or False
             "audit": isAudit, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
@@ -565,7 +666,7 @@ class WorkingState(State):
         if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject["stopButton"] = "charging"
-            self.main.send_signal(signal.SIGINT)
+            os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
             self.main.wait()
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
@@ -575,17 +676,22 @@ class WorkingState(State):
             else:
                 self.statusOfUIObject["startButton"] = True
             self.statusOfUIObject["stopButton"] = None
-            return WaitWorkingState(self.socketio, self.logger, False)
+            self.msgQueue.close()
+            return WaitWorkingState(self.socketio, self.logger, False, None, None, None)
         else:
             self._main_msg_thread_alive = False
+            self.msgQueue.close()
             return ErrorState(self.socketio, self.logger)
     
     def on_socket_data(self, data):
         if data["type"] == "getStats":
             self.sendLastStatistics()
             return self
+        elif data["type"] == 'getInputVoltage':
+            return self
         else:
             self._main_msg_thread_alive = False
+            self.msgQueue.close()
             return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
@@ -615,18 +721,40 @@ class WorkingState(State):
                 self.extracted_plants = data["datacollector"][1]
                 self.sendLastStatistics()
             elif "last_gps" in data:
-                data = json.loads(msg[0])["last_gps"]
+                data = data["last_gps"]
                 self.allPath.append([data[1],data[0]])
                 if self.lastGpsQuality != data[2]:
                     self.lastGpsQuality = data[2]
-                self.socketio.emit('updatePath', json.dumps(self.allPath), namespace='/map')
+                self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
+            elif "last_gps_list_file" in data:
+                last_gps_list_file = data["last_gps_list_file"]
+                with open("../"+last_gps_list_file, "r") as gps_his_file:
+                    all_points = list()
+                    last_gps_quality = 0
+                    for line in gps_his_file.readlines():
+                        if line.startswith("[") and line.endswith("]\n"):
+                            parsed_point = line[1:-1].split(", ")
+                            all_points.append([float(parsed_point[1]), float(parsed_point[0])])
+                            last_gps_quality = parsed_point[2].replace("'", "")
+                    if all_points:
+                        self.allPath = self.allPath + all_points
+                        self.lastGpsQuality = last_gps_quality
+                self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
+            elif "display_instruction_path" in data:
+                data = data["display_instruction_path"]
+                self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]), namespace='/map', broadcast=True)
+            elif "clear_path" in data:
+                self.allPath.clear()
+            elif "input_voltage" in data:
+                sendInputVoltage(self.socketio, data["input_voltage"])
 
 #This state corresponds when the robot has an error.
 class ErrorState(State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger):
+    def __init__(self, socketio: SocketIO, logger: utility.Logger, reason: str = None):
         self.socketio = socketio
         self.logger = logger
+        self.reason = reason
         msg = f"[{self.__class__.__name__}] -> Error"
         self.logger.write_and_flush(msg+"\n")
         print(msg)
@@ -639,11 +767,17 @@ class ErrorState(State):
             "stopButton": None, #True or charging or None
             "wheelButton": False, #True or False
             "audit": False, #True or False or use or not-use
-            "slider": 25, #Int for slider value
+            "slider": config.SLIDER_CREATE_FIELD_DEFAULT_VALUE, #Int for slider value
             "removeFieldButton": False #True or False  
         }
 
         self.field = None
+
+        self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+
+        msg = f"[{self.__class__.__name__}] -> Reload web page !"
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject
@@ -651,11 +785,20 @@ class ErrorState(State):
     def getField(self):
         return self.field
 
+    def on_socket_data(self, data):
+        return self
+
+    def on_event(self, event):
+        return self
+
+    def getReason(self):
+        return self.reason
+
 ###### Class for all state/ functions ######
 
 class FieldCreator:
 
-    def __init__(self, logger: utility.Logger, gps: adapters.GPSUbloxAdapter, nav: navigation.GPSComputing, smoothie: adapters.SmoothieAdapter, socketio: SocketIO):
+    def __init__(self, logger: utility.Logger, gps: adapters.GPSUbloxAdapter, nav: navigation.GPSComputing, vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, socketio: SocketIO):
         self.A = [0,0]
         self.B = [0,0]
         self.C = [0,0]
@@ -665,6 +808,7 @@ class FieldCreator:
         self.logger = logger
         self.gps = gps
         self.nav = nav
+        self.vesc_emergency = vesc_engine
         self.smoothie = smoothie
         self.socketio = socketio
 
@@ -676,11 +820,12 @@ class FieldCreator:
 
         self.socketio.emit('newPos', json.dumps([self.A[1],self.A[0]]), namespace='/map')
 
-        self.vesc_emergency = initVesc(self.logger)
+        if self.vesc_emergency is None:
+            self.vesc_emergency = initVesc(self.logger)
         msg = f"[{self.__class__.__name__}] -> Moving forward..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
-        self.vesc_emergency.apply_rpm(config.VESC_RPM_UI)
+        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
         self.vesc_emergency.start_moving()
 
     def setSecondPoint(self):
@@ -734,7 +879,7 @@ class FieldCreator:
 
     def saveField(self, fieldPath: str , fieldName: str):
         cpt = 1
-        fieldName = quote(fieldName,safe="")
+        fieldName = quote(fieldName,safe="", encoding='utf-8')
         if(os.path.exists(fieldPath+fieldName)):
             while os.path.exists(f"{fieldPath+fieldName[:-4]}_{cpt}.txt"):
                 cpt+=1
@@ -747,25 +892,62 @@ class FieldCreator:
         return unquote(fieldName[:-4])
 
     def manoeuvre(self):
-        self.vesc_emergency.apply_rpm(-config.VESC_RPM_UI)
+        self.vesc_emergency.apply_rpm(-config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
+        self.vesc_emergency.set_moving_time(config.MANEUVER_TIME_BACKWARD)
         self.vesc_emergency.start_moving()
-        time.sleep(6)
-        self.vesc_emergency.stop_moving()
+        self.vesc_emergency.wait_for_stop()
 
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
         self.smoothie.wait_for_all_actions_done()
 
-        self.vesc_emergency.apply_rpm(config.VESC_RPM_UI)
+        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
+        self.vesc_emergency.set_moving_time(config.MANEUVER_TIME_FORWARD)
         self.vesc_emergency.start_moving()
-        time.sleep(8)
-        self.vesc_emergency.stop_moving()
+        self.vesc_emergency.wait_for_stop()
 
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=0)
         self.smoothie.wait_for_all_actions_done()
 
+        self.vesc_emergency.set_moving_time(config.VESC_MOVING_TIME)
+
 
 ###### Function for all state ######
 
+def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage):
+    last_update = 0
+    vesc_data = None
+    while voltage_thread_alive():
+        if time.time() - last_update > 5 and voltage_thread_alive():
+            if vesc_engine is not None:
+                try:
+                    vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
+                except:
+                    break
+                if vesc_data is not None and voltage_thread_alive():
+                        last_update = time.time()
+                        sendInputVoltage(socketio, vesc_data["input_voltage"])
+                        input_voltage["input_voltage"] = vesc_data["input_voltage"]
+        time.sleep(1)
+
+def send_last_pos_thread_tf(send_last_pos_thread_alive, gps, socketio):
+    while send_last_pos_thread_alive():
+        try:
+            lastPos = gps.get_last_position()
+            socketio.emit('updatePath', json.dumps([[[lastPos[1],lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            time.sleep(1)
+
+def sendInputVoltage(socketio, input_voltage):
+    try:
+        input_voltage = round(float(input_voltage) * 2) / 2
+    except ValueError:
+        pass
+    socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
 
 def initVesc(logger: utility.Logger):
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
@@ -777,6 +959,7 @@ def initVesc(logger: utility.Logger):
         print(msg)
         exit(1)
     vesc_engine = adapters.VescAdapter(0, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE)
+    vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
     return vesc_engine
 
 def initSmoothie(logger: utility.Logger):
@@ -816,38 +999,16 @@ def changeConfigValue(path: str, value):
 
          
 def startMain():
-    #mainSP = subprocess.Popen(["python3","main.py"], cwd="/home/violette/field")#, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-    mainSP = subprocess.Popen(["python3","main.py"], cwd=os.getcwd().split("/uiWebRobot")[0])
+    mainSP = subprocess.Popen("python3 main.py", stdin=subprocess.PIPE, cwd=os.getcwd().split("/uiWebRobot")[0], shell=True, preexec_fn=os.setsid)
     return mainSP
 
 def startLiveCam():
-    #camSP = subprocess.Popen(["python3","serveurCamLive.py"], cwd="/home/violette/field")
-    camSP = subprocess.Popen(["python3","serveurCamLive.py"], cwd=os.getcwd().split("/uiWebRobot")[0])
+    camSP = subprocess.Popen("python3 serveurCamLive.py", stdin=subprocess.PIPE, cwd=os.getcwd().split("/uiWebRobot")[0], shell=True, preexec_fn=os.setsid)
     return camSP
-
-def checkHaveGPS(socketio: SocketIO, statusOfUIObject: dict):
-    GPSSerial = serial.Serial(port=config.GPS_PORT, baudrate=config.GPS_BAUDRATE)
-
-    Matrame = "B5 62 06 00 14 00 03 00 00 00 00 00 00 00 00 00 00 00 23 00 03 00 00 00 00 00 43 AE"
-    GPSSerial.write(bytearray.fromhex(Matrame))
-
-    while True:
-        try:
-            data = str(GPSSerial.readline())
-        except:
-            continue
-        if "GNGGA" in data and ",,," not in data:
-            data = data.split(",")
-            if data[6] != 0:
-                print("GPS work")
-                statusOfUIObject["GPSWork"] = True
-                socketio.emit('checklist', {"status","GPSWork"}, namespace='/server')
-                GPSSerial.close()
-                break
 
 def updateFields(field_name):
 
-    field_name = quote(field_name,safe="")
+    field_name = quote(field_name,safe="", encoding='utf-8')
 
     cmd = "ln -sf 'fields/"+field_name+".txt' ../field.txt"
 

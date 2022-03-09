@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang={{ui_language | tojson}}>
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -9,9 +9,12 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
-    <script defer type="text/javascript" src="{{ url_for('static', filename='js/fontawesome/solid.js') }}"></script>
-    <script defer type="text/javascript" src="{{ url_for('static', filename='js/fontawesome/fontawesome.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/offline_subscriber.js') }}"></script>
+    <!-- <script defer type="text/javascript" src="{{ url_for('static', filename='fontawesome/solid.js') }}"></script>
+    <script defer type="text/javascript" src="{{ url_for('static', filename='fontawesome/fontawesome.js') }}"></script> -->
+    <script type="text/javascript" src="/static/{{ now }}/js/offline_subscriber.js"></script> 
+    <script type="text/javascript" src="/static/{{ now }}/fontawesome/solid.js"></script> 
+    <script type="text/javascript" src="/static/{{ now }}/fontawesome/fontawesome.js"></script> 
+    <script src="/static/{{ now }}/js/voltage_indicator.js"></script>
     <title>Violette</title>
 </head>
 <body>
@@ -34,8 +37,13 @@
             <div class="header__info--logo">
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
             </div>
-            <div class="header__info--model">
-                <p>{{sn}}</p>
+            <div class="header__info--model--voltage">
+                <div class="header__info--voltage">
+                    <p id="voltage_indicator" bumper_disable="true">? V</p>
+                </div>
+                <div class="header__info--model">
+                    <p>{{ sn }}</p>
+                </div>
             </div>
         </div>
         <div class="header__map" style="max-width: 374px">
@@ -59,7 +67,7 @@
                     <span id="rangeCol">{{statusOfUIObject['slider']}}</span>
                 </div>
                 <div class="ruler__assets--line">
-                    <input type="range" min="15" max="150" value="{{statusOfUIObject['slider']}}" step="1" id="r1" oninput="range()"">
+                    <input type="range" min="{{ slider_min }}" max="{{ slider_max }}" value="{{statusOfUIObject['slider']}}" step="{{ slider_step }}" id="r1" oninput="range()"">
                 </div>
             </div>
             <div class="ruler__main--button">
@@ -128,19 +136,19 @@
     </div>
     
     <section id="conteneur_stats" class="status__active {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-flex {% else %} display-none {% endif %}" style="margin-top: 120px;flex-wrap: wrap;">
-        <div class="status__active--title {% if statusOfUIObject['audit'] == True or statusOfUIObject['audit'] == 'use' %} display-block  {% else %} display-none {% endif %}" style="margin-bottom: 20px;width: 100%;text-align:center;display:table;">
+        <!--<div class="status__active--title {% if statusOfUIObject['audit'] == True or statusOfUIObject['audit'] == 'use' %} display-block  {% else %} display-none {% endif %}" style="margin-bottom: 20px;width: 100%;text-align:center;display:table;">
             <h2 style="color: #1b7b2a;">{{(ui_languages["Audit on"])[ui_language]}}</h2>
-        </div>
+        </div>-->
         <canvas id="pieChart" width="155" height="155" class="status__active--circle"></canvas>
         <div class="status__active--time">
             <div class="status__time--top">
-                <p id="workTime">Time: <span>00:00:00</span></p>
+                <p id="workTime">Time: <span id="workTimeValue">00:00:00</span></p>
             </div>
             <div class="status__time--bottom">
             </div>
         </div>
-        <iframe id="webCamStream" src="" width="414px" height="250px" style="margin: 0 auto;display:block; border: none; border-radius: 20px; max-width: 374px; min-height: 210px; width: 100%; height: 100%;">
-        </iframe>
+        <!--<iframe id="webCamStream" src="" width="414px" height="250px" style="margin: 0 auto;display:block; border: none; border-radius: 20px; max-width: 374px; min-height: 210px; width: 100%; height: 100%;">
+        </iframe>-->
     </section>
     
     <div class="begin__button" style="position: absolute; display: flex; flex-wrap:wrap;width: 100%; justify-content: space-between; bottom: 0px; padding: 11px; padding-left: 20px; padding-right: 20px; max-width: 720px;">
@@ -176,7 +184,7 @@
         <span class="check"><i class="fas fa-check scale"></i></span>
         </button>
 
-        {% if statusOfUIObject['audit'] == 'use' %}
+        <!-- {% if statusOfUIObject['audit'] == 'use' %}
         <img id="Audit" class="unselectable audit fix" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
         {% elif statusOfUIObject['audit'] == 'not-use' %}
         <img id="Audit" class="unselectable fix" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
@@ -186,7 +194,7 @@
         <img id="Audit" class="unselectable audit" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
         {% else %}
         <img id="Audit" class="unselectable" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
-        {% endif %}
+        {% endif %} -->
 
         {% if Field_list is none %}
             <button name="Continue" id="Continue" class="begin__button--continue unselectable disabled" disabled>
@@ -217,13 +225,21 @@
     </div>
 </div>
 
-<script type="text/javascript" src="{{ url_for('static', filename='js/joy.js') }}"></script>
+<!--<script type="text/javascript" src="{{ url_for('static', filename='js/joy.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/joystick.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/Chart.min.js') }}"></script> 
 <script type="text/javascript" src="{{ url_for('static', filename='js/chartjs-plugin-doughnutlabel.min.js') }}"></script>   
 <script src="{{ url_for('static', filename='js/slider.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/index.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/statistics.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/statistics.js') }}" defer></script>-->
+
+<script type="text/javascript" src="/static/{{ now }}/js/joy.js"></script>
+<script type="text/javascript" src="/static/{{ now }}/js/joystick.js"></script>
+<script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script> 
+<script type="text/javascript" src="/static/{{ now }}/js/chartjs-plugin-doughnutlabel.min.js"></script>   
+<script src="/static/{{ now }}/js/slider.js" defer></script>
+<script src="/static/{{ now }}/js/index.js" defer></script>
+<script src="/static/{{ now }}/js/statistics.js" defer></script>
 
 {% else %}
 
@@ -234,8 +250,13 @@
             <div class="header__info--logo">
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
             </div>
-            <div class="header__info--model">
-                <p>{{ sn }}</p>
+            <div class="header__info--model--voltage">
+                <div class="header__info--voltage">
+                    <p id="voltage_indicator">? V</p>
+                </div>
+                <div class="header__info--model">
+                    <p>{{ sn }}</p>
+                </div>
             </div>
         </div>
         <div class="header__title">
@@ -340,15 +361,19 @@
         </div>
         <button name="checkbutton" id="checkbutton" class="finish__check unselectable disabled" onclick="checkAllBoxAreChecked()" disabled>
             <span class="submit">{{(ui_languages["Finish check"])[ui_language]}}</span>
+            <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+            <span class="check"><i class="fas fa-check scale"></i></span>
         </button>
     </section>
 </div>
 
-<script src="{{ url_for('static', filename='js/checkList.js') }}" defer></script>
+<!-- <script src="{{ url_for('static', filename='js/checkList.js') }}" defer></script>-->
+<script src="/static/{{ now }}/js/checkList.js" defer></script>
 
 {% endif %}
 
-<script src="{{ url_for('static', filename='js/popup.js') }}" defer></script>
+<!-- <script src="{{ url_for('static', filename='js/popup.js') }}" defer></script> -->
+<script src="/static/{{ now }}/js/popup.js" defer></script>
 
 </body>
 </html>

@@ -17,9 +17,25 @@ class Self_Testing:
     def __init__(self):
         self.all_tests = 14
         self.pass_tests = 0
-        self.smoothie = adapters.SmoothieAdapter(config.SMOOTHIE_HOST)
-        self.vesc = adapters.VescAdapter(-2800, 10, config.VESC_ALIVE_FREQ,
-                                         config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
+        smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
+        if "vesc" in smoothie_vesc_addr:
+            vesc_address = smoothie_vesc_addr["vesc"]
+        else:
+            msg = "Couldn't get vesc's USB address!"
+            print(msg)
+            exit(1)
+        if config.SMOOTHIE_BACKEND == 1:
+            smoothie_address = config.SMOOTHIE_HOST
+        else:
+            if "smoothie" in smoothie_vesc_addr:
+                smoothie_address = smoothie_vesc_addr["smoothie"]
+            else:
+                msg = "Couldn't get smoothie's USB address!"
+                print(msg)
+                exit(1)
+        self.smoothie = adapters.SmoothieAdapter(smoothie_address)
+        self.vesc = adapters.VescAdapter(config.VESC_RPM_SLOW, 5, config.VESC_ALIVE_FREQ,
+                                         config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE)
         self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
         self.camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                                        config.CROP_H_TO, config.CV_ROTATE_CODE,
@@ -48,7 +64,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew down the Z axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
+        response = self.smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
         return response
 
     def test_cork_X_right(self):
@@ -56,7 +72,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the right the X axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=X_MOVEMENT)
+        response = self.smoothie.custom_move_for(X_F=config.X_F_MAX, X=X_MOVEMENT)
         return response
 
     def test_cork_X_left(self):
@@ -64,7 +80,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the left the X axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, X=-X_MOVEMENT)
+        response = self.smoothie.custom_move_for(X_F=config.X_F_MAX, X=-X_MOVEMENT)
         return response
 
     def test_cork_Y_up(self):
@@ -72,7 +88,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the up the Y axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=Y_MOVEMENT)
+        response = self.smoothie.custom_move_for(Y_F=config.Y_F_MAX, Y=Y_MOVEMENT)
         return response
 
     def test_cork_Y_down(self):
@@ -80,7 +96,7 @@ class Self_Testing:
         Function to check the movement of the corkscrew 10 to the down the Y axis
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.XY_F_MAX, Y=-Y_MOVEMENT)
+        response = self.smoothie.custom_move_for(Y_F=config.Y_F_MAX, Y=-Y_MOVEMENT)
         return response
 
     def test_steering_wheels_right(self):
@@ -88,7 +104,7 @@ class Self_Testing:
         Function to check the moving the steering wheels to the right
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.A_F_MAX, A=config.A_MAX)
+        response = self.smoothie.custom_move_to(A_F=config.A_F_MAX, A=config.A_MIN)
         return response
 
     def test_steering_wheels_left(self):
@@ -96,7 +112,7 @@ class Self_Testing:
         Function to check the moving the steering wheels to the left
         :return: response of the Smoothie
         """
-        response = self.smoothie.custom_move_for(config.A_F_MAX, A=config.A_MIN)
+        response = self.smoothie.custom_move_to(A_F=config.A_F_MAX, A=config.A_MAX)
         return response
 
     def test_steering_wheels_center(self):
@@ -104,7 +120,7 @@ class Self_Testing:
         Function to check the moving the steering wheels to the center
         :return: response of the Smoothie
         """
-        response = self.smoothie.nav_align_wheels_center(config.A_F_MAX)
+        response = self.smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
         return response
 
     def test_motion_wheels_forward(self):
@@ -120,7 +136,7 @@ class Self_Testing:
         Function to check the moving the robot forward
         :return: response of the Smoothie
         """
-        self.vesc.set_rpm(2800)
+        self.vesc.set_rpm(-config.VESC_RPM_SLOW)
         self.vesc.start_moving()
         self.vesc.wait_for_stop()
 
@@ -156,10 +172,10 @@ class Self_Testing:
         self.logger.write(msg + '\n')
         print(msg)
         try:
-            response = self.smoothie.ext_align_cork_center(config.XY_F_MAX)
-            self.smoothie.wait_for_all_actions_done()
-            print(response)
-            self.logger.write(response + '\n')
+            #response = self.smoothie.ext_align_cork_center(config.XY_F_MAX)
+            #self.smoothie.wait_for_all_actions_done()
+            #print(response)
+            #self.logger.write(response + '\n')
             msg = 'Has the corkscrew been centered? (y/n)'
             self.logger.write(msg + '\n')
             key = input(msg + '\n')
@@ -357,7 +373,7 @@ class Self_Testing:
             response = None
             key = None
             error = None
-            msg = 'Start moving the robot forward (-2800)...'
+            msg = f'Start moving the robot forward ({config.VESC_RPM_SLOW})...'
             self.logger.write(msg + '\n')
             print(msg)
             try:
@@ -383,7 +399,7 @@ class Self_Testing:
             response = None
             key = None
             error = None
-            msg = 'Start moving the robot back (2800)...'
+            msg = f'Start moving the robot back ({-config.VESC_RPM_SLOW})...'
             self.logger.write(msg + '\n')
             print(msg)
             try:

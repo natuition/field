@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Server deployement</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        html, body
+        {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+    <script>
+        var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/end';
+    </script>
+</head>
+<body>
+    <h1 style="text-align: center; padding: 10px 0;">Client configuration apply</h1>
+    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <label class="form-check-label" for="xDone">Put the robot in customer configuration :</label>
+        <div class="btn-group-vertical m-1">
+            <button type="button" id="apply_config" class="btn btn-secondary" onclick="run_apply_config()">Run</button>
+        </div>
+    </div>
+    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <button type="button" id="next" class="btn btn-success" onclick="window.location.href=next_page_href">Next</button>
+    </div>
+    <script>
+        function run_apply_config(){
+            $('.btn').attr({disabled: true});
+            $('#apply_config').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Running...');
+            socketio.emit('client_config', {'apply': true});
+        }
+        socketio.on('apply_config', function(data) {
+            if(data["apply_done"]){
+                $('.btn').removeAttr("disabled");
+                $('#apply_config').attr({disabled: true});
+                $('#apply_config').html('Done');
+            }
+        });
+    </script>
+</body>
+</html>

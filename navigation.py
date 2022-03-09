@@ -2,7 +2,14 @@ import math
 from haversine import haversine
 import numpy as np
 from scipy.spatial import ConvexHull
-
+import utility
+import adapters
+import time
+from config import config
+from notification import NotificationClient
+import os
+import posix_ipc
+import json
 
 class GPSComputing:
     """
@@ -421,3 +428,112 @@ class GPSComputing:
         corner_3 = self.get_coordinate(center_point, corner_point,  180, distance)
         corners = self._corner_sort([corner_point, corner_1, corner_2, corner_3])
         return corners
+
+class AntiTheftZone:
+
+    def __init__(self, field: list):
+        field = field
+        self.nav = GPSComputing()
+        d1 = self.nav.get_distance(field[0],field[1])
+        middle_d1 = self.nav.get_point_on_vector(field[0],field[1], d1/2)
+        middle_opposite_d1 = self.nav.get_point_on_vector(field[2],field[3], d1/2)
+        d2 = self.nav.get_distance(middle_d1,middle_opposite_d1)
+        self.center = self.nav.get_point_on_vector(middle_d1,middle_opposite_d1, d2/2)
+        self.circumcircle_radius = self.hypotenuse(d1/2,d2/2)
+
+    def get_center(self):
+        return self.center
+
+    def hypotenuse(self,a,b):
+        return math.sqrt(a**2+b**2)
+
+    def coordianate_are_in_zone(self, coords: list):
+        return self.nav.get_distance(self.center,coords) <= self.circumcircle_radius + config.ANTI_THEFT_ZONE_RADIUS
+
+class NavigationV3:
+
+    @staticmethod
+    def check_reboot_Ntrip(gps_quality: str, lastNtripRestart: float, logger_full: utility.Logger):
+        if str(gps_quality) not in ["4","5"] and time.time() - lastNtripRestart > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
+            msg="Restart Ntrip because 60 seconds without corrections"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE: 
+                print(msg)
+            os.system("sudo systemctl restart ntripClient.service")
+            return time.time()
+        return lastNtripRestart
+
+class NavigationPrediction:
+
+    def __init__(self, logger_full: utility.Logger, nav: GPSComputing, log_cur_dir: str):
+        self.angle=0
+        self.index_angle = 0
+
+        self.logger_full = logger_full
+        self.nav = nav
+        self.trajectorySaver = utility.TrajectorySaver(log_cur_dir + "navigation_prediction_history.txt", config.CONTINUE_PREVIOUS_PATH)
+
+        #const
+        self.max_angle = math.radians(23)
+        self.E = 0.86 #wheelbase between the two axles of the wheels
+        self.K = 1/(60*1852) #Conversion factor meter to degree nautical mile
+        self.navigation_period = config.MANEUVERS_FREQUENCY #1
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.trajectorySaver.__exit__(exc_type, exc_val, exc_tb)
+
+    def set_SI_speed(self, SI_speed: float):
+        self.speed = SI_speed #meter per second
+
+    def set_current_lat_long(self, cur_pos: list):
+        self.lat_current=cur_pos[0]
+        self.long_current=cur_pos[1]
+
+    def run_prediction(self, coords_from_to: list, cur_pos: list):
+
+        if self.angle>self.max_angle :
+            self.angle=self.max_angle
+
+        #Turning radius
+
+        if math.sin(self.angle) != 0 :
+            rayon=self.E/math.sin(self.angle)
+            theta_rob=self.speed/rayon
+        else :
+            theta_rob = 0
+        
+        #Calculation of new coordinates
+        distance_deg=self.speed*self.navigation_period*self.K #Distance in degrees traveled by the robot
+
+        #The speed being constant, we want the time between each point to be 1 sec, as we have m/s, "distance=speed"
+
+        psi=(math.pi-theta_rob)/2 #Trajectory angle - pi/2
+        delta=distance_deg*math.sin(psi) #Latitude difference between current and future position
+        beta=distance_deg*math.cos(psi) #Longitude difference between current and future position
+
+        latnew=self.lat_current+delta
+        longnew=self.long_current+beta
+
+        #Coordinates at n become n-1
+        self.set_current_lat_long([latnew,longnew])
+        
+        self.latB = coords_from_to[1][0]
+        self.longB = coords_from_to[1][1]
+
+        if (self.latB-latnew) != 0:
+            angle = math.atan((self.longB-longnew)/(self.latB-latnew)) #Angle co,wheels sign
+        else:
+            angle = math.pi/2
+
+        msg = f"[PREDICTOR] Angle : {angle}."
+        self.logger_full.write(msg + "\n")
+        new_foreseen_point = [latnew, longnew, f"quality_cur_pos:{cur_pos[2]}", self.index_angle]
+
+        self.trajectorySaver.save_point(new_foreseen_point)
+        self.index_angle+=1
+
+        msg = f"[PREDICTOR] Error : {self.nav.get_distance(new_foreseen_point, cur_pos)}."
+        self.logger_full.write(msg + "\n")

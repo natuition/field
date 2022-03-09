@@ -7,12 +7,13 @@ import os
 import pickle
 import json
 
+
 class DataCollector:
     """This class stores and saves collected data as txt file, or (will be added later) sends data to the local
     database.
     """
 
-    def __init__(self, notification, load_from_file=False, file_path="", ui_msg_queue=None):
+    def __init__(self, notification, load_from_file=False, file_path="", ui_msg_queue=None, dump_at_receiving=True):
         if load_from_file:
             structure = self.__load_from_file(file_path)
             # data
@@ -32,6 +33,8 @@ class DataCollector:
         self.__start_time = time.time()
         self.__notification = notification
         self.__ui_msg_queue = ui_msg_queue
+        self.__dump_at_receiving = dump_at_receiving
+        self.__dump_file_path = file_path
 
     def __load_from_file(self, file_path: str):
         """Using pickle module loads data structure from a binary file with a given name
@@ -61,7 +64,7 @@ class DataCollector:
 
     def __send_to_ui(self):
         if self.__ui_msg_queue is not None:
-            self.__ui_msg_queue.send(json.dumps({"datacollector": [self.__detected_plants,self.__extracted_plants]}))
+            self.__ui_msg_queue.send(json.dumps({"datacollector": [self.__detected_plants, self.__extracted_plants]}))
 
     def __format_time(self, seconds):
         """Returns given seconds as formatted DD:HH:MM:SS MSS str time
@@ -93,6 +96,9 @@ class DataCollector:
 
         self.__send_to_ui()
 
+        if self.__dump_at_receiving:
+            self.dump_to_file(self.__dump_file_path)
+
     def add_extractions_data(self, type_label: str, count: int):
         """Adds given extractions data to the stored values
         """
@@ -112,6 +118,9 @@ class DataCollector:
 
         self.__send_to_ui()
 
+        if self.__dump_at_receiving:
+            self.dump_to_file(self.__dump_file_path)
+
     def add_vesc_moving_time_data(self, seconds: float):
         """Adds given vesc moving time to the stored value
         """
@@ -124,6 +133,9 @@ class DataCollector:
             raise ValueError(msg)
         self.__vesc_moving_time += seconds
 
+        if self.__dump_at_receiving:
+            self.dump_to_file(self.__dump_file_path)
+
     def add_cork_moving_time_data(self, seconds: float):
         """Adds given cork moving time to the stored value
         """
@@ -135,6 +147,9 @@ class DataCollector:
             msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
             raise ValueError(msg)
         self.__cork_moving_time += seconds
+
+        if self.__dump_at_receiving:
+            self.dump_to_file(self.__dump_file_path)
 
     def get_session_working_time(self):
         """Returns how much seconds is past after launch till this function call moment
@@ -149,8 +164,8 @@ class DataCollector:
         new_file = output_file_path + ".new"  # temp file to avoid data loss if any error occurred during saving
         with open(new_file, "w") as file:
             file.write("Last session robot working time: " + self.__format_time(self.get_session_working_time()) + "\n")
-            file.write("Total field robot working time: " + \
-                       self.__format_time(self.get_session_working_time() + \
+            file.write("Total field robot working time: " +
+                       self.__format_time(self.get_session_working_time() +
                                           self.__previous_sessions_working_time) + "\n\n")
 
             # detections statistics

@@ -6,6 +6,8 @@ socketMap.on("reconnect_attempt", (attempt) => {
 
 var map;
 
+var firstFocus = false
+
 window.onload = ()=>{
     if (typeof coords_field != "undefined"){
         if (typeof coords_other != "undefined"){
@@ -20,6 +22,7 @@ window.onload = ()=>{
             document.addEventListener("DOMContentLoaded",createMap([],[]));
         }
     }
+
 }
 
 function createMap(coords_field,coords_other){
@@ -38,7 +41,7 @@ function createMap(coords_field,coords_other){
         x_center /= cpt
         y_center /= cpt
 
-        var zoom = 17;
+        var zoom = 17.5;
 
     }else{
         y_center = 48.85304;
@@ -163,6 +166,76 @@ function createMap(coords_field,coords_other){
                 }
             });
         }
+        //Field start point
+        if(typeof(map.getSource('field_start')) == "undefined"){
+            map.addSource('field_start', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': coords_field[coords_field.length - 1]
+                    }
+                }
+            });    
+            map.addLayer({
+                'id': 'field_startLayer',
+                'type': 'circle',
+                'source': 'field_start',
+                'paint': {
+                    'circle-radius': 3,
+                    'circle-color': '#2BFAFA'
+                }
+            });
+        }
+        //Instruction_line
+        if(typeof(map.getSource('instruction_line')) == "undefined"){
+            map.addSource('instruction_line', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': []
+                    }
+                }
+            });    
+            map.addLayer({
+                'id': 'instruction_lineLayer',
+                'type': 'line',
+                'source': 'instruction_line',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#FF8C15',
+                    'line-width': 2
+                }
+            });
+        }
+        //Instruction_point
+        if(typeof(map.getSource('instruction_point')) == "undefined"){
+            map.addSource('instruction_point', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiPoint',
+                        'coordinates': []
+                    }
+                }
+            });    
+            map.addLayer({
+                'id': 'instruction_pointLayer',
+                'type': 'circle',
+                'source': 'instruction_point',
+                'paint': {
+                    'circle-radius': 3,
+                    'circle-color': '#FF8C15'
+                }
+            });
+        }
         //Path line
         if(typeof(map.getSource('pathRobot')) == "undefined"){
             map.addSource('pathRobot', {
@@ -184,8 +257,8 @@ function createMap(coords_field,coords_other){
                     'line-cap': 'round',
                 },
                 'paint': {
-                    'line-color': 'red',
-                    'line-width': 3
+                    'line-color': '#e55e5e',
+                    'line-width': 2
                 }
             });
         }
@@ -206,42 +279,122 @@ function createMap(coords_field,coords_other){
                 'type': 'circle',
                 'source': 'lastPos',
                 'paint': {
-                    'circle-radius': 6,
-                    'circle-color': 'darkred'
+                    'circle-radius': 3,
+                    'circle-color': [
+                        'match',
+                        ['get', 'quality'],
+                        '4',
+                        '#e55e5e',// red for quality 4
+                        '#fbb03b' // orange for other
+                    ]
                 }
             });
         }
+
+        socketMap.on('updatePath', function(dataServ) {
+            dataServ = JSON.parse(dataServ)
+            var coords = dataServ[0]
+            var last_coord = coords[coords.length - 1]
+            var quality = dataServ[1]
+
+            if(coords.length>1){
+
+                map.getSource('pathRobot').setData({
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': coords
+                    }
+                });
+            }
+            
+            map.getSource('lastPos').setData({ 
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': last_coord
+                },
+                "properties": {
+                    'quality': quality
+                },
+            });
+        
+            if(coords.length>1 || !firstFocus){
+                map.panTo(last_coord);
+                firstFocus = true;
+            }
+        });
+
     });
 
 }
 
-socketMap.on('updatePath', function(dataServ) {
+socketMap.on('updateDisplayInstructionPath', function(dataServ) {
     dataServ = JSON.parse(dataServ)
-    var coords = dataServ
-    x_center = coords[coords.length - 1][0]
-    y_center = coords[coords.length - 1][1]
-
-    if(typeof(map.getSource('pathRobot')) == "undefined" || typeof(map.getSource('lastPos')) == "undefined"){
-        createMap(dataServ["field"],dataServ["other_fields"]);
+    //Instruction_line
+    if(typeof(map.getSource('instruction_line')) == "undefined"){
+        map.addSource('instruction_line', {
+            'type': 'geojson',
+            'data': {
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': dataServ
+                }
+            }
+        });    
+        map.addLayer({
+            'id': 'instruction_lineLayer',
+            'type': 'line',
+            'source': 'instruction_line',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round',
+            },
+            'paint': {
+                'line-color': '#FF8C15',
+                'line-width': 2
+            }
+        });
+    }else{
+        map.getSource('instruction_line').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': dataServ
+            }
+        });
     }
-    
-    map.getSource('pathRobot').setData({
-        'type': 'Feature',
-        'geometry': {
-            'type': 'LineString',
-            'coordinates': dataServ
-        }
-    });
-    
-    map.getSource('lastPos').setData({ 
-        'type': 'Feature',
-        'geometry': {
-            'type': 'Point',
-            'coordinates': [x_center,y_center]
-        }
-    });
-
-    map.panTo([x_center,y_center]);
+    //Instruction_point
+    if(typeof(map.getSource('instruction_point')) == "undefined"){
+        map.addSource('instruction_point', {
+            'type': 'geojson',
+            'data': {
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'MultiPoint',
+                    'coordinates': dataServ
+                }
+            }
+        });    
+        map.addLayer({
+            'id': 'instruction_pointLayer',
+            'type': 'circle',
+            'source': 'instruction_point',
+            'paint': {
+                'circle-radius': 3,
+                'circle-color': '#FF8C15'
+            }
+        });
+    }else{
+        map.getSource('instruction_point').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'MultiPoint',
+                'coordinates': dataServ
+            }
+        });
+    }
 });
 
 socketMap.on('newField', function(dataServ) {
@@ -340,6 +493,14 @@ socketMap.on('newField', function(dataServ) {
             'geometry': {
                 'type': 'LineString',
                 'coordinates': dataServ["field"]
+            }
+        });
+
+        map.getSource('field_start').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Point',
+                'coordinates': dataServ["field"][dataServ["field"].length - 1]
             }
         });
 

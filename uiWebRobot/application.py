@@ -16,6 +16,7 @@ import os
 from urllib.parse import quote, unquote
 import posix_ipc
 from threading import Thread
+from datetime import datetime
 
 __author__ = 'Vincent LAMBERT'
 
@@ -30,6 +31,8 @@ socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
 def init():
     global ui_languages
     global stateMachine
+    global filename_for_send_from_directory
+    filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
     with open("ui_language.json", "r", encoding='utf-8') as read_file:
         ui_languages = json.load(read_file)    
     thread_notification = Thread(target=catch_send_notification, args=(socketio,))
@@ -60,7 +63,7 @@ def load_field_list(dir_path):
     field_list = []
     for file in os.listdir(dir_path):
         if file.endswith(".txt"):
-            field_list.append(unquote(file.split(".txt")[0]))
+            field_list.append(unquote(file.split(".txt")[0], encoding='utf-8'))
     return field_list
 
 def get_other_field():
@@ -69,8 +72,8 @@ def get_other_field():
     if len(field_list)>=2:
         coords_other = []
         for field_name in field_list:
-            if field_name != unquote(current_field):
-                with open("../fields/"+quote(field_name,safe="")+".txt") as file:
+            if field_name != unquote(current_field, encoding='utf-8'):
+                with open("../fields/"+quote(field_name,safe="", encoding='utf-8')+".txt", encoding='utf-8') as file:
                     points = file.readlines()
                 
                 coords = list()
@@ -95,6 +98,8 @@ def formattingFieldPointsForSend(corners):
 def catch_send_notification(socketio: SocketIO):
     try:
         posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_NOTIFICATION)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
     except:
         pass
 
@@ -110,6 +115,8 @@ def catch_send_notification(socketio: SocketIO):
             message = ui_languages[message_name][ui_language]
             
             socketio.emit('notification', {"message_name":message_name,"message":message} , namespace='/broadcast', broadcast=True)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             continue
 
@@ -140,6 +147,8 @@ def on_socket_data(data):
                 stateMachine.on_event(Events.CONTINUE_MAIN)
         elif data["type"] == "stop":
             stateMachine.on_event(Events.STOP)
+        elif data["type"] == "getInputVoltage":
+            stateMachine.on_socket_data(data)
         elif data["type"] == "allChecked":
             stateMachine.on_socket_data(data)
             stateMachine.on_event(Events.LIST_VALIDATION)
@@ -189,12 +198,15 @@ def index():
     else:
         Field_list.sort(key=str.casefold)
         current_field = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
-        current_field = unquote(current_field)
+        current_field = unquote(current_field, encoding='utf-8')
 
     if str(stateMachine.currentState) == "ErrorState":
-        render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
+        if stateMachine.currentState.getReason():
+            return render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language], reason=stateMachine.currentState.getReason()), 500
+        else:
+            return render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
 
-    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list)    
+    return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=config.SLIDER_CREATE_FIELD_MIN, slider_max=config.SLIDER_CREATE_FIELD_MAX, slider_step=config.SLIDER_CREATE_FIELD_STEP)    
 
 @app.route('/map')
 def maps():
@@ -203,14 +215,14 @@ def maps():
     if field is None:
         field = load_coordinates("../field.txt")
     if field is None:
-        return render_template('map.html', myCoords=myCoords)
+        return render_template('map.html', myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
     else:
         coords_other = get_other_field()
         coords_field = formattingFieldPointsForSend(field)
         if coords_other:
-            return render_template('map.html', coords_field=coords_field, myCoords=myCoords, coords_other=coords_other)
+            return render_template('map.html', coords_field=coords_field, myCoords=myCoords, coords_other=coords_other, now=datetime.now().strftime("%H_%M_%S__%f"))
         else:
-            return render_template('map.html', coords_field=coords_field, myCoords=myCoords)
+            return render_template('map.html', coords_field=coords_field, myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
 
 @app.route('/offline.html')
 def offline():
@@ -222,7 +234,10 @@ def offline():
 
 @app.route('/styles.css')
 def style():
-    response=make_response(send_from_directory('static',filename='css/style.css'))
+    if filename_for_send_from_directory:
+        response=make_response(send_from_directory(app.static_folder,filename='css/style.css'))
+    else:
+        response=make_response(send_from_directory(app.static_folder,path='css/style.css'))
     response.headers['Content-Type'] = 'text/css'
     return response
 
@@ -243,14 +258,34 @@ def handle_exception(e):
 
 @app.route('/sw.js')
 def worker():
-    response=make_response(send_from_directory('static',filename='js/offline_worker.js'))
+    if filename_for_send_from_directory:
+        response=make_response(send_from_directory(app.static_folder,filename='js/offline_worker.js'))
+    else: 
+        response=make_response(send_from_directory(app.static_folder,path='js/offline_worker.js'))
     response.headers['Content-Type'] = 'application/javascript'
     return response
 
 @app.route('/js/socket.io.min.js')
 def socket_io_min():
-    response=make_response(send_from_directory('static',filename='js/socket.io.min.js'))
+    if filename_for_send_from_directory:
+        response=make_response(send_from_directory(app.static_folder,filename='js/socket.io.min.js'))
+    else:
+        response=make_response(send_from_directory(app.static_folder,path='js/socket.io.min.js'))
     response.headers['Content-Type'] = 'application/javascript'
+    return response
+
+@app.route('/static/<random_time>/<file_path>/<file_name>')
+def getJsFile(file_path,file_name,random_time):
+    if ".js" in file_name:
+        if filename_for_send_from_directory:
+            response=make_response(send_from_directory(app.static_folder,filename=f'{file_path}/{file_name}', mimetype='application/javascript'))
+        else:
+            response=make_response(send_from_directory(app.static_folder,path=f'{file_path}/{file_name}', mimetype='application/javascript'))
+    else:
+        if filename_for_send_from_directory:
+            response=make_response(send_from_directory(app.static_folder,filename=f'{file_path}/{file_name}', mimetype='application/css'))
+        else:
+            response=make_response(send_from_directory(app.static_folder,path=f'{file_path}/{file_name}', mimetype='application/css'))
     return response
 
 if __name__ == "__main__":

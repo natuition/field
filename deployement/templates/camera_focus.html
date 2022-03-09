@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Server deployement</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        html, body
+        {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+    <script>
+        var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/camera_crop_picture';
+    </script>
+</head>
+<body>
+    <h1 style="text-align: center; padding: 10px 0;">Setup camera</h1>
+    <div style="height: 80%; margin: 0 auto;" class="d-flex justify-content-center align-items-center">
+        <img id="camera_video" src="http://violette.lan:8080/video" style="margin: 0 auto; height: 100%; border-radius: 50px;" >
+    </div>
+    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="focusDone" onclick="enableNext()">
+            <label class="form-check-label" for="focusDone">Focus done</label>
+        </div>
+        <button type="button" id="next" class="btn btn-danger" onclick="socketio.emit('validate_log', {'key': 'Camera focus', 'value': 'OK'});window.location.href=next_page_href">Next</button>
+    </div>
+    <script>
+        var url_cam = 'http://' + document.domain + ':8080/video';
+
+        function enableNext(){
+            if($("#focusDone").is(':checked')){
+                $('#next').prop('class', "btn btn-success");
+                $('#next').prop('disabled', false);
+            } else{
+                $('#next').prop('disabled', true);
+                $('#next').prop('class', "btn btn-danger");
+            }
+        }
+        $(document).ready(function(){
+            $('#next').prop('disabled', true);
+            verif_iframe_start();
+        });
+
+        var iframe_verif;
+
+        function verif_iframe_stop() {
+            clearInterval(iframe_verif);
+        }
+
+        function verif_iframe_start(){
+            iframe_verif = setInterval(() => {
+                try {
+                    $.ajax({
+                        type : "HEAD",
+                        async : true,
+                        url : url_cam
+                    })
+                    .done(function() {
+                        document.getElementById("camera_video").src = url_cam;
+                        verif_iframe_stop();
+                    })
+                } catch(e) {}
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

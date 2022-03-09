@@ -40,19 +40,26 @@ body {
 
 .header__info,
 .header__info--model,
+.header__info--model--voltage,
 .checkmark {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.header__info--model {
+.header__info--model,
+.header__info--voltage {
     background-color: #58b166;
     border-radius: 20px;
     padding: 10px 20px;
 }
 
-.header__info--model p {
+.header__info--voltage{
+    margin-right: 10px;
+}
+
+.header__info--model p,
+.header__info--voltage p {
     color: #e7ffeb;
     text-transform: uppercase;
     font-weight: 700;

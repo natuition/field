@@ -17,7 +17,7 @@ class SmoothieAdapter:
     RESPONSE_HALT = "!!\r\n"
     RESPONSE_IGNORED = "ok - ignored\n"
 
-    def __init__(self, smoothie_host):
+    def __init__(self, smoothie_host, calibration_at_init=True):
         if type(smoothie_host) is not str:
             raise TypeError("invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
 
@@ -42,16 +42,19 @@ class SmoothieAdapter:
         if res != self.RESPONSE_OK:
             # TODO: what if so?
             print("Switching smoothie to relative was failed! Smoothie's response:\n", res)
+            raise Exception("Switching smoothie to relative was failed!")
 
-        # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
-        res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
-        self.wait_for_all_actions_done()
-        if res != self.RESPONSE_OK:
-            print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
+        if calibration_at_init:
+            # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
+            res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
+            self.wait_for_all_actions_done()
+            if res != self.RESPONSE_OK:
+                print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
 
-        res = self.ext_calibrate_cork()
-        if res != self.RESPONSE_OK:
-            print("Initial cork calibration was failed, smoothie response:\n", res)  # TODO: what if so??
+            res = self.ext_calibrate_cork()
+            if res != self.RESPONSE_OK:
+                print("Initial cork calibration was failed, smoothie response:\n", res)  # TODO: what if so??
+                raise Exception("Initial cork calibration was failed!")
 
     def __enter__(self):
         return self
@@ -941,8 +944,8 @@ class CameraAdapterIMX219_170_Auto:
                 image = cv.rotate(image, self._cv_rotate_code)
 
             # crop black zones
-            if config.APPLY_IMAGE_CROPPING:
-                image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
+            #if config.APPLY_IMAGE_CROPPING:
+            #    image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
             return image
         else:
             raise RuntimeError("Unable to open camera")
@@ -977,36 +980,72 @@ class CameraAdapterIMX219_170:
         self._cv_rotate_code = cv_rotate_code
         aelock = "aelock=true " if aelock else ""
         # ispdigitalgainrange="14.72 14.72" gainrange="14.72 14.72" exposuretimerange="55000 55000" aelock=true
-        gst_config = (
-                "nvarguscamerasrc "
-                "ispdigitalgainrange=\"%.2f %.2f\" "
-                "gainrange=\"%.2f %.2f\" "
-                "exposuretimerange=\"%d %d\" "
-                "%s"
-                "! "
-                "video/x-raw(memory:NVMM), "
-                "width=(int)%d, height=(int)%d, "
-                "format=(string)NV12, framerate=(fraction)%d/1 ! "
-                "nvvidconv flip-method=%d ! "
-                "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
-                "videoconvert ! "
-                "video/x-raw, format=(string)BGR ! appsink"
-                % (
-                    ispdigitalgainrange_from,
-                    ispdigitalgainrange_to,
-                    gainrange_from,
-                    gainrange_to,
-                    exposuretimerange_from,
-                    exposuretimerange_to,
-                    aelock,
-                    capture_width,
-                    capture_height,
-                    framerate,
-                    nvidia_flip_method,
-                    display_width,
-                    display_height
-                )
-        )
+        if config.APPLY_IMAGE_CROPPING:
+            gst_config = (
+                    "nvarguscamerasrc "
+                    "ispdigitalgainrange=\"%.2f %.2f\" "
+                    "gainrange=\"%.2f %.2f\" "
+                    "exposuretimerange=\"%d %d\" "
+                    "%s"
+                    "! "
+                    "video/x-raw(memory:NVMM), "
+                    "width=(int)%d, height=(int)%d, "
+                    "format=(string)NV12, framerate=(fraction)%d/1 ! "
+                    "nvvidconv top=%d bottom=%d left=%d right=%d flip-method=%d ! "
+                    "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+                    "videoconvert ! "
+                    "video/x-raw, format=(string)BGR ! appsink"
+                    % (
+                        ispdigitalgainrange_from,
+                        ispdigitalgainrange_to,
+                        gainrange_from,
+                        gainrange_to,
+                        exposuretimerange_from,
+                        exposuretimerange_to,
+                        aelock,
+                        capture_width,
+                        capture_height,
+                        framerate,
+                        crop_h_from,
+                        crop_h_to,
+                        crop_w_from,
+                        crop_w_to,
+                        nvidia_flip_method,
+                        crop_w_to-crop_w_from,
+                        crop_h_to-crop_h_from
+                    )
+            )
+        else:
+            gst_config = (
+                    "nvarguscamerasrc "
+                    "ispdigitalgainrange=\"%.2f %.2f\" "
+                    "gainrange=\"%.2f %.2f\" "
+                    "exposuretimerange=\"%d %d\" "
+                    "%s"
+                    "! "
+                    "video/x-raw(memory:NVMM), "
+                    "width=(int)%d, height=(int)%d, "
+                    "format=(string)NV12, framerate=(fraction)%d/1 ! "
+                    "nvvidconv flip-method=%d ! "
+                    "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+                    "videoconvert ! "
+                    "video/x-raw, format=(string)BGR ! appsink"
+                    % (
+                        ispdigitalgainrange_from,
+                        ispdigitalgainrange_to,
+                        gainrange_from,
+                        gainrange_to,
+                        exposuretimerange_from,
+                        exposuretimerange_to,
+                        aelock,
+                        capture_width,
+                        capture_height,
+                        framerate,
+                        nvidia_flip_method,
+                        display_width,
+                        display_height
+                    )
+            )
 
         if config.APPLY_THREAD_BUFF_CLEANING:
             self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
@@ -1036,8 +1075,8 @@ class CameraAdapterIMX219_170:
                 image = cv.rotate(image, self._cv_rotate_code)
 
             # crop black zones
-            if config.APPLY_IMAGE_CROPPING:
-                image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
+            #if config.APPLY_IMAGE_CROPPING:
+            #    image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
             # image = cv.imread('test.jpg') #fake image for debug
             return image
         else:
@@ -1308,19 +1347,19 @@ class GPSUbloxAdapter:
         Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
         features)"""
 
-        self._get_fresh_time = time.time()
+        # self._get_fresh_time = time.time()
         
-        while len(self._last_pos_container) < 1:
-            if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
-                raise TimeoutError
-            pass
+        # while len(self._last_pos_container) < 1:
+            # if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
+                # raise TimeoutError
+            # pass
         
         with self._sync_locker:
             self._position_is_fresh = False
             
         while True:
-            if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
-                raise TimeoutError
+            # if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
+                # raise TimeoutError
             with self._sync_locker:
                 if not self._position_is_fresh:
                     continue

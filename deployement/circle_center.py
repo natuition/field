@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 old_config_name = "../config/config.py"
-new_config_name = "../config/config.py~"
+new_config_name = "../config/config.py.bak"
 os.rename(old_config_name,new_config_name)
 INPUT_FILE = open(new_config_name,"r")
 OUTPUT_FILE = open("../config/config.py","w")

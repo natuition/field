@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=violette
 WorkingDirectory=/home/violette/field/uiWebRobot/
-ExecStart=/usr/bin/python3.6 /home/violette/field/uiWebRobot/application.py
+ExecStart=/usr/bin/sudo /usr/bin/python3.6 /home/violette/field/uiWebRobot/application.py
 Restart=on-failure
 
 [Install]

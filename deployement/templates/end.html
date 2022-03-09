@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Server deployement</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        .KO{
+            color: red!important;
+        }
+        .OK{
+            color: green!important;
+        }
+        @media print {
+            .noPrint{
+                display:none;
+            }
+        }
+        body{
+            margin: 10px !important;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+</head>
+<body>
+    <img class="d-block mx-auto w-25 mb-3" src="{{ url_for('static', filename='logo_doc.png') }}" alt="logo">
+    <h2>Final report :</h2>
+    <form method="POST" action="/final">
+        <table class="table table-hover table-striped">
+            {% for key, value in answer.items() %}
+            <tr>
+                <th> {{ key }} </th>
+                <td class="{{ value }}"> {{ value }} </td>
+
+            </tr>
+            {% endfor %}
+        </table>
+
+    </form>
+    <button onclick="window.print();" class="noPrint">
+        Print Me
+    </button>
+</body>
+</html>

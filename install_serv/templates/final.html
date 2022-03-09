@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <style>
+        .KO{
+            color: red!important;
+        }
+        .OK{
+            color: green!important;
+        }
+        @media print {
+            .noPrint{
+                display:none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <img class="d-block mx-auto w-25 mb-3" src="{{ url_for('static', filename='images/logo_doc.png') }}" alt="logo">
+    <h2>Final report :</h2>
+    <form method="POST" action="/final">
+        <table class="table table-hover table-striped">
+            {% for key, value in answer.items() %}
+            <tr>
+                <th> {{ key }} </th>
+                <td class="{{ value }}"> {{ value }} </td>
+
+            </tr>
+            {% endfor %}
+        </table>
+
+    </form>
+    <button onclick="window.print();" class="noPrint">
+        Print Me
+    </button>
+</body>
+
+</html>

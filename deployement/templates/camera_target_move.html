@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Server deployement</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        html, body
+        {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script> 
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+    <script>
+        var next_page_href = 'http://' + document.domain + ':' + location.port + '/client_config';
+        var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+    </script>
+</head>
+<body>
+    <h1 style="text-align: center; padding: 10px 0;">Move to target</h1>
+
+    <div id="run_move_div" class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <label class="form-check-label">Move to target :</label>
+        <div class="btn-group-vertical m-1">
+            <button type="button" id="run_move" class="btn btn-secondary" onclick="runMoveToTarget();"> Run </button>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <label class="form-check-label" for="xDone">Align X axis :</label>
+        <div class="btn-group m-1">
+            <button type="button" id="x_remove" class="btn btn-secondary m-1 rounded" onclick="moveX(-1)" disabled>Left</button>
+            <button type="button" id="x_add" class="btn btn-secondary m-1 rounded" onclick="moveX(1)" disabled>Right</button>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <label class="form-check-label" for="xDone">Align Y axis :</label>
+        <div class="btn-group-vertical m-1">
+            <button type="button" id="y_add" class="btn btn-secondary m-1 rounded" onclick="moveY(1)" disabled>Up</button>
+            <button type="button" id="y_remove" class="btn btn-secondary m-1 rounded" onclick="moveY(-1)" disabled>Down</button>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="targetMoveDone" onclick="enableNext()">
+            <label class="form-check-label" for="targetMoveDone">Move to target done</label>
+        </div>
+        <button type="button" id="next" class="btn btn-danger" onclick="socketio.emit('validate_log', {'key': 'Camera offset', 'value': 'OK'});sleep(1000).then(() => {window.location.href=next_page_href});">Next</button>
+    </div>
+    <script>
+        function enableNext(){
+            if($("#targetMoveDone").is(':checked')){
+                $('#next').prop('class', "btn btn-success");
+                $('#next').prop('disabled', false);
+            } else{
+                $('#next').prop('disabled', true);
+                $('#next').prop('class', "btn btn-danger");
+            }
+        }
+        $(document).ready(function(){
+            $('#next').prop('disabled', true);
+        });
+
+        function moveX(x){
+            socketio.emit('x_y_dir', {"x": x})
+            socketio.emit('move_step', {"x": x})
+        }
+
+        function moveY(y){
+            socketio.emit('x_y_dir', {"y": y})
+            socketio.emit('move_step', {"y": y})
+        }
+
+        function runMoveToTarget(){
+            $('.btn').attr({disabled: true});
+            $('#run_move').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Running...');
+            socketio.emit('run_move_to_target', {"run_move_to_target": true})
+        }
+
+        socketio.on('move', function(data) {
+            if(data["move"]){
+                $('.btn').removeAttr("disabled");
+                $('#run_move').attr({disabled: true});
+                $('#run_move').html('Done');
+            }
+        });
+
+        function sleep (time) {
+            return new Promise((resolve) => setTimeout(resolve, time));
+        }
+    </script>
+</body>
+</html>

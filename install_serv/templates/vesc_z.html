@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+</head>
+
+<body>
+
+    <h2>VESC_Z</h2>
+    <h2>
+        <p> {{ answer }} </p>
+    </h2>
+    <form method="POST" action="/vesc_z">
+        <label for="App">App</label>
+        <input type="checkbox" id="App" name="App"> <br>
+        <label for="Calib">Setup motor FOC</label>
+        <input type="checkbox" id="Calib" name="Setup Motor FOC"> <br>
+        <input type="submit" name='x' value="test_motor">
+        <input type="checkbox" id="test" name="test"> <br>
+
+        <input type="submit" name='x' value='next'>
+
+    </form>
+</body>
+
+</html>

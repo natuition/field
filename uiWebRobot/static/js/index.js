@@ -1,4 +1,4 @@
-const status = document.querySelector('.status')
+const statu = document.querySelector('.status')
 const statusActive = document.querySelector('.status__active')
 const statusTitle = document.querySelector('.status__active--title')
 const generateField = document.querySelector('.ruler')
@@ -16,11 +16,11 @@ const startButton = document.querySelector('#Start');
 const continueButton = document.querySelector('#Continue');
 const stopButton = document.querySelector('#Stop');
 const wheelButton = document.querySelector('#Wheel');
-const auditButton = document.querySelector('#Audit');
+//const auditButton = document.querySelector('#Audit');
 const removeFieldButton = document.querySelector('#RemoveField');
 const choose_field_selector = document.querySelector('#field_selector');
 
-if(auditButton != null) auditButton.addEventListener('click', changeMode);
+//if(auditButton != null) auditButton.addEventListener('click', changeMode);
 if(newFieldButton != null) newFieldButton.addEventListener('click', clickHandler);
 else{
     newFieldButton = document.querySelector('#ValidateZone');
@@ -41,11 +41,8 @@ if(choose_field_selector != null){
 
 var header_map = document.querySelector('.ruler');
 document.getElementById('map__header').style.width = $(header_map).width() + "px";
-document.getElementById('webCamStream').style.width = $(header_map).width() + "px";
 
 var audit = false;
-
-document.getElementById('webCamStream').src = 'http://' + document.domain + ':8888';
 
 var reloader = 0;
 
@@ -102,6 +99,7 @@ socketButton.on('continue', function(dataServ) {
 
 socketButton.on('startMain', function(dataServ) {
     if(dataServ["status"] == "finish"){
+        //verif_iframe_start();
         $(document.getElementsByClassName('active')[0]).addClass('finished');
         clearStats();
         setTimeout(() => { 
@@ -115,8 +113,8 @@ socketButton.on('startMain', function(dataServ) {
             $(button).addClass("begin__button--stop");
             $(button).addClass("unselectable");
             $(button).removeAttr('disabled');
-            status.classList.remove('display-flex')
-            status.classList.add('display-none')
+            statu.classList.remove('display-flex')
+            statu.classList.add('display-none')
             generateField.classList.remove('display-flex')
             generateField.classList.add('display-none')
             statusActive.classList.remove('display-none')
@@ -128,8 +126,7 @@ socketButton.on('startMain', function(dataServ) {
                 statusTitle.classList.add('display-none')
                 statusTitle.classList.remove('display-block')
             }
-            document.getElementById('webCamStream').src = 'http://' + document.domain + ':8888';
-            document.getElementById('webCamStream').style.width = $(header_map).width() + "px";
+            socketio.emit('data', {type: "getStats"});
         }, 2000);
     }
 });
@@ -150,8 +147,8 @@ socketButton.on('stop', function(dataServ) {
             $(button).addClass("unselectable");
             $(button).removeAttr('disabled');
 
-            status.classList.remove('display-none')
-            status.classList.add('display-flex')
+            statu.classList.remove('display-none')
+            statu.classList.add('display-flex')
 
             generateField.classList.remove('display-none')
             generateField.classList.add('display-flex')
@@ -172,9 +169,10 @@ socketButton.on('stop', function(dataServ) {
             audit = false;
 
             newFieldButton.classList.remove("disabled");
-            newFieldButton.removeAttribute("disabled")
+            newFieldButton.removeAttribute("disabled");
             wheelButton.classList.remove("disabled-wheel");
-            verif_iframe_start();
+            //document.getElementById("webCamStream").remove();
+            //verif_iframe_start();
 
             document.getElementById('map__header').contentWindow.location.reload();
         }, 2000);
@@ -188,7 +186,7 @@ socketButton.on('field', function(dataServ) {
         $('.begin__button--continue').attr('disabled', '');
         $('.begin__button--start').addClass('disabled');
         $('.begin__button--start').attr('disabled', '');
-        $('#Audit').addClass('disable-switcher-audit');
+        //$('#Audit').addClass('disable-switcher-audit');
         $('#Newfield').addClass('active');
         $('#Newfield').attr('disabled', '');
         $('#r1').attr('disabled', '');
@@ -252,7 +250,7 @@ socketButton.on('field', function(dataServ) {
         $(divButton).removeAttr('disabled');
         $('#Start').removeAttr('disabled');   
         $('#Start').removeClass('disabled');
-        $('#Audit').removeClass('disable-switcher-audit');
+        //$('#Audit').removeClass('disable-switcher-audit');
 
         $('#RemoveField').removeAttr('disabled');
         $('#RemoveField').removeClass('disabled');
@@ -302,8 +300,9 @@ function verif_iframe_stop() {
 
 function verif_iframe_start(){
     iframe_verif = setInterval(() => {
-        if(document.getElementById('conteneur_stats') != null)
-        if(document.getElementById('conteneur_stats').classList.contains("display-flex"))
+        if(document.getElementById('conteneur_stats') != null);
+        if(document.getElementById('conteneur_stats').classList.contains("display-flex"));
+        if(document.getElementById("webCamStream")) document.getElementById("webCamStream").remove();
         try {
             $.ajax({
                 type : "HEAD",
@@ -311,11 +310,29 @@ function verif_iframe_start(){
                 url : 'http://' + document.domain + ':8888'
             })
             .done(function() {
-                $("#webCamStream").attr("src", 'http://' + document.domain + ':8888');
+                var url = new URL(window.location.href);
+                console.log(url.searchParams.get('notIframe'))
+                if (!url.searchParams.get('notIframe')) {
+                    if(document.getElementById("webCamStream")){
+                        document.getElementById("webCamStream").src = 'http://' + document.domain + ':8888';
+                    }else{
+                        var ifrm = document.createElement("iframe");
+                        ifrm.id = "webCamStream";
+                        ifrm.src = 'http://' + document.domain + ':8888';
+                        ifrm.width = "414px";
+                        ifrm.height = "250px";
+                        ifrm.style = "margin: 0 auto;display:block; border: none; border-radius: 20px; max-width: 374px; min-height: 210px; width: 100%; height: 100%;";
+                        ifrm.style.width = $(header_map).width() + "px";
+                        $( "#conteneur_stats" ).append(ifrm);
+                    }
+                }
                 verif_iframe_stop();
             })
         } catch(e) {}
     }, 5000);
 }
 
-verif_iframe_start();
+
+window.addEventListener("load", function(event) {
+    socketio.emit('data', {type: "getInputVoltage"});
+});

@@ -4,10 +4,12 @@ import threading
 from time import sleep
 from config import config
 import utility
+import navigation
 
 class SyntheseRobot:
     OP = "Robot_OP"
     HS = "Robot_HS"
+    ANTI_THEFT = "Robot_ANTI_THEFT"
 
 class NotificationClient:
 
@@ -20,11 +22,12 @@ class NotificationClient:
         self.status = SyntheseRobot.OP
         self.socket = socket(AF_INET, SOCK_STREAM)
         self.socket.settimeout(10)
-        self.current_coordinate = None
+        self.current_coordinate = []
         self.treated_plant = None
         self.field = None
         self.input_voltage = None
         self.extracted_plants = None
+        self.antiTheftZone = None
         self.time_start = time_start
         self.first_send = False
         self.last_extracted_plants_send = dict()
@@ -50,20 +53,27 @@ class NotificationClient:
 
     def setStatus(self, status: SyntheseRobot):
         self.status = status
-        self.socket.send(self.status.encode("utf-8"))
+        if status == SyntheseRobot.HS:
+            self.socket.send(self.status.encode("utf-8"))
 
     def isConnected(self):
         return self._keep_thread_alive
 
     def _close(self):
         try:
-            self.socket.send("".encode("utf-8"))
+            self.socket.send(f"CLOSE;{utility.get_current_time()}".encode("utf-8"))
             self.socket.close() 
         except:
             pass
         print("[Notification] Disconnected") 
 
     def set_current_coordinate(self, current_coordinate):
+        if set(self.current_coordinate) != set(current_coordinate) and self.antiTheftZone is not None:
+            current_coordinate_in_zone = self.antiTheftZone.coordianate_are_in_zone(current_coordinate)
+            if current_coordinate_in_zone and self.status == SyntheseRobot.ANTI_THEFT:
+                self.status = SyntheseRobot.OP
+            elif not current_coordinate_in_zone and self.status == SyntheseRobot.OP:
+                self.status = SyntheseRobot.ANTI_THEFT
         self.current_coordinate = current_coordinate
 
     def set_treated_plant(self, treated_plant):
@@ -71,6 +81,7 @@ class NotificationClient:
 
     def set_field(self, field):
         self.field = field
+        self.antiTheftZone = navigation.AntiTheftZone(field)
 
     def set_input_voltage(self, input_voltage):
         self.input_voltage = input_voltage
@@ -114,6 +125,10 @@ class NotificationClient:
                             self.last_extracted_plants_send = dict(self.extracted_plants)
                             if send_dict:
                                 msg += f";{send_dict}"
+
+                        if self.status==SyntheseRobot.ANTI_THEFT:
+                            msg = ""
+                        
                         self.socket.send(f"{self.time_start};{self.status}{msg}".encode("utf-8"))
                     else:
                         self.socket.send(self.status.encode("utf-8"))
@@ -135,4 +150,3 @@ class NotificationClient:
                         continue
             except Exception:
                 self.stop()
-

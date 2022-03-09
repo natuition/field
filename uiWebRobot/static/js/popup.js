@@ -12,3 +12,7 @@ socketBroadcast_.on('notification', function(data) {
     clearTimeout(lastAlert);
     lastAlert = setTimeout(sendAlert, 500, data["message_name"], data["message"]);
 });
+
+socketBroadcast_.on('reload', function(dataServ) {
+    document.location.reload();
+});

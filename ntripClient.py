@@ -12,6 +12,7 @@ import random
 import utility
 from config import config
 import adapters
+from ntripbrowser import NtripBrowser, UnableToConnect, ExceededTimeoutError
 
 version = 0.1
 useragent = "NTRIP MAVProxy/%.1f" % version
@@ -191,7 +192,7 @@ class NtripClient(object):
             if self.rtcm3.read(data):
                 self.last_id = self.rtcm3.get_packet_ID()
                 
-                if time.time()-self.lastSend>=4:
+                if time.time()-self.lastSend>=4 and config.SEND_LOCATION_TO_NTRIP:
                     print("Envoi de la trame GPGGA...")
                     self.socket.sendall(self.getGGABytes())
                     self.lastSend = time.time()
@@ -215,37 +216,29 @@ class NtripClient(object):
         return False
 
     def readAndSendLoop(self):
+        ser: serial.Serial = None
         try:
-            ser = serial.Serial(self.output,self.baudrate, timeout=10)
+            ser: serial.Serial = serial.Serial(self.output,self.baudrate, timeout=10)
         except serial.SerialException:
             NtripError(f"Error to connection to '{self.output}' at {self.baudrate} !")
             exit(1)
 
-        all = dict()
+        try:
+            while True:
+                data = self.read()
+                if data is None:
+                    continue
+                
+                if self.last_id in config.RTK_ID_SEND:
+                    ser.write(data)
 
-        while True:
-            data = self.read()
+        except KeyboardInterrupt:
+            print("Fermeture des connexions...")
+            ser.close()
+            if self.socket:
+                self.socket.close()
 
-            if data is None:
-                continue
-            
-            ser.write(data)
-
-            if not self.last_id in all:
-                all[self.last_id] = 1
-            else:
-                all[self.last_id] += 1
-
-            print(f"{time.strftime('%H:%M:%S', time.localtime())} : ",end="")
-            
-            for key,value in all.items():
-                print(str(key)+":"+str(value),end="")
-                if key!=list(all.keys())[-1]:
-                    print(", ",end="")
-            
-            print("\n",end="")
-
-            
+        print("Connexions fermées.")
 
 if __name__ == '__main__':
     
@@ -258,22 +251,37 @@ if __name__ == '__main__':
         
     ntripArgs['baudrate'] = config.NTRIP_OUTPUT_BAUDRATE
 
-    with adapters.GPSUbloxAdapter(ntripArgs['output'], ntripArgs['baudrate'], config.GPS_POSITIONS_TO_KEEP) as gps:
-        try:
-            pos = gps.get_fresh_position()
-            ntripArgs['lat'] = pos[0]
-            ntripArgs['long'] = pos[1]
-            print(f"Current latitude : {pos[0]}, longitude : {pos[1]} for send to ntrip.")
-        except:
-            pass
-        
-    time.sleep(5)
-    
+    if config.SEND_LOCATION_TO_NTRIP or config.FIND_MOUNTPOINT:
+        with adapters.GPSUbloxAdapter(ntripArgs['output'], ntripArgs['baudrate'], config.GPS_POSITIONS_TO_KEEP) as gps:
+            try:
+                pos = gps.get_fresh_position()
+                ntripArgs['lat'] = pos[0]
+                ntripArgs['long'] = pos[1]
+                print(f"Current latitude : {pos[0]}, longitude : {pos[1]} for send to ntrip.")
+            except Exception as e:
+                print("Error not found coords ! ",e)
+                exit(1)
+            
     ntripArgs['user'] = config.NTRIP_USER
     ntripArgs['password'] = config.NTRIP_PASSWORD
     ntripArgs['caster'] = config.NTRIP_CASTER
     ntripArgs['port'] = config.NTRIP_PORT
     ntripArgs['mountpoint'] = config.NTRIP_MOUNTPOINT
 
+    if config.FIND_MOUNTPOINT:
+        browser = NtripBrowser(ntripArgs['caster'], ntripArgs['port'], coordinates=(ntripArgs['lat'], ntripArgs['long']), maxdist=config.MAX_DISTANCE_MOUNTPOINT)
+        try:
+            mountpoints = browser.get_mountpoints()["str"]
+            if mountpoints:
+                mountpoint = mountpoints[0]
+                print(f"The mountpoint '{mountpoint['Mountpoint']}' is use, it's about {int(mountpoint['Distance'])} kilometers from us at the coordinate [lat:{mountpoint['Latitude']},long:{mountpoint['Longitude']}].")
+                ntripArgs['mountpoint'] = mountpoint["Mountpoint"]
+            else:
+                print(f"Not found mountpoint {config.MAX_DISTANCE_MOUNTPOINT} kilometers around, the mountpoint in config named '{config.NTRIP_MOUNTPOINT}' is use.")
+            sys.stdout.flush()
+        except (UnableToConnect, ExceededTimeoutError):
+            pass
+
+    sys.stdout.flush()
     n = NtripClient(**ntripArgs)
     n.readAndSendLoop()
