@@ -16,7 +16,7 @@ const startButton = document.querySelector('#Start');
 const continueButton = document.querySelector('#Continue');
 const stopButton = document.querySelector('#Stop');
 const wheelButton = document.querySelector('#Wheel');
-const auditButton = document.querySelector('#Audit');
+//const auditButton = document.querySelector('#Audit');
 const removeFieldButton = document.querySelector('#RemoveField');
 const choose_field_selector = document.querySelector('#field_selector');
 
@@ -186,7 +186,7 @@ socketButton.on('field', function(dataServ) {
         $('.begin__button--continue').attr('disabled', '');
         $('.begin__button--start').addClass('disabled');
         $('.begin__button--start').attr('disabled', '');
-        $('#Audit').addClass('disable-switcher-audit');
+        //$('#Audit').addClass('disable-switcher-audit');
         $('#Newfield').addClass('active');
         $('#Newfield').attr('disabled', '');
         $('#r1').attr('disabled', '');
@@ -250,7 +250,7 @@ socketButton.on('field', function(dataServ) {
         $(divButton).removeAttr('disabled');
         $('#Start').removeAttr('disabled');   
         $('#Start').removeClass('disabled');
-        $('#Audit').removeClass('disable-switcher-audit');
+        //$('#Audit').removeClass('disable-switcher-audit');
 
         $('#RemoveField').removeAttr('disabled');
         $('#RemoveField').removeClass('disabled');
