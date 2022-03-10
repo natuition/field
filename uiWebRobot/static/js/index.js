@@ -79,7 +79,7 @@ socketButton.on('start', function(dataServ) {
         $('.begin__button--start').addClass('active');
         $('.begin__button--start').attr('disabled', '');
 
-        $(auditButton).addClass('fix');
+        //$(auditButton).addClass('fix');
     }
 });
 
@@ -93,7 +93,7 @@ socketButton.on('continue', function(dataServ) {
         $('.begin__button--continue').addClass('active');
         $('.begin__button--continue').attr('disabled', '');
 
-        $(auditButton).addClass('fix');
+        //$(auditButton).addClass('fix');
     }
 });
 
@@ -119,13 +119,13 @@ socketButton.on('startMain', function(dataServ) {
             generateField.classList.add('display-none')
             statusActive.classList.remove('display-none')
             statusActive.classList.add('display-flex')
-            if(dataServ["audit"]){
+            /*if(dataServ["audit"]){
                 statusTitle.classList.add('display-block')
                 statusTitle.classList.remove('display-none')
             }else{
                 statusTitle.classList.add('display-none')
                 statusTitle.classList.remove('display-block')
-            }
+            }*/
             socketio.emit('data', {type: "getStats"});
         }, 2000);
     }
@@ -163,9 +163,9 @@ socketButton.on('stop', function(dataServ) {
             $('.begin__button--'+otherButton).removeClass('disabled');
             $('.begin__button--'+otherButton).removeAttr('disabled', '');
 
-            auditButton.classList.remove('fix');
+            /*auditButton.classList.remove('fix');
             auditButton.setAttribute('src', '/static/extraction.png');
-            auditButton.classList.remove("disable-extraction");
+            auditButton.classList.remove("disable-extraction");*/
             audit = false;
 
             newFieldButton.classList.remove("disabled");
@@ -271,18 +271,18 @@ socketBroadcast.on('reloader', function(dataServ) {
 
 socketBroadcast.on('audit', function(data) {
     if(data["audit"]){
-        auditButton.setAttribute('src', '/static/extraction-disable.png');
-        $(auditButton).addClass("disable-extraction");
+        /*auditButton.setAttribute('src', '/static/extraction-disable.png');
+        $(auditButton).addClass("disable-extraction");*/
         audit = true;
     }else{
-        auditButton.setAttribute('src', '/static/extraction.png');
-        $(auditButton).removeClass("disable-extraction");
+        /*auditButton.setAttribute('src', '/static/extraction.png');
+        $(auditButton).removeClass("disable-extraction");*/
         audit = false;
     }
 });
 
 function changeMode(){
-    if(!this.classList.contains("fix") && !this.classList.contains("disable-switcher-audit")){
+    /*if(!this.classList.contains("fix") && !this.classList.contains("disable-switcher-audit")){
         if(!this.classList.contains("disable-extraction")){
             if(confirm((ui_languages["Audit ?"])[ui_language])) {
                 socketBroadcast.emit('data', {type: "audit", audit: true});
@@ -290,7 +290,7 @@ function changeMode(){
         }else{
             socketBroadcast.emit('data', {type: "audit", audit: false});
         }
-    }
+    }*/
 }
 var iframe_verif;
 
