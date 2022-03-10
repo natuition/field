@@ -1002,107 +1002,109 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     maneuverStartDistance = getAuditDependentConfigParam(config.MANEUVER_START_DISTANCE,"MANEUVER_START_DISTANCE",logger)
 
     turning_radius = maneuverStartDistance   # minimum turning radius given in millimeter
-    rnd = 0
-    rnds = corner_finish_rounds(turning_radius)
+    
+    if config.ADD_CORNER_TO_BEZIER_PATH:
+        rnd = 0
+        rnds = corner_finish_rounds(turning_radius)
 
-    for rnd in range(rnds+1):             # example a 3meter radius requires 4 corners finish
-        # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-        mxt = "corner rnd "+str(rnd)+"/"+str(rnds)
-                
-        #the direction is given along with the point in meter per second, signed
-        #go to line forward, step back to the turning point "a1"
+        for rnd in range(rnds+1):             # example a 3meter radius requires 4 corners finish
+            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
+            mxt = "corner rnd "+str(rnd)+"/"+str(rnds)
+                    
+            #the direction is given along with the point in meter per second, signed
+            #go to line forward, step back to the turning point "a1"
 
-        if not add_points_to_path(path,[b,fwd,"B "+mxt]):
-            return path                                            
-        for index in range(0,len(first_bezier_turn)):
-            if index == 0:
-                if not add_points_to_path(path, [first_bezier_turn[index],rev]):
-                    return path
-            else:
-                if not add_points_to_path(path, [first_bezier_turn[index],fwd]):
-                    return path
-        if not add_points_to_path(path,[b,rev,mxt]):
-            return path 
-
-
-        if not add_points_to_path(path,[c,fwd,"C "+mxt]):
-            return path                                            
-        for index in range(0,len(second_bezier_turn)):
-            if index == 0:
-                if not add_points_to_path(path, [second_bezier_turn[index],rev]):
-                    return path
-            else:
-                if not add_points_to_path(path, [second_bezier_turn[index],fwd]):
-                    return path
-        if not add_points_to_path(path, [c,rev,mxt] ):
-            return path  
+            if not add_points_to_path(path,[b,fwd,"B "+mxt]):
+                return path                                            
+            for index in range(0,len(first_bezier_turn)):
+                if index == 0:
+                    if not add_points_to_path(path, [first_bezier_turn[index],rev]):
+                        return path
+                else:
+                    if not add_points_to_path(path, [first_bezier_turn[index],fwd]):
+                        return path
+            if not add_points_to_path(path,[b,rev,mxt]):
+                return path 
 
 
-        if not add_points_to_path(path,[d,fwd,"D "+mxt]):
-            return path                                            
-        for index in range(0,len(third_bezier_turn)):
-            if index == 0:
-                if not add_points_to_path(path, [third_bezier_turn[index],rev]):
-                    return path
-            else:
-                if not add_points_to_path(path, [third_bezier_turn[index],fwd]):
-                    return path
-        if not add_points_to_path(path, [d,rev,mxt] ):
-            return path 
+            if not add_points_to_path(path,[c,fwd,"C "+mxt]):
+                return path                                            
+            for index in range(0,len(second_bezier_turn)):
+                if index == 0:
+                    if not add_points_to_path(path, [second_bezier_turn[index],rev]):
+                        return path
+                else:
+                    if not add_points_to_path(path, [second_bezier_turn[index],fwd]):
+                        return path
+            if not add_points_to_path(path, [c,rev,mxt] ):
+                return path  
 
-        if not add_points_to_path(path, [a,fwd,"A "+mxt]):
-            return path                                            
-        for index in range(0,len(fourth_bezier_turn)):
-            if index == 0:
-                if not add_points_to_path(path, [fourth_bezier_turn[index],rev]):
-                    return path
-            else:
-                if not add_points_to_path(path, [fourth_bezier_turn[index],fwd]):
-                    return path
-        #if not add_points_to_path(path, [a,rev,mxt] ):
-        if not add_points_to_path(path, [a_spiral,rev,mxt] ):
-            return path 
 
-        # get A'B'C'D' (prepare next ABCD points)
-        b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
-        d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
+            if not add_points_to_path(path,[d,fwd,"D "+mxt]):
+                return path                                            
+            for index in range(0,len(third_bezier_turn)):
+                if index == 0:
+                    if not add_points_to_path(path, [third_bezier_turn[index],rev]):
+                        return path
+                else:
+                    if not add_points_to_path(path, [third_bezier_turn[index],fwd]):
+                        return path
+            if not add_points_to_path(path, [d,rev,mxt] ):
+                return path 
 
-        if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
-            return path
+            if not add_points_to_path(path, [a,fwd,"A "+mxt]):
+                return path                                            
+            for index in range(0,len(fourth_bezier_turn)):
+                if index == 0:
+                    if not add_points_to_path(path, [fourth_bezier_turn[index],rev]):
+                        return path
+                else:
+                    if not add_points_to_path(path, [fourth_bezier_turn[index],fwd]):
+                        return path
+            #if not add_points_to_path(path, [a,rev,mxt] ):
+            if not add_points_to_path(path, [a_spiral,rev,mxt] ):
+                return path 
 
-        a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
-        c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
+            # get A'B'C'D' (prepare next ABCD points)
+            b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
+            d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
 
-        if not check_points_for_nones(a_new, b_new, c_new, d_new):
-            return path
-
-        a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int 
-
-        # get moving points A1 - ... - D2 spiral
-        a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
-        b1, b2 = compute_x1_x2_points(b, c, nav, logger)
-        c1, c2 = compute_x1_x2_points(c, d, nav, logger)
-        d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-
-        for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
-            if point is None:
+            if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
                 return path
 
-        a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
-        _, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
+            a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
+            c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
 
-        for point in [a1_spiral, a_spiral]:
-            if point is None:
-                if not _break:
-                    _break = True
-                    break
-        if _break : 
-            break
+            if not check_points_for_nones(a_new, b_new, c_new, d_new):
+                return path
 
-        first_bezier_turn = compute_bezier_points(a2,b,b1)
-        second_bezier_turn = compute_bezier_points(b2,c,c1)
-        third_bezier_turn = compute_bezier_points(c2,d,d1)
-        fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
+            a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int 
+
+            # get moving points A1 - ... - D2 spiral
+            a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
+            b1, b2 = compute_x1_x2_points(b, c, nav, logger)
+            c1, c2 = compute_x1_x2_points(c, d, nav, logger)
+            d1, d2 = compute_x1_x2_points(d, a, nav, logger)
+
+            for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
+                if point is None:
+                    return path
+
+            a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
+            _, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
+
+            for point in [a1_spiral, a_spiral]:
+                if point is None:
+                    if not _break:
+                        _break = True
+                        break
+            if _break : 
+                break
+
+            first_bezier_turn = compute_bezier_points(a2,b,b1)
+            second_bezier_turn = compute_bezier_points(b2,c,c1)
+            third_bezier_turn = compute_bezier_points(c2,d,d1)
+            fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
 
     while True:
         # get A'B'C'D' (prepare next ABCD points)
@@ -1111,6 +1113,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
 
         if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
             return path
+
+        d2_int_prev = d2_int
 
         a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
         c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
@@ -1535,7 +1539,7 @@ def main():
                     path_start_index = 1
                     if config.TRADITIONAL_PATH:
                         path_points = build_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
-                    if config.BEZIER_CORNER_PATH:
+                    if config.BEZIER_PATH:
                         print(field_gps_coords)
                         path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
                     if config.FORWARD_BACKWARD_PATH:

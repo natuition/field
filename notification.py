@@ -139,6 +139,12 @@ class NotificationClient:
                 sleep(self.timeout)
 
             except SocketError:
+                if self.status == SyntheseRobot.HS:
+                    try:
+                        self.stop()
+                    except BrokenPipeError:
+                        pass
+                    break
                 print("[Notification] Connection lost reconnecting...")
                 reconnect = False
                 while not reconnect and self._keep_thread_alive:
@@ -150,3 +156,4 @@ class NotificationClient:
                         continue
             except Exception:
                 self.stop()
+                break

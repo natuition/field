@@ -77,11 +77,13 @@ FUTURE_NUMBER_OF_POINTS = 3 #number of points that is given to the move to point
 # ======================================================================================================================
 #Only one of the following three parameters must be true
 TRADITIONAL_PATH = False #Snail path
-BEZIER_CORNER_PATH = True #Snail path and use of bezier curve for turns
+BEZIER_PATH = True #Snail path and use of bezier curve for turns
 FORWARD_BACKWARD_PATH = False #Path where the robot goes straight in extraction then reverses without extraction ....
 
-#This params work only if TRADITIONAL_PATH or BEZIER_CORNER_PATH are true. 
+#This params work only if TRADITIONAL_PATH or BEZIER_PATH are true. 
 ADD_FORWARD_BACKWARD_TO_END_PATH = True #Adds the path FORWARD_BACKWARD to complete the missing center.
+#This params work only if BEZIER_PATH are true. 
+ADD_CORNER_TO_BEZIER_PATH = False #Add management of corner for bezier curve
 
 #This params work only if BEZIER_CORNER_PATH are true.
 NUMBER_OF_BEZIER_POINT = 11 #Allows to determine the number of points put in the bezier turn.
@@ -95,7 +97,7 @@ TWO_POINTS_FOR_CREATE_FIELD = False
 NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
 #The robot will aim for the furthest point, 
 #when it reaches this point it will wait for a press on enter to go to the furthest point from it.
-DISPLAY_INSTRUCTION_PATH = False #Allows to display the robot guide points on the ui.
+DISPLAY_INSTRUCTION_PATH = True #Allows to display the robot guide points on the ui.
 DELTA_DISPLAY_INSTRUCTION_PATH = 15 #Number of guide points display on the ui.
 POINT_A = [[46.1579425, -1.1344245], -0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
