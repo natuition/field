@@ -288,6 +288,10 @@ def getJsFile(file_path,file_name,random_time):
             response=make_response(send_from_directory(app.static_folder,path=f'{file_path}/{file_name}', mimetype='application/css'))
     return response
 
+@app.route('/reboot')
+def reboot():
+    os.system('sudo reboot')
+
 if __name__ == "__main__":
     init()
     app.run(host="0.0.0.0",port="80",debug=True, use_reloader=False)
