@@ -292,6 +292,8 @@ def configVPN(serial_number):
         os.system(f"sudo ln -s {certificat_conf_path} /etc/openvpn/{serial_number.lower()}.conf")
         os.system("sudo systemctl enable openvpn.service")
         os.system("sudo systemctl restart openvpn.service")
+        os.system(f"sudo systemctl start openvpn@{serial_number.lower()}")
+        #os.system(f"sudo openvpn /etc/openvpn/{serial_number.lower()}.conf")
         shutil.rmtree('./unzip')
         shutil.rmtree('./vpn')
         print(f"Vpn for {serial_number} is install.")
