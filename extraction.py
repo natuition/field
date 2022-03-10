@@ -149,12 +149,16 @@ class ExtractionManagerV3:
 
         self.__extraction_map.clear()
 
+        if config.VERBOSE_EXTRACT:
+            msg = "[VERBOSE EXTRACT] Run PDZ scan..."
+            self.__logger_full.write_and_flush(msg+"\n")
         # do sectored scans
         smoothie_positions = self.scan_sectors()
-        msg = "Found " + str(len(smoothie_positions)) + " plants after PDZ scan"
-        self.__logger_full.write(msg + "\n")
-        if config.VERBOSE:
-            print(msg)
+        if config.VERBOSE_EXTRACT:
+            msg = "[VERBOSE EXTRACT] Found " + str(len(smoothie_positions)) + " plants after PDZ scan"
+            self.__logger_full.write_and_flush(msg + "\n")
+            if config.VERBOSE:
+                print(msg)
         # round coords before logging them
         if len(smoothie_positions) != 0:
             log_sm_positions = list(map(lambda item: (round(item[0], 2), round(item[1], 2)), smoothie_positions))
@@ -163,8 +167,13 @@ class ExtractionManagerV3:
             if config.VERBOSE:
                 print(msg)
 
+        plant_index=0
         # loop over plants that were detected during PDZ sectored scans and extract them (main ext loop)
         for init_pos_sm_x, init_pos_sm_y in smoothie_positions:
+            plant_index+=1
+            if config.VERBOSE_EXTRACT:
+                msg = f"[VERBOSE EXTRACT] Start extraction for plant {plant_index} of {len(smoothie_positions)}."
+                self.__logger_full.write_and_flush(msg+"\n")
             cur_pos_sm_x, cur_pos_sm_y = init_pos_sm_x, init_pos_sm_y
 
             # modify coordinates to try to avoid corkscrew tube view obscuring

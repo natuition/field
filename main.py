@@ -298,11 +298,14 @@ def move_to_point_and_extract(coords_from_to: list,
             if current_working_mode == working_mode_slow:
                 if config.VERBOSE and last_working_mode != current_working_mode:
                     msg = "[Working mode] : slow"
-                    logger_full.write_and_flush(msg+"\n")
+                    logger_full.write(msg+"\n")
                     print(msg)
                     last_working_mode = current_working_mode
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
+                    if config.VERBOSE_EXTRACT:
+                        msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
+                        logger_full.write_and_flush(msg+"\n")
                     voltage_thread = threading.Thread(target=send_voltage_thread_tf, args=(vesc_engine, ui_msg_queue), daemon=True)
                     voltage_thread.start()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
@@ -320,6 +323,10 @@ def move_to_point_and_extract(coords_from_to: list,
                     else:
                         extraction_manager_v3.extract_all_plants(data_collector)
                         slow_mode_time = time.time()
+                    
+                    if config.VERBOSE_EXTRACT:
+                        msg = "[VERBOSE EXTRACT] Extract cycle are finish."
+                        logger_full.write_and_flush(msg+"\n")
 
                     msg = "Applying force step forward after extractions cycle(s)"
                     logger_full.write(msg + "\n")
