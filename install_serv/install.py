@@ -13,6 +13,9 @@ import time
 import logging
 from flask_cors import CORS
 import signal
+import shutil
+from glob import glob
+from os import path
 
 import sys
 sys.path.append('../')
@@ -20,6 +23,7 @@ import connectors
 import adapters
 from config import config
 import utility
+
 
 
 app = Flask(__name__)
@@ -125,14 +129,23 @@ def init():
         LOG['PIC']= request.form['Tech']
         global PIC
         PIC=request.form['Tech']
-        changeConfigValue("ROBOT_SN", request.form['SN'])
+        SERIAL_NUMBER = request.form['SN']
+        changeConfigValue("ROBOT_SN", SERIAL_NUMBER)
         changeConfigValue("UI_LANGUAGE", request.form['language'])
         changeConfigValue("NTRIP_USER", request.form['ntripuser'])
         changeConfigValue("NTRIP_PASSWORD", request.form['ntrippswd'])
         changeConfigValue("NTRIP_CASTER", request.form['ntripcaster'])
-        return redirect(url_for('cam'))
+        configVPN(SERIAL_NUMBER)
+        return redirect(url_for('smoothie_iframe'))
     else:
         return render_template('init.html')
+
+@app.route('/smoothie_iframe', methods=['POST', 'GET'])
+def smoothie_iframe():
+    if request.method == 'POST':
+        return redirect(url_for('cam'))
+    else:
+        return render_template('smoothie_iframe.html')
 
 @app.route('/cam', methods=['POST', 'GET'])
 def cam():
@@ -267,8 +280,25 @@ def on_socket_data(data):
             to_emit = testes(smoothie, "z")
         socketio.emit("smoothie_return", to_emit, namespace='/server')
 
-# --------------------------------------------------------
+# -----------------------------------------------------------
+# ---------------------- all function -----------------------
+# -----------------------------------------------------------
 
+def configVPN(serial_number):
+    if path.exists(f"./vpn/{serial_number}.zip"):
+        os.system(f"unzip -o ./vpn/{serial_number}.zip -d ./unzip")
+        shutil.copytree("./unzip/nix/etc/openvpn/natuition.com","/etc/openvpn/natuition.com")
+        certificat_conf_path = glob('./unzip/nix/etc/openvpn/natuition.com/*.conf')[0].replace("./unzip/nix","")
+        os.system(f"sudo ln -s {certificat_conf_path} /etc/openvpn/{serial_number.lower()}.conf")
+        os.system("sudo systemctl enable openvpn.service")
+        os.system("sudo systemctl restart openvpn.service")
+        shutil.rmtree('./unzip')
+        shutil.rmtree('./vpn')
+        print(f"Vpn for {serial_number} is install.")
+    else:
+        print(f"./vpn/{serial_number}.zip not exist !")
+
+# -----------------------------------------------------------
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0",port="80",debug=True, use_reloader=False)
