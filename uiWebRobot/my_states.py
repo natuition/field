@@ -372,7 +372,6 @@ class CreateFieldState(State):
 
         self.__send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
-        self._send_last_pos_thread.start()
     
     def on_event(self, event):
         if event == Events.STOP:
@@ -380,12 +379,14 @@ class CreateFieldState(State):
             self.statusOfUIObject["fieldButton"] = None
             self.statusOfUIObject["stopButton"] = "charging"
 
+            self.__send_last_pos_thread_alive = False
+            self._send_last_pos_thread.join()
+
             try:
                 self.fieldCreator.setSecondPoint()
             except TimeoutError:
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-                self.__send_last_pos_thread_alive = False     
                 return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)  
 
             self.field = self.fieldCreator.calculateField()
@@ -394,6 +395,11 @@ class CreateFieldState(State):
                 if config.MAKE_MANEUVER_AFTER_FIELD_CREATE:
                     self.fieldCreator.manoeuvre()
                 self.manoeuvre = False
+
+            self.__send_last_pos_thread_alive = True
+            self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
+            self._send_last_pos_thread.start()
+
             self.statusOfUIObject["stopButton"] = None
             self.statusOfUIObject["fieldButton"] = "validate"
             self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
@@ -402,14 +408,12 @@ class CreateFieldState(State):
             return self
         elif event == Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
-            self.__send_last_pos_thread_alive = False  
             return WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine, self.gps)
         elif event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
         else:
             try:
-                self.__send_last_pos_thread_alive = False 
                 if self.smoothie is not None:
                     self.smoothie.disconnect()
                     self.smoothie = None
@@ -444,12 +448,16 @@ class CreateFieldState(State):
 
             try:
                 self.fieldCreator.setFirstPoint()
+
+                self._send_last_pos_thread.start()
+
                 self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
                 self.statusOfUIObject["fieldButton"] = None
             except TimeoutError:
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"})) 
                 self.__send_last_pos_thread_alive = False  
+                self._send_last_pos_thread.join()
                 return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
 
         elif data["type"] == "modifyZone":
@@ -934,7 +942,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage
 def send_last_pos_thread_tf(send_last_pos_thread_alive, gps, socketio):
     while send_last_pos_thread_alive():
         try:
-            lastPos = gps.get_last_position()
+            lastPos = gps.get_fresh_position()
             socketio.emit('updatePath', json.dumps([[[lastPos[1],lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
             time.sleep(1)
         except KeyboardInterrupt:
