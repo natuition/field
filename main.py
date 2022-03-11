@@ -1363,7 +1363,7 @@ def main():
     try:
         ui_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
     except KeyboardInterrupt:
-        exit(0)
+        raise KeyboardInterrupt
     except:
         ui_msg_queue = None
 
@@ -1833,12 +1833,6 @@ def main():
         except:
             pass
 
-        try:
-            sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
-            sharedMemory.unlink()
-        except:
-            pass
-
         if detection.YoloDarknetDetector.webStream is not None:
             detection.YoloDarknetDetector.webStream.terminate()
             detection.YoloDarknetDetector.webStream.join()
@@ -1847,9 +1841,4 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
-        sharedMemory.unlink()
-    except:
-        pass
     main()
