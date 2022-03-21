@@ -180,9 +180,9 @@ def move_to_point_and_extract(coords_from_to: list,
     :return:
     """
 
-    vesc_speed = SI_speed*config.MULTIPLIER_SI_SPEED_TO_RPM
-    speed_fast = config.SI_SPEED_FAST*config.MULTIPLIER_SI_SPEED_TO_RPM
-    vesc_speed_fast = speed_fast if SI_speed>=0 else -speed_fast
+    vesc_speed = SI_speed * config.MULTIPLIER_SI_SPEED_TO_RPM
+    speed_fast = config.SI_SPEED_FAST * config.MULTIPLIER_SI_SPEED_TO_RPM
+    vesc_speed_fast = speed_fast if SI_speed >= 0 else -speed_fast
     navigation_prediction.set_SI_speed(SI_speed)
 
     raw_angles_history = []
@@ -199,9 +199,12 @@ def move_to_point_and_extract(coords_from_to: list,
     last_corridor_side = 0
     current_corridor_side = 1
     almost_start = 0
-    
+
     prev_maneuver_time = time.time()
-    current_working_mode = 1
+    working_mode_slow = 1
+    working_mode_fast = 2
+    working_mode_switching = 3
+    current_working_mode = working_mode_slow
     last_working_mode = 0
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
 
@@ -231,9 +234,6 @@ def move_to_point_and_extract(coords_from_to: list,
     degraded_navigation_mode = False
     
     number_navigation_cycle_without_gps = 0
-
-    working_mode_slow = 1
-    working_mode_fast = 2
 
     point_reading_t = time.time()
 
@@ -268,6 +268,7 @@ def move_to_point_and_extract(coords_from_to: list,
                   str(per_det_end_t - per_det_start_t)
         logger_full.write(msg + "\n")
 
+        # MOVEMENT AND ACTIONS MODES
         if config.AUDIT_MODE:
             dc_start_t = time.time()
 
@@ -301,11 +302,13 @@ def move_to_point_and_extract(coords_from_to: list,
                     logger_full.write(msg+"\n")
                     print(msg)
                     last_working_mode = current_working_mode
+
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
                     if config.VERBOSE_EXTRACT:
                         msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
                         logger_full.write_and_flush(msg+"\n")
+                    # TODO remove thread init from here!
                     voltage_thread = threading.Thread(target=send_voltage_thread_tf, args=(vesc_engine, ui_msg_queue), daemon=True)
                     voltage_thread.start()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
@@ -319,7 +322,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                             extraction_manager_v3.extract_all_plants(data_collector)
-                            slow_mode_time = time.time()
+                        slow_mode_time = time.time()
                     else:
                         extraction_manager_v3.extract_all_plants(data_collector)
                         slow_mode_time = time.time()
@@ -340,44 +343,40 @@ def move_to_point_and_extract(coords_from_to: list,
                     vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
                     vesc_engine.apply_rpm(vesc_speed)
 
-                elif not ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon) and \
-                        time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and \
-                        config.SLOW_FAST_MODE:
-
-                    current_working_mode = working_mode_fast
-
-                    if not close_to_end:
-
-                        res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
-                                            Y_F=config.Y_F_MAX,
-                                            X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
-                                            Y=smoothie.smoothie_to_mm((config.Y_MAX - config.Y_MIN)*config.SLOW_FAST_MODE_HEAD_FACTOR, "Y"))
-                        if res != smoothie.RESPONSE_OK:
-                            msg = "INIT: Failed to move camera to Y max, smoothie response:\n" + res
-                            logger_full.write(msg + "\n")
-
-                        vesc_engine.apply_rpm(vesc_speed_fast)
+                elif time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and config.SLOW_FAST_MODE:
+                    # move cork to fast mode scan position
+                    res = smoothie.custom_separate_xy_move_to(
+                        X_F=config.X_F_MAX,
+                        Y_F=config.Y_F_MAX,
+                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                        Y=smoothie.smoothie_to_mm((config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR,
+                                                  "Y"))
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "INIT: Keeping in slow mode as failed to move camera to fast mode scan position, smoothie's response:\n" + res
+                        logger_full.write(msg + "\n")
+                    else:
+                        current_working_mode = working_mode_switching
 
                 vesc_engine.start_moving()
 
-            # fast mode
-            elif current_working_mode == working_mode_fast:
+            # switching (from slow to fast) mode
+            elif current_working_mode == working_mode_switching:
                 if config.VERBOSE and last_working_mode != current_working_mode:
-                    msg = "[Working mode] : fast"
-                    logger_full.write_and_flush(msg+"\n")
+                    msg = "[Working mode] : switching to fast"
+                    logger_full.write(msg+"\n")
                     print(msg)
                     last_working_mode = current_working_mode
+
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
                     smoothie.wait_for_all_actions_done()
-                    
-                    res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
-                                        Y_F=config.Y_F_MAX,
-                                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
-                                        Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
-
+                    res = smoothie.custom_separate_xy_move_to(
+                        X_F=config.X_F_MAX,
+                        Y_F=config.Y_F_MAX,
+                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                        Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
                     if res != smoothie.RESPONSE_OK:
                         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
                         logger_full.write(msg + "\n")
@@ -387,8 +386,41 @@ def move_to_point_and_extract(coords_from_to: list,
                     slow_mode_time = time.time()
                     vesc_engine.set_rpm(vesc_speed)
                     continue
-                #elif close_to_end:
-                #    vesc_engine.apply_rpm(vesc_speed)
+
+                sm_cur_pos = smoothie.get_smoothie_current_coordinates(convert_to_mms=False)
+                if abs(sm_cur_pos["X"] - (config.X_MAX - config.X_MIN) / 2) < 0.0001 and \
+                    abs(sm_cur_pos["Y"] - (config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR) < 0.0001:
+
+                    current_working_mode = working_mode_fast
+
+            # fast mode
+            elif current_working_mode == working_mode_fast:
+                if config.VERBOSE and last_working_mode != current_working_mode:
+                    msg = "[Working mode] : fast"
+                    logger_full.write_and_flush(msg+"\n")
+                    print(msg)
+                    last_working_mode = current_working_mode
+
+                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                    vesc_engine.stop_moving()
+                    data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
+
+                    res = smoothie.custom_separate_xy_move_to(
+                        X_F=config.X_F_MAX,
+                        Y_F=config.Y_F_MAX,
+                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                        Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
+                        logger_full.write(msg + "\n")
+                    smoothie.wait_for_all_actions_done()
+
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                    vesc_engine.set_rpm(vesc_speed)
+                    continue
+                elif close_to_end:
+                    vesc_engine.apply_rpm(vesc_speed)
                 else:
                     vesc_engine.apply_rpm(vesc_speed_fast)
 
