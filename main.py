@@ -297,11 +297,13 @@ def move_to_point_and_extract(coords_from_to: list,
         else:
             # slow mode
             if current_working_mode == working_mode_slow:
-                if config.VERBOSE and last_working_mode != current_working_mode:
-                    msg = "[Working mode] : slow"
-                    logger_full.write(msg+"\n")
-                    print(msg)
+                if last_working_mode != current_working_mode:
                     last_working_mode = current_working_mode
+                    msg = "[Working mode] : slow"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
 
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
@@ -322,7 +324,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                             extraction_manager_v3.extract_all_plants(data_collector)
-                        slow_mode_time = time.time()
+                            slow_mode_time = time.time()
                     else:
                         extraction_manager_v3.extract_all_plants(data_collector)
                         slow_mode_time = time.time()
@@ -343,8 +345,12 @@ def move_to_point_and_extract(coords_from_to: list,
                     vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
                     vesc_engine.apply_rpm(vesc_speed)
 
-                elif time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME and config.SLOW_FAST_MODE:
+                elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                     # move cork to fast mode scan position
+                    if config.VERBOSE:
+                        msg = "SLOW MODE: moving cork to fast mode position\n"
+                        logger_full.write(msg)
+
                     res = smoothie.custom_separate_xy_move_to(
                         X_F=config.X_F_MAX,
                         Y_F=config.Y_F_MAX,
@@ -355,23 +361,34 @@ def move_to_point_and_extract(coords_from_to: list,
                         msg = "INIT: Keeping in slow mode as failed to move camera to fast mode scan position, smoothie's response:\n" + res
                         logger_full.write(msg + "\n")
                     else:
+                        msg = "Switching from 'slow mode' to 'switching mode'"
+                        if config.LOG_SPEED_MODES:
+                            logger_full.write(msg + "\n")
+                        if config.PRINT_SPEED_MODES:
+                            print(msg)
                         current_working_mode = working_mode_switching
 
-                vesc_engine.start_moving()
+                vesc_engine.start_moving()  # TODO a bug possible: rewriting vesc engine start time and loss real vesc movement time
 
             # switching (from slow to fast) mode
             elif current_working_mode == working_mode_switching:
-                if config.VERBOSE and last_working_mode != current_working_mode:
-                    msg = "[Working mode] : switching to fast"
-                    logger_full.write(msg+"\n")
-                    print(msg)
+                if last_working_mode != current_working_mode:
                     last_working_mode = current_working_mode
+                    msg = "[Working mode] : switching to fast"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
 
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
-                    smoothie.wait_for_all_actions_done()
+                    if config.VERBOSE:
+                        msg = "Moving cork to slow mode scan position\n"
+                        logger_full.write(msg)
+
+                    # smoothie.wait_for_all_actions_done()
                     res = smoothie.custom_separate_xy_move_to(
                         X_F=config.X_F_MAX,
                         Y_F=config.Y_F_MAX,
@@ -388,23 +405,34 @@ def move_to_point_and_extract(coords_from_to: list,
                     continue
 
                 sm_cur_pos = smoothie.get_smoothie_current_coordinates(convert_to_mms=False)
-                if abs(sm_cur_pos["X"] - (config.X_MAX - config.X_MIN) / 2) < 0.0001 and \
-                    abs(sm_cur_pos["Y"] - (config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR) < 0.0001:
-
+                if abs(sm_cur_pos["X"] - (config.X_MAX - config.X_MIN) / 2) < 0.001 and \
+                        abs(sm_cur_pos["Y"] - (config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR) < 0.001:
+                    msg = "Switching from 'switching mode' to 'fast mode'"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
                     current_working_mode = working_mode_fast
 
             # fast mode
             elif current_working_mode == working_mode_fast:
-                if config.VERBOSE and last_working_mode != current_working_mode:
-                    msg = "[Working mode] : fast"
-                    logger_full.write_and_flush(msg+"\n")
-                    print(msg)
+                if last_working_mode != current_working_mode:
                     last_working_mode = current_working_mode
+                    msg = "[Working mode] : fast"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write_and_flush(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
 
                 if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                     vesc_engine.stop_moving()
                     data_collector.add_vesc_moving_time_data(vesc_engine.get_last_moving_time())
 
+                    if config.VERBOSE:
+                        msg = "Moving cork to slow mode scan position\n"
+                        logger_full.write(msg)
+
+                    # smoothie.wait_for_all_actions_done()
                     res = smoothie.custom_separate_xy_move_to(
                         X_F=config.X_F_MAX,
                         Y_F=config.Y_F_MAX,
@@ -415,14 +443,31 @@ def move_to_point_and_extract(coords_from_to: list,
                         logger_full.write(msg + "\n")
                     smoothie.wait_for_all_actions_done()
 
+                    msg = "Switching from 'fast mode' to 'slow mode'"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
                     vesc_engine.set_rpm(vesc_speed)
                     continue
                 elif close_to_end:
-                    vesc_engine.apply_rpm(vesc_speed)
+                    if vesc_engine.rpm != vesc_speed:
+                        msg = f"Applying slow speed {vesc_speed} at 'fast mode' (was {vesc_engine.rpm}) because of close_to_end flag trigger"
+                        if config.LOG_SPEED_MODES:
+                            logger_full.write(msg + "\n")
+                        if config.PRINT_SPEED_MODES:
+                            print(msg)
+                        vesc_engine.apply_rpm(vesc_speed)  # TODO: a bug in vesc adapter and we dont apply vesc speed?
                 else:
-                    vesc_engine.apply_rpm(vesc_speed_fast)
+                    if vesc_engine.rpm != vesc_speed_fast:
+                        msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' (was {vesc_engine.rpm})"
+                        if config.LOG_SPEED_MODES:
+                            logger_full.write(msg + "\n")
+                        if config.PRINT_SPEED_MODES:
+                            print(msg)
+                        vesc_engine.apply_rpm(vesc_speed_fast)  # TODO: a bug in vesc adapter and we dont apply vesc speed?
 
         # NAVIGATION CONTROL
         cur_pos = gps.get_last_position()

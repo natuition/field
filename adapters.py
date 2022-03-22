@@ -1213,6 +1213,10 @@ class VescAdapter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disconnect()
 
+    @property
+    def rpm(self):
+        return self._rpm
+
     def disconnect(self):
         self._ser.write(pyvesc.encode(pyvesc.SetRPM(0)))
         self._keep_thread_alive = False
