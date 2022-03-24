@@ -55,7 +55,11 @@ class CheckState(State):
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
-        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(lambda : self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
+        self.__voltage_thread = threading.Thread(target=voltage_thread_tf,
+                                                 args=(lambda : self.__voltage_thread_alive,
+                                                       self.vesc_engine, self.socketio,
+                                                       self.input_voltage),
+                                                 daemon=True)
         self.__voltage_thread.start()
 
     def on_event(self, event):
@@ -110,7 +114,13 @@ class CheckState(State):
 #This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
 class WaitWorkingState(State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger, createField: bool, smoothie: adapters.SmoothieAdapter, vesc_engine: adapters.VescAdapter, gps : adapters.GPSUbloxAdapter):
+    def __init__(self,
+                 socketio: SocketIO,
+                 logger: utility.Logger,
+                 createField: bool,
+                 smoothie: adapters.SmoothieAdapter,
+                 vesc_engine: adapters.VescAdapterV3,
+                 gps: adapters.GPSUbloxAdapter):
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
@@ -129,8 +139,8 @@ class WaitWorkingState(State):
                 self.logger.write_and_flush(msg+"\n")
                 print(msg)
                 self.vesc_engine = initVesc(self.logger)
-            self.vesc_engine.apply_rpm(0)
-            self.vesc_engine.start_moving()
+            self.vesc_engine.apply_rpm(0, self.vesc_engine.PROPULSION_KEY)
+            self.vesc_engine.start_moving(self.vesc_engine.PROPULSION_KEY)
 
             if self.smoothie is None:
                 msg = f"[{self.__class__.__name__}] -> initSmoothie"
@@ -174,12 +184,21 @@ class WaitWorkingState(State):
         self.field = None
 
         self.__send_last_pos_thread_alive = True
-        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
+        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf,
+                                                      args=(lambda: self.__send_last_pos_thread_alive,
+                                                            self.gps,
+                                                            self.socketio),
+                                                      daemon=True)
         self._send_last_pos_thread.start()
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
-        self.__voltage_thread = threading.Thread(target=voltage_thread_tf, args=(lambda : self.__voltage_thread_alive, self.vesc_engine, self.socketio, self.input_voltage), daemon=True)
+        self.__voltage_thread = threading.Thread(target=voltage_thread_tf,
+                                                 args=(lambda: self.__voltage_thread_alive,
+                                                       self.vesc_engine,
+                                                       self.socketio,
+                                                       self.input_voltage),
+                                                 daemon=True)
         self.__voltage_thread.start()
 
     def on_event(self, event):
@@ -207,7 +226,7 @@ class WaitWorkingState(State):
                 self.smoothie.disconnect()
                 self.smoothie = None
             if self.vesc_engine is not None:
-                self.vesc_engine.disconnect()
+                self.vesc_engine.close()
                 self.vesc_engine = None
             if self.gps is not None:
                 self.gps.disconnect()
@@ -228,7 +247,7 @@ class WaitWorkingState(State):
                 self.smoothie.disconnect()
                 self.smoothie = None
             if self.vesc_engine is not None:
-                self.vesc_engine.disconnect()
+                self.vesc_engine.close()
                 self.vesc_engine = None
             if self.gps is not None:
                 self.gps.disconnect()
@@ -251,7 +270,7 @@ class WaitWorkingState(State):
                     self.smoothie.disconnect()
                     self.smoothie = None
                 if self.vesc_engine is not None:
-                    self.vesc_engine.disconnect()
+                    self.vesc_engine.close()
                     self.vesc_engine = None
                 if self.gps is not None:
                     self.gps.disconnect()
@@ -279,7 +298,7 @@ class WaitWorkingState(State):
                     y = (y/100) * (config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM*0.9) + (config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM/10)
                 else:
                     y = 0
-                self.vesc_engine.apply_rpm(y)
+                self.vesc_engine.apply_rpm(y, self.vesc_engine.PROPULSION_KEY)
                 self.lastValueY = y
 
         elif data["type"] == 'getInputVoltage':
@@ -316,7 +335,12 @@ class WaitWorkingState(State):
 #This state corresponds when the robot is generating the work area.
 class CreateFieldState(State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger, smoothie: adapters.SmoothieAdapter, vesc_engine: adapters.VescAdapter, gps : adapters.GPSUbloxAdapter):
+    def __init__(self,
+                 socketio: SocketIO,
+                 logger: utility.Logger,
+                 smoothie: adapters.SmoothieAdapter,
+                 vesc_engine: adapters.VescAdapterV3,
+                 gps: adapters.GPSUbloxAdapter):
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
@@ -397,7 +421,11 @@ class CreateFieldState(State):
                 self.manoeuvre = False
 
             self.__send_last_pos_thread_alive = True
-            self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
+            self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf,
+                                                          args=(lambda: self.__send_last_pos_thread_alive,
+                                                                self.gps,
+                                                                self.socketio),
+                                                          daemon=True)
             self._send_last_pos_thread.start()
 
             self.statusOfUIObject["stopButton"] = None
@@ -418,7 +446,7 @@ class CreateFieldState(State):
                     self.smoothie.disconnect()
                     self.smoothie = None
                 if self.vesc_engine is not None:
-                    self.vesc_engine.disconnect()
+                    self.vesc_engine.close()
                     self.vesc_engine = None
                 if self.gps is not None:
                     self.gps.disconnect()
@@ -806,7 +834,13 @@ class ErrorState(State):
 
 class FieldCreator:
 
-    def __init__(self, logger: utility.Logger, gps: adapters.GPSUbloxAdapter, nav: navigation.GPSComputing, vesc_engine: adapters.VescAdapter, smoothie: adapters.SmoothieAdapter, socketio: SocketIO):
+    def __init__(self,
+                 logger: utility.Logger,
+                 gps: adapters.GPSUbloxAdapter,
+                 nav: navigation.GPSComputing,
+                 vesc_engine: adapters.VescAdapterV3,
+                 smoothie: adapters.SmoothieAdapter,
+                 socketio: SocketIO):
         self.A = [0,0]
         self.B = [0,0]
         self.C = [0,0]
@@ -833,15 +867,16 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Moving forward..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
-        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
-        self.vesc_emergency.start_moving()
+        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+                                      self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
 
     def setSecondPoint(self):
         msg = f"[{self.__class__.__name__}] -> Stop moving forward..."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
 
-        self.vesc_emergency.stop_moving()
+        self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
 
         msg = f"[{self.__class__.__name__}] -> Getting point B..."
         self.logger.write_and_flush(msg+"\n")
@@ -900,35 +935,37 @@ class FieldCreator:
         return unquote(fieldName[:-4])
 
     def manoeuvre(self):
-        self.vesc_emergency.apply_rpm(-config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
-        self.vesc_emergency.set_moving_time(config.MANEUVER_TIME_BACKWARD)
-        self.vesc_emergency.start_moving()
-        self.vesc_emergency.wait_for_stop()
+        self.vesc_emergency.apply_rpm(-config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM,
+                                      self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_BACKWARD, self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
 
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
         self.smoothie.wait_for_all_actions_done()
 
-        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM)
-        self.vesc_emergency.set_moving_time(config.MANEUVER_TIME_FORWARD)
-        self.vesc_emergency.start_moving()
-        self.vesc_emergency.wait_for_stop()
+        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI*config.MULTIPLIER_SI_SPEED_TO_RPM,
+                                      self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
 
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=0)
         self.smoothie.wait_for_all_actions_done()
 
-        self.vesc_emergency.set_moving_time(config.VESC_MOVING_TIME)
+        self.vesc_emergency.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_emergency.PROPULSION_KEY)
 
 
 ###### Function for all state ######
 
-def voltage_thread_tf(voltage_thread_alive, vesc_engine, socketio, input_voltage):
+def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV3, socketio, input_voltage):
     last_update = 0
     vesc_data = None
     while voltage_thread_alive():
         if time.time() - last_update > 5 and voltage_thread_alive():
             if vesc_engine is not None:
                 try:
-                    vesc_data = vesc_engine.get_sensors_data(["input_voltage"])
+                    vesc_data = vesc_engine.get_sensors_data(["input_voltage"], vesc_engine.PROPULSION_KEY)
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except:
@@ -966,8 +1003,13 @@ def initVesc(logger: utility.Logger):
         logger.write_and_flush(msg+"\n")
         print(msg)
         exit(1)
-    vesc_engine = adapters.VescAdapter(0, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE)
-    vesc_engine.set_moving_time(config.VESC_MOVING_TIME)
+    vesc_engine = adapters.VescAdapterV3(vesc_address,
+                                         config.VESC_BAUDRATE,
+                                         config.VESC_ALIVE_FREQ,
+                                         config.VESC_CHECK_FREQ,
+                                         config.VESC_STOPPER_CHECK_FREQ)
+    vesc_engine.set_rpm(0, vesc_engine.PROPULSION_KEY)
+    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
     return vesc_engine
 
 def initSmoothie(logger: utility.Logger):
