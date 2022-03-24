@@ -9,6 +9,7 @@ import threading
 import serial
 import pyvesc
 import re
+import RPi.GPIO as GPIO
 
 
 class SmoothieAdapter:
@@ -1300,6 +1301,270 @@ class VescAdapter:
         in_buf = b''
         while self._ser.in_waiting > 0:
             in_buf += self._ser.read(self._ser.in_waiting)
+
+        if len(in_buf) == 0:
+            return None
+        response, consumed = pyvesc.decode(in_buf)
+        if consumed == 0:
+            return None
+
+        if isinstance(response, pyvesc.GetValues):
+            report_row = {}
+            for field_name in report_field_names:
+                report_row[field_name] = getattr(response, field_name)
+            return report_row
+        return None
+
+
+class VescAdapterV3:
+    """Provides multiple vesc control
+
+    To add more vesc engines:
+    1) Add unique vesc ID key for users as class static member below
+    2) Add keys to config.py to make it possible to enable-disable your new vesc and set it's settings easily
+    3) Add new vesc engine initialization code to 'INIT ALL ALLOWED VESCS HERE' section (use code there as example)
+    """
+
+    # unique vesc ID keys for users (it's a keys for vesc can IDs, not IDs themselves)
+    PROPULSION_KEY = 0
+    EXTRACTION_KEY = 1
+
+    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
+        gpio_is_initialized = False
+        self.__stopper_check_freq = stopper_check_freq
+        self.__alive_freq = alive_freq
+        self.__check_freq = check_freq
+        self.__next_alive_time = time.time()
+
+        self.__can_ids = dict()
+        self.__rpm = dict()
+        self.__time_to_move = dict()
+        self.__start_time = dict()
+        self.__is_moving = dict()
+        self.__last_stop_time = dict()
+        self.__stopper_signals = dict()
+        self.__gpio_stoppers_pins = dict()
+
+        self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
+        self.__ser.flushInput()
+        self.__ser.flushOutput()
+
+        # INIT ALL ALLOWED VESCS HERE
+        # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
+        if config.VESC_ALLOW_PROPULSION:
+            self.__can_ids[self.PROPULSION_KEY] = None  # parent vesc has ID=None
+            self.__rpm[self.PROPULSION_KEY] = 0
+            self.__time_to_move[self.PROPULSION_KEY] = 0
+            self.__start_time[self.PROPULSION_KEY] = None
+            self.__is_moving[self.PROPULSION_KEY] = False
+            self.__last_stop_time[self.PROPULSION_KEY] = None
+            self.__stopper_signals[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOP_SIGNAL
+            self.__gpio_stoppers_pins[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOPPER_PIN
+            if self.__gpio_stoppers_pins[self.PROPULSION_KEY] is not None:
+                if not gpio_is_initialized:
+                    GPIO.setmode(GPIO.BOARD)
+                    gpio_is_initialized = True
+                GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
+
+        # init EXTRACTION vesc
+        if config.VESC_ALLOW_EXTRACTION:
+            ext_can_id = self.__get_unregistered_can_id()
+            if ext_can_id is not None:
+                self.__can_ids[self.EXTRACTION_KEY] = ext_can_id
+                self.__rpm[self.EXTRACTION_KEY] = 0
+                self.__time_to_move[self.EXTRACTION_KEY] = 0
+                self.__start_time[self.EXTRACTION_KEY] = None
+                self.__is_moving[self.EXTRACTION_KEY] = False
+                self.__last_stop_time[self.EXTRACTION_KEY] = None
+                self.__stopper_signals[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOP_SIGNAL
+                self.__gpio_stoppers_pins[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOPPER_PIN
+                if self.__gpio_stoppers_pins[self.EXTRACTION_KEY] is not None:
+                    if not gpio_is_initialized:
+                        GPIO.setmode(GPIO.BOARD)
+                        gpio_is_initialized = True
+                    GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
+            else:
+                print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
+        # init any new vescs (add code here)
+
+        self.__keep_thread_alive = True
+        self._movement_ctrl_th = threading.Thread(target=self._movement_ctrl_th_tf, daemon=True)
+        self._movement_ctrl_th.start()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.__keep_thread_alive = False
+        cleanup_gpio = False
+
+        for engine_key in self.__can_ids:
+            self.stop_moving(self.__can_ids[engine_key])
+            if self.__gpio_stoppers_pins[engine_key] is not None:
+                GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
+                if not cleanup_gpio:
+                    cleanup_gpio = True
+
+        if cleanup_gpio:
+            GPIO.cleanup()
+
+        self._movement_ctrl_th.join(1)
+        self.__ser.close()
+
+    def __get_unregistered_can_id(self):
+        for can_id in range(0, 253):
+            data = self.__get_firmware_version(['version_major', 'version_minor'], can_id)
+            if data is not None and can_id not in self.__can_ids.values():
+                return can_id
+        return None
+
+    def __get_firmware_version(self, report_field_names, can_id):
+        self.__ser.write(pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id)))
+        in_buf = b''
+        while self.__ser.in_waiting > 0:
+            in_buf += self.__ser.read(self.__ser.in_waiting)
+
+        if len(in_buf) == 0:
+            return None
+        response, consumed = pyvesc.decode(in_buf)
+        if consumed == 0:
+            return None
+
+        if isinstance(response, pyvesc.GetFirmwareVersion):
+            report_row = {}
+            for field_name in report_field_names:
+                report_row[field_name] = getattr(response, field_name)
+            return report_row
+        return None
+
+    def _movement_ctrl_th_tf(self):
+        """Target function of movement control thread (only inner usage).
+
+        Implements keeping multiple vesc engines alive and stopping them by a timers if they were set.
+        """
+
+        try:
+            while self.__keep_thread_alive:
+                # check each active engine stop timer
+                for engine_key in self.__can_ids:
+                    if self.__is_moving[engine_key] and time.time() - self.__start_time[engine_key] > self.__time_to_move[engine_key]:
+                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                        self.__last_stop_time[engine_key] = time.time()
+                        self.__is_moving[engine_key] = False
+                # send alive to each active
+                if time.time() > self.__next_alive_time:
+                    self.__next_alive_time = time.time() + self.__alive_freq
+                    for engine_key in self.__is_moving:
+                        if self.__is_moving[engine_key]:
+                            self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
+                # wait for next checking tick
+                time.sleep(self.__check_freq)
+        except serial.SerialException as ex:
+            print(ex)
+
+    def start_moving(self, engine_key):
+        self.__start_time[engine_key] = time.time()
+        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__rpm[engine_key], can_id=self.__can_ids[engine_key])))
+        self.__is_moving[engine_key] = True
+
+    def stop_moving(self, engine_key):
+        if self.__is_moving[engine_key]:
+            self.__last_stop_time[engine_key] = time.time()
+        self.__is_moving[engine_key] = False
+        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+
+    def wait_for_stop(self, engine_key, timeout=None):
+        """Blocks caller thread until specified engine is end his work or timeout time is out (if timeout was set).
+
+        Returns True if engine has ended his work, returns False if timeout waiting time is out.
+        """
+
+        end_t = time.time() + timeout if timeout is not None else float("inf")
+        while self.__is_moving[engine_key]:
+            if timeout is not None and time.time() > end_t:
+                return False
+            time.sleep(self.__check_freq)
+        return True
+
+    def wait_for_stop_any(self, timeout=None):
+        raise NotImplementedError("this feature is not implemented yet")
+
+    def wait_for_stopper_hit(self, engine_key, timeout=None, stop_engine_if_timeout=True):
+        """Blocks caller thread until specified engine stopper hit or timeout time is out (if timeout was set).
+
+        Returns True if stopper was hit, returns False if timeout waiting time is out
+        or engine was stopped by it's own work timer.
+        """
+
+        if self.__gpio_stoppers_pins[engine_key] is None:
+            self.stop_moving(engine_key)
+            raise RuntimeError("stopper usage is not allowed in config \
+                (engine movement is terminated to prevent occasional damage cause)")
+
+        end_t = time.time() + timeout if timeout is not None else float("inf")
+        while self.__is_moving[engine_key]:
+            if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
+                return True
+            if time.time() > end_t:
+                if stop_engine_if_timeout:
+                    self.stop_moving(engine_key)
+                return False
+            time.sleep(self.__stopper_check_freq)
+        return False
+
+    def wait_for_stopper_hit_any(self):
+        raise NotImplementedError("this feature is not implemented yet")
+
+    def apply_rpm(self, rpm, engine_key):
+        self.__rpm[engine_key] = rpm
+        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__rpm[engine_key], can_id=self.__can_ids[engine_key])))
+
+    def set_rpm(self, rpm, engine_key):
+        self.__rpm[engine_key] = rpm
+
+    def set_time_to_move(self, time_to_move, engine_key):
+        self.__time_to_move[engine_key] = time_to_move
+
+    def set_alive_freq(self, alive_freq):
+        self.__alive_freq = alive_freq
+
+    def set_check_freq(self, check_freq):
+        self.__check_freq = check_freq
+
+    def is_moving(self, engine_key):
+        return self.__is_moving[engine_key]
+
+    def get_last_stop_time(self, engine_key):
+        return self.__last_stop_time[engine_key]
+
+    def get_last_start_time(self, engine_key):
+        return self.__start_time[engine_key]
+
+    def get_last_movement_time(self, engine_key):
+        """Returns last movement time if VESCs are not working at the moment;
+        returns current working time if VESCs are working at the moment.
+        """
+
+        if self.__start_time[engine_key] is None:
+            return 0
+        elif self.__is_moving[engine_key] or self.__last_stop_time[engine_key] is None:
+            return time.time() - self.__start_time[engine_key]
+        else:
+            return self.__last_stop_time[engine_key] - self.__start_time[engine_key]
+
+    def get_adapter_rpm(self, engine_key):
+        """Returns vesc adapter's (this instance) currently stored rpm for specified vesc engine"""
+
+        return self.__rpm[engine_key]
+
+    def get_sensors_data(self, report_field_names, engine_key):
+        self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+        in_buf = b''
+        while self.__ser.in_waiting > 0:
+            in_buf += self.__ser.read(self.__ser.in_waiting)
 
         if len(in_buf) == 0:
             return None
