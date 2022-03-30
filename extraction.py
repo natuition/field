@@ -2,7 +2,6 @@ from config import config
 import adapters
 import detection
 import math
-import numpy as np
 import utility
 import datacollection
 from matplotlib.patches import Polygon
@@ -24,7 +23,8 @@ class ExtractionManagerV3:
                  periphery_det: detection.YoloOpenCVDetection,  # not used atm
                  precise_det: detection.YoloOpenCVDetection,
                  camera_positions: list,
-                 pdz_distances: list):
+                 pdz_distances: list,
+                 vesc_engine: adapters.VescAdapterV3):
 
         self.__smoothie = smoothie
         self.__camera = camera
@@ -39,6 +39,7 @@ class ExtractionManagerV3:
         self.__pdz_cv_rects = self.__pdz_dist_to_rect_cv(pdz_distances)
         self.__extraction_map = ExtractionMap(config.EXTRACTION_MAP_CELL_SIZE_MM)
         self.__converter = PxToMMConverter()
+        self.__vesc_engine = vesc_engine
 
         # check if PDZ data is correct
         if len(self.__camera_positions) != len(self.__pdz_polygons) != len(self.__pdz_cv_rects):
@@ -143,7 +144,7 @@ class ExtractionManagerV3:
 
         return self.optimize_corkscrew_way(smoothie_plants_positions)
 
-    def extract_all_plants(self, data_collector: datacollection.DataCollector):
+    def extract_all_plants(self):
         """Find and extract all plants found in current robot's position
         """
 
@@ -167,10 +168,10 @@ class ExtractionManagerV3:
             if config.VERBOSE:
                 print(msg)
 
-        plant_index=0
+        plant_index = 0
         # loop over plants that were detected during PDZ sectored scans and extract them (main ext loop)
         for init_pos_sm_x, init_pos_sm_y in smoothie_positions:
-            plant_index+=1
+            plant_index += 1
             if config.VERBOSE_EXTRACT:
                 msg = f"[VERBOSE EXTRACT] Start extraction for plant {plant_index} of {len(smoothie_positions)}."
                 self.__logger_full.write_and_flush(msg+"\n")
@@ -384,7 +385,9 @@ class ExtractionManagerV3:
                             continue
 
                         # extract
-                        res, cork_is_stuck = extraction_pattern(self.__smoothie, self.__extraction_map, data_collector)
+                        res, cork_is_stuck = extraction_pattern(self.__smoothie,
+                                                                self.__extraction_map,
+                                                                self.__data_collector)
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = "Something gone wrong during extractions, smoothie's response:\n" + res
                             self.__logger_full.write(msg + "\n")
@@ -398,6 +401,352 @@ class ExtractionManagerV3:
                                 self.__data_collector.save_all_data(self.__log_cur_dir + config.STATISTICS_OUTPUT_FILE)
                     else:
                         msg = "Did too many extraction tries at this position, no strategies to try left"
+                        self.__logger_full.write(msg + "\n")
+
+        # set camera back to the Y min X max / 2
+        res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                         Y_F=config.Y_F_MAX,
+                                                         X=self.__smoothie.smoothie_to_mm(
+                                                             (config.X_MAX - config.X_MIN) / 2, "X"),
+                                                         Y=self.__smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
+        self.__smoothie.wait_for_all_actions_done()
+        if res != self.__smoothie.RESPONSE_OK:
+            msg = "Couldn't set camera back to cruise scan position after extractions, smoothie's response:\n" + res
+            self.__logger_full.write(msg + "\n")
+
+    def mill_all_plants(self):
+        """Find and mill all plants found in current robot's position
+        """
+
+        # self.__extraction_map.clear()
+
+        # do sectored scans
+        smoothie_positions = self.scan_sectors()
+        msg = "Found " + str(len(smoothie_positions)) + " plants after PDZ scan"
+        self.__logger_full.write(msg + "\n")
+        if config.VERBOSE:
+            print(msg)
+        # round coords before logging them
+        if len(smoothie_positions) != 0:
+            log_sm_positions = list(map(lambda item: (round(item[0], 2), round(item[1], 2)), smoothie_positions))
+            msg = "PDZ plants smoothie coordinates:\n" + str(log_sm_positions)
+            self.__logger_full.write(msg + "\n")
+            if config.VERBOSE:
+                print(msg)
+
+        # loop over plants that were detected during PDZ sectored scans and extract them (main ext loop)
+        for init_pos_sm_x, init_pos_sm_y in smoothie_positions:
+            cur_pos_sm_x, cur_pos_sm_y = init_pos_sm_x, init_pos_sm_y
+
+            # modify coordinates to try to avoid corkscrew tube view obscuring
+            if config.AVOID_CORK_VIEW_OBSCURING:
+                # determine shift direction depending at which working area quarter target is
+                obscuring_offset_x = config.AVOID_CORK_VIEW_OBSCURING_DIST_X if init_pos_sm_x < config.X_MAX / 2 \
+                    else -config.AVOID_CORK_VIEW_OBSCURING_DIST_X
+                if config.X_MIN < init_pos_sm_x + obscuring_offset_x < config.X_MAX:
+                    cur_pos_sm_x += obscuring_offset_x
+                if config.Y_MIN < init_pos_sm_y + config.AVOID_CORK_VIEW_OBSCURING_DIST_Y < config.Y_MAX:
+                    cur_pos_sm_y += config.AVOID_CORK_VIEW_OBSCURING_DIST_Y
+
+            # affects robot's behaviour if no plants were detected; responsible for delta scans and extractions checking
+            scan_is_first = True
+
+            # this loop determines plant (or plants group if they were not detected during PDZ) extractions tries count
+            for _ in range(config.EXTRACTION_TRIES_PER_PLANT):
+                movement_messages = [
+                    "Failed to move cork to the plant rescan position, smoothie's response:\n",
+                    "Failed to move cork to the plant rescan position Y_MIN (after calibration), smoothie's response:\n"
+                ]
+                # try to move to the plant rescan position, calibrate and try again if failed, exit app otherwise
+                for idx, movement_message in enumerate(movement_messages):
+                    res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                                     Y_F=config.Y_F_MAX,
+                                                                     X=cur_pos_sm_x,
+                                                                     Y=cur_pos_sm_y)
+                    self.__smoothie.wait_for_all_actions_done()
+                    if res == self.__smoothie.RESPONSE_OK:
+                        break
+                    else:
+                        msg = movement_message + res
+                        self.__logger_full.write(msg + "\n")
+
+                        # try calibration (only once, at first movement fail)
+                        if idx != 0:
+                            break
+                        msg = "Trying to calibrate cork"
+                        self.__logger_full.write(msg + "\n")
+                        res = self.__smoothie.ext_calibrate_cork()
+                        if res != self.__smoothie.RESPONSE_OK:
+                            msg = "Failed to calibrate cork, smoothie's response:\n" + res
+                            self.__logger_full.write(msg + "\n")
+                            exit(1)
+
+                # make a scan, keep only plants that are in undistorted zone
+                # TODO: possibly here will be multiple scans with average coordinates
+                time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                frame = self.__camera.get_image()
+                plants_boxes = self.__precise_det.detect(frame)
+                cur_pos_plant_boxes_undist = list(filter(
+                    lambda plant_box_1: self.is_point_in_circle(
+                        plant_box_1.center_x,
+                        plant_box_1.center_y,
+                        config.SCENE_CENTER_X,
+                        config.SCENE_CENTER_Y,
+                        config.UNDISTORTED_ZONE_RADIUS),
+                    plants_boxes
+                ))
+
+                if config.SAVE_DEBUG_IMAGES:
+                    if len(cur_pos_plant_boxes_undist) > 0:
+                        frame = utility.ImageSaver.draw_data_in_frame(
+                            frame,
+                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                            plants_boxes=cur_pos_plant_boxes_undist)
+                        self.__image_saver.save_image(
+                            frame, config.DEBUG_IMAGES_PATH,
+                            label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),"
+                                  f"find_plant_in_undistorted_zone",
+                            plants_boxes=cur_pos_plant_boxes_undist)
+                    else:
+                        frame = utility.ImageSaver.draw_data_in_frame(
+                            frame,
+                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                            plants_boxes=plants_boxes)
+                        self.__image_saver.save_image(
+                            frame, config.DEBUG_IMAGES_PATH,
+                            label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),"
+                                  f"no_find_plant_in_undistorted_zone",
+                            plants_boxes=plants_boxes)
+
+                # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
+                if len(cur_pos_plant_boxes_undist) == 0:
+                    if scan_is_first:
+                        msg = "No plants detected (plant was in working zone before)," \
+                              "trying to do delta movement and find this plant"
+                        self.__logger_full.write(msg + "\n")
+                        if config.VERBOSE:
+                            print(msg)
+
+                        if config.ALLOW_DELTA_SEEKING:
+                            if config.DELTA_SEEKING_IGNORE_OBSCURING:
+                                dl_sm_init_x, dl_sm_init_y = init_pos_sm_x, init_pos_sm_y
+                            else:
+                                dl_sm_init_x, dl_sm_init_y = cur_pos_sm_x, cur_pos_sm_y
+
+                            # do delta movements and seek for plant near
+                            delta_seeking_target_positions = [
+                                [dl_sm_init_x, dl_sm_init_y - config.SEEK_DELTA_DISTANCE],
+                                [dl_sm_init_x - config.SEEK_DELTA_DISTANCE, dl_sm_init_y],
+                                [dl_sm_init_x, dl_sm_init_y + config.SEEK_DELTA_DISTANCE],
+                                [dl_sm_init_x + config.SEEK_DELTA_DISTANCE, dl_sm_init_y]
+                            ]
+                            for delta_sm_x, delta_sm_y in delta_seeking_target_positions:
+                                # check if coordinates are in working range
+                                if not (config.X_MIN < delta_sm_x < config.X_MAX and
+                                        config.Y_MIN < delta_sm_y < config.Y_MAX):
+                                    continue
+
+                                # do delta movement
+                                res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                                                 Y_F=config.Y_F_MAX,
+                                                                                 X=delta_sm_x,
+                                                                                 Y=delta_sm_y)
+                                self.__smoothie.wait_for_all_actions_done()
+                                if res != self.__smoothie.RESPONSE_OK:
+                                    msg = "Couldn't do delta move to X" + str(delta_sm_x) + " Y" + \
+                                          str(delta_sm_y) + ", smoothie response:\n" + res
+                                    self.__logger_full.write(msg + "\n")
+                                    continue
+
+                                # make a scan, keep only plants that are in undistorted zone
+                                time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                                frame = self.__camera.get_image()
+                                cur_pos_plant_boxes_undist = list(filter(
+                                    lambda plant_box_1: self.is_point_in_circle(
+                                        plant_box_1.center_x,
+                                        plant_box_1.center_y,
+                                        config.SCENE_CENTER_X,
+                                        config.SCENE_CENTER_Y,
+                                        config.UNDISTORTED_ZONE_RADIUS),
+                                    self.__precise_det.detect(frame)
+                                ))
+
+                                # stop seeking and save current position as new current position. This position is also
+                                # used during check rescan after extractions
+                                if len(cur_pos_plant_boxes_undist) > 0:
+                                    cur_pos_sm_x, cur_pos_sm_y = delta_sm_x, delta_sm_y
+
+                                    if config.SAVE_DEBUG_IMAGES:
+                                        frame = utility.ImageSaver.draw_data_in_frame(
+                                            frame,
+                                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                                            plants_boxes=cur_pos_plant_boxes_undist)
+                                        self.__image_saver.save_image(
+                                            frame, config.DEBUG_IMAGES_PATH,
+                                            label=f"(precise_view_scan_at_"
+                                                  f"{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),"
+                                                  f"find_plant_in_undistorted_zone_(after_delta_seeking)",
+                                            plants_boxes=cur_pos_plant_boxes_undist)
+                                    break
+                                else:
+                                    msg = "No plants found during delta scan iteration"
+                                    self.__logger_full.write(msg + "\n")
+                            # go to next plant in PDZ list if delta seeking loop found nothing
+                            else:
+                                msg = "No plants found during all delta scans"
+                                self.__logger_full.write(msg + "\n")
+                                break
+                    # go to next plant in PDZ list if no plants detected after extraction attempting
+                    else:
+                        msg = "No plants detected - assuming last extraction was successful; coming to next PDZ item"
+                        self.__logger_full.write(msg + "\n")
+                        if config.VERBOSE:
+                            print(msg)
+                        break
+
+                # try to filter extracted plants by comparison new plants list and initial plants list
+                # if plant in a new list is away from all plants in old - then it probably was extracted and shifted
+                # so skip it
+                if config.FILTER_EXTRACTED_PLANTS and scan_is_first:
+                    initial_plants = cur_pos_plant_boxes_undist
+                if config.FILTER_EXTRACTED_PLANTS and not scan_is_first:
+                    cur_pos_plant_boxes_undist = self.__filter_extracted_plants(initial_plants,
+                                                                                cur_pos_plant_boxes_undist,
+                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST)
+
+                scan_is_first = False
+
+                # convert plant boxes into smoothie absolute coordinates pairs and her type
+                smoothie_plants_positions = []
+                for plant_box in cur_pos_plant_boxes_undist:
+                    plant_box: detection.DetectedPlantBox = plant_box
+                    rel_sm_x = self.px_to_smoothie_value(plant_box.center_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
+                    rel_sm_y = -self.px_to_smoothie_value(plant_box.center_y, config.SCENE_CENTER_Y,
+                                                          config.ONE_MM_IN_PX)
+
+                    # swap camera and cork for extraction immediately (coords are relative)
+                    rel_sm_x += config.CORK_TO_CAMERA_DISTANCE_X
+                    rel_sm_y += config.CORK_TO_CAMERA_DISTANCE_Y
+
+                    # convert smoothie relative coordinates to absolute
+                    cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()
+                    abs_sm_x, abs_sm_y = cur_sm_pos["X"] + rel_sm_x, cur_sm_pos["Y"] + rel_sm_y
+
+                    # skip box if it's center is out of working zone
+                    if not (config.X_MIN < abs_sm_x < config.X_MAX or config.Y_MIN < abs_sm_y < config.Y_MAX):
+                        continue
+
+                    # compute smoothie absolute coords of the box edges
+                    box_x_size, box_y_size = plant_box.get_sizes()
+                    abs_sm_left_edge_x = abs_sm_x + self.px_to_smoothie_value(plant_box.center_x - box_x_size / 2,
+                                                                              plant_box.center_x,
+                                                                              config.ONE_MM_IN_PX)
+                    abs_sm_right_edge_x = abs_sm_x + self.px_to_smoothie_value(plant_box.center_x + box_x_size / 2,
+                                                                               plant_box.center_x,
+                                                                               config.ONE_MM_IN_PX)
+                    abs_sm_top_edge_y = abs_sm_y + self.px_to_smoothie_value(plant_box.center_y + box_y_size / 2,
+                                                                             plant_box.center_y,
+                                                                             config.ONE_MM_IN_PX)
+                    abs_sm_bot_edge_y = abs_sm_y + self.px_to_smoothie_value(plant_box.center_y - box_y_size / 2,
+                                                                             plant_box.center_y,
+                                                                             config.ONE_MM_IN_PX)
+
+                    # reduce smoothie box sizes if it gets outside of robot's working zone
+                    # reduce X size
+                    if abs_sm_left_edge_x < config.X_MIN:
+                        abs_sm_left_edge_x = config.X_MIN + 1  # to avoid float trait inside adapter (-0.00000001 < 0)
+                    elif abs_sm_left_edge_x > config.X_MAX:
+                        abs_sm_left_edge_x = config.X_MAX - 1  # to avoid float trait inside adapter (40.00000001 > 40)
+                    if abs_sm_right_edge_x < config.X_MIN:
+                        abs_sm_right_edge_x = config.X_MIN + 1
+                    elif abs_sm_right_edge_x > config.X_MAX:
+                        abs_sm_right_edge_x = config.X_MAX - 1
+                    # reduce Y size
+                    if abs_sm_top_edge_y < config.Y_MIN:
+                        abs_sm_top_edge_y = config.Y_MIN + 1
+                    elif abs_sm_top_edge_y > config.Y_MAX:
+                        abs_sm_top_edge_y = config.Y_MAX - 1
+                    if abs_sm_bot_edge_y < config.Y_MIN:
+                        abs_sm_bot_edge_y = config.Y_MIN + 1
+                    elif abs_sm_bot_edge_y > config.Y_MAX:
+                        abs_sm_bot_edge_y = config.Y_MAX - 1
+
+                    # add absolute coordinates to the result list
+                    smoothie_plants_positions.append((abs_sm_left_edge_x,
+                                                      abs_sm_right_edge_x,
+                                                      abs_sm_bot_edge_y,
+                                                      abs_sm_top_edge_y,
+                                                      plant_box.get_name()))
+
+                # mill these plants; loop over plants
+                for sm_left_x, sm_right_x, sm_bot_y, sm_top_y, plant_name in smoothie_plants_positions:
+                    # go to starting position
+                    res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                                     Y_F=config.Y_F_MAX,
+                                                                     X=sm_left_x,
+                                                                     Y=sm_bot_y)
+                    self.__smoothie.wait_for_all_actions_done()
+                    if res != self.__smoothie.RESPONSE_OK:
+                        msg = f"Skipping this plant by as could not move cork to initial position" \
+                              f"X={sm_left_x} Y={sm_bot_y}, smoothie res:"
+                        msg += "\n" + res
+                        self.__logger_full.write(msg + "\n")
+                        continue
+
+                    # compute Y axis milling shifts coords
+                    sm_milling_y_points = [i for i in range(int(sm_bot_y), int(sm_top_y), config.MILLING_Y_STEP)]
+                    if len(sm_milling_y_points) == 0:
+                        msg = "Skipping plant because of too narrow plant box after reduction to working zone borders"
+                        self.__logger_full.write(msg + "\n")
+                        continue
+                    if sm_top_y - sm_milling_y_points[-1] > config.MILLING_LAST_LINE_THRESHOLD:
+                        sm_milling_y_points.append(sm_top_y)
+
+                    # put miller down and keep enabled
+                    self.__vesc_engine.set_rpm(config.MILLING_CORK_DOWN_RPM, self.__vesc_engine.EXTRACTION_KEY)
+                    self.__vesc_engine.set_time_to_move(float("inf"), self.__vesc_engine.EXTRACTION_KEY)
+                    self.__vesc_engine.start_moving(self.__vesc_engine.EXTRACTION_KEY)
+                    time.sleep(config.MILLING_CORK_GROUND_REACHING_DELAY)
+
+                    # milling movement loop ("fills" plant's figure with miller device enabled)
+                    x_go_to_right = True
+                    for abs_sm_y in sm_milling_y_points:
+                        # Y shift
+                        res = self.__smoothie.custom_move_to(Y_F=config.MILLING_Y_F, Y=abs_sm_y)
+                        if res != self.__smoothie.RESPONSE_OK:
+                            msg = f"Could not move to Y{str(abs_sm_y)} during milling, smoothie response:\n{res}\n"
+                            self.__logger_full.write(msg)
+                        self.__smoothie.wait_for_all_actions_done()
+
+                        # X line
+                        if x_go_to_right:
+                            x_go_to_right = False
+                            res = self.__smoothie.custom_move_to(X_F=config.MILLING_X_F, X=sm_right_x)
+                            if res != self.__smoothie.RESPONSE_OK:
+                                msg = f"Could not move to X{str(sm_right_x)} during milling, smoothie response:\n{res}\n"
+                                self.__logger_full.write(msg)
+                        else:
+                            x_go_to_right = True
+                            res = self.__smoothie.custom_move_to(X_F=config.MILLING_X_F, X=sm_left_x)
+                            if res != self.__smoothie.RESPONSE_OK:
+                                msg = f"Could not move to X{str(sm_left_x)} during milling, smoothie response:\n{res}\n"
+                                self.__logger_full.write(msg)
+                        self.__smoothie.wait_for_all_actions_done()
+
+                    # stop and pick up the cork after current plant milling is done
+                    self.__vesc_engine.stop_moving(self.__vesc_engine.EXTRACTION_KEY)
+                    self.__vesc_engine.set_rpm(config.MILLING_CORK_UP_RPM, self.__vesc_engine.EXTRACTION_KEY)
+                    self.__vesc_engine.set_time_to_move(
+                        config.MILLING_CORK_STOPPER_REACHING_MAX_TIME,
+                        self.__vesc_engine.EXTRACTION_KEY)  # stop by movement timeout if GPIO fails
+                    self.__vesc_engine.start_moving(self.__vesc_engine.EXTRACTION_KEY)
+                    res = self.__vesc_engine.wait_for_stopper_hit(
+                        self.__vesc_engine.EXTRACTION_KEY,
+                        config.MILLING_CORK_STOPPER_REACHING_MAX_TIME)
+                    self.__vesc_engine.stop_moving(self.__vesc_engine.EXTRACTION_KEY)
+                    if not res:
+                        msg = "WARNING: Miller vesc engine was stopped by timeout, not by stopper!"
+                        print(msg)
                         self.__logger_full.write(msg + "\n")
 
         # set camera back to the Y min X max / 2

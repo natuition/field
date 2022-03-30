@@ -154,7 +154,6 @@ def move_to_point_and_extract(coords_from_to: list,
                               SI_speed: float, 
                               wheels_straight: bool, 
                               navigation_prediction: navigation.NavigationPrediction,
-                              extract: bool,
                               future_points: list):
     """
     Moves to the given target point and extracts all weeds on the way.
@@ -179,6 +178,8 @@ def move_to_point_and_extract(coords_from_to: list,
     :param extraction_manager_v3:
     :return:
     """
+
+    extract = SI_speed > 0
 
     vesc_speed = SI_speed * config.MULTIPLIER_SI_SPEED_TO_RPM
     speed_fast = config.SI_SPEED_FAST * config.MULTIPLIER_SI_SPEED_TO_RPM
@@ -324,12 +325,18 @@ def move_to_point_and_extract(coords_from_to: list,
 
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                            extraction_manager_v3.extract_all_plants(data_collector)
+                            if config.EXTRACTION_MODE == 1:
+                                extraction_manager_v3.extract_all_plants()
+                            elif config.EXTRACTION_MODE == 2:
+                                extraction_manager_v3.mill_all_plants()
                             slow_mode_time = time.time()
                     else:
-                        extraction_manager_v3.extract_all_plants(data_collector)
+                        if config.EXTRACTION_MODE == 1:
+                            extraction_manager_v3.extract_all_plants()
+                        elif config.EXTRACTION_MODE == 2:
+                            extraction_manager_v3.mill_all_plants()
                         slow_mode_time = time.time()
-                    
+
                     if config.VERBOSE_EXTRACT:
                         msg = "[VERBOSE EXTRACT] Extract cycle are finish."
                         logger_full.write_and_flush(msg+"\n")
@@ -1572,9 +1579,9 @@ def main():
                                              config.CAMERA_FLIP_METHOD) as camera, \
             ExtractionManagerV3(smoothie, camera, logger_full, data_collector, image_saver,
                                 log_cur_dir, periphery_detector, precise_detector,
-                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES) as extraction_manager_v3, \
+                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \
             navigation.NavigationPrediction(logger_full=logger_full, nav=nav, log_cur_dir=log_cur_dir) as navigation_prediction :            
-                
+
             # load previous path
             if config.CONTINUE_PREVIOUS_PATH:
                 # TODO: create path manager
@@ -1779,25 +1786,14 @@ def main():
                     i_inf = i+1 if i+1<path_end_index else path_end_index
                     i_sup = i+1+config.FUTURE_NUMBER_OF_POINTS if i+config.FUTURE_NUMBER_OF_POINTS<path_end_index else path_end_index
 
-                    if speed > 0 :
-                        move_to_point_and_extract(  from_to, gps, vesc_engine, smoothie, 
-                                                    camera, periphery_detector, precise_detector, 
-                                                    logger_full, logger_table, 
-                                                    report_field_names, trajectory_saver, 
-                                                    working_zone_polygon, config.DEBUG_IMAGES_PATH, 
-                                                    nav, data_collector, log_cur_dir, image_saver, 
-                                                    notification, extraction_manager_v3, ui_msg_queue,
-                                                    speed, False, navigation_prediction, True, path_points[i_inf:i_sup])
-                    else:
-                        move_to_point_and_extract(  from_to, gps, vesc_engine, smoothie, 
-                                                    camera, periphery_detector, precise_detector, 
-                                                    logger_full, logger_table, 
-                                                    report_field_names, trajectory_saver, 
-                                                    working_zone_polygon, config.DEBUG_IMAGES_PATH, 
-                                                    nav, data_collector, log_cur_dir, image_saver, 
-                                                    notification, extraction_manager_v3, ui_msg_queue,
-                                                    speed, False, navigation_prediction, False, path_points[i_inf:i_sup])
-
+                    move_to_point_and_extract(from_to, gps, vesc_engine, smoothie,
+                                              camera, periphery_detector, precise_detector,
+                                              logger_full, logger_table,
+                                              report_field_names, trajectory_saver,
+                                              working_zone_polygon, config.DEBUG_IMAGES_PATH,
+                                              nav, data_collector, log_cur_dir, image_saver,
+                                              notification, extraction_manager_v3, ui_msg_queue,
+                                              speed, False, navigation_prediction, path_points[i_inf:i_sup])
 
                     if config.NAVIGATION_TEST_MODE:
                         response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
