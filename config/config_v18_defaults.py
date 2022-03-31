@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.8.0" 
+CONFIG_VERSION = "0.8.1"
 
 
 # ======================================================================================================================
@@ -348,6 +348,8 @@ SLOW_FAST_MODE_HEAD_FACTOR = 1
 
 VERBOSE = False
 VERBOSE_EXTRACT = True
+LOG_SPEED_MODES = False
+PRINT_SPEED_MODES = False
 FILES_TO_KEEP_COUNT = 600
 
 QUEUE_NAME_UI_MAIN = "/queue_ui_main"
