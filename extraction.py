@@ -379,13 +379,15 @@ class ExtractionManagerV3:
                                                                          X=ext_sm_x,
                                                                          Y=ext_sm_y)
                         if res != self.__smoothie.RESPONSE_OK:
-                            msg = f"Passing this plant by as could not move cork to position X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
+                            msg = f"Passing this plant by as could not move cork to position " \
+                                  f"X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
                             msg += "\n" + res
                             self.__logger_full.write(msg + "\n")
                             continue
 
                         # extract
                         res, cork_is_stuck = extraction_pattern(self.__smoothie,
+                                                                self.__vesc_engine,
                                                                 self.__extraction_map,
                                                                 self.__data_collector)
                         if res != self.__smoothie.RESPONSE_OK:
@@ -893,25 +895,47 @@ class ExtractionMethods:
 
     @staticmethod
     def single_center_drop(smoothie: adapters.SmoothieAdapter,
+                           vesc_adapter: adapters.VescAdapterV3,
                            extraction_map: ExtractionMap,
                            data_collector: datacollection.DataCollector):
         """Extract a plant with a single corkscrew drop to the center"""
 
+        res = smoothie.RESPONSE_OK
         start_t = time.time()
+
         # extraction, cork down
-        res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
-        smoothie.wait_for_all_actions_done()
-        if res != smoothie.RESPONSE_OK:  # or smoothie.checkendstop("Z")==1
-            msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
-            return msg, False
+        if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
+            res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:  # or smoothie.checkendstop("Z")==1
+                msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
+                return msg, False
+        elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
+            vesc_adapter.set_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
+            vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_DOWN_TIME, vesc_adapter.EXTRACTION_KEY)
+            vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
+            vesc_adapter.wait_for_stop(vesc_adapter.EXTRACTION_KEY)
 
         # extraction, cork up
-        res = smoothie.ext_cork_up()
-        smoothie.wait_for_all_actions_done()
-        if res != smoothie.RESPONSE_OK:
-            msg = "Couldn't move the extractor up, smoothie error occurred:\n" + res + \
-                  "\nemergency exit as I don't want break corkscrew."
-            return msg, True
+        if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
+            res = smoothie.ext_cork_up()
+            smoothie.wait_for_all_actions_done()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move the extractor up, smoothie error occurred:\n" + res + \
+                      "\nemergency exit as I don't want break the corkscrew."
+                return msg, True
+        elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
+            vesc_adapter.set_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
+            vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME, vesc_adapter.EXTRACTION_KEY)
+            vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
+            cork_is_stuck = not vesc_adapter.wait_for_stopper_hit(vesc_adapter.EXTRACTION_KEY,
+                                                                  config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME)
+            vesc_adapter.stop_moving(vesc_adapter.EXTRACTION_KEY)
+            if cork_is_stuck:
+                msg = "Not sure that extractor was properly picked up as vesc stopper hit wasn't registered (cork " \
+                      "picking up was stopped by security timeout). Emergency exit as I don't want break the corkscrew."
+                return msg, True
+
         extraction_time = time.time() - start_t
 
         # add an extraction record to the extraction matrix and extraction time to the statistic collector
@@ -1047,6 +1071,7 @@ class ExtractionMethods:
 
     @staticmethod
     def pattern_plus(smoothie: adapters.SmoothieAdapter,
+                     vesc_adapter: adapters.VescAdapterV3,
                      extraction_map: ExtractionMap,
                      data_collector: datacollection.DataCollector):
 
@@ -1071,7 +1096,11 @@ class ExtractionMethods:
                 return msg, False
 
             # do extraction
-            res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map, data_collector)
+            res, cork_is_stuck = ExtractionMethods.single_center_drop(
+                smoothie,
+                vesc_adapter,
+                extraction_map,
+                data_collector)
             if res != smoothie.RESPONSE_OK:
                 return res, cork_is_stuck
 
@@ -1079,6 +1108,7 @@ class ExtractionMethods:
 
     @staticmethod
     def pattern_x(smoothie: adapters.SmoothieAdapter,
+                  vesc_adapter: adapters.VescAdapterV3,
                   extraction_map: ExtractionMap,
                   data_collector: datacollection.DataCollector):
 
@@ -1103,7 +1133,11 @@ class ExtractionMethods:
                 return msg, False
 
             # do extraction
-            res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map, data_collector)
+            res, cork_is_stuck = ExtractionMethods.single_center_drop(
+                smoothie,
+                vesc_adapter,
+                extraction_map,
+                data_collector)
             if res != smoothie.RESPONSE_OK:
                 return res, cork_is_stuck
 
