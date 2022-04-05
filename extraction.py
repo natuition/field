@@ -943,6 +943,21 @@ class ExtractionMethods:
         extraction_map.record_extraction(sm_cur_coords["X"], sm_cur_coords["Y"])
         data_collector.add_cork_moving_time_data(extraction_time)
 
+        for _ in range(config.SEEDER_QUANTITY):
+            # fill seeder
+            res = smoothie.seeder_fill()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Error during filling seeder, smoothie's output:\n" + res
+                time.sleep(config.SEEDER_DELAY)
+                return msg, False
+            # plant seeds
+            res = smoothie.seeder_plant_seeds()
+            if res != smoothie.RESPONSE_OK:
+                msg = "Error during planting seeds, smoothie's output:\n" + res
+                time.sleep(config.SEEDER_DELAY)
+                return msg, False
+            time.sleep(config.SEEDER_DELAY)
+
         # save current matrix state to a file
         if config.DEBUG_MATRIX_FILE:
             extraction_map.save_to_file("last_extraction_map.txt")

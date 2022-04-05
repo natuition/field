@@ -577,6 +577,22 @@ class SmoothieAdapter:
                     return res
             return self.custom_move_to(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
 
+    def seeder_fill(self):
+        """Fills up robot's seeder with seeds from a storage.
+
+        Sends 'M280 S3' command to smoothie. Returns smoothie answer message."""
+
+        self.__smc.write("M280 S3")
+        return self.__smc.read_some()
+
+    def seeder_plant_seeds(self):
+        """Throws seeds out from seeder (need to fill seeder with seeds before throwing them)
+
+        Sends 'M280 S13' command to smoothie. Returns smoothie answer message."""
+
+        self.__smc.write("M280 S13")
+        return self.__smc.read_some()
+
     def nav_calibrate_wheels(self):
         """Calibrates nav. wheels and sets their current position to adapter and smoothie.
         NOT TESTED YET!
