@@ -23,7 +23,7 @@ from notification import SyntheseRobot
 import posix_ipc
 import json
 from extraction import ExtractionManagerV3
-
+import glob
 import importlib
 
 """
@@ -258,9 +258,14 @@ def move_to_point_and_extract(coords_from_to: list,
         detections_period.append(per_det_end_t - start_t)
 
         if config.SAVE_DEBUG_IMAGES and extract:
-            image_saver.save_image(frame, img_output_dir,
-                                   label="(periphery view scan M=" + str(current_working_mode) + ")",
-                                   plants_boxes=plants_boxes)
+            image_saver.save_image(
+                frame,
+                img_output_dir,
+                label="(periphery view scan M=" + str(current_working_mode) + ")",
+                plants_boxes=plants_boxes)
+        if config.ALLOW_GATHERING and current_working_mode == working_mode_slow and \
+                image_saver.get_counter("gathering") < config.DATA_GATHERING_MAX_IMAGES:
+            image_saver.save_image(frame, config.DATA_GATHERING_DIR, plants_boxes=plants_boxes, counter_key="gathering")
 
         if extract:
             msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
@@ -1471,8 +1476,11 @@ def main():
     except:
         ui_msg_queue = None
 
-    notification = NotificationClient(time_start)
     image_saver = utility.ImageSaver()
+    if config.ALLOW_GATHERING:
+        image_saver.set_counter(len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
+
+    notification = NotificationClient(time_start)
     data_collector = datacollection.DataCollector(notification,
                                                   load_from_file=config.CONTINUE_PREVIOUS_PATH,
                                                   file_path=log_cur_dir + config.DATACOLLECTOR_SAVE_FILE,
