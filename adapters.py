@@ -1400,12 +1400,39 @@ class VescAdapterV3:
                         gpio_is_initialized = True
                     GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
             else:
+                # TODO what robot should do if initialization was failed?
                 print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
-        # init any new vescs (add code here)
+        # init any new vescs (add vesc init code here)
+        # ...
 
         self.__keep_thread_alive = True
         self._movement_ctrl_th = threading.Thread(target=self._movement_ctrl_th_tf, daemon=True)
         self._movement_ctrl_th.start()
+
+        # DO ALL ALLOWED CALIBRATIONS HERE
+        # propulsion vasc calibration
+        if config.VESC_PROPULSION_CALIBRATE_AT_INIT:
+            self.set_rpm(config.VESC_PROPULSION_CALIBRATION_RPM, self.PROPULSION_KEY)
+            self.set_time_to_move(config.VESC_PROPULSION_CALIBRATION_MAX_TIME, self.PROPULSION_KEY)
+            self.start_moving(self.PROPULSION_KEY)
+            res = self.wait_for_stopper_hit(self.PROPULSION_KEY, config.VESC_PROPULSION_CALIBRATION_MAX_TIME)
+            self.stop_moving(self.PROPULSION_KEY)
+            if not res:
+                # TODO what robot should do if calibration was failed (there was no stopper hit)?
+                print("Stopped vesc PROPULSION engine calibration due timeout (stopper signal wasn't received!)")
+
+        # extraction vesc calibration
+        if config.VESC_EXTRACTION_CALIBRATE_AT_INIT:
+            self.set_rpm(config.VESC_EXTRACTION_CALIBRATION_RPM, self.EXTRACTION_KEY)
+            self.set_time_to_move(config.VESC_EXTRACTION_CALIBRATION_MAX_TIME, self.EXTRACTION_KEY)
+            self.start_moving(self.EXTRACTION_KEY)
+            res = self.wait_for_stopper_hit(self.EXTRACTION_KEY, config.VESC_EXTRACTION_CALIBRATION_MAX_TIME)
+            self.stop_moving(self.EXTRACTION_KEY)
+            if not res:
+                # TODO what robot should do if calibration was failed (there was no stopper hit)?
+                print("Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!)")
+        # do any new calibrations (add vesc calibration code here)
+        # ...
 
     def __enter__(self):
         return self

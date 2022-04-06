@@ -1573,9 +1573,9 @@ def main():
         with \
             utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt",
                                     config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
-            adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.VescAdapterV3(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
                                    config.VESC_STOPPER_CHECK_FREQ) as vesc_engine, \
+            adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
             adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                              config.CROP_H_TO, config.CV_ROTATE_CODE,
