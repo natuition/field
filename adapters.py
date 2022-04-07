@@ -1384,7 +1384,8 @@ class VescAdapterV3:
 
         # init EXTRACTION vesc
         if config.VESC_ALLOW_EXTRACTION:
-            ext_can_id = self.__get_unregistered_can_id()
+            # ext_can_id = self.__get_unregistered_can_id()
+            ext_can_id = 0
             if ext_can_id is not None:
                 self.__can_ids[self.EXTRACTION_KEY] = ext_can_id
                 self.__rpm[self.EXTRACTION_KEY] = 0
