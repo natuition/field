@@ -1445,7 +1445,7 @@ class VescAdapterV3:
         cleanup_gpio = False
 
         for engine_key in self.__can_ids:
-            self.stop_moving(self.__can_ids[engine_key])
+            self.stop_moving(engine_key)
             if self.__gpio_stoppers_pins[engine_key] is not None:
                 GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
                 if not cleanup_gpio:
