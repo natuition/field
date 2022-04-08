@@ -378,6 +378,7 @@ class ExtractionManagerV3:
                                                                          Y_F=config.Y_F_MAX,
                                                                          X=ext_sm_x,
                                                                          Y=ext_sm_y)
+                        self.__smoothie.wait_for_all_actions_done()
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = f"Passing this plant by as could not move cork to position " \
                                   f"X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
