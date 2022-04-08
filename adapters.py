@@ -1368,7 +1368,11 @@ class VescAdapterV3:
         # INIT ALL ALLOWED VESCS HERE
         # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
         if config.VESC_ALLOW_PROPULSION:
-            self.__can_ids[self.PROPULSION_KEY] = None  # parent vesc has ID=None
+            if config.VESC_PROPULSION_AUTODETECT_CAN_ID:
+                raise NotImplementedError("can id detection is not confirmed to work fine")
+            else:
+                prop_can_id = config.VESC_PROPULSION_CAN_ID
+            self.__can_ids[self.PROPULSION_KEY] = prop_can_id  # parent vesc has ID=None
             self.__rpm[self.PROPULSION_KEY] = 0
             self.__time_to_move[self.PROPULSION_KEY] = 0
             self.__start_time[self.PROPULSION_KEY] = None
@@ -1384,8 +1388,11 @@ class VescAdapterV3:
 
         # init EXTRACTION vesc
         if config.VESC_ALLOW_EXTRACTION:
-            # ext_can_id = self.__get_unregistered_can_id()
-            ext_can_id = 0
+            if config.VESC_EXTRACTION_AUTODETECT_CAN_ID:
+                raise NotImplementedError("can id detection is not confirmed to work fine")
+                # ext_can_id = self.__get_unregistered_can_id()
+            else:
+                ext_can_id = config.VESC_EXTRACTION_CAN_ID
             if ext_can_id is not None:
                 self.__can_ids[self.EXTRACTION_KEY] = ext_can_id
                 self.__rpm[self.EXTRACTION_KEY] = 0
