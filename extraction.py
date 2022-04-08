@@ -949,13 +949,11 @@ class ExtractionMethods:
             res = smoothie.seeder_fill()
             if res != smoothie.RESPONSE_OK:
                 msg = "Error during filling seeder, smoothie's output:\n" + res
-                time.sleep(config.SEEDER_DELAY)
-                return msg, False
+                print(msg)  # TODO probably need to return later both answers to let outer methods log this error
             # plant seeds
             res = smoothie.seeder_plant_seeds()
             if res != smoothie.RESPONSE_OK:
                 msg = "Error during planting seeds, smoothie's output:\n" + res
-                time.sleep(config.SEEDER_DELAY)
                 return msg, False
             time.sleep(config.SEEDER_DELAY)
 

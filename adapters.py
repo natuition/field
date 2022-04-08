@@ -45,6 +45,13 @@ class SmoothieAdapter:
             print("Switching smoothie to relative was failed! Smoothie's response:\n", res)
             raise Exception("Switching smoothie to relative was failed!")
 
+        if config.SEEDER_QUANTITY > 0:
+            self.__smc.write("M280 S13")
+            res = self.__smc.read_some()
+            if res != self.RESPONSE_OK:
+                msg = "Couldn't lock seeder during smoothie adapter initialization! Smoothie response:\n" + res
+                print(msg)
+
         if calibration_at_init:
             # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
             res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
@@ -582,7 +589,7 @@ class SmoothieAdapter:
 
         Sends 'M280 S3' command to smoothie. Returns smoothie answer message."""
 
-        self.__smc.write("M280 S3")
+        self.__smc.write("M280 S6")
         return self.__smc.read_some()
 
     def seeder_plant_seeds(self):
