@@ -256,7 +256,7 @@ def move_to_point_and_extract(coords_from_to: list,
         per_det_end_t = time.time()
         detections_period.append(per_det_end_t - start_t)
 
-        if config.SAVE_DEBUG_IMAGES and extract:
+        if config.SAVE_DEBUG_IMAGES:
             image_saver.save_image(
                 frame,
                 img_output_dir,
@@ -1823,7 +1823,7 @@ def main():
                         False,
                         navigation_prediction,
                         path_points[i_inf:i_sup],
-                        not i == path_start_index)
+                        not i == path_start_index if config.CONTINUE_PREVIOUS_PATH else True)
 
                     if config.NAVIGATION_TEST_MODE:
                         response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
