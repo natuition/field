@@ -1543,6 +1543,7 @@ class VescAdapterV3:
     def wait_for_stop_any(self, timeout=None):
         raise NotImplementedError("this feature is not implemented yet")
 
+    # TODO add flag "stop engine at stopper hit"
     def wait_for_stopper_hit(self, engine_key, timeout=None, stop_engine_if_timeout=True):
         """Blocks caller thread until specified engine stopper hit or timeout time is out (if timeout was set).
 

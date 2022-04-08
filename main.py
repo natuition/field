@@ -253,7 +253,6 @@ def move_to_point_and_extract(coords_from_to: list,
             plants_boxes = periphery_det.detect(frame)
         else:
             plants_boxes = list()
-            vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
         per_det_end_t = time.time()
         detections_period.append(per_det_end_t - start_t)
 
@@ -357,9 +356,6 @@ def move_to_point_and_extract(coords_from_to: list,
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
 
-                    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
-
                 elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                     # move cork to fast mode scan position
                     if config.VERBOSE:
@@ -383,7 +379,10 @@ def move_to_point_and_extract(coords_from_to: list,
                             print(msg)
                         current_working_mode = working_mode_switching
 
+                # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
                 if not vesc_engine.is_moving(vesc_engine.PROPULSION_KEY):
+                    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
             # switching (from slow to fast) mode
@@ -468,7 +467,8 @@ def move_to_point_and_extract(coords_from_to: list,
                         print(msg)
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
-                    vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                    # TODO dont need anymore? as rpm is set at the end of slow mode
+                    # vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
                     continue
                 elif close_to_end:
                     # TODO: won't execute (speed not applied bug) in case if rpm already was set by set_rpm() method (1)
@@ -579,6 +579,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
             break
 
+        # TODO check for bug: arrival check applies single speed for all path (while multiple speeds are applied)
         # check if can arrived
         if vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY) / config.MULTIPLIER_SI_SPEED_TO_RPM * \
                 config.MANEUVERS_FREQUENCY > nav.get_distance(cur_pos, coords_from_to[1]):
@@ -773,6 +774,7 @@ def move_to_point_and_extract(coords_from_to: list,
         print(msg)
         logger_full.write(msg + "\n")
 
+        # TODO possible bug: reading sensors data from vesc 4 times per second
         # load sensors data to csv
         s = ","
         msg = str(gps_quality) + s + str(raw_angle) + s + str(angle_kp_ki) + s + str(order_angle_sm) + s + \
