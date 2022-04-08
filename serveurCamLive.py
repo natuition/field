@@ -149,7 +149,11 @@ if __name__ == '__main__':
             #current_app.detector = detection.YoloDarknetDetector(config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_CONFIG_FILE,
             #                                                         config.PERIPHERY_DATA_FILE, config.PERIPHERY_CONFIDENCE_THRESHOLD,
             #                                                         config.PERIPHERY_HIER_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
-            current_app.detector = detection.YoloTRTDetector(config.PERIPHERY_MODEL_PATH, config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
+            current_app.detector = detection.YoloTRTDetector(
+                config.PERIPHERY_MODEL_PATH,
+                config.PERIPHERY_CLASSES_FILE,
+                config.PERIPHERY_CONFIDENCE_THRESHOLD,
+                config.PERIPHERY_NMS_THRESHOLD)
 
     process_thread = threading.Thread(target=captureFrames)
     process_thread.daemon = True

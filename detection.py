@@ -8,7 +8,6 @@ import platform
 import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda
-
 from config import config
 import posix_ipc
 from mmap import mmap
@@ -19,6 +18,7 @@ from flask import Flask
 import logging
 from flask_cors import CORS
 
+
 class YoloOpenCVDetection:
 
     def __init__(self, yolo_classes_path, yolo_config_path, yolo_weights_path, input_size, confidence_threshold,
@@ -26,7 +26,7 @@ class YoloOpenCVDetection:
         self._input_size = input_size
         self._confidence_threshold = confidence_threshold
         self._nms_threshold = nms_threshold  # non-max suppression
-        self.classes = self.load_class_names(yolo_classes_path)
+        self.classes = load_class_names(yolo_classes_path)
         self.net = cv.dnn.readNetFromDarknet(yolo_config_path, yolo_weights_path)
         self.net.setPreferableBackend(backend)  # DNN_BACKEND_OPENCV for CPU usage
         self.net.setPreferableTarget(target)  # DNN_TARGET_CPU for CPU usage
@@ -94,12 +94,6 @@ class YoloOpenCVDetection:
             final_plant_boxes.append(DetectedPlantBox(left, top, left + width, top + height, classes[class_ids[i]],
                                                       class_ids[i], confidences[i], frame_width, frame_height))
         return final_plant_boxes
-
-    # Load names of classes
-    @staticmethod
-    def load_class_names(labels_file):
-        with open(labels_file, 'rt') as f:
-            return f.read().rstrip('\n').split('\n')
 
 
 class YoloDarknetDetector:
@@ -206,6 +200,7 @@ class YoloDarknetDetector:
         
         return plant_boxes
 
+
 class HostDeviceMem(object):
     def __init__(self, host_mem, device_mem):
         self.host = host_mem
@@ -216,7 +211,8 @@ class HostDeviceMem(object):
 
     def __repr__(self):
         return self.__str__()
-        
+
+
 class YoloTRTDetector:
     # TODO: images are distorted a bit during strict resize wo/o saving ratio, this may affect detections
     # TODO: check for interpolation (INTER_AREA should be better than INTER_LINEAR)
@@ -227,6 +223,7 @@ class YoloTRTDetector:
 
     def __init__(self,
                  trt_model_path,  # serialized engine path
+                 classes_names_path,  # path to a file with a model objects classes names
                  confidence_threshold,  # remove detections with lower than this confidence
                  nms_threshold):
         # check for args errors
@@ -237,7 +234,7 @@ class YoloTRTDetector:
 
         self.__confidence_threshold = confidence_threshold
         self.__nms_threshold = nms_threshold
-        self.__class_names = ('Plantain_great', 'Dandellion', 'Daisy', 'Plantain_narrowleaf', 'Porcelle')
+        self.__class_names = load_class_names(classes_names_path)
         self.__width = 416
         self.__height = 416
         self.sharedArray = None
@@ -591,3 +588,12 @@ def detect_single(detector: YoloOpenCVDetection, input_full_path, output_dir):
     slash = "\\" if platform.system() == "Windows" else "/"
     file_name = input_full_path.split(slash)[-1]
     cv.imwrite(output_dir + file_name, img)
+
+
+def load_class_names(labels_file_path):
+    """Reads and parses classes names file by given path
+
+    Returns list of object class names"""
+
+    with open(labels_file_path, 'rt') as f:
+        return f.read().rstrip('\n').split('\n')

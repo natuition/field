@@ -1517,7 +1517,11 @@ def main():
     # load yolo networks
     print("Loading periphery detector...")
     if config.PERIPHERY_WRAPPER == 1:
-        periphery_detector = detection.YoloTRTDetector(config.PERIPHERY_MODEL_PATH, config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
+        periphery_detector = detection.YoloTRTDetector(
+            config.PERIPHERY_MODEL_PATH,
+            config.PERIPHERY_CLASSES_FILE,
+            config.PERIPHERY_CONFIDENCE_THRESHOLD,
+            config.PERIPHERY_NMS_THRESHOLD)
     elif config.PERIPHERY_WRAPPER == 2:
         periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
                                                            config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
@@ -1532,7 +1536,11 @@ def main():
 
     print("Loading precise detector...")
     if config.PRECISE_WRAPPER == 1:
-        precise_detector = detection.YoloTRTDetector(config.PERIPHERY_MODEL_PATH, config.PERIPHERY_CONFIDENCE_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
+        precise_detector = detection.YoloTRTDetector(
+            config.PERIPHERY_MODEL_PATH,
+            config.PERIPHERY_CLASSES_FILE,
+            config.PERIPHERY_CONFIDENCE_THRESHOLD,
+            config.PERIPHERY_NMS_THRESHOLD)
         if config.CONTINUOUS_INFORMATION_SENDING:
             notification.set_treated_plant(precise_detector.get_classes_names())
     elif config.PRECISE_WRAPPER == 2:
