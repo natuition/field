@@ -1425,8 +1425,8 @@ class VescAdapterV3:
         # extraction vesc calibration
         if config.VESC_EXTRACTION_CALIBRATE_AT_INIT:
             # Z-5 fix (move cork little down to stop touching stopper)
-            self.set_rpm(-config.VESC_EXTRACTION_CALIBRATION_RPM, self.EXTRACTION_KEY)
-            self.set_time_to_move(0.5, self.EXTRACTION_KEY)
+            self.set_rpm(config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM, self.EXTRACTION_KEY)
+            self.set_time_to_move(config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME, self.EXTRACTION_KEY)
             self.start_moving(self.EXTRACTION_KEY)
             self.wait_for_stop(self.EXTRACTION_KEY)
 
