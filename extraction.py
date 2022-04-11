@@ -641,6 +641,8 @@ class ExtractionManagerV3:
 
                     # compute smoothie absolute coords of the box edges
                     box_x_size, box_y_size = plant_box.get_sizes()
+                    box_x_size *= config.MILLING_PLANT_BOX_X_SIZE_SCALE
+                    box_y_size *= config.MILLING_PLANT_BOX_Y_SIZE_SCALE
                     abs_sm_left_edge_x = abs_sm_x + self.px_to_smoothie_value(plant_box.center_x - box_x_size / 2,
                                                                               plant_box.center_x,
                                                                               config.ONE_MM_IN_PX)
