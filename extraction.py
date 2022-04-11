@@ -944,18 +944,58 @@ class ExtractionMethods:
         extraction_map.record_extraction(sm_cur_coords["X"], sm_cur_coords["Y"])
         data_collector.add_cork_moving_time_data(extraction_time)
 
+        # seeder
         for _ in range(config.SEEDER_QUANTITY):
+            do_x_offset = config.SEEDER_EXT_OFFSET_X != 0
+            do_y_offset = config.SEEDER_EXT_OFFSET_Y != 0
+
+            # do x offset if needed
+            if do_x_offset:
+                res = smoothie.custom_move_for(X_F=config.SEEDER_EXT_OFFSET_X_F, X=config.SEEDER_EXT_OFFSET_X)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't do seeder X axis offset, smoothie response:\n" + res
+                    print(msg)
+                    do_x_offset = False
+
+            # do y offset if needed
+            if do_y_offset:
+                res = smoothie.custom_move_for(Y_F=config.SEEDER_EXT_OFFSET_Y_F, Y=config.SEEDER_EXT_OFFSET_Y)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't do seeder Y axis offset, smoothie response:\n" + res
+                    print(msg)
+                    do_y_offset = False
+
             # fill seeder
             res = smoothie.seeder_fill()
             if res != smoothie.RESPONSE_OK:
                 msg = "Error during filling seeder, smoothie's output:\n" + res
                 print(msg)  # TODO probably need to return later both answers to let outer methods log this error
+            time.sleep(config.SEEDER_FILL_DELAY)
+
             # plant seeds
             res = smoothie.seeder_plant_seeds()
             if res != smoothie.RESPONSE_OK:
                 msg = "Error during planting seeds, smoothie's output:\n" + res
                 return msg, False
-            time.sleep(config.SEEDER_DELAY)
+            time.sleep(config.SEEDER_PLANT_DELAY)
+
+            # get back to init position if there was offset on X axis
+            if do_x_offset:
+                res = smoothie.custom_move_for(X_F=config.SEEDER_EXT_OFFSET_X_F, X=-config.SEEDER_EXT_OFFSET_X)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't do seeder X axis offset (back), smoothie response:\n" + res
+                    print(msg)
+
+            # get back to init position if there was offset on Y axis
+            if do_y_offset:
+                res = smoothie.custom_move_for(Y_F=config.SEEDER_EXT_OFFSET_Y_F, Y=-config.SEEDER_EXT_OFFSET_Y)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Couldn't do seeder Y axis offset (back), smoothie response:\n" + res
+                    print(msg)
 
         # save current matrix state to a file
         if config.DEBUG_MATRIX_FILE:
