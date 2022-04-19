@@ -120,11 +120,15 @@ class ExtractionManagerV3:
             ))
 
             if config.SAVE_DEBUG_IMAGES:
-                frame = utility.ImageSaver.draw_data_in_frame(frame, pdz_cv_rect=self.__pdz_cv_rects[i],
-                                                              plants_boxes=cur_pos_plant_boxes_pdz)
-                self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                              label=f"(precise_view_scan_at_{round(cam_sm_x, 1)}_{round(cam_sm_y, 1)})_for_find_all_plants",
-                                              plants_boxes=plants_boxes)
+                frame = utility.ImageSaver.draw_data_in_frame(
+                    frame,
+                    pdz_cv_rect=self.__pdz_cv_rects[i],
+                    plants_boxes=cur_pos_plant_boxes_pdz)
+                self.__image_saver.save_image(
+                    frame,
+                    config.DEBUG_IMAGES_PATH,
+                    label=f"PR_PDZ_view_at_{round(cam_sm_x, 1)}_{round(cam_sm_y, 1)}",
+                    plants_boxes=plants_boxes)
 
             # convert plants boxes px coordinates into absolute smoothie coordinates
             for plant_box in cur_pos_plant_boxes_pdz:
@@ -237,19 +241,25 @@ class ExtractionManagerV3:
 
                 if config.SAVE_DEBUG_IMAGES:
                     if len(cur_pos_plant_boxes_undist) > 0:
-                        frame = utility.ImageSaver.draw_data_in_frame(frame,
-                                                                      undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
-                                                                      plants_boxes=cur_pos_plant_boxes_undist)
-                        self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                                      label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),find_plant_in_undistorted_zone",
-                                                      plants_boxes=cur_pos_plant_boxes_undist)
+                        frame = utility.ImageSaver.draw_data_in_frame(
+                            frame,
+                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                            plants_boxes=cur_pos_plant_boxes_undist)
+                        self.__image_saver.save_image(
+                            frame,
+                            config.DEBUG_IMAGES_PATH,
+                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),weeds_in_undist",
+                            plants_boxes=cur_pos_plant_boxes_undist)
                     else:
-                        frame = utility.ImageSaver.draw_data_in_frame(frame,
-                                                                      undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
-                                                                      plants_boxes=plants_boxes)
-                        self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                                      label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_find_plant_in_undistorted_zone",
-                                                      plants_boxes=plants_boxes)
+                        frame = utility.ImageSaver.draw_data_in_frame(
+                            frame,
+                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                            plants_boxes=plants_boxes)
+                        self.__image_saver.save_image(
+                            frame,
+                            config.DEBUG_IMAGES_PATH,
+                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_weeds_in_undist",
+                            plants_boxes=plants_boxes)
 
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
                 if len(cur_pos_plant_boxes_undist) == 0:
@@ -310,13 +320,15 @@ class ExtractionManagerV3:
                                     cur_pos_sm_x, cur_pos_sm_y = delta_sm_x, delta_sm_y
 
                                     if config.SAVE_DEBUG_IMAGES:
-                                        frame = utility.ImageSaver.draw_data_in_frame(frame,
-                                                                                      undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
-                                                                                      plants_boxes=cur_pos_plant_boxes_undist)
-                                        self.__image_saver.save_image(frame, config.DEBUG_IMAGES_PATH,
-                                                                      label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),find_plant_in_undistorted_zone_(after_delta_seeking)",
-                                                                      plants_boxes=cur_pos_plant_boxes_undist)
-
+                                        frame = utility.ImageSaver.draw_data_in_frame(
+                                            frame,
+                                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                                            plants_boxes=cur_pos_plant_boxes_undist)
+                                        self.__image_saver.save_image(
+                                            frame,
+                                            config.DEBUG_IMAGES_PATH,
+                                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),delta_weeds_in_undist",
+                                            plants_boxes=cur_pos_plant_boxes_undist)
                                     break
                                 else:
                                     msg = "No plants found during delta scan iteration"
@@ -506,9 +518,9 @@ class ExtractionManagerV3:
                             undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
                             plants_boxes=cur_pos_plant_boxes_undist)
                         self.__image_saver.save_image(
-                            frame, config.DEBUG_IMAGES_PATH,
-                            label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),"
-                                  f"find_plant_in_undistorted_zone",
+                            frame,
+                            config.DEBUG_IMAGES_PATH,
+                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),weeds_in_undist",
                             plants_boxes=cur_pos_plant_boxes_undist)
                     else:
                         frame = utility.ImageSaver.draw_data_in_frame(
@@ -517,8 +529,7 @@ class ExtractionManagerV3:
                             plants_boxes=plants_boxes)
                         self.__image_saver.save_image(
                             frame, config.DEBUG_IMAGES_PATH,
-                            label=f"(precise_view_scan_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),"
-                                  f"no_find_plant_in_undistorted_zone",
+                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_weeds_in_undist",
                             plants_boxes=plants_boxes)
 
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
@@ -586,9 +597,8 @@ class ExtractionManagerV3:
                                             plants_boxes=cur_pos_plant_boxes_undist)
                                         self.__image_saver.save_image(
                                             frame, config.DEBUG_IMAGES_PATH,
-                                            label=f"(precise_view_scan_at_"
-                                                  f"{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),"
-                                                  f"find_plant_in_undistorted_zone_(after_delta_seeking)",
+                                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),"
+                                                  f"delta_weeds_in_undist",
                                             plants_boxes=cur_pos_plant_boxes_undist)
                                     break
                                 else:

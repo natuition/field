@@ -260,7 +260,7 @@ def move_to_point_and_extract(coords_from_to: list,
             image_saver.save_image(
                 frame,
                 img_output_dir,
-                label="(periphery view scan M=" + str(current_working_mode) + ")",
+                label="PE_view_M=" + str(current_working_mode),
                 plants_boxes=plants_boxes)
         if config.ALLOW_GATHERING and current_working_mode == working_mode_slow and \
                 image_saver.get_counter("gathering") < config.DATA_GATHERING_MAX_IMAGES:
