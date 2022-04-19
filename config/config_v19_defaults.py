@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.0" 
+CONFIG_VERSION = "0.19.1"
 
 
 # ======================================================================================================================
@@ -128,6 +128,10 @@ EXTRACTION_TUNING_MAX_COUNT = 3 # Number of try to get closer to a plant
 
 SEEK_DELTA_DISTANCE = 25  # mm; if weed is lost after tuning/getting closer - we do 3 shifts for that value (down, left, right) and trying to find it
 MYOPIA_PATCH = True
+
+# set to True to disable weeds extractions during movement to first point when continuing previous path (continue mode)
+FIRST_POINT_NO_EXTRACTIONS = False
+
 
 # ======================================================================================================================
 # VESC SETTINGS

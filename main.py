@@ -1831,7 +1831,8 @@ def main():
                         False,
                         navigation_prediction,
                         path_points[i_inf:i_sup],
-                        not i == path_start_index if config.CONTINUE_PREVIOUS_PATH else True)
+                        not i == path_start_index
+                        if config.FIRST_POINT_NO_EXTRACTIONS and config.CONTINUE_PREVIOUS_PATH else True)
 
                     if config.NAVIGATION_TEST_MODE:
                         response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
