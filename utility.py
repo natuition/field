@@ -64,7 +64,8 @@ class ImageSaver:
         if specific_name:
             file_name = specific_name
         else:
-            file_name = get_current_time()[:-3] + sep + str(self.__counters[counter_key])
+            cur_dt = get_current_time()
+            file_name = cur_dt[:cur_dt.rfind(" ")] + sep + str(self.__counters[counter_key])
             self.__counters[counter_key] += 1
             if label:
                 file_name += sep + label
