@@ -645,6 +645,7 @@ class WorkingState(State):
         self.isResume = isResume
         self.detected_plants = dict()
         self.extracted_plants = dict()
+        self.previous_sessions_working_time = None
 
         msg = f"Audit mode enable : {isAudit}"
         self.logger.write_and_flush(msg+"\n")
@@ -740,6 +741,7 @@ class WorkingState(State):
         data = dict()
         data["weeds"] = self.extracted_plants
         data["time"] = self.timeStartMain.isoformat()
+        data["previous_sessions_working_time"] = self.previous_sessions_working_time
         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
     def _main_msg_thread_tf(self): 
@@ -755,6 +757,7 @@ class WorkingState(State):
             elif "datacollector" in data:
                 self.detected_plants = data["datacollector"][0]
                 self.extracted_plants = data["datacollector"][1]
+                self.previous_sessions_working_time = data["datacollector"][2]
                 self.sendLastStatistics()
             elif "last_gps" in data:
                 data = data["last_gps"]

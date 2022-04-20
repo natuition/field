@@ -64,8 +64,10 @@ class DataCollector:
 
     def __send_to_ui(self):
         if self.__ui_msg_queue is not None:
-            self.__ui_msg_queue.send(json.dumps({"datacollector": [self.__detected_plants, self.__extracted_plants]}))
-
+            self.__ui_msg_queue.send(json.dumps({"datacollector": [self.__detected_plants, self.__extracted_plants, self.__previous_sessions_working_time]}))
+            print("MESSAGE QUEUE IS NOT NONE!")
+        else:
+            print("MESSAGE QUEUE IS NONE!")
     def __format_time(self, seconds):
         """Returns given seconds as formatted DD:HH:MM:SS MSS str time
         """
