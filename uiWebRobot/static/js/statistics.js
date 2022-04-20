@@ -106,7 +106,6 @@ socketio.on('statistics', function(dataServ) {
         removeAllChildNodes(statsPlants);
         data = []
         labels = []
-        console.log(dataServ)
         for (var key in dataServ["weeds"]) {
             data.push(dataServ["weeds"][key]);
             key = key.replace(/\s+/g, '');
