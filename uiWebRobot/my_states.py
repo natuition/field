@@ -753,7 +753,7 @@ class WorkingState(State):
                     msg = f"[{self.__class__.__name__}] -> Main lancé !"
                     self.logger.write_and_flush(msg+"\n")
                     print(msg)
-                    self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit}, namespace='/button', broadcast=True)
+                    self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit, "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS}, namespace='/button', broadcast=True)
             elif "datacollector" in data:
                 self.detected_plants = data["datacollector"][0]
                 self.extracted_plants = data["datacollector"][1]

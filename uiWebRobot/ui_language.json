@@ -203,5 +203,10 @@
 		"fr": "Veuillez choisir une intelligence artificielle", 
 		"en": "Please choose an artificial intelligence",
 		"nl": "Kies een kunstmatige intelligentie"
+	},
+	"first_point_no_extractions": {
+		"fr": "Violette rejoint son point de départ sans extractions", 
+		"en": "Violette reaches her starting point without extractions",
+		"nl": "Violette bereikt haar startpunt zonder extracties"
 	}
 }

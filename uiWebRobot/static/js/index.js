@@ -127,6 +127,9 @@ socketButton.on('startMain', function(dataServ) {
                 statusTitle.classList.remove('display-block')
             }*/
             socketio.emit('data', {type: "getStats"});
+            if(dataServ["first_point_no_extractions"]){
+                sendAlert("first_point_no_extractions", (ui_languages["first_point_no_extractions"])[ui_language], false) 
+            }
         }, 2000);
     }
 });
