@@ -14,15 +14,23 @@ class DataCollector:
     """
 
     def __init__(self, notification, load_from_file=False, file_path="", ui_msg_queue=None, dump_at_receiving=True):
+        file_loading_fail = False
         if load_from_file:
-            structure = self.__load_from_file(file_path)
-            # data
-            self.__detected_plants = structure["__detected_plants"]
-            self.__extracted_plants = structure["__extracted_plants"]
-            self.__vesc_moving_time = structure["__vesc_moving_time"]
-            self.__cork_moving_time = structure["__cork_moving_time"]
-            self.__previous_sessions_working_time = structure["__previous_sessions_working_time"]
-        else:
+            try:
+                structure = self.__load_from_file(file_path)
+                # data
+                self.__detected_plants = structure["__detected_plants"]
+                self.__extracted_plants = structure["__extracted_plants"]
+                self.__vesc_moving_time = structure["__vesc_moving_time"]
+                self.__cork_moving_time = structure["__cork_moving_time"]
+                self.__previous_sessions_working_time = structure["__previous_sessions_working_time"]
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except EOFError:
+                file_loading_fail = True
+            except FileNotFoundError:
+                file_loading_fail = True
+        if not load_from_file or file_loading_fail:
             # data
             self.__detected_plants = dict()
             self.__extracted_plants = dict()
