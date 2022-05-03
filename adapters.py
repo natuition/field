@@ -1746,23 +1746,22 @@ class GPSUbloxAdapter:
 
         while True:
             try:
-                read_line = self._serial.readline() 
+                read_line = self._serial.readline()
+                if isinstance(read_line, bytes):
+                    data = str(read_line)
+                    # if len(data) == 3:
+                    #    print("None GNGGA or RTCM threads")
+                    if "GNGGA" in data and ",,," not in data:
+                        # bad string with no position data
+                        # print(data)  # debug
+                        data = data.split(",")
+                        lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
+                        point_quality = data[6]
+                        return [lati, longi, point_quality]  # , float(data[11])  # alti
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
             except:
                 continue
-            if isinstance(read_line,bytes):
-                data = str(read_line)
-                # if len(data) == 3:
-                #    print("None GNGGA or RTCM threads")
-                if "GNGGA" in data and ",,," not in data:
-                    # bad string with no position data
-                    # print(data)  # debug
-                    data = data.split(",")
-                    try:
-                        lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
-                    except ValueError:
-                        continue
-                    point_quality = data[6]
-                    return [lati, longi, point_quality]  # , float(data[11])  # alti
 
     def _D2M2(self, Lat, NS, Lon, EW):
         """Traduce NMEA format ddmmss to ddmmmm"""
