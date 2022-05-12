@@ -15,10 +15,14 @@ class GPSUbloxAdapterStub:
             raise ValueError("points reading delay can't be less than zero")
 
         # load stub gps points
+        self.__stub_gps_points_reader_pool = []
         with open(gps_points_file_path, "rb") as points_file:
-            self.__stub_gps_points_reader_pool = pickle.load(points_file)
-        if len(self.__stub_gps_points_reader_pool) < 1:
+            raw_points = pickle.load(points_file)
+        if len(raw_points) < 1:
             raise ValueError("given stub gps points file contains no gps points, stub gps points pool is empty")
+        # change format
+        for raw_point in raw_points:
+            self.__stub_gps_points_reader_pool.append([raw_point[0][0], raw_point[0][1], "4"])
 
         self.__points_reading_delay = points_reading_delay
         self.__position_is_fresh = False
