@@ -1759,6 +1759,177 @@ def main():
                 else:
                     path_end_index = len(path_points)
 
+                # applies improved approaching to path during continuing previous field job
+                if config.CONTINUE_PREVIOUS_PATH and config.USE_SMOOTH_APPROACHING_TO_FIELD:
+                    if config.TRADITIONAL_PATH:
+                        raise NotImplementedError(
+                            "traditional path is not supported by smooth approaching feature."
+                            "Set config.USE_SMOOTH_APPROACHING_TO_FIELD to False to use direct"
+                            "robot movement to target point during continuing previous path.")
+                    elif config.BEZIER_PATH:
+                        traj_path_start_index = path_start_index
+                        cur_pos = gps.get_fresh_position()
+
+                        # speed 0 is abnormal
+                        if math.isclose(path_points[traj_path_start_index][1], 0):
+                            msg = f"Point (path_points[{traj_path_start_index}]) speed is 0, exiting."
+                            logger_full.write(msg + "\n")
+                            print(msg)
+                            exit(0)
+                        # zigzag (speed < 0)
+                        elif path_points[traj_path_start_index][1] < 0:
+                            # skip negative speed points until positive speed or path end
+                            log_traj_start_idx = traj_path_start_index
+                            traj_path_start_index += 1
+                            while traj_path_start_index < len(path_points):
+                                if path_points[traj_path_start_index][1] > 0 and not math.isclose(
+                                        path_points[traj_path_start_index][1], 0):
+                                    break
+                                traj_path_start_index += 1
+                            else:
+                                msg = f"Couldn't find any points (from {log_traj_start_idx} to " \
+                                      f"{traj_path_start_index}) with positive speed to continue zigzag, exiting."
+                                logger_full.write(msg + "\n")
+                                print(msg)
+                                exit(0)
+                        # spiral or zigzag (speed > 0)
+                        else:
+                            # prev point speed 0 is abnormal
+                            if math.isclose(path_points[traj_path_start_index - 1][1], 0):
+                                msg = f"Point (path_points[{traj_path_start_index - 1}]) speed is 0, exiting."
+                                print(msg)
+                                exit(0)
+                            # spiral
+                            elif path_points[traj_path_start_index - 1][1] > 0:
+                                # generate non bezier indexes
+                                a_non_bezier_indexes = [0]  # A points
+                                b_non_bezier_indexes = [1]  # B points
+                                while traj_path_start_index > b_non_bezier_indexes[-1]:
+                                    a_non_bezier_indexes.append(a_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
+                                    b_non_bezier_indexes.append(b_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
+
+                                # look for index of point which will be used to get the robot to trajectory
+                                # ABAP correct angle: -180 to -90 or 170 to 180
+                                # BAAP correct angle: -10 to 90 (using this)
+                                for point_a_idx, point_b_idx in zip(reversed(a_non_bezier_indexes),
+                                                                    reversed(b_non_bezier_indexes)):
+                                    angle = nav.get_angle(
+                                        path_points[point_b_idx][0],
+                                        path_points[point_a_idx][0],
+                                        path_points[point_a_idx][0],
+                                        cur_pos)
+                                    if -10 <= angle <= 90:
+                                        traj_path_start_index = point_a_idx
+                                        break
+                                else:
+                                    msg = "Couldn't find any previous point with a satisfactory angle to get on " \
+                                          "trajectory, exiting."
+                                    logger_full.write(msg + "\n")
+                                    print(msg)
+                                    exit(0)
+                            # zigzag (prev point speed is negative)
+                            else:
+                                # skip negative speed points until positive speed or path end
+                                traj_path_start_index += 1
+                                while traj_path_start_index < len(path_points):
+                                    if path_points[traj_path_start_index][1] > 0 and not math.isclose(
+                                            path_points[traj_path_start_index][1], 0):
+                                        break
+                                    traj_path_start_index += 1
+                                else:
+                                    msg = "Couldn't find any further points with positive speed to continue zigzag " \
+                                          "job, exiting."
+                                    logger_full.write(msg + "\n")
+                                    print(msg)
+                                    exit(0)
+
+                        if abs(traj_path_start_index - path_start_index) > config.SMOOTH_APPROACHING_MAX_POINTS:
+                            msg = f"Robot wants to visit too many previous points or skip too many job points; " \
+                                  f"traj_start_idx={traj_path_start_index}; path_start_idx={path_start_index}, exiting."
+                            logger_full.write(msg + "\n")
+                            print(msg)
+                            exit(0)
+
+                        # for future points (nav predictor)
+                        i_inf = traj_path_start_index + 1 if traj_path_start_index + 1 < path_end_index \
+                            else path_end_index
+                        i_sup = traj_path_start_index + 1 + config.FUTURE_NUMBER_OF_POINTS \
+                            if traj_path_start_index + config.FUTURE_NUMBER_OF_POINTS < path_end_index \
+                            else path_end_index
+
+                        # if smooth approach target point is or further than job start point
+                        # (move to this point and start job)
+                        move_to_point_and_extract(
+                            [cur_pos, path_points[traj_path_start_index][0]],
+                            gps,
+                            vesc_engine,
+                            smoothie,
+                            camera,
+                            periphery_detector,
+                            precise_detector,
+                            logger_full,
+                            logger_table,
+                            report_field_names,
+                            trajectory_saver,
+                            working_zone_polygon,
+                            config.DEBUG_IMAGES_PATH,
+                            nav,
+                            data_collector,
+                            log_cur_dir,
+                            image_saver,
+                            notification,
+                            extraction_manager_v3,
+                            ui_msg_queue,
+                            path_points[traj_path_start_index][1],
+                            False,
+                            navigation_prediction,
+                            path_points[i_inf:i_sup],
+                            not config.FIRST_POINT_NO_EXTRACTIONS)
+                        if traj_path_start_index >= path_start_index:
+                            path_start_index = traj_path_start_index + 1
+                        else:
+                            for i in range(traj_path_start_index + 1, path_start_index - 1):
+                                i_inf = i + 1 if i + 1 < path_end_index else path_end_index
+                                i_sup = i + 1 + config.FUTURE_NUMBER_OF_POINTS \
+                                    if i + config.FUTURE_NUMBER_OF_POINTS < path_end_index else path_end_index
+
+                                move_to_point_and_extract(
+                                    [path_points[i - 1][0], path_points[i][0]],
+                                    gps,
+                                    vesc_engine,
+                                    smoothie,
+                                    camera,
+                                    periphery_detector,
+                                    precise_detector,
+                                    logger_full,
+                                    logger_table,
+                                    report_field_names,
+                                    trajectory_saver,
+                                    working_zone_polygon,
+                                    config.DEBUG_IMAGES_PATH,
+                                    nav,
+                                    data_collector,
+                                    log_cur_dir,
+                                    image_saver,
+                                    notification,
+                                    extraction_manager_v3,
+                                    ui_msg_queue,
+                                    path_points[i][1],
+                                    False,
+                                    navigation_prediction,
+                                    path_points[i_inf:i_sup],
+                                    not config.FIRST_POINT_NO_EXTRACTIONS)
+                    elif config.FORWARD_BACKWARD_PATH:
+                        raise NotImplementedError(
+                            "forward-backward path is not supported yet by smooth approaching feature."
+                            "Set config.USE_SMOOTH_APPROACHING_TO_FIELD to False to use direct"
+                            "robot movement to target point during continuing previous path.")
+                    else:
+                        raise RuntimeWarning(
+                            "all supported path generation modes are disabled, probably config path generation "
+                            "settings are corrupted")
+
+                # move through path points
                 for i in range(path_start_index, path_end_index):
                     
                     if config.NAVIGATION_TEST_MODE:
@@ -1832,7 +2003,8 @@ def main():
                         navigation_prediction,
                         path_points[i_inf:i_sup],
                         not i == path_start_index
-                        if config.FIRST_POINT_NO_EXTRACTIONS and config.CONTINUE_PREVIOUS_PATH else True)
+                        if config.FIRST_POINT_NO_EXTRACTIONS and config.CONTINUE_PREVIOUS_PATH and
+                        not config.USE_SMOOTH_APPROACHING_TO_FIELD else True)
 
                     if config.NAVIGATION_TEST_MODE:
                         response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)

@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.1"
+CONFIG_VERSION = "0.19.2"
 
 
 # ======================================================================================================================
@@ -86,6 +86,7 @@ SLOW_FAST_MODE = True
 SLOW_MODE_MIN_TIME = 10 # seconds
 SLOW_FAST_MODE_HEAD_FACTOR = 0.5
 
+
 # ======================================================================================================================
 # ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
 # ======================================================================================================================
@@ -107,6 +108,14 @@ TWO_POINTS_FOR_CREATE_FIELD = False
 MAKE_MANEUVER_AFTER_FIELD_CREATE = True
 MANEUVER_TIME_BACKWARD = 3 #6 for 12V, 3 for 24V
 MANEUVER_TIME_FORWARD = 4 #7 for 12V, 4 for 24V
+
+# True: robot will try to approach his continue previous job target point smoothly by visiting some previous points
+# (will look for a point with a good angle between point and current position); False: go straight to target point
+USE_SMOOTH_APPROACHING_TO_FIELD = True
+# smooth approach to target point when continuing previous job will be aborted if robot wants to visit more
+# previous points than this value (default value for bezier path is NUMBER_OF_BEZIER_POINT * 4 + 10;
+# default value for bezier with filled corners *not implemented yet*)
+SMOOTH_APPROACHING_MAX_POINTS = NUMBER_OF_BEZIER_POINT * 4 + 10
 
 
 # ======================================================================================================================
@@ -168,6 +177,7 @@ VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM = 2500
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME = 0.3 # seconds; calibration small movement down time (calibration "Z-5" fix) 
 VESC_EXTRACTION_AUTODETECT_CAN_ID = False # set to False to use vesc can id from this config, set to True to try detect vesc can id during initialization
 VESC_EXTRACTION_CAN_ID = 0 # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
+
 
 # ======================================================================================================================
 # GPS SETTINGS
@@ -273,6 +283,7 @@ CAMERA_POSITIONS = [(X_MAX/2, 0)] # smoothie global coordinates to take photos f
 PDZ_DISTANCES = [{"top": 1000, "bot": 1000, "left": 1000, "right": 1000}] # precice detection zone sizes. At each camera position scan only plants inside this zone is added to extraction list
 # values are px count from scene center to. Format is {"top": int, "bot": int, "left": int, "right": int}
 
+
 # ======================================================================================================================
 # APP SETTINGS
 # ======================================================================================================================
@@ -303,6 +314,7 @@ GPS_QUALITY_IGNORE = False #If this is activated, stops the robot when it no lon
 
 ROBOT_SN = "SN012" 
 
+
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
@@ -321,6 +333,7 @@ QUEUE_NAME_UI_NOTIFICATION = "/queue_ui_notification"
 
 CONTINUOUS_INFORMATION_SENDING = True
 ALIVE_SENDING_TIMEOUT = 1
+
 
 # ======================================================================================================================
 # EXTRACTION MANAGER SETTINGS
@@ -364,6 +377,7 @@ NTRIP_RESTART_TIMEOUT = 60
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
 RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
 
+
 # ======================================================================================================================
 # SEEDER SETTINGS
 # ======================================================================================================================
@@ -374,6 +388,7 @@ SEEDER_EXT_OFFSET_X = 0  # mm; if not 0 - will move cork for this value on X axi
 SEEDER_EXT_OFFSET_X_F = 20000  # offset force for X axis
 SEEDER_EXT_OFFSET_Y = 25  # mm; if not 0 - will move cork for this value on Y axis before using seeder (extraction mode)
 SEEDER_EXT_OFFSET_Y_F = 20000  # offset force for Y axis
+
 
 # ======================================================================================================================
 # MILLING SETTINGS
@@ -396,6 +411,7 @@ MILLING_PLANT_BOX_X_SIZE_SCALE = 1
 # change box milling area, box Y size is multiplied by this value
 # i.e. 1 is original box size, 2 doubles box size, 0.5 reduces by half
 MILLING_PLANT_BOX_Y_SIZE_SCALE = 1
+
 
 # ======================================================================================================================
 # YOLO PERIPHERY NETWORK SETTINGS
@@ -479,10 +495,12 @@ LEARN_GO_STRAIGHT_FILE = "learn_go_straight.txt"
 LOG_ROOT_DIR = "logs/"
 DATA_GATHERING_DIR = "gathered_data/"
 
+
 # ======================================================================================================================
 # PREDICTION SETTINGS
 # ======================================================================================================================
 ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
+
 
 # ======================================================================================================================
 # NAVIGATION TEST MODE SETTINGS
