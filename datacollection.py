@@ -6,6 +6,7 @@ import datetime
 import os
 import pickle
 import json
+import sqlite3
 
 
 class DataCollector:
@@ -13,8 +14,16 @@ class DataCollector:
     database.
     """
 
-    def __init__(self, notification, load_from_file=False, file_path="", ui_msg_queue=None, dump_at_receiving=True):
+    def __init__(self,
+                 db_full_path: str,
+                 notification,
+                 load_from_file=False,
+                 file_path="",
+                 ui_msg_queue=None,
+                 dump_at_receiving=True):
+
         file_loading_fail = False
+
         if load_from_file:
             try:
                 structure = self.__load_from_file(file_path)
@@ -30,6 +39,7 @@ class DataCollector:
                 file_loading_fail = True
             except FileNotFoundError:
                 file_loading_fail = True
+
         if not load_from_file or file_loading_fail:
             # data
             self.__detected_plants = dict()
@@ -44,7 +54,108 @@ class DataCollector:
         self.__dump_at_receiving = dump_at_receiving
         self.__dump_file_path = file_path
 
-    def __load_from_file(self, file_path: str):
+        # init local DB
+        self.__db_connection = self.__init_database_sqlite3(db_full_path)
+        self.__db_cursor = self.__db_connection.cursor()
+        # init data IDs
+        self.__moving_time_db_id = self.__get_moving_time_db_id()
+        self.__stopped_time_db_id = self.__get_stopped_time_db_id()
+        self.__pdz_scan_time_db_id = self.__get_pdz_scan_time_db_id()
+        self.__all_extractions_time_db_id = self.__get_all_extractions_time_db_id()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.set_stopped_time(self.__previous_sessions_working_time + self.get_session_working_time())
+
+        self.__db_cursor.close()
+        self.__db_connection.close()
+
+    @staticmethod
+    def __init_database_sqlite3(db_full_path):
+        """Prepares to using a database.
+
+        Creates local sqlite3 database and it's tables structure or connects if DB exists for further statistics saving.
+
+        :return: connection - sqlite3.Connection
+        """
+
+        if os.path.isfile(db_full_path):
+            return sqlite3.connect(db_full_path)
+
+        connection = sqlite3.connect(db_full_path)
+        cursor = connection.cursor()
+
+        # create DB structure
+        sql_working_times = """
+        CREATE TABLE IF NOT EXISTS working_times (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            time_spent REAL NOT NULL,
+            description TEXT
+        );
+        """
+        sql_working_times_relations = """
+        CREATE TABLE IF NOT EXISTS working_times_relations (
+            id INTEGER PRIMARY KEY,
+            working_times_id_child INTEGER NOT NULL,
+            working_times_id_parent INTEGER NOT NULL CHECK(working_times_id_child != working_times_id_parent),
+            FOREIGN KEY (working_times_id_child) REFERENCES working_times (id),
+            FOREIGN KEY (working_times_id_parent) REFERENCES working_times (id)
+        );
+        """
+        cursor.execute(sql_working_times)
+        cursor.execute(sql_working_times_relations)
+
+        # TODO check for each row existence before each row creation
+        # insert tracked time types rows (where future data will be stored)
+        tracked_time_types_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+        tracked_time_types_values = [
+            ("moving time", 0, ""),
+            ("stopped time", 0, ""),
+            ("pdz scan time", 0, ""),
+            ("all extractions time", 0, "")
+        ]
+        cursor.executemany(tracked_time_types_sql, tracked_time_types_values)
+        connection.commit()
+
+        cursor.close()
+        return connection
+
+    def __get_moving_time_db_id(self):
+        sql = """SELECT id FROM working_times WHERE name = "moving time";"""
+        db_id = self.__db_cursor.execute(sql).fetchall()
+        if len(db_id) != 1:
+            raise ValueError("expected single id, got multiple ids")
+        return db_id[0][0]
+
+    def __get_stopped_time_db_id(self):
+        sql = """SELECT id FROM working_times WHERE name = "stopped time";"""
+        db_id = self.__db_cursor.execute(sql).fetchall()
+        if len(db_id) != 1:
+            raise ValueError("expected single id, got multiple ids")
+        return db_id[0][0]
+
+    def __get_pdz_scan_time_db_id(self):
+        sql = """SELECT id FROM working_times WHERE name = "pdz scan time";"""
+        db_id = self.__db_cursor.execute(sql).fetchall()
+        if len(db_id) != 1:
+            raise ValueError("expected single id, got multiple ids")
+        return db_id[0][0]
+
+    def __get_all_extractions_time_db_id(self):
+        sql = """SELECT id FROM working_times WHERE name = "all extractions time";"""
+        db_id = self.__db_cursor.execute(sql).fetchall()
+        if len(db_id) != 1:
+            raise ValueError("expected single id, got multiple ids")
+        return db_id[0][0]
+
+    @staticmethod
+    def __load_from_file(file_path: str):
         """Using pickle module loads data structure from a binary file with a given name
 
         Uses structure designed for this class (structure keys), shouldn't be used somewhere else except debug purposes.
@@ -53,36 +164,25 @@ class DataCollector:
         with open(file_path, "rb") as input_file:
             return pickle.load(input_file)
 
-    def dump_to_file(self, file_path: str):
-        """Using pickle module dumps stored data into a binary file with a given name
-
-        Uses structure designed for this class (structure keys).
-        """
-
-        structure = dict()
-        structure["__detected_plants"] = self.__detected_plants
-        structure["__extracted_plants"] = self.__extracted_plants
-        structure["__vesc_moving_time"] = self.__vesc_moving_time
-        structure["__cork_moving_time"] = self.__cork_moving_time
-        structure["__previous_sessions_working_time"] = \
-            self.__previous_sessions_working_time + self.get_session_working_time()
-
-        with open(file_path, "wb") as output_file:
-            pickle.dump(structure, output_file)
-
     def __send_to_ui(self):
         if self.__ui_msg_queue is not None:
-            self.__ui_msg_queue.send(json.dumps({"datacollector": [self.__detected_plants, self.__extracted_plants, self.__previous_sessions_working_time]}))
+            self.__ui_msg_queue.send(json.dumps({"datacollector": [
+                self.__detected_plants,
+                self.__extracted_plants,
+                self.__previous_sessions_working_time]}))
             print("MESSAGE QUEUE IS NOT NONE!")
         else:
             print("MESSAGE QUEUE IS NONE!")
-    def __format_time(self, seconds):
+
+    @staticmethod
+    def __format_time(seconds):
         """Returns given seconds as formatted DD:HH:MM:SS MSS str time
         """
 
         return str(datetime.timedelta(seconds=seconds))
 
-    def __swap_files(self, old_file_path, new_file_path):
+    @staticmethod
+    def __swap_files(old_file_path, new_file_path):
         """Removes old file, then renames new file to the old one's name
         """
 
@@ -131,6 +231,109 @@ class DataCollector:
         if self.__dump_at_receiving:
             self.dump_to_file(self.__dump_file_path)
 
+    def add_moving_time(self, seconds: float):
+        """Adds given robot moving time to statistics database.
+
+        NOTE: This function is mostly the same f-ion as add_vesc_moving_time_data, but works with local DB instead of
+        a txt file. This f-ion is going to replace add_vesc_moving_time_data in the future.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__moving_time_db_id))
+        self.__db_connection.commit()
+
+    def add_stopped_time(self, seconds: float):
+        """Adds given robot stopped time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__stopped_time_db_id))
+        self.__db_connection.commit()
+
+    def set_stopped_time(self, seconds: float):
+        """Sets given robot stopped time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__stopped_time_db_id))
+        self.__db_connection.commit()
+
+    def add_pdz_scan_time(self, seconds: float):
+        """Adds given robot pdz scan time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__pdz_scan_time_db_id))
+        self.__db_connection.commit()
+
+    def add_all_extractions_time(self, seconds: float):
+        """Adds given robot all extractions time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__all_extractions_time_db_id))
+        self.__db_connection.commit()
+
     def add_vesc_moving_time_data(self, seconds: float):
         """Adds given vesc moving time to the stored value
         """
@@ -142,6 +345,9 @@ class DataCollector:
             msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
             raise ValueError(msg)
         self.__vesc_moving_time += seconds
+
+        # save to DB (TODO further DB way should replace txt way completely)
+        self.add_moving_time(seconds)
 
         if self.__dump_at_receiving:
             self.dump_to_file(self.__dump_file_path)
@@ -162,7 +368,7 @@ class DataCollector:
             self.dump_to_file(self.__dump_file_path)
 
     def get_session_working_time(self):
-        """Returns how much seconds is past after launch till this function call moment
+        """Returns how many seconds is past after launch till this function call moment
         """
 
         return time.time() - self.__start_time
@@ -198,3 +404,20 @@ class DataCollector:
 
         # swap old file with the new
         self.__swap_files(output_file_path, new_file)
+
+    def dump_to_file(self, file_path: str):
+        """Using pickle module dumps stored data into a binary file with a given name
+
+        Uses structure designed for this class (structure keys).
+        """
+
+        structure = dict()
+        structure["__detected_plants"] = self.__detected_plants
+        structure["__extracted_plants"] = self.__extracted_plants
+        structure["__vesc_moving_time"] = self.__vesc_moving_time
+        structure["__cork_moving_time"] = self.__cork_moving_time
+        structure["__previous_sessions_working_time"] = \
+            self.__previous_sessions_working_time + self.get_session_working_time()
+
+        with open(file_path, "wb") as output_file:
+            pickle.dump(structure, output_file)

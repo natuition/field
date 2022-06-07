@@ -88,6 +88,8 @@ class ExtractionManagerV3:
         absolute coordinates (coordinates out of working range are skipped).
         """
 
+        pdz_start_t = time.time()
+
         smoothie_plants_positions = []
 
         # loop over camera positions (cam positions, pdz zones and pdz cv zones lists must have a same length)
@@ -146,11 +148,15 @@ class ExtractionManagerV3:
                 # add absolute coordinates to the result list
                 smoothie_plants_positions.append((abs_sm_x, abs_sm_y))
 
-        return self.optimize_corkscrew_way(smoothie_plants_positions)
+        sorted_smoothie_plants_positions = self.optimize_corkscrew_way(smoothie_plants_positions)
+        self.__data_collector.add_pdz_scan_time(time.time() - pdz_start_t)
+        return sorted_smoothie_plants_positions
 
     def extract_all_plants(self):
         """Find and extract all plants found in current robot's position
         """
+
+        extract_all_plants_start_t = time.time()
 
         self.__extraction_map.clear()
 
@@ -429,9 +435,13 @@ class ExtractionManagerV3:
             msg = "Couldn't set camera back to cruise scan position after extractions, smoothie's response:\n" + res
             self.__logger_full.write(msg + "\n")
 
+        self.__data_collector.add_all_extractions_time(time.time() - extract_all_plants_start_t)
+
     def mill_all_plants(self):
         """Find and mill all plants found in current robot's position
         """
+
+        mill_all_plants_start_t = time.time()
 
         # self.__extraction_map.clear()
 
@@ -774,6 +784,8 @@ class ExtractionManagerV3:
         if res != self.__smoothie.RESPONSE_OK:
             msg = "Couldn't set camera back to cruise scan position after extractions, smoothie's response:\n" + res
             self.__logger_full.write(msg + "\n")
+
+        self.__data_collector.add_all_extractions_time(time.time() - mill_all_plants_start_t)
 
     def optimize_corkscrew_way(self, smoothie_coordinates: list):
         """Optimizes order of smoothie points to visit to reduce cork total path length during this list extractions"""

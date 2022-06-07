@@ -1483,10 +1483,13 @@ def main():
         image_saver.set_counter(len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
 
     notification = NotificationClient(time_start)
-    data_collector = datacollection.DataCollector(notification,
-                                                  load_from_file=config.CONTINUE_PREVIOUS_PATH,
-                                                  file_path=log_cur_dir + config.DATACOLLECTOR_SAVE_FILE,
-                                                  ui_msg_queue=ui_msg_queue)
+    data_collector = datacollection.DataCollector(
+        log_cur_dir + config.STATISTICS_DB_FILE_NAME,
+        notification,
+        load_from_file=config.CONTINUE_PREVIOUS_PATH,
+        file_path=log_cur_dir + config.DATACOLLECTOR_SAVE_FILE,
+        ui_msg_queue=ui_msg_queue,
+        dump_at_receiving=True)
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     nav = navigation.GPSComputing()
     logger_full = utility.Logger(log_cur_dir + "log full.txt", append_file=config.CONTINUE_PREVIOUS_PATH)
@@ -2153,10 +2156,15 @@ def main():
             data_collector.save_all_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
             data_collector.dump_to_file(log_cur_dir + config.DATACOLLECTOR_SAVE_FILE)
         except:
-            msg = "Failed:\n" + traceback.format_exc()
+            msg = "Failed to save txt statistics:\n" + traceback.format_exc()
             logger_full.write(msg + "\n")
             print(msg)
-            pass
+        try:
+            data_collector.close()
+        except:
+            msg = "Failed to close properly DB:\n" + traceback.format_exc()
+            logger_full.write(msg + "\n")
+            print(msg)
 
         # close log and hardware connections
         msg = "Closing loggers..."
