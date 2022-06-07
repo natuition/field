@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.2"
+CONFIG_VERSION = "0.19.3"
 
 
 # ======================================================================================================================
@@ -494,6 +494,9 @@ LEARN_GO_STRAIGHT_FILE = "learn_go_straight.txt"
 
 LOG_ROOT_DIR = "logs/"
 DATA_GATHERING_DIR = "gathered_data/"
+
+# statistics database file name (just a name, not full path)
+STATISTICS_DB_FILE_NAME = "statistics_db.sqlite3"
 
 
 # ======================================================================================================================
