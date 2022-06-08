@@ -155,7 +155,8 @@ def move_to_point_and_extract(coords_from_to: list,
                               wheels_straight: bool, 
                               navigation_prediction: navigation.NavigationPrediction,
                               future_points: list,
-                              allow_extractions: bool):
+                              allow_extractions: bool,
+                              x_scan_poly: list):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -210,6 +211,10 @@ def move_to_point_and_extract(coords_from_to: list,
     last_working_mode = 0
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
 
+    # x movements during periphery scans
+    x_scan_cur_idx = 0
+    x_scan_idx_increasing = True
+
     lastNtripRestart = time.time()
 
     # set camera to the Y min
@@ -230,6 +235,8 @@ def move_to_point_and_extract(coords_from_to: list,
 
     try:
         notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
     except:
         notificationQueue = None
 
@@ -311,7 +318,9 @@ def move_to_point_and_extract(coords_from_to: list,
                     if config.PRINT_SPEED_MODES:
                         print(msg)
 
-                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                if ExtractionManagerV3.any_plant_in_zone(
+                        plants_boxes,
+                        x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
                     if config.VERBOSE_EXTRACT:
                         msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
@@ -323,7 +332,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
 
                     # single precise center scan before calling for PDZ scanning and extractions
-                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ:
+                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                         frame = camera.get_image()
                         plants_boxes = precise_det.detect(frame)
@@ -395,7 +404,9 @@ def move_to_point_and_extract(coords_from_to: list,
                     if config.PRINT_SPEED_MODES:
                         print(msg)
 
-                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                if ExtractionManagerV3.any_plant_in_zone(
+                        plants_boxes,
+                        x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
@@ -440,7 +451,9 @@ def move_to_point_and_extract(coords_from_to: list,
                     if config.PRINT_SPEED_MODES:
                         print(msg)
 
-                if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                if ExtractionManagerV3.any_plant_in_zone(
+                        plants_boxes,
+                        x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
@@ -734,12 +747,28 @@ def move_to_point_and_extract(coords_from_to: list,
             logger_full.write(msg + "\n")
             order_angle_sm = config.A_MIN
 
-        if SI_speed>=0:
-            response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=order_angle_sm)
-        else:
-            response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=-order_angle_sm)
-        if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-            msg = "Smoothie response is not ok: " + response
+        # cork x movement during periphery scans control
+        if config.ALLOW_X_MOVEMENT_DURING_SCANS:
+            if x_scan_idx_increasing:
+                x_scan_cur_idx += 1
+                if x_scan_cur_idx >= len(config.X_MOVEMENT_CAMERA_POSITIONS):
+                    x_scan_idx_increasing = False
+                    x_scan_cur_idx -= 2
+            else:
+                x_scan_cur_idx -= 1
+                if x_scan_cur_idx < 0:
+                    x_scan_idx_increasing = True
+                    x_scan_cur_idx += 2
+        # TODO do we check SI_speed earlier and do proper calculations and angle validations if here we'll get here a negative order angle instead of positive?
+        response = smoothie.custom_move_to(
+            A_F=config.A_F_MAX,
+            A=order_angle_sm if SI_speed >= 0 else -order_angle_sm,
+            X_F=config.X_MOVEMENT_CAMERA_X_F[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else None,
+            X=config.X_MOVEMENT_CAMERA_POSITIONS[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else None
+        )
+
+        if response != smoothie.RESPONSE_OK:
+            msg = "Couldn't turn wheels! Smoothie response:\n" + response
             print(msg)
             logger_full.write(msg + "\n")
         else:
@@ -1495,6 +1524,20 @@ def main():
     logger_full = utility.Logger(log_cur_dir + "log full.txt", append_file=config.CONTINUE_PREVIOUS_PATH)
     logger_table = utility.Logger(log_cur_dir + "log table.csv", append_file=config.CONTINUE_PREVIOUS_PATH)
 
+    # X axis movement during periphery scans config settings validation
+    if config.ALLOW_X_MOVEMENT_DURING_SCANS:
+        if len(config.X_MOVEMENT_CAMERA_POSITIONS) != len(config.X_MOVEMENT_CAMERA_X_F) != \
+                len(config.X_MOVEMENT_IMAGE_ZONES) or len(config.X_MOVEMENT_CAMERA_POSITIONS) in [0, 1]:
+            msg = "Disabling X axis movement during scans as lengths of positions/forces/image areas are not equal " \
+                  "or there's less than 2 elements in list of positions/forces/image areas!"
+            logger_full.write(msg + "\n")
+            print(msg)
+            config.ALLOW_X_MOVEMENT_DURING_SCANS = False
+    if config.ALLOW_X_MOVEMENT_DURING_SCANS:
+        x_scan_poly = ExtractionManagerV3.pdz_dist_to_poly(config.X_MOVEMENT_IMAGE_ZONES)
+    else:
+        x_scan_poly = []
+
     # get smoothie and vesc addresses
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
     if "vesc" in smoothie_vesc_addr:
@@ -1891,7 +1934,9 @@ def main():
                                 False,
                                 navigation_prediction,
                                 path_points[i_inf:i_sup],
-                                not config.FIRST_POINT_NO_EXTRACTIONS)
+                                not config.FIRST_POINT_NO_EXTRACTIONS,
+                                x_scan_poly
+                            )
                             if traj_path_start_index >= path_start_index:
                                 path_start_index = traj_path_start_index + 1
                             else:
@@ -1925,7 +1970,9 @@ def main():
                                         False,
                                         navigation_prediction,
                                         path_points[i_inf:i_sup],
-                                        not config.FIRST_POINT_NO_EXTRACTIONS)
+                                        not config.FIRST_POINT_NO_EXTRACTIONS,
+                                        x_scan_poly
+                                    )
                     elif config.FORWARD_BACKWARD_PATH:
                         msg = "USING RUDE TRAJECTORY APPROACHING as forward-backward path is not supported yet by " \
                               "smooth approaching feature."
@@ -2010,7 +2057,9 @@ def main():
                         path_points[i_inf:i_sup],
                         not i == path_start_index
                         if config.FIRST_POINT_NO_EXTRACTIONS and config.CONTINUE_PREVIOUS_PATH and
-                        not config.USE_SMOOTH_APPROACHING_TO_FIELD else True)
+                        not config.USE_SMOOTH_APPROACHING_TO_FIELD else True,
+                        x_scan_poly
+                    )
 
                     if config.NAVIGATION_TEST_MODE:
                         response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)

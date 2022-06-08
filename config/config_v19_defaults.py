@@ -1,7 +1,32 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.3"
+CONFIG_VERSION = "0.19.4"
+
+
+# ======================================================================================================================
+# CONTENTS:
+
+# NAVIGATION ROUTING SETTINGS
+# ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
+# EXTRACTION SETTINGS
+# VESC SETTINGS
+# GPS SETTINGS
+# SMOOTHIE SETTINGS
+# DETECTION SETTINGS
+# APP SETTINGS
+# WEB INTERFACE SETTINGS
+# EXTRACTION MANAGER SETTINGS
+# NTRIP CLIENT SETTINGS
+# SEEDER SETTINGS
+# MILLING SETTINGS
+# YOLO PERIPHERY NETWORK SETTINGS
+# YOLO PRECISE NETWORK SETTINGS
+# CAMERA SETTINGS
+# PATHS SETTINGS
+# PREDICTION SETTINGS
+# NAVIGATION TEST MODE SETTINGS
+# ======================================================================================================================
 
 
 # ======================================================================================================================
@@ -282,6 +307,25 @@ CAMERA_POSITIONS = [(X_MAX/2, 0)] # smoothie global coordinates to take photos f
 #CAMERA_POSITIONS = [(X_MAX/3, 0), (2*X_MAX/3, 0)] # smoothie global coordinates to take photos from for forming plants list. Format is (x, y)
 PDZ_DISTANCES = [{"top": 1000, "bot": 1000, "left": 1000, "right": 1000}] # precice detection zone sizes. At each camera position scan only plants inside this zone is added to extraction list
 # values are px count from scene center to. Format is {"top": int, "bot": int, "left": int, "right": int}
+
+# True: allows movement on X axis (from side to side) during periphery scans to increase camera view; False: usual scans
+# NOTICE: enabling this will prevent usage of ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ due to incompatibility
+ALLOW_X_MOVEMENT_DURING_SCANS = False
+# list of camera positions for X axis movement during cruise periphery scans if they are enabled. Format is a list of
+# separate camera X positions.
+X_MOVEMENT_CAMERA_POSITIONS = [X_MAX/3, 2*X_MAX/3]
+# list of camera positions forces values for X axis movement during cruise periphery scans is they are enabled. Format
+# is a list of separate camera X positions force values.
+X_MOVEMENT_CAMERA_X_F = [X_F_MAX, X_F_MAX]
+# list of coordinates of areas on camera image. Plants out of current area is being ignored (to avoid triggering on
+# plants which are out of robot's working zone). Each image area must have a same index in this list as camera position
+# for which this area. Be aware that this area will be applied instantly during movement while cork won't reach his
+# X target position instantly. This may lead to situations when robot can trigger on weed out of working area, or pass
+# by a weed because cork didn't reach his target position, and area is build in a way to prevent trigger on weeds
+# outside working zone when cork is already in his target position. Quick enough X movement may fix this possible issue.
+# Format is a list of dict items [{"top": int, "bot": int, "left": int, "right": int}, {...}, ...] where each dict is a
+# separate image zone having same index as it's camera position. Zone T B L R values are pixels from image scene center.
+X_MOVEMENT_IMAGE_ZONES = [{"top": 1000, "bot": 1000, "left": 1000, "right": 1000}]
 
 
 # ======================================================================================================================

@@ -35,8 +35,8 @@ class ExtractionManagerV3:
         self.__periphery_det = periphery_det
         self.__precise_det = precise_det
         self.__camera_positions = camera_positions
-        self.__pdz_polygons = self.__pdz_dist_to_poly(pdz_distances)
-        self.__pdz_cv_rects = self.__pdz_dist_to_rect_cv(pdz_distances)
+        self.__pdz_polygons = self.pdz_dist_to_poly(pdz_distances)
+        self.__pdz_cv_rects = self.pdz_dist_to_rect_cv(pdz_distances)
         self.__extraction_map = ExtractionMap(config.EXTRACTION_MAP_CELL_SIZE_MM)
         self.__converter = PxToMMConverter()
         self.__vesc_engine = vesc_engine
@@ -55,9 +55,9 @@ class ExtractionManagerV3:
         pass
 
     @staticmethod
-    def __pdz_dist_to_poly(pdz_zones: list):
-        """Converts related to scene center PDZ distances into px coordinates and returns that area as
-        matplotlib.patches.Polygon
+    def pdz_dist_to_poly(pdz_zones: list):
+        """Converts related to scene center PDZ distances into px coordinates and returns that area as list of
+        matplotlib.patches.Polygon items.
         """
 
         pdz_distances_poly = []
@@ -71,8 +71,9 @@ class ExtractionManagerV3:
         return pdz_distances_poly
 
     @staticmethod
-    def __pdz_dist_to_rect_cv(pdz_zones: list):
-        """Converts related to scene center PDZ distances for show pdz in image with cv
+    def pdz_dist_to_rect_cv(pdz_zones: list):
+        """Converts related to scene center PDZ distances for pdz zone display on images with opencv. Returns list of
+        converted zones.
         """
 
         pdz_zones_cv = []
