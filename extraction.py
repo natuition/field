@@ -360,7 +360,8 @@ class ExtractionManagerV3:
                 if config.FILTER_EXTRACTED_PLANTS and not scan_is_first:
                     cur_pos_plant_boxes_undist = self.__filter_extracted_plants(initial_plants,
                                                                                 cur_pos_plant_boxes_undist,
-                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST)
+                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST,
+                                                                                self.__logger_full)
 
                 scan_is_first = False
 
@@ -635,7 +636,8 @@ class ExtractionManagerV3:
                 if config.FILTER_EXTRACTED_PLANTS and not scan_is_first:
                     cur_pos_plant_boxes_undist = self.__filter_extracted_plants(initial_plants,
                                                                                 cur_pos_plant_boxes_undist,
-                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST)
+                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST,
+                                                                                self.__logger_full)
 
                 scan_is_first = False
 
@@ -796,7 +798,10 @@ class ExtractionManagerV3:
         # return list(reversed(smoothie_coordinates))
 
     @staticmethod
-    def __filter_extracted_plants(initial_scan_plants: list, new_scan_plants: list, trigger_distance: float):
+    def __filter_extracted_plants(initial_scan_plants: list,
+                                  new_scan_plants: list,
+                                  trigger_distance: float,
+                                  logger_full: utility.Logger):
         """Removes each plant from new scan list if all plants in initial list are further than trigger distance.
         Does no changes to argument lists, returns result as a new list.
         """
@@ -810,6 +815,12 @@ class ExtractionManagerV3:
                                                    init_plant_box.center_y) <= trigger_distance:
                     filtered_plants.append(new_plant_box)
                     break
+            else:
+                msg = f"Removed {str(new_plant_box)} box from undist plants list as this box is far away from his " \
+                      f"initial position (likely was extracted)"
+                logger_full.write(msg + "\n")
+                if config.VERBOSE_EXTRACT:
+                    print(msg)
         return filtered_plants
 
     @staticmethod
