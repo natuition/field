@@ -79,13 +79,11 @@ class DataCollector:
     def __init_database_sqlite3(db_full_path):
         """Prepares to using a database.
 
-        Creates local sqlite3 database and it's tables structure or connects if DB exists for further statistics saving.
+        Creates local sqlite3 database and it's tables structure or connects if DB exists and makes sure it's structure
+        is correct for further statistics saving.
 
         :return: connection - sqlite3.Connection
         """
-
-        if os.path.isfile(db_full_path):
-            return sqlite3.connect(db_full_path)
 
         connection = sqlite3.connect(db_full_path)
         cursor = connection.cursor()
@@ -108,50 +106,70 @@ class DataCollector:
             FOREIGN KEY (working_times_id_parent) REFERENCES working_times (id)
         );
         """
+
         cursor.execute(sql_working_times)
         cursor.execute(sql_working_times_relations)
-
-        # TODO check for each row existence before each row creation
-        # insert tracked time types rows (where future data will be stored)
-        tracked_time_types_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
-        tracked_time_types_values = [
-            ("moving time", 0, ""),
-            ("stopped time", 0, ""),
-            ("pdz scan time", 0, ""),
-            ("all extractions time", 0, "")
-        ]
-        cursor.executemany(tracked_time_types_sql, tracked_time_types_values)
-        connection.commit()
-
         cursor.close()
         return connection
 
     def __get_moving_time_db_id(self):
-        sql = """SELECT id FROM working_times WHERE name = "moving time";"""
-        db_id = self.__db_cursor.execute(sql).fetchall()
-        if len(db_id) != 1:
+        get_db_id_sql = """SELECT id FROM working_times WHERE name = "moving time";"""
+        db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        if len(db_id) > 1:
             raise ValueError("expected single id, got multiple ids")
+
+        if len(db_id) == 0:
+            insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+            self.__db_cursor.execute(insert_db_row_sql, ("moving time", 0, ""))
+            self.__db_connection.commit()
+            db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
         return db_id[0][0]
 
     def __get_stopped_time_db_id(self):
-        sql = """SELECT id FROM working_times WHERE name = "stopped time";"""
-        db_id = self.__db_cursor.execute(sql).fetchall()
-        if len(db_id) != 1:
+        get_db_id_sql = """SELECT id FROM working_times WHERE name = "stopped time";"""
+        db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        if len(db_id) > 1:
             raise ValueError("expected single id, got multiple ids")
+
+        if len(db_id) == 0:
+            insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+            self.__db_cursor.execute(insert_db_row_sql, ("stopped time", 0, ""))
+            self.__db_connection.commit()
+            db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
         return db_id[0][0]
 
     def __get_pdz_scan_time_db_id(self):
-        sql = """SELECT id FROM working_times WHERE name = "pdz scan time";"""
-        db_id = self.__db_cursor.execute(sql).fetchall()
-        if len(db_id) != 1:
+        get_db_id_sql = """SELECT id FROM working_times WHERE name = "pdz scan time";"""
+        db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        if len(db_id) > 1:
             raise ValueError("expected single id, got multiple ids")
+
+        if len(db_id) == 0:
+            insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+            self.__db_cursor.execute(insert_db_row_sql, ("pdz scan time", 0, ""))
+            self.__db_connection.commit()
+            db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
         return db_id[0][0]
 
     def __get_all_extractions_time_db_id(self):
-        sql = """SELECT id FROM working_times WHERE name = "all extractions time";"""
-        db_id = self.__db_cursor.execute(sql).fetchall()
-        if len(db_id) != 1:
+        get_db_id_sql = """SELECT id FROM working_times WHERE name = "all extractions time";"""
+        db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        if len(db_id) > 1:
             raise ValueError("expected single id, got multiple ids")
+
+        if len(db_id) == 0:
+            insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+            self.__db_cursor.execute(insert_db_row_sql, ("all extractions time", 0, ""))
+            self.__db_connection.commit()
+            db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
         return db_id[0][0]
 
     @staticmethod
