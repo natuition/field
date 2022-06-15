@@ -150,7 +150,7 @@ class ExtractionManagerV3:
                 smoothie_plants_positions.append((abs_sm_x, abs_sm_y))
 
         sorted_smoothie_plants_positions = self.optimize_corkscrew_way(smoothie_plants_positions)
-        self.__data_collector.add_pdz_scan_time(time.time() - pdz_start_t)
+        self.__data_collector.add_pdz_scan_t(time.time() - pdz_start_t)
         return sorted_smoothie_plants_positions
 
     def extract_all_plants(self):
@@ -208,6 +208,7 @@ class ExtractionManagerV3:
                     "Failed to move cork to the plant rescan position Y_MIN (after calibration), smoothie's response:\n"
                 ]
                 # try to move to the plant rescan position, calibrate and try again if failed, exit app otherwise
+                ext_xy_start_t = time.time()
                 for idx, movement_message in enumerate(movement_messages):
                     res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                                                      Y_F=config.Y_F_MAX,
@@ -229,13 +230,17 @@ class ExtractionManagerV3:
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = "Failed to calibrate cork, smoothie's response:\n" + res
                             self.__logger_full.write(msg + "\n")
+                            self.__data_collector.add_all_ext_xy_t(time.time() - ext_xy_start_t)
                             exit(1)
+                self.__data_collector.add_all_ext_xy_t(time.time() - ext_xy_start_t)
 
                 # make a scan, keep only plants that are in undistorted zone
                 # TODO: possibly here will be multiple scans with average coordinates
+                ext_img_start_t = time.time()
                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                 frame = self.__camera.get_image()
                 plants_boxes = self.__precise_det.detect(frame)
+                self.__data_collector.add_all_ext_img_t(time.time() - ext_img_start_t)
                 cur_pos_plant_boxes_undist = list(filter(
                     lambda plant_box_1: self.is_point_in_circle(
                         plant_box_1.center_x,
@@ -278,6 +283,9 @@ class ExtractionManagerV3:
                             print(msg)
 
                         if config.ALLOW_DELTA_SEEKING:
+                            delta_start_t = time.time()
+                            delta_shifts_count = 0
+
                             if config.DELTA_SEEKING_IGNORE_OBSCURING:
                                 dl_sm_init_x, dl_sm_init_y = init_pos_sm_x, init_pos_sm_y
                             else:
@@ -296,12 +304,16 @@ class ExtractionManagerV3:
                                         config.Y_MIN < delta_sm_y < config.Y_MAX):
                                     continue
 
+                                delta_shifts_count += 1
+
                                 # do delta movement
+                                ext_xy_start_t = time.time()
                                 res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                                                                  Y_F=config.Y_F_MAX,
                                                                                  X=delta_sm_x,
                                                                                  Y=delta_sm_y)
                                 self.__smoothie.wait_for_all_actions_done()
+                                self.__data_collector.add_all_ext_xy_t(time.time() - ext_xy_start_t)
                                 if res != self.__smoothie.RESPONSE_OK:
                                     msg = "Couldn't do delta move to X" + str(delta_sm_x) + " Y" + \
                                           str(delta_sm_y) + ", smoothie response:\n" + res
@@ -309,6 +321,7 @@ class ExtractionManagerV3:
                                     continue
 
                                 # make a scan, keep only plants that are in undistorted zone
+                                # TODO data collection image analysis time in case if delta's should be included into it
                                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                                 frame = self.__camera.get_image()
                                 cur_pos_plant_boxes_undist = list(filter(
@@ -344,7 +357,16 @@ class ExtractionManagerV3:
                             else:
                                 msg = "No plants found during all delta scans"
                                 self.__logger_full.write(msg + "\n")
+                                self.__data_collector.add_all_ext_delta_info(
+                                    time.time() - delta_start_t,
+                                    delta_shifts_count
+                                )
                                 break
+
+                            self.__data_collector.add_all_ext_delta_info(
+                                time.time() - delta_start_t,
+                                delta_shifts_count
+                            )
                     # go to next plant in PDZ list if no plants detected after extraction attempting
                     else:
                         msg = "No plants detected - assuming last extraction was successful; coming to next PDZ item"
@@ -394,11 +416,13 @@ class ExtractionManagerV3:
                     extraction_pattern = self.__extraction_map.get_strategy(ext_sm_x, ext_sm_y)
                     if extraction_pattern:
                         # go to position
+                        ext_xy_start_t = time.time()
                         res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                                                          Y_F=config.Y_F_MAX,
                                                                          X=ext_sm_x,
                                                                          Y=ext_sm_y)
                         self.__smoothie.wait_for_all_actions_done()
+                        self.__data_collector.add_all_ext_xy_t(time.time() - ext_xy_start_t)
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = f"Passing this plant by as could not move cork to position " \
                                   f"X={ext_sm_x} Y={ext_sm_y}, smoothie res:"
@@ -427,17 +451,19 @@ class ExtractionManagerV3:
                         self.__logger_full.write(msg + "\n")
 
         # set camera back to the Y min X max / 2
+        ext_xy_start_t = time.time()
         res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                                          Y_F=config.Y_F_MAX,
                                                          X=self.__smoothie.smoothie_to_mm(
                                                              (config.X_MAX - config.X_MIN) / 2, "X"),
                                                          Y=self.__smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
         self.__smoothie.wait_for_all_actions_done()
+        self.__data_collector.add_all_ext_xy_t(time.time() - ext_xy_start_t)
         if res != self.__smoothie.RESPONSE_OK:
             msg = "Couldn't set camera back to cruise scan position after extractions, smoothie's response:\n" + res
             self.__logger_full.write(msg + "\n")
 
-        self.__data_collector.add_all_extractions_time(time.time() - extract_all_plants_start_t)
+        self.__data_collector.add_all_ext_t(time.time() - extract_all_plants_start_t)
 
     def mill_all_plants(self):
         """Find and mill all plants found in current robot's position
@@ -554,6 +580,9 @@ class ExtractionManagerV3:
                             print(msg)
 
                         if config.ALLOW_DELTA_SEEKING:
+                            delta_start_t = time.time()
+                            delta_shifts_count = 0
+
                             if config.DELTA_SEEKING_IGNORE_OBSCURING:
                                 dl_sm_init_x, dl_sm_init_y = init_pos_sm_x, init_pos_sm_y
                             else:
@@ -567,6 +596,8 @@ class ExtractionManagerV3:
                                 [dl_sm_init_x + config.SEEK_DELTA_DISTANCE, dl_sm_init_y]
                             ]
                             for delta_sm_x, delta_sm_y in delta_seeking_target_positions:
+                                delta_shifts_count += 1
+
                                 # check if coordinates are in working range
                                 if not (config.X_MIN < delta_sm_x < config.X_MAX and
                                         config.Y_MIN < delta_sm_y < config.Y_MAX):
@@ -620,7 +651,16 @@ class ExtractionManagerV3:
                             else:
                                 msg = "No plants found during all delta scans"
                                 self.__logger_full.write(msg + "\n")
+                                self.__data_collector.add_all_ext_delta_info(
+                                    time.time() - delta_start_t,
+                                    delta_shifts_count
+                                )
                                 break
+
+                            self.__data_collector.add_all_ext_delta_info(
+                                time.time() - delta_start_t,
+                                delta_shifts_count
+                            )
                     # go to next plant in PDZ list if no plants detected after extraction attempting
                     else:
                         msg = "No plants detected - assuming last extraction was successful; coming to next PDZ item"
@@ -788,7 +828,7 @@ class ExtractionManagerV3:
             msg = "Couldn't set camera back to cruise scan position after extractions, smoothie's response:\n" + res
             self.__logger_full.write(msg + "\n")
 
-        self.__data_collector.add_all_extractions_time(time.time() - mill_all_plants_start_t)
+        self.__data_collector.add_all_ext_t(time.time() - mill_all_plants_start_t)
 
     def optimize_corkscrew_way(self, smoothie_coordinates: list):
         """Optimizes order of smoothie points to visit to reduce cork total path length during this list extractions"""
@@ -938,13 +978,14 @@ class ExtractionMethods:
         """Extract a plant with a single corkscrew drop to the center"""
 
         res = smoothie.RESPONSE_OK
-        start_t = time.time()
+        all_ext_z_start_t = start_t = time.time()
 
         # extraction, cork down
         if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
             res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:  # or smoothie.checkendstop("Z")==1
+                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
                 msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
                 return msg, False
         elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
@@ -958,6 +999,7 @@ class ExtractionMethods:
             res = smoothie.ext_cork_up()
             smoothie.wait_for_all_actions_done()
             if res != smoothie.RESPONSE_OK:
+                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
                 msg = "Couldn't move the extractor up, smoothie error occurred:\n" + res + \
                       "\nemergency exit as I don't want break the corkscrew."
                 return msg, True
@@ -969,16 +1011,17 @@ class ExtractionMethods:
                                                                   config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME)
             vesc_adapter.stop_moving(vesc_adapter.EXTRACTION_KEY)
             if cork_is_stuck:
+                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
                 msg = "Not sure that extractor was properly picked up as vesc stopper hit wasn't registered (cork " \
                       "picking up was stopped by security timeout). Emergency exit as I don't want break the corkscrew."
                 return msg, True
 
-        extraction_time = time.time() - start_t
+        data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+        data_collector.add_cork_moving_time_data(time.time() - start_t)
 
         # add an extraction record to the extraction matrix and extraction time to the statistic collector
         sm_cur_coords = smoothie.get_adapter_current_coordinates()
         extraction_map.record_extraction(sm_cur_coords["X"], sm_cur_coords["Y"])
-        data_collector.add_cork_moving_time_data(extraction_time)
 
         # seeder
         for _ in range(config.SEEDER_QUANTITY):
@@ -1179,8 +1222,10 @@ class ExtractionMethods:
                 continue
 
             # move to position
+            all_ext_xy_start_t = time.time()
             res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
             smoothie.wait_for_all_actions_done()
+            data_collector.add_all_ext_xy_t(time.time() - all_ext_xy_start_t)
             if res != smoothie.RESPONSE_OK:
                 msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res
                 return msg, False
@@ -1216,8 +1261,10 @@ class ExtractionMethods:
                 continue
 
             # move to position
+            all_ext_xy_start_t = time.time()
             res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
             smoothie.wait_for_all_actions_done()
+            data_collector.add_all_ext_xy_t(time.time() - all_ext_xy_start_t)
             if res != smoothie.RESPONSE_OK:
                 msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res
                 return msg, False

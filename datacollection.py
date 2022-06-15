@@ -58,10 +58,14 @@ class DataCollector:
         self.__db_connection = self.__init_database_sqlite3(db_full_path)
         self.__db_cursor = self.__db_connection.cursor()
         # init data IDs
-        self.__moving_time_db_id = self.__get_moving_time_db_id()
-        self.__stopped_time_db_id = self.__get_stopped_time_db_id()
-        self.__pdz_scan_time_db_id = self.__get_pdz_scan_time_db_id()
-        self.__all_extractions_time_db_id = self.__get_all_extractions_time_db_id()
+        self.__moving_t_id = self.__get_moving_t_id()
+        self.__stopped_t_id = self.__get_stopped_t_id()
+        self.__pdz_scan_t_id = self.__get_pdz_scan_t_id()
+        self.__all_ext_t_id = self.__get_all_ext_t_id()
+        # self.__all_ext_delta_t_id = self.__get_all_ext_delta_t_id()
+        self.__all_ext_xy_t_id = self.__get_all_ext_xy_t_id()
+        self.__all_ext_img_t_id = self.__get_all_ext_img_t_id()
+        self.__all_ext_z_t_id = self.__get_all_ext_z_t_id()
 
     def __enter__(self):
         return self
@@ -70,7 +74,7 @@ class DataCollector:
         self.close()
 
     def close(self):
-        self.set_stopped_time(self.__previous_sessions_working_time + self.get_session_working_time())
+        self.set_stopped_t(self.__previous_sessions_working_time + self.get_session_working_time())
 
         self.__db_cursor.close()
         self.__db_connection.close()
@@ -106,13 +110,24 @@ class DataCollector:
             FOREIGN KEY (working_times_id_parent) REFERENCES working_times (id)
         );
         """
+        sql_delta_scans = """
+        CREATE TABLE IF NOT EXISTS delta_scans (
+            id INTEGER PRIMARY KEY,
+            time_spent REAL NOT NULL,
+            shifts_count INTEGER NOT NULL
+        );
+        """
 
         cursor.execute(sql_working_times)
         cursor.execute(sql_working_times_relations)
+        cursor.execute(sql_delta_scans)
         cursor.close()
         return connection
 
-    def __get_moving_time_db_id(self):
+    def __get_moving_t_id(self):
+        """moving time
+        """
+
         get_db_id_sql = """SELECT id FROM working_times WHERE name = "moving time";"""
         db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -127,7 +142,10 @@ class DataCollector:
 
         return db_id[0][0]
 
-    def __get_stopped_time_db_id(self):
+    def __get_stopped_t_id(self):
+        """stopped time
+        """
+
         get_db_id_sql = """SELECT id FROM working_times WHERE name = "stopped time";"""
         db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -142,7 +160,10 @@ class DataCollector:
 
         return db_id[0][0]
 
-    def __get_pdz_scan_time_db_id(self):
+    def __get_pdz_scan_t_id(self):
+        """pdz scan time
+        """
+
         get_db_id_sql = """SELECT id FROM working_times WHERE name = "pdz scan time";"""
         db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -157,7 +178,10 @@ class DataCollector:
 
         return db_id[0][0]
 
-    def __get_all_extractions_time_db_id(self):
+    def __get_all_ext_t_id(self):
+        """all extractions time
+        """
+
         get_db_id_sql = """SELECT id FROM working_times WHERE name = "all extractions time";"""
         db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -166,7 +190,81 @@ class DataCollector:
 
         if len(db_id) == 0:
             insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
-            self.__db_cursor.execute(insert_db_row_sql, ("all extractions time", 0, ""))
+            self.__db_cursor.execute(insert_db_row_sql, ("all extractions time", 0, 'this includes "pdz scan time"'))
+            self.__db_connection.commit()
+            db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        return db_id[0][0]
+
+    '''
+    def __get_all_ext_delta_t_id(self):
+        """all extractions delta scan time
+        """
+
+        get_db_id_sql = """SELECT id FROM working_times WHERE name = "all extractions delta scan time";"""
+        db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        if len(db_id) > 1:
+            raise ValueError("expected single id, got multiple ids")
+
+        if len(db_id) == 0:
+            insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+            self.__db_cursor.execute(insert_db_row_sql, ("all extractions delta scan time", 0, ""))
+            self.__db_connection.commit()
+            db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        return db_id[0][0]
+    '''
+
+    def __get_all_ext_xy_t_id(self):
+        """all extractions XY movement time
+        """
+
+        get_db_id_sql = """SELECT id FROM working_times WHERE name = "all extractions XY movement time";"""
+        db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        if len(db_id) > 1:
+            raise ValueError("expected single id, got multiple ids")
+
+        if len(db_id) == 0:
+            insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+            self.__db_cursor.execute(insert_db_row_sql, ("all extractions XY movement time", 0, ""))
+            self.__db_connection.commit()
+            db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        return db_id[0][0]
+
+    def __get_all_ext_img_t_id(self):
+        """all extractions image analysis time
+        """
+
+        get_db_id_sql = """SELECT id FROM working_times WHERE name = "all extractions image analysis time";"""
+        db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        if len(db_id) > 1:
+            raise ValueError("expected single id, got multiple ids")
+
+        if len(db_id) == 0:
+            insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+            self.__db_cursor.execute(insert_db_row_sql, ("all extractions image analysis time", 0, ""))
+            self.__db_connection.commit()
+            db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        return db_id[0][0]
+
+    def __get_all_ext_z_t_id(self):
+        """all extractions Z extraction time
+        """
+
+        get_db_id_sql = """SELECT id FROM working_times WHERE name = "all extractions Z extraction time";"""
+        db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
+
+        if len(db_id) > 1:
+            raise ValueError("expected single id, got multiple ids")
+
+        if len(db_id) == 0:
+            insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
+            self.__db_cursor.execute(insert_db_row_sql, ("all extractions Z extraction time", 0, ""))
             self.__db_connection.commit()
             db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -207,6 +305,218 @@ class DataCollector:
         if os.path.exists(old_file_path):
             os.remove(old_file_path)
         os.rename(new_file_path, old_file_path)
+
+    def add_moving_t(self, seconds: float):
+        """Adds given robot moving time to statistics database.
+
+        NOTE: This function is mostly the same f-ion as add_vesc_moving_time_data, but works with local DB instead of
+        a txt file. This f-ion is going to replace add_vesc_moving_time_data in the future.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__moving_t_id))
+        self.__db_connection.commit()
+
+    def add_stopped_t(self, seconds: float):
+        """Adds given robot stopped time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__stopped_t_id))
+        self.__db_connection.commit()
+
+    def set_stopped_t(self, seconds: float):
+        """Sets given robot stopped time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__stopped_t_id))
+        self.__db_connection.commit()
+
+    def add_pdz_scan_t(self, seconds: float):
+        """Adds given robot pdz scan time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__pdz_scan_t_id))
+        self.__db_connection.commit()
+
+    def add_all_ext_t(self, seconds: float):
+        """Adds given robot all extractions time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__all_ext_t_id))
+        self.__db_connection.commit()
+
+    '''
+    def add_all_ext_delta_t(self, seconds: float):
+        """Adds given robot all extractions delta scan time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__all_ext_delta_t_id))
+        self.__db_connection.commit()
+    '''
+
+    def add_all_ext_delta_info(self, seconds: float, shifts_count: int):
+        """Adds a record into DB about weed delta seeking. Each row is single using case.
+
+        delta_scans (
+            id INTEGER PRIMARY KEY,
+            time_spent REAL NOT NULL,
+            shifts_count INTEGER NOT NULL
+        )
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds must be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+        if type(shifts_count) != int:
+            msg = f"shifts_count must be int, got {str(type(shifts_count))} instead"
+            raise TypeError(msg)
+        if shifts_count < 0:
+            msg = f"shifts_count must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        insert_row_sql = "INSERT INTO delta_scans(time_spent, shifts_count) VALUES(?, ?);"
+        self.__db_cursor.execute(insert_row_sql, (seconds, shifts_count))
+        self.__db_connection.commit()
+
+    def add_all_ext_xy_t(self, seconds: float):
+        """Adds given robot all extractions XY movement time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__all_ext_xy_t_id))
+        self.__db_connection.commit()
+
+    def add_all_ext_img_t(self, seconds: float):
+        """Adds given robot all extractions image analysis time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__all_ext_img_t_id))
+        self.__db_connection.commit()
+
+    def add_all_ext_z_t(self, seconds: float):
+        """Adds given robot all extractions Z extraction time to statistics database.
+        """
+
+        if type(seconds) not in [float, int]:
+            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
+            raise TypeError(msg)
+        if seconds < 0:
+            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
+            raise ValueError(msg)
+
+        sql = """
+        UPDATE working_times
+        SET time_spent = time_spent + ?
+        WHERE id = ?;
+        """
+
+        self.__db_cursor.execute(sql, (seconds, self.__all_ext_z_t_id))
+        self.__db_connection.commit()
 
     def add_detections_data(self, type_label: str, count: int):
         """Adds given detections data to the stored values
@@ -249,109 +559,6 @@ class DataCollector:
         if self.__dump_at_receiving:
             self.dump_to_file(self.__dump_file_path)
 
-    def add_moving_time(self, seconds: float):
-        """Adds given robot moving time to statistics database.
-
-        NOTE: This function is mostly the same f-ion as add_vesc_moving_time_data, but works with local DB instead of
-        a txt file. This f-ion is going to replace add_vesc_moving_time_data in the future.
-        """
-
-        if type(seconds) not in [float, int]:
-            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
-            raise TypeError(msg)
-        if seconds < 0:
-            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
-            raise ValueError(msg)
-
-        sql = """
-        UPDATE working_times
-        SET time_spent = time_spent + ?
-        WHERE id = ?;
-        """
-
-        self.__db_cursor.execute(sql, (seconds, self.__moving_time_db_id))
-        self.__db_connection.commit()
-
-    def add_stopped_time(self, seconds: float):
-        """Adds given robot stopped time to statistics database.
-        """
-
-        if type(seconds) not in [float, int]:
-            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
-            raise TypeError(msg)
-        if seconds < 0:
-            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
-            raise ValueError(msg)
-
-        sql = """
-        UPDATE working_times
-        SET time_spent = time_spent + ?
-        WHERE id = ?;
-        """
-
-        self.__db_cursor.execute(sql, (seconds, self.__stopped_time_db_id))
-        self.__db_connection.commit()
-
-    def set_stopped_time(self, seconds: float):
-        """Sets given robot stopped time to statistics database.
-        """
-
-        if type(seconds) not in [float, int]:
-            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
-            raise TypeError(msg)
-        if seconds < 0:
-            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
-            raise ValueError(msg)
-
-        sql = """
-        UPDATE working_times
-        SET time_spent = ?
-        WHERE id = ?;
-        """
-
-        self.__db_cursor.execute(sql, (seconds, self.__stopped_time_db_id))
-        self.__db_connection.commit()
-
-    def add_pdz_scan_time(self, seconds: float):
-        """Adds given robot pdz scan time to statistics database.
-        """
-
-        if type(seconds) not in [float, int]:
-            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
-            raise TypeError(msg)
-        if seconds < 0:
-            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
-            raise ValueError(msg)
-
-        sql = """
-        UPDATE working_times
-        SET time_spent = time_spent + ?
-        WHERE id = ?;
-        """
-
-        self.__db_cursor.execute(sql, (seconds, self.__pdz_scan_time_db_id))
-        self.__db_connection.commit()
-
-    def add_all_extractions_time(self, seconds: float):
-        """Adds given robot all extractions time to statistics database.
-        """
-
-        if type(seconds) not in [float, int]:
-            msg = f"seconds should be int or float, got {str(type(seconds))} instead"
-            raise TypeError(msg)
-        if seconds < 0:
-            msg = f"seconds must be equal or greater than zero, got {str(seconds)}"
-            raise ValueError(msg)
-
-        sql = """
-        UPDATE working_times
-        SET time_spent = time_spent + ?
-        WHERE id = ?;
-        """
-
-        self.__db_cursor.execute(sql, (seconds, self.__all_extractions_time_db_id))
-        self.__db_connection.commit()
-
     def add_vesc_moving_time_data(self, seconds: float):
         """Adds given vesc moving time to the stored value
         """
@@ -365,7 +572,7 @@ class DataCollector:
         self.__vesc_moving_time += seconds
 
         # save to DB (TODO further DB way should replace txt way completely)
-        self.add_moving_time(seconds)
+        self.add_moving_t(seconds)
 
         if self.__dump_at_receiving:
             self.dump_to_file(self.__dump_file_path)
