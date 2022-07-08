@@ -10,6 +10,7 @@ var data = [
 
 var updaterTime = null;
 var lastTime;
+var previous_sessions_working_time = null;
 
 window.onload = function() {
     pieChart = new Chart(pie, {
@@ -64,6 +65,9 @@ function removeAllChildNodes(parent) {
 
 function transformTime(){
     var date = new Date(lastTime);
+    if(previous_sessions_working_time != null){
+        var date = new Date(date - previous_sessions_working_time*1000);
+    }
     var today = new Date(); 
     var timeSec = today-date;
     var timeDate = new Date(timeSec); 
@@ -88,6 +92,7 @@ function setTimeInHTML(){
 
 socketio.on('statistics', function(dataServ) {
     lastTime = dataServ["time"];
+    previous_sessions_working_time = dataServ["previous_sessions_working_time"]
     if(updaterTime !== null) clearInterval(updaterTime);
     setTimeInHTML();
     updaterTime = window.setInterval(()=>{
@@ -103,6 +108,7 @@ socketio.on('statistics', function(dataServ) {
         labels = []
         for (var key in dataServ["weeds"]) {
             data.push(dataServ["weeds"][key]);
+            key = key.replace(/\s+/g, '');
             labels.push((ui_languages[key])[ui_language]);
             if(document.getElementsByClassName("status__bottom--"+number).length == 0){
                 var div = document.createElement("div");

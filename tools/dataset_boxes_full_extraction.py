@@ -118,7 +118,7 @@ def main():
         data = json.loads(file.read())
 
     # load classes
-    classes = detection.YoloOpenCVDetection.load_class_names(INPUT_CLASSES_FILE_PATH)
+    classes = detection.load_class_names(INPUT_CLASSES_FILE_PATH)
 
     # loop over images list in json
     cur_file_no = 1

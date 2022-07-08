@@ -2,10 +2,10 @@ const socketBroadcast_ = io.connect('http://' + document.domain + ':' + location
 
 let lastAlert;
 
-function sendAlert(message_name,message){
+function sendAlert(message_name,message,reload=true){
     console.log("Popup with '"+message_name+"' message.")
     alert(message);
-    document.location.reload();
+    if(reload) document.location.reload();
 }
 
 socketBroadcast_.on('notification', function(data) {

@@ -8,7 +8,6 @@ import platform
 import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda
-
 from config import config
 import posix_ipc
 from mmap import mmap
@@ -19,6 +18,7 @@ from flask import Flask
 import logging
 from flask_cors import CORS
 
+
 class YoloOpenCVDetection:
 
     def __init__(self, yolo_classes_path, yolo_config_path, yolo_weights_path, input_size, confidence_threshold,
@@ -26,7 +26,7 @@ class YoloOpenCVDetection:
         self._input_size = input_size
         self._confidence_threshold = confidence_threshold
         self._nms_threshold = nms_threshold  # non-max suppression
-        self.classes = self.load_class_names(yolo_classes_path)
+        self.classes = load_class_names(yolo_classes_path)
         self.net = cv.dnn.readNetFromDarknet(yolo_config_path, yolo_weights_path)
         self.net.setPreferableBackend(backend)  # DNN_BACKEND_OPENCV for CPU usage
         self.net.setPreferableTarget(target)  # DNN_TARGET_CPU for CPU usage
@@ -94,12 +94,6 @@ class YoloOpenCVDetection:
             final_plant_boxes.append(DetectedPlantBox(left, top, left + width, top + height, classes[class_ids[i]],
                                                       class_ids[i], confidences[i], frame_width, frame_height))
         return final_plant_boxes
-
-    # Load names of classes
-    @staticmethod
-    def load_class_names(labels_file):
-        with open(labels_file, 'rt') as f:
-            return f.read().rstrip('\n').split('\n')
 
 
 class YoloDarknetDetector:
@@ -206,6 +200,7 @@ class YoloDarknetDetector:
         
         return plant_boxes
 
+
 class HostDeviceMem(object):
     def __init__(self, host_mem, device_mem):
         self.host = host_mem
@@ -216,7 +211,8 @@ class HostDeviceMem(object):
 
     def __repr__(self):
         return self.__str__()
-        
+
+
 class YoloTRTDetector:
     # TODO: images are distorted a bit during strict resize wo/o saving ratio, this may affect detections
     # TODO: check for interpolation (INTER_AREA should be better than INTER_LINEAR)
@@ -227,6 +223,7 @@ class YoloTRTDetector:
 
     def __init__(self,
                  trt_model_path,  # serialized engine path
+                 classes_names_path,  # path to a file with a model objects classes names
                  confidence_threshold,  # remove detections with lower than this confidence
                  nms_threshold):
         # check for args errors
@@ -237,7 +234,7 @@ class YoloTRTDetector:
 
         self.__confidence_threshold = confidence_threshold
         self.__nms_threshold = nms_threshold
-        self.__class_names = ('Plantain_great', 'Dandellion', 'Daisy', 'Plantain_narrowleaf', 'Porcelle')
+        self.__class_names = load_class_names(classes_names_path)
         self.__width = 416
         self.__height = 416
         self.sharedArray = None
@@ -550,23 +547,49 @@ class DetectedPlantBox:
     def get_distance_from(self, px_point_x, px_point_y):
         return math.sqrt((self.__center_x - px_point_x) ** 2 + (self.__center_y - px_point_y) ** 2)
 
+    @staticmethod
+    def yolo_to_plant_box(yolo_name_id,
+                          yolo_x_center,
+                          yolo_y_center,
+                          yolo_width,
+                          yolo_height,
+                          name,
+                          confidence,
+                          img_w,
+                          img_h):
+        center_x, center_y, box_w, box_h = img_w * yolo_x_center, \
+                                           img_h * yolo_y_center, \
+                                           img_w * yolo_width, \
+                                           img_h * yolo_height
+        left, right, top, bottom = round(center_x - box_w / 2), \
+                                   round(center_x + box_w / 2), \
+                                   round(center_y - box_h / 2), \
+                                   round(center_y + box_h / 2)
+        center_x, center_y = round(center_x), round(center_y)
+
+        return \
+            DetectedPlantBox(left, top, right, bottom, name, yolo_name_id, confidence, img_w, img_h, center_x, center_y)
+
 
 # Draw the predicted bounding box
-def draw_box(image, box: DetectedPlantBox):
+def draw_box(image, box: DetectedPlantBox, box_color=(0, 0, 255), text_color=(0, 0, 0)):
     left, top, right, bottom = box.get_box_points()
     # Draw a bounding box
-    cv.rectangle(image, (left, top), (right, bottom), (0, 0, 255), 3)
+    cv.rectangle(image, (left, top), (right, bottom), box_color, 3)
     # draw a center of that box
-    cv.circle(image, (int(left + (right - left) / 2), int(top + (bottom - top) / 2)), 4, (0, 0, 255), thickness=3)
+    cv.circle(image, (int(left + (right - left) / 2), int(top + (bottom - top) / 2)), 4, box_color, thickness=3)
 
     label = '%s:%.2f' % (box.get_name(), box.get_confidence())
 
     # Display the label at the top of the bounding box
     label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
     top = max(top, label_size[1])
-    cv.rectangle(image, (left, top - round(1.5 * label_size[1])), (left + round(1.5 * label_size[0]), top + base_line),
-                 (0, 0, 255), cv.FILLED)
-    cv.putText(image, label, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
+    cv.rectangle(image,
+                 (left, top - round(1.5 * label_size[1])),
+                 (left + round(1.5 * label_size[0]), top + base_line),
+                 box_color,
+                 cv.FILLED)
+    cv.putText(image, label, (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 2)
 
 
 def draw_boxes(image, boxes: list):
@@ -591,3 +614,12 @@ def detect_single(detector: YoloOpenCVDetection, input_full_path, output_dir):
     slash = "\\" if platform.system() == "Windows" else "/"
     file_name = input_full_path.split(slash)[-1]
     cv.imwrite(output_dir + file_name, img)
+
+
+def load_class_names(labels_file_path):
+    """Reads and parses classes names file by given path
+
+    Returns list of object class names"""
+
+    with open(labels_file_path, 'rt') as f:
+        return f.read().rstrip('\n').split('\n')

@@ -16,27 +16,43 @@ from pytz import timezone
 
 
 class ImageSaver:
-    """
-    Implements flexible ways to save images and detected objects on them
-    """
+    """Implements flexible ways to save images and detected objects on them
+
+    Supports user-defined counters.
+    Has two built-in counters:
+    "main" - default counter which is used if no counter was set;
+    "total" - contains total count of saved images during this class instance life, this counter is always increasing
+    during saving independent on other counters."""
 
     def __init__(self, counter: int = 0):
         if type(counter) is not int:
             raise TypeError("'counter' type should be int, got " + type(counter).__name__)
 
-        self.__counter = counter
+        self.__counters = {"total": 0, "main": counter}
 
-    def get_counter(self):
-        return self.__counter
+    def has_counter(self, counter_key):
+        return counter_key in self.__counters
 
-    def set_counter(self, counter: int):
+    def get_counter(self, counter_key="main"):
+        return self.__counters[counter_key]
+
+    def set_counter(self, counter: int, counter_key="main"):
         if type(counter) is not int:
             raise TypeError("'counter' type should be int, got " + type(counter).__name__)
+        if counter_key == "total":
+            raise ValueError("'total' counter is class internal counter and can't be changed")
 
-        self.__counter = counter
+        self.__counters[counter_key] = counter
 
-    def save_image(self, image, directory: str, extension: str = "jpg", sep: str = "_", specific_name=None, label=None,
-                   plants_boxes=None):
+    def save_image(self,
+                   image,
+                   directory: str,
+                   extension: str = "jpg",
+                   sep: str = "_",
+                   specific_name=None,
+                   label=None,
+                   plants_boxes=None,
+                   counter_key="main"):
         """
         Saves image in different ways.
 
@@ -48,12 +64,14 @@ class ImageSaver:
         if specific_name:
             file_name = specific_name
         else:
-            file_name = get_current_time()[:-3] + sep + str(self.__counter)
-            self.__counter += 1
+            cur_dt = get_current_time()
+            file_name = cur_dt[:cur_dt.rfind(" ")] + sep + str(self.__counters[counter_key])
+            self.__counters[counter_key] += 1
             if label:
                 file_name += sep + label
+        self.__counters["total"] += 1
 
-        file_name = file_name.replace(" ","_")
+        file_name = file_name.replace(" ", "_")
 
         # save image
         cv.imwrite(directory + file_name + "." + extension, image)

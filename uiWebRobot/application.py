@@ -292,6 +292,10 @@ def getJsFile(file_path,file_name,random_time):
 def reboot():
     os.system('sudo reboot')
 
+@app.route('/restart_ui')
+def restart_ui():
+    os.system('sudo systemctl restart UI')
+
 if __name__ == "__main__":
     init()
     app.run(host="0.0.0.0",port="80",debug=True, use_reloader=False)

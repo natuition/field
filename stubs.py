@@ -2,10 +2,11 @@ import os
 import threading
 import multiprocessing
 import time
+import pickle
 
 
 class GPSUbloxAdapterStub:
-    def __init__(self, ser_port, ser_baudrate, last_pos_count, gps_points_file_path: str, points_reading_delay=1):
+    def __init__(self, ser_port, ser_baudrate, last_pos_count, gps_points_file_path: str, points_reading_delay=0.250):
         if last_pos_count < 1:
             raise ValueError("last_pos_count shouldn't be less than 1")
         if not os.path.isfile(gps_points_file_path):
@@ -13,23 +14,17 @@ class GPSUbloxAdapterStub:
         if points_reading_delay < 0:
             raise ValueError("points reading delay can't be less than zero")
 
-        self.__points_reading_delay = points_reading_delay
-        self.__stub_gps_points_reader_pool = []
         # load stub gps points
-        with open(gps_points_file_path, "r") as gps_points_file:
-            for line in gps_points_file.readlines():
-                if line.startswith("[") and line.endswith("]\n"):
-                    parsed_point = line[1:-2].split(", ")
-                    try:
-                        gps_point = [float(parsed_point[0]),
-                                     float(parsed_point[1]),
-                                     parsed_point[2].replace("'", "")]
-                        self.__stub_gps_points_reader_pool.append(gps_point)
-                    except (IndexError, ValueError):
-                        pass
-        if len(self.__stub_gps_points_reader_pool) < 1:
-            raise ValueError("given stub gps points file contains no proper gps points, gps pool is empty")
+        self.__stub_gps_points_reader_pool = []
+        with open(gps_points_file_path, "rb") as points_file:
+            raw_points = pickle.load(points_file)
+        if len(raw_points) < 1:
+            raise ValueError("given stub gps points file contains no gps points, stub gps points pool is empty")
+        # change format
+        for raw_point in raw_points:
+            self.__stub_gps_points_reader_pool.append([raw_point[0][0], raw_point[0][1], "4"])
 
+        self.__points_reading_delay = points_reading_delay
         self.__position_is_fresh = False
         self.__last_pos_count = last_pos_count
         self.__last_pos_container = []
@@ -46,6 +41,28 @@ class GPSUbloxAdapterStub:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disconnect()
+
+    def __read_from_txt(self, gps_points_file_path):
+        """Obsolete code of old GPS points txt file parsing "[lat, long]"
+
+        This code was removed from __init__ due to changing input format type (from txt to dat using pickle)
+        """
+
+        raise NotImplementedError("this code is obsolete and shouldn't be used")
+
+        with open(gps_points_file_path, "r") as gps_points_file:
+            for line in gps_points_file.readlines():
+                if line.startswith("[") and line.endswith("]\n"):
+                    parsed_point = line[1:-2].split(", ")
+                    try:
+                        gps_point = [float(parsed_point[0]),
+                                     float(parsed_point[1]),
+                                     parsed_point[2].replace("'", "")]
+                        self.__stub_gps_points_reader_pool.append(gps_point)
+                    except (IndexError, ValueError):
+                        pass
+        if len(self.__stub_gps_points_reader_pool) < 1:
+            raise ValueError("given stub gps points file contains no proper gps points, gps pool is empty")
 
     def disconnect(self):
         self.__keep_thread_alive = False
