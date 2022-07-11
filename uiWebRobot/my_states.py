@@ -73,7 +73,8 @@ class CheckState(State):
                 os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState(self.socketio, self.logger, False, None, self.vesc_engine, None)
         else:
-            self.__voltage_thread_alive = False
+            self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+            """self.__voltage_thread_alive = False
             try:
                 if self.cam:
                     os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
@@ -82,7 +83,8 @@ class CheckState(State):
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(str(e)+"\n")
-            return ErrorState(self.socketio, self.logger)
+            return ErrorState(self.socketio, self.logger)"""
+            return self
 
     def on_socket_data(self, data):
         if data["type"] == 'allChecked':
@@ -662,7 +664,6 @@ class WorkingState(State):
         except:
             pass
 
-        self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
         self._main_msg_thread_alive = True
         self._main_msg_thread = threading.Thread(target=self._main_msg_thread_tf, daemon=True)
         self._main_msg_thread.start()
@@ -707,16 +708,17 @@ class WorkingState(State):
             self.main.wait()
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
+            self._main_msg_thread.join()
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject["continueButton"] = True
             else:
                 self.statusOfUIObject["startButton"] = True
             self.statusOfUIObject["stopButton"] = None
-            self.msgQueue.close()
             return WaitWorkingState(self.socketio, self.logger, False, None, None, None)
         else:
             self._main_msg_thread_alive = False
+            self._main_msg_thread.join()
             self.msgQueue.close()
             return ErrorState(self.socketio, self.logger)
     
@@ -728,7 +730,8 @@ class WorkingState(State):
             return self
         else:
             self._main_msg_thread_alive = False
-            self.msgQueue.close()
+            self._main_msg_thread.join()
+            
             return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
@@ -745,8 +748,12 @@ class WorkingState(State):
         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
     def _main_msg_thread_tf(self): 
+        self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
         while self._main_msg_thread_alive:
-            msg = self.msgQueue.receive()
+            try:
+                msg = self.msgQueue.receive(timeout=2)
+            except posix_ipc.BusyError:
+                continue
             data = json.loads(msg[0])
             if "start" in data:
                 if data["start"]:
@@ -786,6 +793,17 @@ class WorkingState(State):
                 self.allPath.clear()
             elif "input_voltage" in data:
                 sendInputVoltage(self.socketio, data["input_voltage"])
+        msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
+        self.msgQueue.close()
+        msg = f"[{self.__class__.__name__}] -> Unlink msgQueue..."
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
+        try:
+            self.msgQueue.unlink()
+        except posix_ipc.ExistentialError:
+            pass
 
 #This state corresponds when the robot has an error.
 class ErrorState(State):
@@ -1056,7 +1074,7 @@ def startMain():
     return mainSP
 
 def startLiveCam():
-    camSP = subprocess.Popen("python3 serveurCamLive.py", stdin=subprocess.PIPE, cwd=os.getcwd().split("/uiWebRobot")[0], shell=True, preexec_fn=os.setsid)
+    camSP = subprocess.Popen("python3 serveurCamLive.py", stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, cwd=os.getcwd().split("/uiWebRobot")[0], shell=True, preexec_fn=os.setsid)
     return camSP
 
 def updateFields(field_name):
