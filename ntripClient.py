@@ -229,7 +229,7 @@ class NtripClient(object):
                 if data is None:
                     continue
                 
-                if self.last_id in config.RTK_ID_SEND:
+                if self.last_id in config.RTK_ID_SEND or not len(config.RTK_ID_SEND):
                     ser.write(data)
 
         except KeyboardInterrupt:
