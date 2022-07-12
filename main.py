@@ -1657,7 +1657,7 @@ def main():
                 print(msg)
                 logger_full.write(msg + "\n")
             
-            raise Exception("Path generate")
+            #raise Exception("Path generate")
 
             if len(path_points) < 2:
                 msg = "Expected at least 2 points in path, got " + str(len(path_points)) + \
