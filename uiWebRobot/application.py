@@ -38,7 +38,7 @@ def init():
     thread_notification = Thread(target=catch_send_notification, args=(socketio,))
     thread_notification.setDaemon(True)
     thread_notification.start()
-    stateMachine = stateMachine.StateMachine(socketio)
+    # stateMachine = stateMachine.StateMachine(socketio)
 
 def load_coordinates(file_path):
     positions_list = []
@@ -181,15 +181,16 @@ def on_disconnect():
 
 @app.route('/')
 def index():
-    #ui_language = "fr"
     ui_language = config.UI_LANGUAGE
+    ui_language = "fr"
     if ui_language not in ui_languages["Supported Language"]:
         ui_language = "en"
     sn = config.ROBOT_SN
-    #sn = "SNXXX"
-    statusOfUIObject = stateMachine.getStatusOfControls()
-
+    sn = "SNXXX"
+    
     IA_list = load_ai_list("../yolo")
+
+    """
     Field_list = load_field_list("../fields")
 
     if not Field_list:
@@ -206,7 +207,11 @@ def index():
         else:
             return render_template("Error.html",sn=sn, error_message=ui_languages["Error_500"][ui_language]), 500
 
+    statusOfUIObject = stateMachine.getStatusOfControls()
     return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=config.SLIDER_CREATE_FIELD_MIN, slider_max=config.SLIDER_CREATE_FIELD_MAX, slider_step=config.SLIDER_CREATE_FIELD_STEP)    
+    """
+    
+    return render_template('UISetting.html',sn=sn, ui_languages=ui_languages, ui_language=ui_language, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"))    
 
 @app.route('/map')
 def maps():
@@ -298,4 +303,4 @@ def restart_ui():
 
 if __name__ == "__main__":
     init()
-    app.run(host="0.0.0.0",port="80",debug=True, use_reloader=False)
+    app.run(host="0.0.0.0",port="80",debug=True, use_reloader=True)
