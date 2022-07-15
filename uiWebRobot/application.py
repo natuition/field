@@ -17,6 +17,7 @@ from urllib.parse import quote, unquote
 import posix_ipc
 from threading import Thread
 from datetime import datetime
+from setting_page_creator import setting_page_generate_html
 
 __author__ = 'Vincent LAMBERT'
 
@@ -211,7 +212,7 @@ def index():
     return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=config.SLIDER_CREATE_FIELD_MIN, slider_max=config.SLIDER_CREATE_FIELD_MAX, slider_step=config.SLIDER_CREATE_FIELD_STEP)    
     """
     
-    return render_template('UISetting.html',sn=sn, ui_languages=ui_languages, ui_language=ui_language, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"))    
+    return render_template('UISetting.html',sn=sn, ui_languages=ui_languages, ui_language=ui_language, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_generate_html())    
 
 @app.route('/map')
 def maps():
