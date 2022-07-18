@@ -3,25 +3,33 @@ from typing import Callable
 from flask_socketio import SocketIO
 import importlib.util
 import sys
+import fileinput
+import pwd
+import grp
+import os
 
 class ItemInterface:
 
-    def __init__(self, id: str, label: str, modif_callback: Callable = None):
+    def __init__(self, id: str, label: str, callback: Callable = None):
         self._id: str = id
         self._label: str = label
-        self._modif_callback: str = modif_callback
+        self._callback: Callable = callback
         self._html_id = f"{self.__class__.__name__}-{self._id}"
+    
+    def get_id(self)-> str:
+        return self._id
 
-    def save_modif(self, new_value):
-        self._modif_callback(self, new_value)
+    def callback(self, new_value)-> None:
+        if self._callback is not None:
+            self._callback(new_value)
 
     def generate_html(self, ui_languages: dict, ui_language: str)-> str :
         raise Exception("NotImplementedException")
 
 class RadioButton(ItemInterface):
 
-    def __init__(self, id: str, label: str, modif_callback: Callable):
-        super().__init__(id, label, modif_callback)
+    def __init__(self, id: str, label: str, callback: Callable):
+        super().__init__(id, label, callback)
         self.__checked: str = ""
 
     def set_checked(self, checked: bool):
@@ -47,8 +55,8 @@ class RadioButton(ItemInterface):
 
 class Checkbox(ItemInterface):
 
-    def __init__(self, id: str, label: str, modif_callback: Callable):
-        super().__init__(id, label, modif_callback)
+    def __init__(self, id: str, label: str, callback: Callable):
+        super().__init__(id, label, callback)
         self.__checked: str = ""
 
     def set_checked(self, checked: bool):
@@ -74,8 +82,8 @@ class Checkbox(ItemInterface):
 
 class Selector(ItemInterface):
 
-    def __init__(self, id: str, label: str, modif_callback: Callable):
-        super().__init__(id, label, modif_callback)
+    def __init__(self, id: str, label: str, callback: Callable):
+        super().__init__(id, label, callback)
         self._content_list: list = None
         self._default_content_index: int = None
         self._choose_description: str = None
@@ -107,8 +115,8 @@ class Selector(ItemInterface):
 
 class Slider(ItemInterface):
 
-    def __init__(self, id: str, label: str, modif_callback: Callable):
-        super().__init__(id, label, modif_callback)
+    def __init__(self, id: str, label: str, callback: Callable):
+        super().__init__(id, label, callback)
         self._min: float = None
         self._max: float = None
         self._step: float = None
@@ -141,8 +149,8 @@ class Button(ItemInterface):
     GREEN = ["71", "168", "87"]
     RED = ["234", "40", "40"]
 
-    def __init__(self, id: str, label: str, modif_callback: Callable):
-        super().__init__(id, label, modif_callback)
+    def __init__(self, id: str, label: str):
+        super().__init__(id, label)
         self._color_rgb: list[int] = None
         self._on_click_fct_name = ""
 
@@ -171,6 +179,9 @@ class RadioButtonGroup(ItemInterface):
 
     def set_column_number(self, column_number: int):
         self._column_number = column_number
+
+    def get_items(self)-> 'list[ItemInterface]':
+        return self._radio_button_list
 
     def generate_html(self, ui_languages: dict, ui_language: str)-> str :
         radio_button_html = ""
@@ -209,6 +220,9 @@ class Category(ItemInterface):
     def add_items(self, items: 'list[ItemInterface]'):
         self.__items_list.extend(items)
 
+    def get_items(self)-> 'list[ItemInterface]':
+        return self.__items_list
+
     def __get_string_items(self, ui_languages: dict, ui_language: str)-> str:
         str_items = ""
         for item  in self.__items_list:
@@ -228,11 +242,11 @@ class SettingGenerator():
     def __init__(self):
         self.__items_list: list[ItemInterface] = list()
 
-        self.__btn_save = Button("save", "Save", callable)
+        self.__btn_save = Button("save", "Save")
         self.__btn_save.set_color(Button.GREEN)
         self.__btn_save.set_on_click_fct_name("save_setting()")
 
-        self.__btn_cancel = Button("cancel", "Cancel", callable)
+        self.__btn_cancel = Button("cancel", "Cancel")
         self.__btn_cancel.set_color(Button.RED)
 
         self.__btn_group_save_cancel = ButtonGroup("btn_save_cancel", "Save Cancel button", [self.__btn_save,self.__btn_cancel])
@@ -242,6 +256,9 @@ class SettingGenerator():
 
     def add_items(self, items: 'list[ItemInterface]'):
         self.__items_list.extend(items)
+
+    def get_items(self)-> 'list[ItemInterface]':
+        return self.__items_list
 
     def __get_string_items(self, ui_languages: dict, ui_language: str)-> str:
         str_items = ""
@@ -254,8 +271,8 @@ class SettingGenerator():
                         {self.__get_string_items(ui_languages, ui_language)}
                     </section>"""
 
-def callable(object: ItemInterface, new_value):
-    print(f"{object.__class__.__name__}_{object._id} : {new_value}")
+def callable(new_value):
+    print(f"{new_value}")
 
 class SettingPageManager:
 
@@ -265,9 +282,29 @@ class SettingPageManager:
         self.__ui_language = ui_language
         self.__socket_io.on_event('data', self.__save_event, namespace='/save_setting')
         self.__reload_config()
+        self.__setting_generator = SettingGenerator()
+
+    def __add_to_setting_class_whitout_group(self, items, setting_class_whitout_group: 'list[ItemInterface]'):
+        if isinstance(items, (Category, RadioButtonGroup)):
+            for _items in items.get_items():
+                self.__add_to_setting_class_whitout_group(_items, setting_class_whitout_group)
+        elif not isinstance(items, ButtonGroup):
+            setting_class_whitout_group.append(items)
+
 
     def __save_event(self, save_data):
-        print(save_data)
+        class_new_value = dict()
+        for repr_class, value in save_data.items():
+            class_name = repr_class.split("-")[0]
+            class_id = repr_class.split("-")[1]
+            class_new_value[(class_name,class_id)] = value
+        
+        setting_class_whitout_group: list[ItemInterface] = list()
+        for setting_class in self.__setting_generator.get_items():
+            self.__add_to_setting_class_whitout_group(setting_class, setting_class_whitout_group)
+
+        for setting_class in setting_class_whitout_group:
+            setting_class.callback(class_new_value[(setting_class.__class__.__name__),setting_class.get_id()])
 
     def __reload_config(self):
         spec = importlib.util.spec_from_file_location("config.name", "../config/config.py")
@@ -275,25 +312,44 @@ class SettingPageManager:
         sys.modules["config.name"] = self.__config
         spec.loader.exec_module(self.__config)
 
+    def __changeConfigDict(self, current_dict: dict, path: str, key, value):
+        current_dict[key] = value
+        self.__changeConfigValue(path, current_dict)
+
+    def __changeConfigValue(self, path: str, value):
+        with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
+            for line in file:
+                if path in line:
+                    if isinstance(value,str) : 
+                        print(path + " = \"" + str(value), end='"\n')
+                    else : 
+                        print(path + " = " + str(value), end='\n')
+                else:
+                    print(line, end='')
+        uid = pwd.getpwnam("violette").pw_uid
+        gid = grp.getgrnam("violette").gr_gid
+        os.chown("../config/config.py", uid, gid)
+
+    #Define the setting page
     def generate_html(self):
 
         #Navigation category  
         category_nav = Category("nav", "Navigation:")
 
-        radio_btn_zig_zag = RadioButton("zig_zag", "Zig zag", callable)
+        radio_btn_zig_zag = RadioButton("zig_zag", "Zig zag", lambda new_value : self.__changeConfigValue("FORWARD_BACKWARD_PATH", new_value))
         radio_btn_zig_zag.set_checked(self.__config.FORWARD_BACKWARD_PATH)
 
-        radio_btn_spiral = RadioButton("spiral", "Spiral", callable)
+        radio_btn_spiral = RadioButton("spiral", "Spiral", lambda new_value : self.__changeConfigValue("BEZIER_PATH", new_value))
         radio_btn_spiral.set_checked(self.__config.BEZIER_PATH)
 
-        slider_sides_interval = Slider("sides_interval", "Sides interval:", callable)
-        slider_sides_interval.set_number_parameters(0,3000,5,10)
+        slider_sides_interval = Slider("sides_interval", "Sides interval:", lambda new_value : self.__changeConfigDict(self.__config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL", True, new_value))
+        slider_sides_interval.set_number_parameters(0,3000,5,self.__config.SPIRAL_SIDES_INTERVAL[True])
 
         radio_btn_group_path_choice = RadioButtonGroup("path", "Choice of path:")
         radio_btn_group_path_choice.set_column_number(2)
         radio_btn_group_path_choice.set_radio_button_list([radio_btn_zig_zag,radio_btn_spiral])
 
-        checkbox_bad_gps = Checkbox("bad_gps", "Stop if bad GPS", callable)
+        checkbox_bad_gps = Checkbox("bad_gps", "Stop if bad GPS", lambda new_value : self.__changeConfigValue("GPS_QUALITY_IGNORE", new_value))
         checkbox_bad_gps.set_checked(self.__config.GPS_QUALITY_IGNORE)
 
         category_nav.add_items([radio_btn_group_path_choice,slider_sides_interval,checkbox_bad_gps])
@@ -305,21 +361,21 @@ class SettingPageManager:
         selector_periph.set_content_list(["Y16","Y17"],0)
         selector_periph.set_choose_description("Please choose artificial intelligence")
 
-        slider_periph = Slider("periph", "Threshold", callable)
-        slider_periph.set_number_parameters(0.1,0.8,0.1,0.2)
+        slider_periph = Slider("periph", "Threshold", lambda new_value : self.__changeConfigValue("PERIPHERY_CONFIDENCE_THRESHOLD", new_value))
+        slider_periph.set_number_parameters(0.1,0.8,0.1,self.__config.PERIPHERY_CONFIDENCE_THRESHOLD)
 
         selector_precise = Selector("precise", "Precise mod:", callable)
         selector_precise.set_content_list(["Y16","Y17"],0)
         selector_precise.set_choose_description("Please choose artificial intelligence")
 
-        slider_precise = Slider("precise", "Threshold", callable)
-        slider_precise.set_number_parameters(0.1,0.8,0.1,0.2)
+        slider_precise = Slider("precise", "Threshold", lambda new_value : self.__changeConfigValue("PRECISE_CONFIDENCE_THRESHOLD", new_value))
+        slider_precise.set_number_parameters(0.1,0.8,0.1,self.__config.PRECISE_CONFIDENCE_THRESHOLD)
 
         radio_btn_mono = RadioButton("mono", "Mono", callable)
         radio_btn_mono.set_checked(len(self.__config.CAMERA_POSITIONS)==1)
 
         radio_btn_stereo = RadioButton("stereo", "Stereo", callable)
-        radio_btn_stereo.set_checked(len(self.__config.CAMERA_POSITIONS)>1)
+        radio_btn_stereo.set_checked(len(self.__config.CAMERA_POSITIONS)==2)
 
         radio_btn_group_shooting = RadioButtonGroup("shooting", "Choice of picture shoot:")
         radio_btn_group_shooting.set_column_number(2)
@@ -330,32 +386,32 @@ class SettingPageManager:
         #Weeding technique category
         category_weed_removal = Category("weeding_technique", "Weeding technique parameter:")
 
-        radio_btn_drilling = RadioButton("drilling", "Drilling", callable)
+        radio_btn_drilling = RadioButton("drilling", "Drilling", lambda new_value : self.__changeConfigValue("EXTRACTION_MODE", 1) if new_value else "")
         radio_btn_drilling.set_checked(self.__config.EXTRACTION_MODE==1)
 
-        radio_btn_milling = RadioButton("milling", "Milling", callable)
+        radio_btn_milling = RadioButton("milling", "Milling", lambda new_value : self.__changeConfigValue("EXTRACTION_MODE", 2) if new_value else "")
         radio_btn_milling.set_checked(self.__config.EXTRACTION_MODE==2)
 
         radio_btn_group_weeding_technique = RadioButtonGroup("shooting", "Choice of weeding technique:")
         radio_btn_group_weeding_technique.set_column_number(2)
         radio_btn_group_weeding_technique.set_radio_button_list([radio_btn_drilling,radio_btn_milling])
 
-        slider_cycle = Slider("cycle", "Cycle", callable)
-        slider_cycle.set_number_parameters(1,5,1,2)
+        slider_cycle = Slider("cycle", "Cycle", lambda new_value : self.__changeConfigValue("EXTRACTIONS_FULL_CYCLES", new_value))
+        slider_cycle.set_number_parameters(1,5,1,self.__config.EXTRACTIONS_FULL_CYCLES)
 
         category_weed_removal.add_items([radio_btn_group_weeding_technique,slider_cycle])
 
         #Other category
         category_other = Category("other", "Other")
 
-        selector_language = Selector("language", "Language:", callable)
+        selector_language = Selector("language", "Language:", lambda new_value : self.__changeConfigValue("UI_LANGUAGE", new_value))
         selector_language.set_content_list(self.__ui_languages["Supported Language"],self.__ui_languages["Supported Language"].index(self.__ui_language))
         selector_language.set_choose_description("Please choose language")
 
-        btn_restart_app = Button("reboot_app", "Restart application", callable)
+        btn_restart_app = Button("reboot_app", "Restart application")
         btn_restart_app.set_color(Button.GREEN)
 
-        btn_restart_robot = Button("reboot_robot", "Restart robot", callable)
+        btn_restart_robot = Button("reboot_robot", "Restart robot")
         btn_restart_robot.set_color(Button.GREEN)
 
         btn_group_restart = ButtonGroup("btn_restart", "Restart button", [btn_restart_app,btn_restart_robot])
@@ -363,7 +419,7 @@ class SettingPageManager:
         category_other.add_items([selector_language,btn_group_restart])
 
         #Setting page
-        setting_generator = SettingGenerator()
-        setting_generator.add_items([category_nav,category_detection,category_weed_removal,category_other])
+        
+        self.__setting_generator.add_items([category_nav,category_detection,category_weed_removal,category_other])
 
-        return setting_generator.generate_html(self.__ui_languages, self.__ui_language)
+        return self.__setting_generator.generate_html(self.__ui_languages, self.__ui_language)
