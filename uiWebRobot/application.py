@@ -17,7 +17,7 @@ from urllib.parse import quote, unquote
 import posix_ipc
 from threading import Thread
 from datetime import datetime
-from setting_page_creator import setting_page_generate_html
+from uiWebRobot.setting_page import SettingPageManager
 
 __author__ = 'Vincent LAMBERT'
 
@@ -28,6 +28,8 @@ log = logging.getLogger('werkzeug')
 log.disabled = True
 Payload.max_decode_packets = 500
 socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
+logging.getLogger('socketio').setLevel(logging.WARN)
+logging.getLogger('engineio').setLevel(logging.WARN)
 
 def init():
     global ui_languages
@@ -183,7 +185,6 @@ def on_disconnect():
 @app.route('/')
 def index():
     ui_language = config.UI_LANGUAGE
-    ui_language = "fr"
     if ui_language not in ui_languages["Supported Language"]:
         ui_language = "en"
     sn = config.ROBOT_SN
@@ -211,8 +212,8 @@ def index():
     statusOfUIObject = stateMachine.getStatusOfControls()
     return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=config.SLIDER_CREATE_FIELD_MIN, slider_max=config.SLIDER_CREATE_FIELD_MAX, slider_step=config.SLIDER_CREATE_FIELD_STEP)    
     """
-    
-    return render_template('UISetting.html',sn=sn, ui_languages=ui_languages, ui_language=ui_language, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_generate_html())    
+    setting_page_manager = SettingPageManager(socketio, ui_languages, ui_language)
+    return render_template('UISetting.html',sn=sn, ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())    
 
 @app.route('/map')
 def maps():

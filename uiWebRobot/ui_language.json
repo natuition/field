@@ -208,5 +208,135 @@
 		"fr": "Violette rejoint son point de départ sans extractions", 
 		"en": "Violette reaches her starting point without extractions",
 		"nl": "Violette bereikt haar startpunt zonder extracties"
+	},
+	"Navigation:": {
+		"fr": "", 
+		"en": "Navigation:",
+		"nl": ""
+	},
+	"Zig zag": {
+		"fr": "", 
+		"en": "Zig zag",
+		"nl": ""
+	},
+	"Spiral": {
+		"fr": "", 
+		"en": "Spiral",
+		"nl": ""
+	},
+	"Sides interval:": {
+		"fr": "", 
+		"en": "Sides interval:",
+		"nl": ""
+	},
+	"Choice of path:": {
+		"fr": "", 
+		"en": "Choice of path:",
+		"nl": ""
+	},
+	"Stop if bad GPS": {
+		"fr": "", 
+		"en": "Stop if bad GPS",
+		"nl": ""
+	},
+	"Detection:": {
+		"fr": "", 
+		"en": "Detection:",
+		"nl": ""
+	},
+	"Periphery mod:": {
+		"fr": "", 
+		"en": "Periphery mod:",
+		"nl": ""
+	},
+	"Precise mod:": {
+		"fr": "", 
+		"en": "",
+		"nl": ""
+	},
+	"Please choose artificial intelligence": {
+		"fr": "", 
+		"en": "Please choose artificial intelligence",
+		"nl": ""
+	},
+	"Threshold": {
+		"fr": "", 
+		"en": "Threshold",
+		"nl": ""
+	},
+	"Mono": {
+		"fr": "", 
+		"en": "Mono",
+		"nl": ""
+	},
+	"Stereo": {
+		"fr": "", 
+		"en": "Stereo",
+		"nl": ""
+	},
+	"Choice of picture shoot:": {
+		"fr": "", 
+		"en": "Choice of picture shoot:",
+		"nl": ""
+	},
+	"Weeding technique parameter:": {
+		"fr": "", 
+		"en": "Weeding technique parameter:",
+		"nl": ""
+	},
+	"Drilling": {
+		"fr": "", 
+		"en": "Drilling",
+		"nl": ""
+	},
+	"Milling": {
+		"fr": "", 
+		"en": "Milling",
+		"nl": ""
+	},
+	"Choice of weeding technique:": {
+		"fr": "", 
+		"en": "Choice of weeding technique:",
+		"nl": ""
+	},
+	"Cycle": {
+		"fr": "", 
+		"en": "Cycle",
+		"nl": ""
+	},
+	"Other": {
+		"fr": "", 
+		"en": "Other",
+		"nl": ""
+	},
+	"Language:": {
+		"fr": "", 
+		"en": "Language:",
+		"nl": ""
+	},
+	"Please choose language": {
+		"fr": "", 
+		"en": "Please choose language",
+		"nl": ""
+	},
+	"Restart application": {
+		"fr": "", 
+		"en": "Restart application",
+		"nl": ""
+	},
+	"Restart robot": {
+		"fr": "", 
+		"en": "Restart robot",
+		"nl": ""
+	},
+	"Save": {
+		"fr": "", 
+		"en": "Save",
+		"nl": ""
+	},
+	"Cancel": {
+		"fr": "", 
+		"en": "Cancel",
+		"nl": ""
 	}
 }

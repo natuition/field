@@ -11,27 +11,12 @@
     <script type="text/javascript" src="/static/{{ now }}/fontawesome/solid.js"></script> 
     <script type="text/javascript" src="/static/{{ now }}/fontawesome/fontawesome.js"></script> 
     <script src="/static/{{ now }}/js/slider.js"></script>
+    <script src="/static/{{ now }}/js/radio_btn_group.js" defer></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="/static/{{ now }}/js/save_setting.js" defer></script>
     <title>Violette</title>
 </head>
 <body>
-    <div class="header">
-        <div class="header__info">
-            <div class="header__info--logo">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
-            </div>
-            <div class="header__info--model--voltage">
-                <div class="header__info--model">
-                    <p>{{ sn }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="header__title">
-            Page de configuration
-        </div>
-        <!--<div class="header__subtitle">
-            ?
-        </div>-->
-    </div>
     {{ setting_page_generate|safe }}
 </body>
 </html>
