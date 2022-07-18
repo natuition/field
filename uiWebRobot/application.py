@@ -28,8 +28,6 @@ log = logging.getLogger('werkzeug')
 log.disabled = True
 Payload.max_decode_packets = 500
 socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
-logging.getLogger('socketio').setLevel(logging.WARN)
-logging.getLogger('engineio').setLevel(logging.WARN)
 
 def init():
     global ui_languages
@@ -305,4 +303,4 @@ def restart_ui():
 
 if __name__ == "__main__":
     init()
-    app.run(host="0.0.0.0",port="80",debug=True, use_reloader=True)
+    app.run(host="0.0.0.0",port="80",debug=False, use_reloader=False)

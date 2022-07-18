@@ -22,6 +22,10 @@ function save_setting() {
                 console.log("Node '" + element.tagName.toLowerCase() + "' are not implement !!!");
         }
     }
-    console.log(new_setting);
     socketSaveSetting.emit('data', new_setting);
+}
+
+function go_to_page(path){
+    //console.log(path)
+    location.href=path;
 }

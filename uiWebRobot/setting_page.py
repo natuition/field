@@ -283,6 +283,7 @@ class SettingPageManager:
         self.__socket_io.on_event('data', self.__save_event, namespace='/save_setting')
         self.__reload_config()
         self.__setting_generator = SettingGenerator()
+        self.__change_config_value = dict()
 
     def __add_to_setting_class_whitout_group(self, items, setting_class_whitout_group: 'list[ItemInterface]'):
         if isinstance(items, (Category, RadioButtonGroup)):
@@ -306,6 +307,8 @@ class SettingPageManager:
         for setting_class in setting_class_whitout_group:
             setting_class.callback(class_new_value[(setting_class.__class__.__name__),setting_class.get_id()])
 
+        self.__applyConfigValue()
+
     def __reload_config(self):
         spec = importlib.util.spec_from_file_location("config.name", "../config/config.py")
         self.__config = importlib.util.module_from_spec(spec)
@@ -316,19 +319,26 @@ class SettingPageManager:
         current_dict[key] = value
         self.__changeConfigValue(path, current_dict)
 
-    def __changeConfigValue(self, path: str, value):
-        with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
-            for line in file:
-                if path in line:
-                    if isinstance(value,str) : 
-                        print(path + " = \"" + str(value), end='"\n')
-                    else : 
-                        print(path + " = " + str(value), end='\n')
-                else:
-                    print(line, end='')
-        uid = pwd.getpwnam("violette").pw_uid
-        gid = grp.getgrnam("violette").gr_gid
-        os.chown("../config/config.py", uid, gid)
+    def __changeConfigValue(self, path: str, value, is_str: bool = False):
+        self.__change_config_value[path] = (value, is_str)
+
+    def __applyConfigValue(self):
+        if self.__change_config_value:
+            with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
+                for line in file:
+                    find = False
+                    for path, value_is_str in  self.__change_config_value.items():
+                        if path in line:
+                            if value_is_str[1]: 
+                                print(path + " = \"" + str(value_is_str[0]), end='"\n')
+                            else : 
+                                print(path + " = " + str(value_is_str[0]), end='\n')
+                            find = True
+                    if not find:
+                        print(line, end='')
+            uid = pwd.getpwnam("violette").pw_uid
+            gid = grp.getgrnam("violette").gr_gid
+            os.chown("../config/config.py", uid, gid)
 
     #Define the setting page
     def generate_html(self):
@@ -371,10 +381,10 @@ class SettingPageManager:
         slider_precise = Slider("precise", "Threshold", lambda new_value : self.__changeConfigValue("PRECISE_CONFIDENCE_THRESHOLD", new_value))
         slider_precise.set_number_parameters(0.1,0.8,0.1,self.__config.PRECISE_CONFIDENCE_THRESHOLD)
 
-        radio_btn_mono = RadioButton("mono", "Mono", callable)
+        radio_btn_mono = RadioButton("mono", "Mono", lambda new_value : self.__changeConfigValue("CAMERA_POSITIONS", "[(X_MAX/2,0)]") if new_value else "")
         radio_btn_mono.set_checked(len(self.__config.CAMERA_POSITIONS)==1)
 
-        radio_btn_stereo = RadioButton("stereo", "Stereo", callable)
+        radio_btn_stereo = RadioButton("stereo", "Stereo", lambda new_value : self.__changeConfigValue("CAMERA_POSITIONS", "[(X_MAX/3,0),(2*X_MAX/3,0)]") if new_value else "")
         radio_btn_stereo.set_checked(len(self.__config.CAMERA_POSITIONS)==2)
 
         radio_btn_group_shooting = RadioButtonGroup("shooting", "Choice of picture shoot:")
@@ -404,14 +414,16 @@ class SettingPageManager:
         #Other category
         category_other = Category("other", "Other")
 
-        selector_language = Selector("language", "Language:", lambda new_value : self.__changeConfigValue("UI_LANGUAGE", new_value))
+        selector_language = Selector("language", "Language:", lambda new_value : self.__changeConfigValue("UI_LANGUAGE", new_value, is_str=True))
         selector_language.set_content_list(self.__ui_languages["Supported Language"],self.__ui_languages["Supported Language"].index(self.__ui_language))
         selector_language.set_choose_description("Please choose language")
 
         btn_restart_app = Button("reboot_app", "Restart application")
+        btn_restart_app.set_on_click_fct_name("go_to_page('restart_ui')")
         btn_restart_app.set_color(Button.GREEN)
 
         btn_restart_robot = Button("reboot_robot", "Restart robot")
+        btn_restart_robot.set_on_click_fct_name("go_to_page('reboot')")
         btn_restart_robot.set_color(Button.GREEN)
 
         btn_group_restart = ButtonGroup("btn_restart", "Restart button", [btn_restart_app,btn_restart_robot])
