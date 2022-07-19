@@ -23,7 +23,33 @@ function save_setting() {
         }
     }
     socketSaveSetting.emit('data', new_setting);
+
+    $('#Button-save').addClass('active');
+    $('#Button-save').attr('disabled', '');
+
+    $('#Button-cancel').addClass('disabled');
+    $('#Button-cancel').attr('disabled', '');
+    $('#Button-reboot_app').addClass('disabled');
+    $('#Button-reboot_app').attr('disabled', '');
+    $('#Button-reboot_robot').addClass('disabled');
+    $('#Button-reboot_robot').attr('disabled', '');
 }
+
+socketSaveSetting.on('save_finish', function(dataServ) {
+    $(document.getElementsByClassName('active')[0]).addClass('finished');
+    setTimeout(() => { 
+        $('#Button-save').removeClass('finished');
+        $('#Button-save').removeClass('active');
+        $('#Button-save').removeAttr('disabled');
+
+        $('#Button-cancel').removeClass('disabled');
+        $('#Button-cancel').removeAttr('disabled');
+        $('#Button-reboot_app').removeClass('disabled');
+        $('#Button-reboot_app').removeAttr('disabled');
+        $('#Button-reboot_robot').removeClass('disabled');
+        $('#Button-reboot_robot').removeAttr('disabled');
+    }, 2000);
+});
 
 function go_to_page(path){
     //console.log(path)

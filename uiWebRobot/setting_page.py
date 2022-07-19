@@ -88,9 +88,9 @@ class Selector(ItemInterface):
         self._default_content_index: int = None
         self._choose_description: str = None
 
-    def set_content_list(self, content_list: list, default_content_index: int):
+    def set_content_list(self, content_list: list, default_content):
         self._content_list: list = content_list
-        self._default_content_index: int = default_content_index
+        self._default_content_index: int = content_list.index(default_content)
     
     def set_choose_description(self, choose_description: str):
         self._choose_description: str = choose_description
@@ -271,9 +271,6 @@ class SettingGenerator():
                         {self.__get_string_items(ui_languages, ui_language)}
                     </section>"""
 
-def callable(new_value):
-    print(f"{new_value}")
-
 class SettingPageManager:
 
     def __init__(self, socket_io: SocketIO, ui_languages: dict, ui_language: str):
@@ -309,6 +306,10 @@ class SettingPageManager:
 
         self.__applyConfigValue()
 
+        self.__reload_config()
+
+        self.__socket_io.emit('save_finish', {}, namespace='/save_setting', broadcast=True)
+
     def __reload_config(self):
         spec = importlib.util.spec_from_file_location("config.name", "../config/config.py")
         self.__config = importlib.util.module_from_spec(spec)
@@ -340,6 +341,17 @@ class SettingPageManager:
             gid = grp.getgrnam("violette").gr_gid
             os.chown("../config/config.py", uid, gid)
 
+    def __get_ia_list(self, dir_path)-> list:
+        ia_list = []
+        for file in os.listdir(dir_path):
+            if file.endswith(".trt"):
+                ia_list.append(file.split(".trt")[0])
+        return ia_list
+
+    def __set_ia_in_config(self, mod_name: str, ia_name: str):
+        self.__changeConfigValue(f"{mod_name}_MODEL_PATH", f"yolo/{ia_name}.trt", True)
+        self.__changeConfigValue(f"{mod_name}_CLASSES_FILE", f"yolo/{ia_name}.names", True)
+
     #Define the setting page
     def generate_html(self):
 
@@ -367,15 +379,15 @@ class SettingPageManager:
         #Detection category
         category_detection = Category("detec", "Detection:")
 
-        selector_periph = Selector("periph", "Periphery mod:", callable)
-        selector_periph.set_content_list(["Y16","Y17"],0)
+        selector_periph = Selector("periph", "Periphery mod:", lambda new_value : self.__set_ia_in_config("PERIPHERY" ,new_value))
+        selector_periph.set_content_list(self.__get_ia_list("../yolo"),self.__config.PERIPHERY_MODEL_PATH.split("yolo/")[1].split(".trt")[0])
         selector_periph.set_choose_description("Please choose artificial intelligence")
 
         slider_periph = Slider("periph", "Threshold", lambda new_value : self.__changeConfigValue("PERIPHERY_CONFIDENCE_THRESHOLD", new_value))
         slider_periph.set_number_parameters(0.1,0.8,0.1,self.__config.PERIPHERY_CONFIDENCE_THRESHOLD)
 
-        selector_precise = Selector("precise", "Precise mod:", callable)
-        selector_precise.set_content_list(["Y16","Y17"],0)
+        selector_precise = Selector("precise", "Precise mod:", lambda new_value : self.__set_ia_in_config("PRECISE" ,new_value))
+        selector_precise.set_content_list(self.__get_ia_list("../yolo"),self.__config.PRECISE_MODEL_PATH.split("yolo/")[1].split(".trt")[0])
         selector_precise.set_choose_description("Please choose artificial intelligence")
 
         slider_precise = Slider("precise", "Threshold", lambda new_value : self.__changeConfigValue("PRECISE_CONFIDENCE_THRESHOLD", new_value))
@@ -415,7 +427,7 @@ class SettingPageManager:
         category_other = Category("other", "Other")
 
         selector_language = Selector("language", "Language:", lambda new_value : self.__changeConfigValue("UI_LANGUAGE", new_value, is_str=True))
-        selector_language.set_content_list(self.__ui_languages["Supported Language"],self.__ui_languages["Supported Language"].index(self.__ui_language))
+        selector_language.set_content_list(self.__ui_languages["Supported Language"],self.__ui_language)
         selector_language.set_choose_description("Please choose language")
 
         btn_restart_app = Button("reboot_app", "Restart application")
