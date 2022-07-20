@@ -1,9 +1,13 @@
 import sys
-sys.path.append('../')
+
+from flask_socketio import SocketIO
+
 import utility
-from my_states import CheckState, ErrorState
-from state import Events
-import os
+from uiWebRobot.state_machine.states.CheckState import CheckState
+from uiWebRobot.state_machine.states.ErrorState import ErrorState
+from uiWebRobot.state_machine.states.Events import Events
+from uiWebRobot.state_machine.states.State import State
+
 
 class StateMachine:
 
@@ -11,8 +15,8 @@ class StateMachine:
         utility.create_directories("logs/")
         self.logger = utility.Logger("logs/"+utility.get_current_time())
         sys.stderr = ErrorLogger(self.logger)
-        self.socketio = socketio
-        self.currentState = CheckState(socketio,self.logger)
+        self.socketio: SocketIO = socketio
+        self.currentState: State = CheckState(socketio,self.logger)
         msg = f"Current state : {self.currentState}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)

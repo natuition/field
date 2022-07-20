@@ -1,17 +1,18 @@
 import sys
+
+from uiWebRobot.state_machine.states.Events import Events
+from uiWebRobot.state_machine.StateMachine import StateMachine
+
 sys.path.append('../')
 from config import config
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
 from flask import Flask, render_template,make_response,send_from_directory, request
-import os
 import logging
 import json
-import stateMachine
-from state import Events
 import subprocess
-import my_states
+from uiWebRobot.state_machine.states.WaitWorkingState import WaitWorkingState
 import os
 from urllib.parse import quote, unquote
 import posix_ipc
@@ -38,7 +39,7 @@ def init():
     thread_notification = Thread(target=catch_send_notification, args=(socketio,))
     thread_notification.setDaemon(True)
     thread_notification.start()
-    stateMachine = stateMachine.StateMachine(socketio)
+    stateMachine = StateMachine(socketio)
 
 def load_coordinates(file_path):
     positions_list = []
@@ -161,7 +162,7 @@ def on_socket_data(data):
         elif data["type"] == "getStats":
             stateMachine.on_socket_data(data)
         elif data["type"] == "removeField":
-            if isinstance(stateMachine.currentState,my_states.WaitWorkingState):
+            if isinstance(stateMachine.currentState, WaitWorkingState):
                 stateMachine.on_socket_data(data)
 
 
