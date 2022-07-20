@@ -1,9 +1,10 @@
 import sys
-
-from uiWebRobot.state_machine.states.Events import Events
-from uiWebRobot.state_machine.StateMachine import StateMachine
-
 sys.path.append('../')
+
+from state_machine.states import Events
+from state_machine import StateMachine
+from state_machine.states import WaitWorkingState
+
 from config import config
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
@@ -12,7 +13,6 @@ from flask import Flask, render_template,make_response,send_from_directory, requ
 import logging
 import json
 import subprocess
-from uiWebRobot.state_machine.states.WaitWorkingState import WaitWorkingState
 import os
 from urllib.parse import quote, unquote
 import posix_ipc
@@ -39,7 +39,7 @@ def init():
     thread_notification = Thread(target=catch_send_notification, args=(socketio,))
     thread_notification.setDaemon(True)
     thread_notification.start()
-    stateMachine = StateMachine(socketio)
+    stateMachine = StateMachine.StateMachine(socketio)
 
 def load_coordinates(file_path):
     positions_list = []
@@ -127,34 +127,34 @@ def on_socket_data(data):
         if data["type"] == "joystick" and str(stateMachine.currentState) in ["WaitWorkingState","CreateFieldState"]:
             stateMachine.on_socket_data(data)
         elif data["type"] == "field":
-            stateMachine.on_event(Events.CREATE_FIELD)
+            stateMachine.on_event(Events.Events.CREATE_FIELD)
             stateMachine.on_socket_data(data)
         elif data["type"] == "field_name":
             stateMachine.on_socket_data(data)
-            stateMachine.on_event(Events.VALIDATE_FIELD_NAME)
+            stateMachine.on_event(Events.Events.VALIDATE_FIELD_NAME)
         elif data["type"] == "validerZone":
             data["client_id"] = request.sid
             stateMachine.on_socket_data(data)
-            stateMachine.on_event(Events.VALIDATE_FIELD)
+            stateMachine.on_event(Events.Events.VALIDATE_FIELD)
         elif data["type"] == "start":
             if data["audit"]:
-                stateMachine.on_event(Events.START_AUDIT)
+                stateMachine.on_event(Events.Events.START_AUDIT)
             else:
-                stateMachine.on_event(Events.START_MAIN)
+                stateMachine.on_event(Events.Events.START_MAIN)
         elif data["type"] == "continue":
             if data["audit"]:
-                stateMachine.on_event(Events.CONTINUE_AUDIT)
+                stateMachine.on_event(Events.Events.CONTINUE_AUDIT)
             else:
-                stateMachine.on_event(Events.CONTINUE_MAIN)
+                stateMachine.on_event(Events.Events.CONTINUE_MAIN)
         elif data["type"] == "stop":
-            stateMachine.on_event(Events.STOP)
+            stateMachine.on_event(Events.Events.STOP)
         elif data["type"] == "getInputVoltage":
             stateMachine.on_socket_data(data)
         elif data["type"] == "allChecked":
             stateMachine.on_socket_data(data)
-            stateMachine.on_event(Events.LIST_VALIDATION)
+            stateMachine.on_event(Events.Events.LIST_VALIDATION)
         elif data["type"] == "wheel":
-            stateMachine.on_event(Events.WHEEL)
+            stateMachine.on_event(Events.Events.WHEEL)
         elif data["type"] == "modifyZone":
             stateMachine.on_socket_data(data)
         elif data["type"] == "getField":
@@ -162,7 +162,7 @@ def on_socket_data(data):
         elif data["type"] == "getStats":
             stateMachine.on_socket_data(data)
         elif data["type"] == "removeField":
-            if isinstance(stateMachine.currentState, WaitWorkingState):
+            if isinstance(stateMachine.currentState, WaitWorkingState.WaitWorkingState):
                 stateMachine.on_socket_data(data)
 
 
@@ -170,9 +170,9 @@ def on_socket_data(data):
 def on_socket_broadcast(data):
     if data["type"] == "audit":
         if data["audit"]:
-            stateMachine.on_event(Events.AUDIT_ENABLE)
+            stateMachine.on_event(Events.Events.AUDIT_ENABLE)
         else:
-            stateMachine.on_event(Events.AUDIT_DISABLE)
+            stateMachine.on_event(Events.Events.AUDIT_DISABLE)
     emit(data["type"], data, broadcast=True)
 
 @socketio.on('disconnect')
@@ -250,7 +250,7 @@ def handle_exception(e):
 
     # now you're handling non-HTTP exceptions only
     print(e)
-    stateMachine.on_event(Events.ERROR)
+    stateMachine.on_event(Events.Events.ERROR)
     sn = config.ROBOT_SN
     ui_language = config.UI_LANGUAGE
     if ui_language not in ui_languages["Supported Language"]:

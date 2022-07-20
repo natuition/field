@@ -1,17 +1,20 @@
+import sys
+sys.path.append('../')
+
 from flask_socketio import SocketIO
 import threading
 import signal
 import re
 
-from State import State
-from ErrorState import ErrorState
-from WaitWorkingState import WaitWorkingState
-from uiWebRobot.state_machine.states.Events import Events
-from uiWebRobot.state_machine.utilsFunction import *
+from state_machine.states import State
+from state_machine.states import ErrorState
+from state_machine.states import WaitWorkingState
+from state_machine.states import Events
+from state_machine.utilsFunction import *
 from config import config
 
 # This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
-class CheckState(State):
+class CheckState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger):
         self.socketio = socketio
@@ -46,7 +49,7 @@ class CheckState(State):
         self.__voltage_thread.start()
 
     def on_event(self, event):
-        if event == Events.LIST_VALIDATION:
+        if event == Events.Events.LIST_VALIDATION:
             self.__voltage_thread_alive = False
             if self.cam:
                 os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
@@ -54,7 +57,7 @@ class CheckState(State):
                 os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
                 os.system("sudo systemctl restart ntripClient.service")
-            return WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
+            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
         else:
             self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
             """self.__voltage_thread_alive = False
@@ -66,7 +69,7 @@ class CheckState(State):
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(str(e)+"\n")
-            return ErrorState(self.socketio, self.logger)"""
+            return ErrorState.ErrorState(self.socketio, self.logger)"""
             return self
 
     def on_socket_data(self, data):
@@ -82,7 +85,7 @@ class CheckState(State):
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
-                return ErrorState(self.socketio, self.logger)
+                return ErrorState.ErrorState(self.socketio, self.logger)
         elif data["type"] == 'getInputVoltage':
             sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
         else:

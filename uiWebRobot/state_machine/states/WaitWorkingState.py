@@ -1,20 +1,24 @@
+import sys
+sys.path.append('../')
+
 from flask_socketio import SocketIO
 import threading
 
-from State import State
-from CreateFieldState import CreateFieldState
-from StartingState import StartingState
-from ResumeState import ResumeState
-from ErrorState import ErrorState
-from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from uiWebRobot.state_machine.states.Events import Events
-from uiWebRobot.state_machine.utilsFunction import *
+from state_machine.states import State
+from state_machine.states import CreateFieldState
+from state_machine.states import StartingState
+from state_machine.states import ResumeState
+from state_machine.states import ErrorState
+from state_machine.states import Events
+
+from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
+from state_machine.utilsFunction import *
 from config import config
 import adapters
-from uiWebRobot.application import load_field_list
+from application import load_field_list
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
-class WaitWorkingState(State):
+class WaitWorkingState(State.State):
 
     def __init__(self,
                  socketio: SocketIO,
@@ -102,7 +106,7 @@ class WaitWorkingState(State):
         self.__voltage_thread.start()
 
     def on_event(self, event):
-        if event == Events.CREATE_FIELD:
+        if event == Events.Events.CREATE_FIELD:
             self.__send_last_pos_thread_alive = False
             self.__voltage_thread_alive = False
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
@@ -110,17 +114,17 @@ class WaitWorkingState(State):
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
-            return CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine, self.gps)
-        elif event in [Events.START_MAIN, Events.START_AUDIT]:
+            return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine, self.gps)
+        elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
             self.__send_last_pos_thread_alive = False
             self.__voltage_thread_alive = False
             self.statusOfUIObject.startButton = ButtonState.CHARGING
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = False
-            if event == Events.START_MAIN:
+            if event == Events.Events.START_MAIN:
                 self.statusOfUIObject.audit = AuditButtonState.NOT_IN_USE
-            elif event == Events.START_AUDIT:
+            elif event == Events.Events.START_AUDIT:
                 self.statusOfUIObject.audit = AuditButtonState.IN_USE
             if self.smoothie is not None:
                 self.smoothie.disconnect()
@@ -131,17 +135,17 @@ class WaitWorkingState(State):
             if self.gps is not None:
                 self.gps.disconnect()
                 self.gps = None
-            return StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
-        elif event in [Events.CONTINUE_MAIN, Events.CONTINUE_AUDIT]:
+            return StartingState.StartingState(self.socketio, self.logger, (event == Events.Events.START_AUDIT))
+        elif event in [Events.Events.CONTINUE_MAIN, Events.Events.CONTINUE_AUDIT]:
             self.__send_last_pos_thread_alive = False
             self.__voltage_thread_alive = False
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = False
-            if event == Events.CONTINUE_MAIN:
+            if event == Events.Events.CONTINUE_MAIN:
                 self.statusOfUIObject.audit = AuditButtonState.NOT_IN_USE
-            elif event == Events.CONTINUE_AUDIT:
+            elif event == Events.Events.CONTINUE_AUDIT:
                 self.statusOfUIObject.audit = AuditButtonState.IN_USE
             if self.smoothie is not None:
                 self.smoothie.disconnect()
@@ -152,14 +156,14 @@ class WaitWorkingState(State):
             if self.gps is not None:
                 self.gps.disconnect()
                 self.gps = None
-            return ResumeState(self.socketio, self.logger, (event == Events.CONTINUE_AUDIT))
-        elif event == Events.WHEEL:
+            return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
+        elif event == Events.Events.WHEEL:
             self.smoothie.freewheels()
             return self
-        elif event == Events.AUDIT_ENABLE:
+        elif event == Events.Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
             return self
-        elif event == Events.AUDIT_DISABLE:
+        elif event == Events.Events.AUDIT_DISABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_ENABLE
             return self
         else:
@@ -179,7 +183,7 @@ class WaitWorkingState(State):
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
-            return ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         # print(f"[{self.__class__.__name__}] -> Move '"+str(data["x"])+"','"+str(data["y"])+"'.")

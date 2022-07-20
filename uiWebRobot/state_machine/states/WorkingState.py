@@ -1,20 +1,24 @@
+import sys
+sys.path.append('../')
+
 from flask_socketio import SocketIO
 import signal
 import posix_ipc
 import threading
 from datetime import datetime, timezone
 
-from State import State
-from WaitWorkingState import WaitWorkingState
-from ErrorState import ErrorState
+from state_machine.states import State
+from state_machine.states import WaitWorkingState
+from state_machine.states import ErrorState
+from state_machine.states import Events
+
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects
-from uiWebRobot.state_machine.states.Events import Events
 from uiWebRobot.state_machine.utilsFunction import *
 from config import config
 
 
 # This state corresponds when the robot is working.
-class WorkingState(State):
+class WorkingState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit: bool, isResume: bool):
         self.socketio = socketio
@@ -74,7 +78,7 @@ class WorkingState(State):
         self.timeStartMain = datetime.now(timezone.utc)
 
     def on_event(self, event):
-        if event == Events.STOP:
+        if event == Events.Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
             os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
@@ -88,12 +92,12 @@ class WorkingState(State):
             else:
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
-            return WaitWorkingState(self.socketio, self.logger, False)
+            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
             self.msgQueue.close()
-            return ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         if data["type"] == "getStats":
@@ -105,7 +109,7 @@ class WorkingState(State):
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
 
-            return ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject.to_json()

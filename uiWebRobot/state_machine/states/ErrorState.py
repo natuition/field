@@ -1,14 +1,17 @@
+import sys
+sys.path.append('../')
+
 from flask_socketio import SocketIO
 
 import utility
-from State import State
+from state_machine.states import State
 from config import config
 
 #This state corresponds when the robot has an error.
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 
 
-class ErrorState(State):
+class ErrorState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, reason: str = None):
         self.socketio = socketio

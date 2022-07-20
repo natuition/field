@@ -1,19 +1,22 @@
+import sys
+sys.path.append('../')
+
 from flask_socketio import SocketIO
 import navigation
 import posix_ipc
 import threading
 
-from State import State
-from WaitWorkingState import WaitWorkingState
-from ErrorState import ErrorState
-from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
-from uiWebRobot.state_machine.states.Events import Events
-from uiWebRobot.state_machine.utilsFunction import *
+from state_machine.states import State
+from state_machine.states import WaitWorkingState
+from state_machine.states import ErrorState
+from state_machine.states import Events
+from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
+from state_machine.utilsFunction import *
 from config import config
-from uiWebRobot.application import get_other_field, load_field_list
+from application import get_other_field, load_field_list
 
 # This state corresponds when the robot is generating the work area.
-class CreateFieldState(State):
+class CreateFieldState(State.State):
 
     def __init__(self,
                  socketio: SocketIO,
@@ -77,7 +80,7 @@ class CreateFieldState(State):
         lambda: self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
 
     def on_event(self, event):
-        if event == Events.STOP:
+        if event == Events.Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
@@ -90,7 +93,7 @@ class CreateFieldState(State):
             except TimeoutError:
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-                return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
+                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
 
             self.field = self.fieldCreator.calculateField()
             if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
@@ -111,12 +114,12 @@ class CreateFieldState(State):
             self.statusOfUIObject.fieldButton = ButtonState.VALIDATE
             self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
             return self
-        elif event == Events.VALIDATE_FIELD:
+        elif event == Events.Events.VALIDATE_FIELD:
             return self
-        elif event == Events.VALIDATE_FIELD_NAME:
+        elif event == Events.Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
-            return WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine, self.gps)
-        elif event == Events.WHEEL:
+            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine, self.gps)
+        elif event == Events.Events.WHEEL:
             self.smoothie.freewheels()
             return self
         else:
@@ -134,7 +137,7 @@ class CreateFieldState(State):
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
-            return ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         if data["type"] == "joystick":
@@ -165,7 +168,7 @@ class CreateFieldState(State):
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
                 self.__send_last_pos_thread_alive = False
                 self._send_last_pos_thread.join()
-                return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
+                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
 
         elif data["type"] == "modifyZone":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."

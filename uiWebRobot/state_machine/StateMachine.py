@@ -1,12 +1,13 @@
 import sys
+sys.path.append('../')
 
 from flask_socketio import SocketIO
 
 import utility
-from uiWebRobot.state_machine.states.CheckState import CheckState
-from uiWebRobot.state_machine.states.ErrorState import ErrorState
-from uiWebRobot.state_machine.states.Events import Events
-from uiWebRobot.state_machine.states.State import State
+from state_machine.states import CheckState
+from state_machine.states import ErrorState
+from state_machine.states import Events
+from state_machine.states import State
 
 
 class StateMachine:
@@ -16,12 +17,12 @@ class StateMachine:
         self.logger = utility.Logger("logs/"+utility.get_current_time())
         sys.stderr = ErrorLogger(self.logger)
         self.socketio: SocketIO = socketio
-        self.currentState: State = CheckState(socketio,self.logger)
+        self.currentState: State.State = CheckState.CheckState(socketio,self.logger)
         msg = f"Current state : {self.currentState}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
 
-    def on_event(self, event: Events):
+    def on_event(self, event: Events.Events):
         print()
         msg = f"{self.currentState} received event : {event}."
         self.logger.write_and_flush(msg+"\n")
@@ -31,15 +32,15 @@ class StateMachine:
             newState = self.currentState.on_event(event)
         except Exception as e:
             self.logger.write_and_flush("[Error] "+str(e)+"\n")
-            newState = ErrorState(self.socketio,self.logger,str(e))
+            newState = ErrorState.ErrorState(self.socketio,self.logger,str(e))
 
         if newState is None:
             msg = f"Error last state : {self.currentState}."
             self.logger.write_and_flush(msg+"\n")
-            newState = ErrorState(self.socketio,self.logger,msg)
+            newState = ErrorState.ErrorState(self.socketio,self.logger,msg)
 
         if str(newState) in ["StartingState","ResumeState"]:
-            self.currentState = newState.on_event(Events.CONFIG_IS_SET)
+            self.currentState = newState.on_event(Events.Events.CONFIG_IS_SET)
         else:
             self.currentState = newState
 

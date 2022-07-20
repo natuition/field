@@ -1,15 +1,17 @@
-from flask_socketio import SocketIO
+import sys
+sys.path.append('../')
 
-from State import State
-from WorkingState import WorkingState
-from ErrorState import ErrorState
-from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from uiWebRobot.state_machine.states.Events import Events
-from uiWebRobot.state_machine.utilsFunction import *
+from flask_socketio import SocketIO
+from state_machine.states import State
+from state_machine.states import WorkingState
+from state_machine.states import ErrorState
+from state_machine.states import Events
+from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
+from state_machine.utilsFunction import *
 from config import config
 
 # This state corresponds when the robot configures it to start from zero the work.
-class StartingState(State):
+class StartingState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit=False):
         self.socketio = socketio
@@ -40,17 +42,17 @@ class StartingState(State):
         self.field = None
 
     def on_event(self, event):
-        if event == Events.CONFIG_IS_SET:
+        if event == Events.Events.CONFIG_IS_SET:
             self.statusOfUIObject.startButton = ButtonState.NOT_HERE
             self.statusOfUIObject.stopButton = True
-            return WorkingState(self.socketio, self.logger, self.isAudit, False)
+            return WorkingState.WorkingState(self.socketio, self.logger, self.isAudit, False)
         else:
-            return ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         if data["type"] == 'getInputVoltage':
             return self
-        return ErrorState(self.socketio, self.logger)
+        return ErrorState.ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject.to_json()
