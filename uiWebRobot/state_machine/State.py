@@ -2,6 +2,7 @@ import sys
 sys.path.append('../')
 
 import utility
+from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 
 class State(object):
 
@@ -11,15 +12,14 @@ class State(object):
         msg = 'Processing current state :', str(self)
         self.logger.write_and_flush(msg)
         print(msg)
-        self.statusOfUIObject = {
-            "joystick": True, #True or False
-            "fieldButton": True, #True or False or charging or None
-            "startButton": True, #True or False or charging or None
-            "continueButton": True, #True or False or charging or None
-            "stopButton": None, #True or charging or None
-            "wheelButton": False, #True or False
-            "audit": False #True or False or use or not-use
-        }
+        self.statusOfUIObject: FrontEndObjects = FrontEndObjects(   fieldButton=ButtonState.ENABLE,
+                                                                    startButton=ButtonState.ENABLE,
+                                                                    continueButton=ButtonState.ENABLE,
+                                                                    stopButton=ButtonState.NOT_HERE,
+                                                                    wheelButton=ButtonState.DISABLE,
+                                                                    removeFieldButton=ButtonState.ENABLE,
+                                                                    joystick=True,
+                                                                    slider=0)
 
     def on_event(self, event):
         """
@@ -34,7 +34,7 @@ class State(object):
         pass 
 
     def getStatusOfControls(self):
-        return self.statusOfUIObject
+        return self.statusOfUIObject.to_json()
     
     def getField(self):
         return self.field
