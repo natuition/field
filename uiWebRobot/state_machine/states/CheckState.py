@@ -6,10 +6,10 @@ import threading
 import signal
 import re
 
-from state_machine.states import State
+from state_machine import State
 from state_machine.states import ErrorState
 from state_machine.states import WaitWorkingState
-from state_machine.states import Events
+from state_machine import Events
 from state_machine.utilsFunction import *
 from config import config
 

@@ -3,10 +3,10 @@ sys.path.append('../')
 
 from flask_socketio import SocketIO
 
-from state_machine.states import State
+from state_machine import State
 from state_machine.states import WorkingState
 from state_machine.states import ErrorState
-from state_machine.states import Events
+from state_machine import Events
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
 from state_machine.utilsFunction import *
 from config import config

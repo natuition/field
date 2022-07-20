@@ -4,7 +4,7 @@ sys.path.append('../')
 from flask_socketio import SocketIO
 
 import utility
-from state_machine.states import State
+from state_machine import State
 from config import config
 
 #This state corresponds when the robot has an error.
