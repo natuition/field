@@ -1713,14 +1713,14 @@ class GPSUbloxAdapter:
         self._reader_thread.start()
 
         with utility.Logger("log_gps_adapter.txt", append_file=True) as log_gps_adapter:
-            log_gps_adapter.write_and_flush(f"Object GPSUbloxAdapter '{id(self)}' open.")
+            log_gps_adapter.write_and_flush(f"Object GPSUbloxAdapter '{id(self)}' open.\n")
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         with utility.Logger("log_gps_adapter.txt", append_file=True) as log_gps_adapter:
-            log_gps_adapter.write_and_flush(f"Object GPSUbloxAdapter '{id(self)}' close.")
+            log_gps_adapter.write_and_flush(f"Object GPSUbloxAdapter '{id(self)}' close.\n")
         self._keep_thread_alive = False
         self._serial.close()
 
