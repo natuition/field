@@ -6,8 +6,8 @@ from flask_socketio import SocketIO
 import utility
 from state_machine.states import CheckState
 from state_machine.states import ErrorState
-from state_machine.states import Events
-from state_machine.states import State
+from state_machine import Events
+from state_machine import State
 
 
 class StateMachine:

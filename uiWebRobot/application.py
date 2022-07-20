@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../')
 
-from state_machine.states import Events
+from state_machine import Events
 from state_machine import StateMachine
 from state_machine.states import WaitWorkingState
 
