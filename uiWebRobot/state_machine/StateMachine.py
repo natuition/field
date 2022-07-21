@@ -57,6 +57,9 @@ class StateMachine:
     def getField(self):
         return self.currentState.getField()
 
+    def close(self):
+        pass
+
 class ErrorLogger:
 
     def __init__(self, logger: utility.Logger):

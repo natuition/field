@@ -13,7 +13,7 @@ from state_machine import Events
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from state_machine.utilsFunction import *
 from config import config
-from application import get_other_field, load_field_list
+from application import UIWebRobot
 
 # This state corresponds when the robot is generating the work area.
 class CreateFieldState(State.State):
@@ -22,13 +22,11 @@ class CreateFieldState(State.State):
                  socketio: SocketIO,
                  logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
-                 vesc_engine: adapters.VescAdapterV3,
-                 gps: adapters.GPSUbloxAdapter):
+                 vesc_engine: adapters.VescAdapterV3):
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
-        self.gps = gps
 
         self.socketio.emit('field', {"status": "pushed"}, namespace='/button', broadcast=True)
         try:
@@ -37,12 +35,6 @@ class CreateFieldState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
                 self.smoothie = initSmoothie(self.logger)
-
-            if self.gps is None:
-                msg = f"[{self.__class__.__name__}] -> initGPS"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-                self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
 
             msg = f"[{self.__class__.__name__}] -> initGPSComputing"
             self.logger.write_and_flush(msg + "\n")
@@ -62,7 +54,7 @@ class CreateFieldState(State.State):
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
 
-        self.fieldCreator = FieldCreator(self.logger, self.gps, self.nav, self.vesc_engine, self.smoothie,
+        self.fieldCreator = FieldCreator(self.logger, self.nav, self.vesc_engine, self.smoothie,
                                          self.socketio)
 
         self.field = None
@@ -77,7 +69,7 @@ class CreateFieldState(State.State):
 
         self.__send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(
-        lambda: self.__send_last_pos_thread_alive, self.gps, self.socketio), daemon=True)
+        lambda: self.__send_last_pos_thread_alive, self.socketio), daemon=True)
 
     def on_event(self, event):
         if event == Events.Events.STOP:
@@ -93,7 +85,7 @@ class CreateFieldState(State.State):
             except TimeoutError:
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
+                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
 
             self.field = self.fieldCreator.calculateField()
             if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
@@ -105,7 +97,6 @@ class CreateFieldState(State.State):
             self.__send_last_pos_thread_alive = True
             self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf,
                                                           args=(lambda: self.__send_last_pos_thread_alive,
-                                                                self.gps,
                                                                 self.socketio),
                                                           daemon=True)
             self._send_last_pos_thread.start()
@@ -118,7 +109,7 @@ class CreateFieldState(State.State):
             return self
         elif event == Events.Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
-            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine, self.gps)
+            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine)
         elif event == Events.Events.WHEEL:
             self.smoothie.freewheels()
             return self
@@ -130,9 +121,6 @@ class CreateFieldState(State.State):
                 if self.vesc_engine is not None:
                     self.vesc_engine.close()
                     self.vesc_engine = None
-                if self.gps is not None:
-                    self.gps.disconnect()
-                    self.gps = None
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
@@ -168,7 +156,7 @@ class CreateFieldState(State.State):
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
                 self.__send_last_pos_thread_alive = False
                 self._send_last_pos_thread.join()
-                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine, self.gps)
+                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
 
         elif data["type"] == "modifyZone":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
@@ -189,7 +177,7 @@ class CreateFieldState(State.State):
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
 
-            fields_list = load_field_list("../fields")
+            fields_list = UIWebRobot.load_field_list("../fields")
 
             if len(fields_list) > 0:
                 os.system("ln -sf 'fields/" + quote(fields_list[0], safe="", encoding='utf-8') + ".txt' ../field.txt")
@@ -214,7 +202,6 @@ class FieldCreator:
 
     def __init__(self,
                  logger: utility.Logger,
-                 gps: adapters.GPSUbloxAdapter,
                  nav: navigation.GPSComputing,
                  vesc_engine: adapters.VescAdapterV3,
                  smoothie: adapters.SmoothieAdapter,
@@ -226,7 +213,6 @@ class FieldCreator:
         self.length_field = 0
         self.field = []
         self.logger = logger
-        self.gps = gps
         self.nav = nav
         self.vesc_emergency = vesc_engine
         self.smoothie = smoothie
@@ -236,7 +222,8 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Getting point A..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        self.A = utility.average_point(self.gps, None, self.nav, self.logger)
+        with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+            self.A = utility.average_point(gps, None, self.nav, self.logger)
 
         self.socketio.emit('newPos', json.dumps([self.A[1], self.A[0]]), namespace='/map')
 
@@ -259,7 +246,8 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Getting point B..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        self.B = utility.average_point(self.gps, None, self.nav, self.logger)
+        with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+            self.B = utility.average_point(gps, None, self.nav, self.logger)
 
         self.socketio.emit('newPos', json.dumps([self.B[1], self.B[0]]), namespace='/map')
 
@@ -280,7 +268,7 @@ class FieldCreator:
         else:
             self.field = [self.B, self.A]
 
-        other_fields = get_other_field()
+        other_fields = UIWebRobot.get_other_field()
         current_field_name = subprocess.run(["readlink", "../field.txt"], stdout=subprocess.PIPE).stdout.decode(
             'utf-8').replace("fields/", "")[:-5]
 

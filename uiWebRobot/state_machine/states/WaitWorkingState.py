@@ -15,7 +15,7 @@ from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditBut
 from state_machine.utilsFunction import *
 from config import config
 import adapters
-from application import load_field_list
+from application import UIWebRobot
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
 class WaitWorkingState(State.State):
@@ -25,21 +25,13 @@ class WaitWorkingState(State.State):
                  logger: utility.Logger,
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
-                 vesc_engine: adapters.VescAdapterV3 = None,
-                 gps: adapters.GPSUbloxAdapter = None):
+                 vesc_engine: adapters.VescAdapterV3 = None):
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
-        self.gps = gps
 
         try:
-            if self.gps is None:
-                msg = f"[{self.__class__.__name__}] -> initGPS"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-                self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
-
             if self.vesc_engine is None:
                 msg = f"[{self.__class__.__name__}] -> initVesc"
                 self.logger.write_and_flush(msg + "\n")
@@ -90,7 +82,6 @@ class WaitWorkingState(State.State):
         self.__send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf,
                                                       args=(lambda: self.__send_last_pos_thread_alive,
-                                                            self.gps,
                                                             self.socketio),
                                                       daemon=True)
         self._send_last_pos_thread.start()
@@ -114,7 +105,7 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
-            return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine, self.gps)
+            return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
             self.__send_last_pos_thread_alive = False
             self.__voltage_thread_alive = False
@@ -132,9 +123,6 @@ class WaitWorkingState(State.State):
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            if self.gps is not None:
-                self.gps.disconnect()
-                self.gps = None
             return StartingState.StartingState(self.socketio, self.logger, (event == Events.Events.START_AUDIT))
         elif event in [Events.Events.CONTINUE_MAIN, Events.Events.CONTINUE_AUDIT]:
             self.__send_last_pos_thread_alive = False
@@ -153,9 +141,6 @@ class WaitWorkingState(State.State):
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            if self.gps is not None:
-                self.gps.disconnect()
-                self.gps = None
             return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
         elif event == Events.Events.WHEEL:
             self.smoothie.freewheels()
@@ -176,9 +161,6 @@ class WaitWorkingState(State.State):
                 if self.vesc_engine is not None:
                     self.vesc_engine.close()
                     self.vesc_engine = None
-                if self.gps is not None:
-                    self.gps.disconnect()
-                    self.gps = None
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
@@ -212,7 +194,7 @@ class WaitWorkingState(State.State):
         elif data["type"] == 'getField':
 
             coords, other_fields, current_field_name = updateFields(data["field_name"])
-            fields_list = load_field_list("../fields")
+            fields_list = UIWebRobot.load_field_list("../fields")
             self.socketio.emit('newField', json.dumps(
                 {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
                  "fields_list": fields_list}), namespace='/map')
@@ -220,7 +202,7 @@ class WaitWorkingState(State.State):
         elif data["type"] == 'removeField':
 
             os.remove("../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
-            fields_list = load_field_list("../fields")
+            fields_list = UIWebRobot.load_field_list("../fields")
 
             if len(fields_list) > 0:
                 os.system("ln -sf 'fields/" + quote(fields_list[0], safe="", encoding='utf-8') + ".txt' ../field.txt")
