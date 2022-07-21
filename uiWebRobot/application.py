@@ -316,9 +316,6 @@ def main():
     uiWebRobot = UIWebRobot()
     try:
         uiWebRobot.run(host="0.0.0.0",port="80",debug=True, use_reloader=False)
-    except KeyboardInterrupt:
-        msg = "Stopped by a keyboard interrupt (Ctrl + C)\n" + traceback.format_exc()
-        print(msg)
     finally:
         print("Closing app...")
     
