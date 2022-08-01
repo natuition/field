@@ -246,6 +246,7 @@ class SettingGenerator():
 
         self.__btn_cancel = Button("cancel", "Cancel")
         self.__btn_cancel.set_color(Button.RED)
+        self.__btn_cancel.set_on_click_fct_name("go_to_page('/')")
 
         self.__btn_group_save_cancel = ButtonGroup("btn_save_cancel", "Save Cancel button", [self.__btn_save,self.__btn_cancel])
 

@@ -86,7 +86,7 @@ body {
     font-weight: 500;
     font-size: 24px;
     margin-top: 30px;
-    padding: 0 0 30px 20px;
+    padding: 0 0 10px 20px;
 }
 
 .header__subtitle, .header__subtitle--checklist {
@@ -201,6 +201,7 @@ body {
 .checklist__select--role svg {
     position: absolute;
     right: 15px;
+    bottom: 15px;
 }
 
 .checklist__select--role select {

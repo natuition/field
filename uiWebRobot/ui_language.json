@@ -343,5 +343,10 @@
 		"fr": "L'application web ne peut pas être utilisée en paysage !",
 		"en": "The web application cannot be used in landscape !",
 		"nl": "De webapplicatie kan niet in landscape gebruikt worden!"
+	},
+	"Settings": {
+		"fr": "Paramètres",
+		"en": "Settings",
+		"nl": "Instellingen"
 	}
 }

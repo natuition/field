@@ -9,7 +9,7 @@ import importlib.util
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
-from flask import Flask, render_template, make_response, send_from_directory, request
+from flask import Flask, render_template, make_response, send_from_directory, request, redirect
 
 import logging
 import json
@@ -32,8 +32,8 @@ class UIWebRobot:
         self.__init_flask_route() #ROUTE FLASK
         self.__socketio = SocketIO(self.__app, async_mode=None, logger=False, engineio_logger=False)
         self.__init_socketio() #SOCKET IO
-        self.init_params()
         self.__reload_config()
+        self.init_params()
 
     def __init_socketio(self):
         self.__socketio.on_event('data', self.on_socket_broadcast, namespace='/broadcast')
@@ -242,19 +242,22 @@ class UIWebRobot:
 
         return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)    
 
-    def setting(): 
+    def setting(self): 
         ui_language = self.__config.UI_LANGUAGE
-        if ui_language not in ui_languages["Supported Language"]:
+        if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
         sn = self.__config.ROBOT_SN
     
-        if str(stateMachine.currentState) != "WaitWorkingState":
+        if str(self.__stateMachine.currentState) != "WaitWorkingState":
             return redirect('/')
 
-        IA_list = load_ai_list("../yolo")
-    
-        setting_page_manager = SettingPageManager(socketio, ui_languages, self.__config, self.__reload_config)
-        return render_template('UISetting.html',sn=sn, ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())    
+        IA_list = UIWebRobot.load_ai_list("../yolo")
+        setting_page_manager = SettingPageManager(self.__socketio, self.__ui_languages, self.__config, self.__reload_config)
+        try:
+            return render_template('UISetting.html',sn=sn, ui_languages=self.__ui_languages , ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())    
+        except Exception as e:
+            print(f"Error : {e}")
+            return redirect('/')
 
     def maps(self):
         myCoords=[0,0]

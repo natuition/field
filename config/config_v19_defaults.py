@@ -181,8 +181,8 @@ FAST_TO_SLOW_TIME = 5
 VESC_STOPPER_CHECK_FREQ = 0.001
 
 INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
-FREQUENCY_INCREMENTAL_RPM = 0.1  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
-STEP_INCREMENTAL_RPM = 1000 # RPM step max by tick defined by RPM_FREQUENCY
+FREQUENCY_INCREMENTAL_RPM = 0.05  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
+STEP_INCREMENTAL_RPM = 500 # RPM step max by tick defined by RPM_FREQUENCY
 
 # engine 1 (master vesc)
 # enables propulsion vesc initialization and usage
