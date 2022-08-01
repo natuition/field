@@ -208,5 +208,10 @@
 		"fr": "Violette rejoint son point de départ sans extractions", 
 		"en": "Violette reaches her starting point without extractions",
 		"nl": "Violette bereikt haar startpunt zonder extracties"
+	},
+	"no_landscape": {
+		"fr": "L'application web ne peut pas être utilisée en paysage !",
+		"en": "The web application cannot be used in landscape !",
+		"nl": "De webapplicatie kan niet in landscape gebruikt worden!"
 	}
 }

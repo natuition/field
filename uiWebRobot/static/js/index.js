@@ -39,9 +39,6 @@ if(choose_field_selector != null){
     }
 }
 
-var header_map = document.querySelector('.ruler');
-document.getElementById('map__header').style.width = $(header_map).width() + "px";
-
 var audit = false;
 
 var reloader = 0;
@@ -325,7 +322,6 @@ function verif_iframe_start(){
                         ifrm.width = "414px";
                         ifrm.height = "250px";
                         ifrm.style = "margin: 0 auto;display:block; border: none; border-radius: 20px; max-width: 374px; min-height: 210px; width: 100%; height: 100%;";
-                        ifrm.style.width = $(header_map).width() + "px";
                         $( "#conteneur_stats" ).append(ifrm);
                     }
                 }
