@@ -338,5 +338,10 @@
 		"fr": "Annuler", 
 		"en": "Cancel",
 		"nl": "Annuleren"
+   },
+	"no_landscape": {
+		"fr": "L'application web ne peut pas être utilisée en paysage !",
+		"en": "The web application cannot be used in landscape !",
+		"nl": "De webapplicatie kan niet in landscape gebruikt worden!"
 	}
 }

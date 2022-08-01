@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.4"
+CONFIG_VERSION = "0.19.5"
 
 
 # ======================================================================================================================
@@ -179,6 +179,11 @@ VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when m
 VESC_CHECK_FREQ = 0.001  # freq of checking need to stop
 FAST_TO_SLOW_TIME = 5
 VESC_STOPPER_CHECK_FREQ = 0.001
+
+INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
+FREQUENCY_INCREMENTAL_RPM = 0.1  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
+STEP_INCREMENTAL_RPM = 1000 # RPM step max by tick defined by RPM_FREQUENCY
+
 # engine 1 (master vesc)
 # enables propulsion vesc initialization and usage
 VESC_ALLOW_PROPULSION = True # propulsion GPIO stopper PIN number, set to None to disable stopper usage or if no stopper is used for this vesc

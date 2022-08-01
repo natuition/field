@@ -1,6 +1,8 @@
 import connectors
 import multiprocessing
 import time
+
+import utility
 from config import config
 import cv2 as cv
 import math
@@ -1424,6 +1426,18 @@ class VescAdapterV3:
         self._movement_ctrl_th = threading.Thread(target=self._movement_ctrl_th_tf, daemon=True)
         self._movement_ctrl_th.start()
 
+        #Incremental rpm control
+        self.__current_rpm = dict()
+        self.__future_rpm = dict()
+
+        for engine_key in config.INCREMENTAL_ENGINE_KEY:
+            self.__current_rpm[engine_key] = 0
+            self.__future_rpm[engine_key] = 0
+
+        self.__keep_thread_rpm_alive = True
+        self._rpm_ctrl_th = threading.Thread(target=self.__rpm_ctrl_th_tf, daemon=True)
+        self._rpm_ctrl_th.start()
+
         # DO ALL ALLOWED CALIBRATIONS HERE
         # propulsion vasc calibration
         if config.VESC_PROPULSION_CALIBRATE_AT_INIT:
@@ -1516,7 +1530,8 @@ class VescAdapterV3:
                 # check each active engine stop timer
                 for engine_key in self.__can_ids:
                     if self.__is_moving[engine_key] and time.time() - self.__start_time[engine_key] > self.__time_to_move[engine_key]:
-                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                        self.__write_rpm_vesc(engine_key, 0)
+                        #self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
                         self.__last_stop_time[engine_key] = time.time()
                         self.__is_moving[engine_key] = False
                 # send alive to each active
@@ -1530,16 +1545,46 @@ class VescAdapterV3:
         except serial.SerialException as ex:
             print(ex)
 
+    def __write_rpm_vesc(self, engine_key, rpm):
+        if engine_key in self.__current_rpm.keys():
+            self.__apply_rpm_slowly(engine_key, rpm)
+        else:
+            self.__ser.write(pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])))
+
+    def __apply_rpm_slowly(self, engine_key, rpm):
+        self.__future_rpm[engine_key] = rpm
+
+    def __rpm_ctrl_th_tf(self):
+        """Target function of rpm control thread (only inner usage)."""
+        try:
+            while self.__keep_thread_rpm_alive:
+                for engine_key, current_rpm in self.__current_rpm.items():
+                    future_rpm = self.__future_rpm[engine_key]
+                    if future_rpm != current_rpm:
+                        if abs(future_rpm-current_rpm) > config.STEP_INCREMENTAL_RPM:
+                            new_rpm = config.STEP_INCREMENTAL_RPM
+                            if future_rpm-current_rpm < 0:
+                                new_rpm = -new_rpm
+                        else:
+                            new_rpm = future_rpm-current_rpm
+                        self.__current_rpm[engine_key] += new_rpm
+                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__current_rpm[engine_key], can_id=self.__can_ids[engine_key])))
+                time.sleep(config.FREQUENCY_INCREMENTAL_RPM)
+        except serial.SerialException as ex:
+            print(ex)
+
     def start_moving(self, engine_key):
         self.__start_time[engine_key] = time.time()
-        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__rpm[engine_key], can_id=self.__can_ids[engine_key])))
+        #self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__rpm[engine_key], can_id=self.__can_ids[engine_key])))
+        self.__write_rpm_vesc(engine_key, self.__rpm[engine_key])
         self.__is_moving[engine_key] = True
 
     def stop_moving(self, engine_key):
         if self.__is_moving[engine_key]:
             self.__last_stop_time[engine_key] = time.time()
         self.__is_moving[engine_key] = False
-        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+        #self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+        self.__write_rpm_vesc(engine_key, 0)
 
     def wait_for_stop(self, engine_key, timeout=None):
         """Blocks caller thread until specified engine is end his work or timeout time is out (if timeout was set).
@@ -1586,7 +1631,8 @@ class VescAdapterV3:
 
     def apply_rpm(self, rpm, engine_key):
         self.__rpm[engine_key] = rpm
-        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__rpm[engine_key], can_id=self.__can_ids[engine_key])))
+        self.__write_rpm_vesc(engine_key, self.__rpm[engine_key])
+        #self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__rpm[engine_key], can_id=self.__can_ids[engine_key])))
 
     def set_rpm(self, rpm, engine_key):
         self.__rpm[engine_key] = rpm
@@ -1666,14 +1712,18 @@ class GPSUbloxAdapter:
         self._reader_thread = threading.Thread(target=self._reader_thread_tf, daemon=True)
         self._reader_thread.start()
 
+        with utility.Logger("/home/violette/field/uiWebRobot/log_gps_adapter.txt", append_file=True) as log_gps_adapter:
+            log_gps_adapter.write_and_flush(f"Object {self.__class__.__name__} '{id(self)}' create.\n")
+
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._keep_thread_alive = False
-        self._serial.close()
+        self.disconnect()
 
     def disconnect(self):
+        with utility.Logger("/home/violette/field/uiWebRobot/log_gps_adapter.txt", append_file=True) as log_gps_adapter:
+            log_gps_adapter.write_and_flush(f"Object {self.__class__.__name__} '{id(self)}' disconnect.\n")
         self._keep_thread_alive = False
         self._serial.close()
 

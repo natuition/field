@@ -138,3 +138,5 @@ manual_photos_maker/
 test_max_detect/
 deployement/configFinalSN*
 install_serv/vpn
+fields/*.json
+fields/test_generate_field/*
