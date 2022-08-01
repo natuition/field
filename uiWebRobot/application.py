@@ -4,7 +4,7 @@ import importlib.util
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
-from flask import Flask, render_template,make_response,send_from_directory, request
+from flask import Flask, render_template,make_response,send_from_directory, request,  redirect
 import os
 import logging
 import json
@@ -47,7 +47,7 @@ def init():
     thread_notification = Thread(target=catch_send_notification, args=(socketio,))
     thread_notification.setDaemon(True)
     thread_notification.start()
-    # stateMachine = stateMachine.StateMachine(socketio)
+    stateMachine = stateMachine.StateMachine(socketio)
 
 def load_coordinates(file_path):
     positions_list = []
@@ -194,11 +194,9 @@ def index():
     if ui_language not in ui_languages["Supported Language"]:
         ui_language = "en"
     sn = config.ROBOT_SN
-    sn = "SNXXX"
     
     IA_list = load_ai_list("../yolo")
 
-    """
     Field_list = load_field_list("../fields")
 
     if not Field_list:
@@ -217,9 +215,22 @@ def index():
 
     statusOfUIObject = stateMachine.getStatusOfControls()
     return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=config.SLIDER_CREATE_FIELD_MIN, slider_max=config.SLIDER_CREATE_FIELD_MAX, slider_step=config.SLIDER_CREATE_FIELD_STEP)    
-    """
+    
+@app.route('/setting')
+def setting(): 
+    ui_language = config.UI_LANGUAGE
+    if ui_language not in ui_languages["Supported Language"]:
+        ui_language = "en"
+    sn = config.ROBOT_SN
+    
+    if str(stateMachine.currentState) != "WaitWorkingState":
+        return redirect('/')
+
+    IA_list = load_ai_list("../yolo")
+    
     setting_page_manager = SettingPageManager(socketio, ui_languages, config, reload_config)
     return render_template('UISetting.html',sn=sn, ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())    
+
 
 @app.route('/map')
 def maps():

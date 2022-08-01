@@ -210,133 +210,133 @@
 		"nl": "Violette bereikt haar startpunt zonder extracties"
 	},
 	"Navigation:": {
-		"fr": "", 
+		"fr": "Navigation :", 
 		"en": "Navigation:",
-		"nl": ""
+		"nl": "Navigatie:"
 	},
 	"Zig zag": {
-		"fr": "", 
+		"fr": "Zig zag", 
 		"en": "Zig zag",
-		"nl": ""
+		"nl": "Zig zag"
 	},
 	"Spiral": {
-		"fr": "", 
+		"fr": "Spirale", 
 		"en": "Spiral",
-		"nl": ""
+		"nl": "Spiraal"
 	},
-	"Sides interval:": {
-		"fr": "", 
-		"en": "Sides interval:",
-		"nl": ""
+	"Sides interval": {
+		"fr": "Intervalle", 
+		"en": "Sides interval",
+		"nl": "Zijden interval"
 	},
 	"Choice of path:": {
-		"fr": "", 
+		"fr": "Choix du chemin :", 
 		"en": "Choice of path:",
-		"nl": ""
+		"nl": "Keuze pad:"
 	},
 	"Stop if bad GPS": {
-		"fr": "", 
+		"fr": "Arrêt si mauvais GPS", 
 		"en": "Stop if bad GPS",
-		"nl": ""
+		"nl": "Stop bij slechte GPS"
 	},
 	"Detection:": {
-		"fr": "", 
+		"fr": "Détection :", 
 		"en": "Detection:",
-		"nl": ""
+		"nl": "Detectie:"
 	},
 	"Periphery mod:": {
-		"fr": "", 
+		"fr": "Module périphérique :", 
 		"en": "Periphery mod:",
-		"nl": ""
+		"nl": "Periferie mod:"
 	},
 	"Precise mod:": {
-		"fr": "", 
-		"en": "",
-		"nl": ""
+		"fr": "Mode précis :", 
+		"en": "Precise mod:",
+		"nl": "Nauwkeurige modus:"
 	},
 	"Please choose artificial intelligence": {
-		"fr": "", 
+		"fr": "Veuillez choisir l'intelligence artificielle", 
 		"en": "Please choose artificial intelligence",
-		"nl": ""
+		"nl": "Kies kunstmatige intelligentie"
 	},
 	"Threshold": {
-		"fr": "", 
+		"fr": "Seuil", 
 		"en": "Threshold",
-		"nl": ""
+		"nl": "Drempel"
 	},
 	"Mono": {
-		"fr": "", 
+		"fr": "Mono", 
 		"en": "Mono",
-		"nl": ""
+		"nl": "Mono"
 	},
 	"Stereo": {
-		"fr": "", 
+		"fr": "Stéréo", 
 		"en": "Stereo",
-		"nl": ""
+		"nl": "Stereo"
 	},
 	"Choice of picture shoot:": {
-		"fr": "", 
+		"fr": "Choix de la technique de prise de photo :", 
 		"en": "Choice of picture shoot:",
-		"nl": ""
+		"nl": "Keuze van fotoshoot:"
 	},
 	"Weeding technique parameter:": {
-		"fr": "", 
+		"fr": "Paramètre technique de désherbage :", 
 		"en": "Weeding technique parameter:",
-		"nl": ""
+		"nl": "Het wieden van techniekparameter:"
 	},
 	"Drilling": {
-		"fr": "", 
+		"fr": "Extraction", 
 		"en": "Drilling",
-		"nl": ""
+		"nl": "Boren"
 	},
 	"Milling": {
-		"fr": "", 
+		"fr": "Fraisage", 
 		"en": "Milling",
-		"nl": ""
+		"nl": "Frezen"
 	},
 	"Choice of weeding technique:": {
-		"fr": "", 
+		"fr": "Choix de la technique de désherbage :", 
 		"en": "Choice of weeding technique:",
-		"nl": ""
+		"nl": "Keuze onkruidtechniek:"
 	},
 	"Cycle": {
-		"fr": "", 
+		"fr": "Cycle", 
 		"en": "Cycle",
-		"nl": ""
+		"nl": "Fiets"
 	},
 	"Other": {
-		"fr": "", 
+		"fr": "Autre", 
 		"en": "Other",
-		"nl": ""
+		"nl": "Ander"
 	},
 	"Language:": {
-		"fr": "", 
+		"fr": "Langue", 
 		"en": "Language:",
-		"nl": ""
+		"nl": "Taal"
 	},
 	"Please choose language": {
-		"fr": "", 
+		"fr": "Veuillez choisir la langue", 
 		"en": "Please choose language",
-		"nl": ""
+		"nl": "Kies a.u.b. taal"
 	},
 	"Restart application": {
-		"fr": "", 
+		"fr": "Redémarrer l'application", 
 		"en": "Restart application",
-		"nl": ""
+		"nl": "App opnieuw starten"
 	},
 	"Restart robot": {
-		"fr": "", 
+		"fr": "Redémarrer le robot", 
 		"en": "Restart robot",
-		"nl": ""
+		"nl": "Robot opnieuw opstarten"
 	},
 	"Save": {
-		"fr": "", 
+		"fr": "Sauvegarder", 
 		"en": "Save",
-		"nl": ""
+		"nl": "Opslaan"
 	},
 	"Cancel": {
-		"fr": "", 
+		"fr": "Annuler", 
 		"en": "Cancel",
-		"nl": ""
+		"nl": "Annuleren"
 	}
 }

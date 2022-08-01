@@ -48,6 +48,7 @@ socketSaveSetting.on('save_finish', function(dataServ) {
         $('#Button-reboot_app').removeAttr('disabled');
         $('#Button-reboot_robot').removeClass('disabled');
         $('#Button-reboot_robot').removeAttr('disabled');
+        go_to_page("/");
     }, 2000);
 });
 
