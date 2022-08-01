@@ -1,6 +1,6 @@
 import sys
 sys.path.append('../')
-from config import config
+import importlib.util
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
@@ -28,6 +28,14 @@ log = logging.getLogger('werkzeug')
 log.disabled = True
 Payload.max_decode_packets = 500
 socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
+
+def reload_config():
+    print("Reload config in application.py...")
+    spec = importlib.util.spec_from_file_location("config.name", "../config/config.py")
+    global config
+    config = importlib.util.module_from_spec(spec)
+    sys.modules["config.name"] = config
+    spec.loader.exec_module(config)
 
 def init():
     global ui_languages
@@ -210,7 +218,7 @@ def index():
     statusOfUIObject = stateMachine.getStatusOfControls()
     return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=config.SLIDER_CREATE_FIELD_MIN, slider_max=config.SLIDER_CREATE_FIELD_MAX, slider_step=config.SLIDER_CREATE_FIELD_STEP)    
     """
-    setting_page_manager = SettingPageManager(socketio, ui_languages, ui_language)
+    setting_page_manager = SettingPageManager(socketio, ui_languages, config, reload_config)
     return render_template('UISetting.html',sn=sn, ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())    
 
 @app.route('/map')
@@ -302,5 +310,6 @@ def restart_ui():
     os.system('sudo systemctl restart UI')
 
 if __name__ == "__main__":
+    reload_config()
     init()
     app.run(host="0.0.0.0",port="80",debug=False, use_reloader=False)

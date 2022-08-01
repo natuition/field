@@ -1,8 +1,6 @@
 from unicodedata import category
 from typing import Callable
 from flask_socketio import SocketIO
-import importlib.util
-import sys
 import fileinput
 import pwd
 import grp
@@ -273,12 +271,12 @@ class SettingGenerator():
 
 class SettingPageManager:
 
-    def __init__(self, socket_io: SocketIO, ui_languages: dict, ui_language: str):
+    def __init__(self, socket_io: SocketIO, ui_languages: dict, config, reload_config: Callable):
         self.__socket_io: SocketIO = socket_io
         self.__ui_languages = ui_languages
-        self.__ui_language = ui_language
         self.__socket_io.on_event('data', self.__save_event, namespace='/save_setting')
-        self.__reload_config()
+        self.__reload_config = reload_config
+        self.__config = config
         self.__setting_generator = SettingGenerator()
         self.__change_config_value = dict()
 
@@ -310,12 +308,6 @@ class SettingPageManager:
 
         self.__socket_io.emit('save_finish', {}, namespace='/save_setting', broadcast=True)
 
-    def __reload_config(self):
-        spec = importlib.util.spec_from_file_location("config.name", "../config/config.py")
-        self.__config = importlib.util.module_from_spec(spec)
-        sys.modules["config.name"] = self.__config
-        spec.loader.exec_module(self.__config)
-
     def __changeConfigDict(self, current_dict: dict, path: str, key, value):
         current_dict[key] = value
         self.__changeConfigValue(path, current_dict)
@@ -330,11 +322,12 @@ class SettingPageManager:
                     find = False
                     for path, value_is_str in  self.__change_config_value.items():
                         if path in line:
-                            if value_is_str[1]: 
-                                print(path + " = \"" + str(value_is_str[0]), end='"\n')
-                            else : 
-                                print(path + " = " + str(value_is_str[0]), end='\n')
-                            find = True
+                            if not line.split(path)[0]:
+                                if value_is_str[1]: 
+                                    print(path + " = \"" + str(value_is_str[0]), end='"\n')
+                                else : 
+                                    print(path + " = " + str(value_is_str[0]), end='\n')
+                                find = True
                     if not find:
                         print(line, end='')
             uid = pwd.getpwnam("violette").pw_uid
@@ -427,7 +420,7 @@ class SettingPageManager:
         category_other = Category("other", "Other")
 
         selector_language = Selector("language", "Language:", lambda new_value : self.__changeConfigValue("UI_LANGUAGE", new_value, is_str=True))
-        selector_language.set_content_list(self.__ui_languages["Supported Language"],self.__ui_language)
+        selector_language.set_content_list(self.__ui_languages["Supported Language"],self.__config.UI_LANGUAGE)
         selector_language.set_choose_description("Please choose language")
 
         btn_restart_app = Button("reboot_app", "Restart application")
@@ -446,4 +439,4 @@ class SettingPageManager:
         
         self.__setting_generator.add_items([category_nav,category_detection,category_weed_removal,category_other])
 
-        return self.__setting_generator.generate_html(self.__ui_languages, self.__ui_language)
+        return self.__setting_generator.generate_html(self.__ui_languages, self.__config.UI_LANGUAGE)
