@@ -5,11 +5,12 @@ from state_machine.Events import Events
 from uiWebRobot.state_machine.states import WaitWorkingState
 from state_machine.StateMachine import StateMachine
 
-from config import config
+import importlib.util
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
 from flask import Flask, render_template, make_response, send_from_directory, request
+
 import logging
 import json
 import subprocess
@@ -19,9 +20,10 @@ from urllib.parse import quote, unquote
 import posix_ipc
 from threading import Thread
 from datetime import datetime
+from uiWebRobot.setting_page import SettingPageManager
 
 __author__ = 'Vincent LAMBERT'
-
+         
 class UIWebRobot:
 
     def __init__(self):
@@ -31,6 +33,7 @@ class UIWebRobot:
         self.__socketio = SocketIO(self.__app, async_mode=None, logger=False, engineio_logger=False)
         self.__init_socketio() #SOCKET IO
         self.init_params()
+        self.__reload_config()
 
     def __init_socketio(self):
         self.__socketio.on_event('data', self.on_socket_broadcast, namespace='/broadcast')
@@ -39,6 +42,7 @@ class UIWebRobot:
 
     def __init_flask_route(self):
         self.__app.add_url_rule("/", view_func=self.index)
+        self.__app.add_url_rule("/setting", view_func=self.setting)
         self.__app.add_url_rule("/map", view_func=self.maps)
         self.__app.add_url_rule("/offline.html", view_func=self.offline)
         self.__app.add_url_rule("/styles.css", view_func=self.style)
@@ -55,6 +59,13 @@ class UIWebRobot:
         self.__log = logging.getLogger('werkzeug')
         self.__log.disabled = True
         Payload.max_decode_packets = 500
+        
+    def __reload_config(self):
+        print("Reload config in application.py...")
+        spec = importlib.util.spec_from_file_location("config.name", "../config/config.py")
+        self.__config = importlib.util.module_from_spec(spec)
+        sys.modules["config.name"] = self.__config
+        spec.loader.exec_module(self.__config)
 
     def init_params(self):
         self.__filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
@@ -124,14 +135,14 @@ class UIWebRobot:
 
     def catch_send_notification(self):
         try:
-            posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_NOTIFICATION)
+            posix_ipc.unlink_message_queue(self.__config.QUEUE_NAME_UI_NOTIFICATION)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except:
             pass
 
-        notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION, posix_ipc.O_CREX)
-        ui_language = config.UI_LANGUAGE
+        notificationQueue = posix_ipc.MessageQueue(self.__config.QUEUE_NAME_UI_NOTIFICATION, posix_ipc.O_CREX)
+        ui_language = self.__config.UI_LANGUAGE
 
         while True:
             try:
@@ -205,10 +216,10 @@ class UIWebRobot:
 
     def index(self):
         #ui_language = "fr"
-        ui_language = config.UI_LANGUAGE
+        ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
-        sn = config.ROBOT_SN
+        sn = self.__config.ROBOT_SN
         #sn = "SNXXX"
         statusOfUIObject = self.__stateMachine.getStatusOfControls()
 
@@ -229,7 +240,21 @@ class UIWebRobot:
             else:
                 return render_template("Error.html",sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500
 
-        return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=config.SLIDER_CREATE_FIELD_MIN, slider_max=config.SLIDER_CREATE_FIELD_MAX, slider_step=config.SLIDER_CREATE_FIELD_STEP)    
+        return render_template('UIRobot.html',sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)    
+
+    def setting(): 
+        ui_language = self.__config.UI_LANGUAGE
+        if ui_language not in ui_languages["Supported Language"]:
+            ui_language = "en"
+        sn = self.__config.ROBOT_SN
+    
+        if str(stateMachine.currentState) != "WaitWorkingState":
+            return redirect('/')
+
+        IA_list = load_ai_list("../yolo")
+    
+        setting_page_manager = SettingPageManager(socketio, ui_languages, self.__config, self.__reload_config)
+        return render_template('UISetting.html',sn=sn, ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())    
 
     def maps(self):
         myCoords=[0,0]
@@ -247,8 +272,8 @@ class UIWebRobot:
                 return render_template('map.html', coords_field=coords_field, myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
 
     def offline(self):
-        sn = config.ROBOT_SN
-        ui_language = config.UI_LANGUAGE
+        sn = self.__config.ROBOT_SN
+        ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
         return render_template('offline.html',sn=sn, ui_languages=self.__ui_languages, ui_language=ui_language)
@@ -303,8 +328,8 @@ class UIWebRobot:
 
         # now you're handling non-HTTP exceptions only
         self.__stateMachine.on_event(Events.ERROR)
-        sn = config.ROBOT_SN
-        ui_language = config.UI_LANGUAGE
+        sn = self.__config.ROBOT_SN
+        ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
         return render_template("Error.html",sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500

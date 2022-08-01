@@ -15,6 +15,7 @@
     <script type="text/javascript" src="/static/{{ now }}/fontawesome/solid.js"></script> 
     <script type="text/javascript" src="/static/{{ now }}/fontawesome/fontawesome.js"></script> 
     <script src="/static/{{ now }}/js/voltage_indicator.js"></script>
+    <script src="/static/{{ now }}/js/slider.js"></script>
     <title>Violette</title>
 </head>
 <body>
@@ -63,8 +64,11 @@
                     <span id="rangeCol">{{statusOfUIObject['slider']}}</span>
                 </div>
                 <div class="ruler__assets--line">
-                    <input type="range" min="{{ slider_min }}" max="{{ slider_max }}" value="{{statusOfUIObject['slider']}}" step="{{ slider_step }}" id="r1" oninput="range()"">
+                    <input type="range" min="{{ slider_min }}" max="{{ slider_max }}" value="{{statusOfUIObject['slider']}}" step="{{ slider_step }}" id="r1" oninput="range('r1','rangeCol')"">
                 </div>
+                <script defer>
+                    range("r1", "rangeCol")
+                </script>
             </div>
             <div class="ruler__main--button">
                 {% if statusOfUIObject['fieldButton'] == None %}
@@ -240,7 +244,6 @@
 <script type="text/javascript" src="/static/{{ now }}/js/joystick.js" defer></script>
 <script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script> 
 <script type="text/javascript" src="/static/{{ now }}/js/chartjs-plugin-doughnutlabel.min.js"></script>   
-<script src="/static/{{ now }}/js/slider.js" defer></script>
 <script src="/static/{{ now }}/js/index.js" defer></script>
 <script src="/static/{{ now }}/js/statistics.js" defer></script>
 

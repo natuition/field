@@ -209,6 +209,136 @@
 		"en": "Violette reaches her starting point without extractions",
 		"nl": "Violette bereikt haar startpunt zonder extracties"
 	},
+	"Navigation:": {
+		"fr": "Navigation :", 
+		"en": "Navigation:",
+		"nl": "Navigatie:"
+	},
+	"Zig zag": {
+		"fr": "Zig zag", 
+		"en": "Zig zag",
+		"nl": "Zig zag"
+	},
+	"Spiral": {
+		"fr": "Spirale", 
+		"en": "Spiral",
+		"nl": "Spiraal"
+	},
+	"Sides interval": {
+		"fr": "Intervalle", 
+		"en": "Sides interval",
+		"nl": "Zijden interval"
+	},
+	"Choice of path:": {
+		"fr": "Choix du chemin :", 
+		"en": "Choice of path:",
+		"nl": "Keuze pad:"
+	},
+	"Stop if bad GPS": {
+		"fr": "Arrêt si mauvais GPS", 
+		"en": "Stop if bad GPS",
+		"nl": "Stop bij slechte GPS"
+	},
+	"Detection:": {
+		"fr": "Détection :", 
+		"en": "Detection:",
+		"nl": "Detectie:"
+	},
+	"Periphery mod:": {
+		"fr": "Module périphérique :", 
+		"en": "Periphery mod:",
+		"nl": "Periferie mod:"
+	},
+	"Precise mod:": {
+		"fr": "Mode précis :", 
+		"en": "Precise mod:",
+		"nl": "Nauwkeurige modus:"
+	},
+	"Please choose artificial intelligence": {
+		"fr": "Veuillez choisir l'intelligence artificielle", 
+		"en": "Please choose artificial intelligence",
+		"nl": "Kies kunstmatige intelligentie"
+	},
+	"Threshold": {
+		"fr": "Seuil", 
+		"en": "Threshold",
+		"nl": "Drempel"
+	},
+	"Mono": {
+		"fr": "Mono", 
+		"en": "Mono",
+		"nl": "Mono"
+	},
+	"Stereo": {
+		"fr": "Stéréo", 
+		"en": "Stereo",
+		"nl": "Stereo"
+	},
+	"Choice of picture shoot:": {
+		"fr": "Choix de la technique de prise de photo :", 
+		"en": "Choice of picture shoot:",
+		"nl": "Keuze van fotoshoot:"
+	},
+	"Weeding technique parameter:": {
+		"fr": "Paramètre technique de désherbage :", 
+		"en": "Weeding technique parameter:",
+		"nl": "Het wieden van techniekparameter:"
+	},
+	"Drilling": {
+		"fr": "Extraction", 
+		"en": "Drilling",
+		"nl": "Boren"
+	},
+	"Milling": {
+		"fr": "Fraisage", 
+		"en": "Milling",
+		"nl": "Frezen"
+	},
+	"Choice of weeding technique:": {
+		"fr": "Choix de la technique de désherbage :", 
+		"en": "Choice of weeding technique:",
+		"nl": "Keuze onkruidtechniek:"
+	},
+	"Cycle": {
+		"fr": "Cycle", 
+		"en": "Cycle",
+		"nl": "Fiets"
+	},
+	"Other": {
+		"fr": "Autre", 
+		"en": "Other",
+		"nl": "Ander"
+	},
+	"Language:": {
+		"fr": "Langue", 
+		"en": "Language:",
+		"nl": "Taal"
+	},
+	"Please choose language": {
+		"fr": "Veuillez choisir la langue", 
+		"en": "Please choose language",
+		"nl": "Kies a.u.b. taal"
+	},
+	"Restart application": {
+		"fr": "Redémarrer l'application", 
+		"en": "Restart application",
+		"nl": "App opnieuw starten"
+	},
+	"Restart robot": {
+		"fr": "Redémarrer le robot", 
+		"en": "Restart robot",
+		"nl": "Robot opnieuw opstarten"
+	},
+	"Save": {
+		"fr": "Sauvegarder", 
+		"en": "Save",
+		"nl": "Opslaan"
+	},
+	"Cancel": {
+		"fr": "Annuler", 
+		"en": "Cancel",
+		"nl": "Annuleren"
+   },
 	"no_landscape": {
 		"fr": "L'application web ne peut pas être utilisée en paysage !",
 		"en": "The web application cannot be used in landscape !",

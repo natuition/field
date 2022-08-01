@@ -465,36 +465,36 @@ MILLING_PLANT_BOX_Y_SIZE_SCALE = 1
 # ======================================================================================================================
 # YOLO PERIPHERY NETWORK SETTINGS
 # ======================================================================================================================
-PERIPHERY_CONFIDENCE_THRESHOLD = 0.1
 PERIPHERY_HIER_THRESHOLD = 0.5
 PERIPHERY_NMS_THRESHOLD = 0.4
 PERIPHERY_INPUT_SIZE = (416, 416)
 PERIPHERY_CONFIG_FILE = "yolo/Y0016_416.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/Y0016.weights"
-PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
 PERIPHERY_DNN_BACKEND = 5
 PERIPHERY_DNN_TARGET = 6
 PERIPHERY_WRAPPER = 1
 PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 
+PERIPHERY_CONFIDENCE_THRESHOLD = 0.1
+PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
 PERIPHERY_MODEL_PATH = "yolo/Y0016.trt"
-
 
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
-PRECISE_CONFIDENCE_THRESHOLD = 0.1
 PRECISE_HIER_THRESHOLD = 0.5
 PRECISE_NMS_THRESHOLD = 0.4
 PRECISE_INPUT_SIZE = (832, 832)
 PRECISE_CONFIG_FILE = "yolo/Y0016_832.cfg"
 PRECISE_WEIGHTS_FILE = "yolo/Y0016.weights"
-PRECISE_CLASSES_FILE = "yolo/Y0016.names"
 PRECISE_DATA_FILE = "yolo/Y0016.data"
 PRECISE_DNN_BACKEND = 5
 PRECISE_DNN_TARGET = 6
 PRECISE_WRAPPER = 1
 
+PRECISE_CONFIDENCE_THRESHOLD = 0.1
+PRECISE_CLASSES_FILE = "yolo/Y0016.names"
+PRECISE_MODEL_PATH = "yolo/Y0016.trt"
 
 # ======================================================================================================================
 # CAMERA SETTINGS
