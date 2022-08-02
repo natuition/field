@@ -34,23 +34,12 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV3,
         time.sleep(1)
 
 
-def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio):
-    with utility.Logger("/home/violette/field/uiWebRobot/log_gps_adapter.txt", append_file=True) as log_gps_adapter:
-            log_gps_adapter.write_and_flush(f"Enter.\n")
+def send_last_pos_thread_tf(self):
     with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
-        while send_last_pos_thread_alive():
-            try:
-                lastPos = gps.get_fresh_position()
-                socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map',
-                            broadcast=True)
-                time.sleep(1)
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
-            except:
-                time.sleep(1)
-    with utility.Logger("/home/violette/field/uiWebRobot/log_gps_adapter.txt", append_file=True) as log_gps_adapter:
-            log_gps_adapter.write_and_flush(f"Stop.\n")
-
+        while self.send_last_pos_thread_alive:
+            lastPos = gps.get_last_position()
+            self.socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            time.sleep(config.MANEUVERS_FREQUENCY)
 
 def sendInputVoltage(socketio, input_voltage):
     try:

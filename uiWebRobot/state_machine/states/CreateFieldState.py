@@ -67,9 +67,8 @@ class CreateFieldState(State.State):
         except:
             self.notificationQueue = None
 
-        self.__send_last_pos_thread_alive = True
-        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(
-        lambda: self.__send_last_pos_thread_alive, self.socketio), daemon=True)
+        #self.__send_last_pos_thread_alive = True
+        #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self,), daemon=True)
 
     def on_event(self, event):
         if event == Events.Events.STOP:
@@ -77,8 +76,8 @@ class CreateFieldState(State.State):
             self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
 
-            self.__send_last_pos_thread_alive = False
-            self._send_last_pos_thread.join()
+            #self.__send_last_pos_thread_alive = False
+            #self._send_last_pos_thread.join()
 
             try:
                 self.fieldCreator.setSecondPoint()
@@ -94,12 +93,9 @@ class CreateFieldState(State.State):
                     self.fieldCreator.manoeuvre()
                 self.manoeuvre = False
 
-            self.__send_last_pos_thread_alive = True
-            self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf,
-                                                          args=(lambda: self.__send_last_pos_thread_alive,
-                                                                self.socketio),
-                                                          daemon=True)
-            self._send_last_pos_thread.start()
+            #self.__send_last_pos_thread_alive = True
+            #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self,), daemon=True)
+            #self._send_last_pos_thread.start()
 
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
             self.statusOfUIObject.fieldButton = ButtonState.VALIDATE
@@ -147,15 +143,15 @@ class CreateFieldState(State.State):
             try:
                 self.fieldCreator.setFirstPoint()
 
-                self._send_last_pos_thread.start()
+                #self._send_last_pos_thread.start()
 
                 self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
                 self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
             except TimeoutError:
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-                self.__send_last_pos_thread_alive = False
-                self._send_last_pos_thread.join()
+                #self.__send_last_pos_thread_alive = False
+                #self._send_last_pos_thread.join()
                 return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
 
         elif data["type"] == "modifyZone":

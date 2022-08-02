@@ -76,6 +76,9 @@ class UIWebRobot:
         thread_notification.start()
         self.__stateMachine = StateMachine(self.__socketio)
 
+    def get_state_machine(self) -> StateMachine:
+        return self.__stateMachine
+
     @staticmethod
     def load_coordinates(file_path):
         positions_list = []
@@ -345,6 +348,8 @@ def main():
     try:
         uiWebRobot.run(host="0.0.0.0",port="80",debug=True, use_reloader=False)
     finally:
+        if str(uiWebRobot.get_state_machine().currentState) == "WaitWorkingState":
+            uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         print("Closing app...")
     
 

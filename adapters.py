@@ -1712,9 +1712,6 @@ class GPSUbloxAdapter:
         self._reader_thread = threading.Thread(target=self._reader_thread_tf, daemon=True)
         self._reader_thread.start()
 
-        with utility.Logger("/home/violette/field/uiWebRobot/log_gps_adapter.txt", append_file=True) as log_gps_adapter:
-            log_gps_adapter.write_and_flush(f"Object {self.__class__.__name__} '{id(self)}' create.\n")
-
     def __enter__(self):
         return self
 
@@ -1722,8 +1719,6 @@ class GPSUbloxAdapter:
         self.disconnect()
 
     def disconnect(self):
-        with utility.Logger("/home/violette/field/uiWebRobot/log_gps_adapter.txt", append_file=True) as log_gps_adapter:
-            log_gps_adapter.write_and_flush(f"Object {self.__class__.__name__} '{id(self)}' disconnect.\n")
         self._keep_thread_alive = False
         self._serial.close()
 

@@ -79,12 +79,9 @@ class WaitWorkingState(State.State):
 
         self.field = None
 
-        self.__send_last_pos_thread_alive = True
-        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf,
-                                                      args=(lambda: self.__send_last_pos_thread_alive,
-                                                            self.socketio),
-                                                      daemon=True)
-        self._send_last_pos_thread.start()
+        #self.send_last_pos_thread_alive = True
+        #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self,), daemon=True)
+        #self._send_last_pos_thread.start()
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
@@ -98,7 +95,8 @@ class WaitWorkingState(State.State):
 
     def on_event(self, event):
         if event == Events.Events.CREATE_FIELD:
-            self.__send_last_pos_thread_alive = False
+            #self.send_last_pos_thread_alive = False
+            #self._send_last_pos_thread.join()
             self.__voltage_thread_alive = False
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
@@ -107,7 +105,8 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
             return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
-            self.__send_last_pos_thread_alive = False
+            #self.send_last_pos_thread_alive = False
+            #self._send_last_pos_thread.join()
             self.__voltage_thread_alive = False
             self.statusOfUIObject.startButton = ButtonState.CHARGING
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
@@ -125,7 +124,8 @@ class WaitWorkingState(State.State):
                 self.vesc_engine = None
             return StartingState.StartingState(self.socketio, self.logger, (event == Events.Events.START_AUDIT))
         elif event in [Events.Events.CONTINUE_MAIN, Events.Events.CONTINUE_AUDIT]:
-            self.__send_last_pos_thread_alive = False
+            #self.send_last_pos_thread_alive = False
+            #self._send_last_pos_thread.join()
             self.__voltage_thread_alive = False
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
@@ -151,8 +151,13 @@ class WaitWorkingState(State.State):
         elif event == Events.Events.AUDIT_DISABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_ENABLE
             return self
+        elif event == Events.Events.CLOSE_APP:
+            #self.send_last_pos_thread_alive = False
+            #self._send_last_pos_thread.join()
+            return self
         else:
-            self.__send_last_pos_thread_alive = False
+            #self.send_last_pos_thread_alive = False
+            #self._send_last_pos_thread.join()
             self.__voltage_thread_alive = False
             try:
                 if self.smoothie is not None:
