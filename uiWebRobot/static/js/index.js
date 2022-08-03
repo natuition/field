@@ -71,7 +71,7 @@ socketButton.on('start', function(dataServ) {
         $('.begin__button--continue').addClass('disabled');
         $('.begin__button--continue').attr('disabled', '');
 
-        $('#canvas').addClass('disable'); 
+        $('#canvas_joystick').addClass('disable'); 
 
         $('.begin__button--start').addClass('active');
         $('.begin__button--start').attr('disabled', '');
@@ -85,7 +85,7 @@ socketButton.on('continue', function(dataServ) {
         $('.begin__button--start').addClass('disabled');
         $('.begin__button--start').attr('disabled', '');
 
-        $('#canvas').addClass('disable'); 
+        $('#canvas_joystick').addClass('disable'); 
 
         $('.begin__button--continue').addClass('active');
         $('.begin__button--continue').attr('disabled', '');
@@ -156,7 +156,7 @@ socketButton.on('stop', function(dataServ) {
             statusActive.classList.remove('display-flex')
             statusActive.classList.add('display-none')
 
-            $('#canvas').removeClass('disable'); 
+            $('#canvas_joystick').removeClass('disable'); 
 
             otherButton = button.name=='Start'?"continue":"start";
 

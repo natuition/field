@@ -138,11 +138,13 @@
     </section>
         
     <div id="joystick"
-        class="status {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-none {% else %} display-flex {% endif %}">
+        class="status {% if statusOfUIObject['joystick'] %} display-flex {% else %} display-none {% endif %}">
         <img style="display:none;" id="source" src="{{ url_for('static', filename='icon.png') }}"">
     </div>
     
-    <section id="conteneur_stats" class="status__active {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-flex {% else %} display-none {% endif %}" style="margin-top: 120px;flex-wrap: wrap;">
+    <section id="conteneur_stats"
+        class="status__active {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-flex {% else %} display-none {% endif %}"
+        style="margin-top: 10px;flex-wrap: wrap;flex-grow: 1;">
         <!--<div class="status__active--title {% if statusOfUIObject['audit'] == True or statusOfUIObject['audit'] == 'use' %} display-block  {% else %} display-none {% endif %}" style="margin-bottom: 20px;width: 100%;text-align:center;display:table;">
             <h2 style="color: #1b7b2a;">{{(ui_languages["Audit on"])[ui_language]}}</h2>
         </div>-->

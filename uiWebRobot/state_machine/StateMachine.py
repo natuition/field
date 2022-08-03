@@ -8,6 +8,7 @@ from state_machine.states import CheckState
 from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine import State
+from state_machine.FrontEndObjects import FrontEndObjects
 
 
 class StateMachine:
@@ -52,7 +53,12 @@ class StateMachine:
         self.currentState = self.currentState.on_socket_data(data)
 
     def getStatusOfControls(self):
-        return self.currentState.getStatusOfControls()
+        frontEndObjects: FrontEndObjects|dict = self.currentState.getStatusOfControls()
+        #print(f"FrontEndObjects = {frontEndObjects}")
+        if isinstance(frontEndObjects,dict):
+            return frontEndObjects
+        else:
+            return frontEndObjects.to_json()
     
     def getField(self):
         return self.currentState.getField()

@@ -55,7 +55,7 @@ class StartingState(State.State):
         return ErrorState.ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
-        return self.statusOfUIObject.to_json()
+        return self.statusOfUIObject
 
     def getField(self):
         return self.field

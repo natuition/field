@@ -40,6 +40,19 @@ class FrontEndObjects:
     def to_json(self):
         return{
             "joystick": self.joystick,
+            "fieldButton": self.fieldButton.value,
+            "startButton": self.startButton.value,
+            "continueButton": self.continueButton.value,
+            "stopButton": self.stopButton.value,
+            "wheelButton": self.wheelButton.value,
+            "audit": self.audit.value,
+            "slider": self.slider,
+            "removeFieldButton": self.removeFieldButton.value
+        }
+
+    def __str__(self):
+        return str({
+            "joystick": self.joystick,
             "fieldButton": self.fieldButton,
             "startButton": self.startButton,
             "continueButton": self.continueButton,
@@ -48,4 +61,4 @@ class FrontEndObjects:
             "audit": self.audit,
             "slider": self.slider,
             "removeFieldButton": self.removeFieldButton
-        }
+        })

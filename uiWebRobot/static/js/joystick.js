@@ -7,14 +7,14 @@ var joystick_created = false;
 
 function createJoystick(){
     let value = document.getElementById('joystick').clientHeight;
-    var joy = new JoyStick('joystick',{title:"canvas",autoReturnToCenter:true,width:value,height:value});
+    var joy = new JoyStick('joystick',{title:"canvas_joystick",autoReturnToCenter:true,width:value,height:value});
 
     var isInCenter = false;
 
     setInterval(function(){ 
         var xCurrentValue = joy.GetX();
         var yCurrentValue = joy.GetY();
-        if(!document.getElementById('canvas').classList.contains("disable")){
+        if(!document.getElementById('canvas_joystick').classList.contains("disable")){
             if(xCurrentValue==0 && yCurrentValue==0&&!isInCenter){
                 //console.log("X:"+0 + ", Y:"+0); 
                 socketio.emit('data', {type: 'joystick', x : -xCurrentValue , y : yCurrentValue});
