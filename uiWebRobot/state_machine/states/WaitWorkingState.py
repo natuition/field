@@ -184,8 +184,6 @@ class WaitWorkingState(State.State):
             return ErrorState.ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
-        print(data)
-        # print(f"[{self.__class__.__name__}] -> Move '"+str(data["x"])+"','"+str(data["y"])+"'.")
         if data["type"] == 'joystick':
             self.__last_joystick_info = time.time()
             x = int(data["x"])
@@ -218,7 +216,6 @@ class WaitWorkingState(State.State):
                  "fields_list": fields_list}), namespace='/map')
 
         elif data["type"] == 'removeField':
-            print("here-removeField")
             os.remove("../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
             fields_list = UIWebRobot.load_field_list("../fields")
 

@@ -200,7 +200,7 @@ class UIWebRobot:
             elif data["type"] == "getStats":
                 self.__stateMachine.on_socket_data(data)
             elif data["type"] == "removeField":
-                if isinstance(self.__stateMachine.currentState, WaitWorkingState.WaitWorkingState):
+                if str(self.__stateMachine.currentState) == "WaitWorkingState":
                     self.__stateMachine.on_socket_data(data)
 
     def on_socket_broadcast(self, data):
