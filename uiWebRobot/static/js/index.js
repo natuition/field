@@ -11,7 +11,7 @@ socketBroadcast.on("reconnect_attempt", (attempt) => {
     if(attempt > 2) location.reload();
 });
 
-var newFieldButton = document.querySelector('#Newfield');
+const newFieldButton = document.querySelector('#Newfield');
 const startButton = document.querySelector('#Start');
 const continueButton = document.querySelector('#Continue');
 const stopButton = document.querySelector('#Stop');
@@ -182,6 +182,10 @@ socketButton.on('stop', function(dataServ) {
 
             newFieldButton.classList.remove("disabled");
             newFieldButton.removeAttribute("disabled");
+
+            removeFieldButton.classList.remove("disabled");
+            removeFieldButton.removeAttribute("disabled");
+
             wheelButton.classList.remove("disabled-wheel");
             //document.getElementById("webCamStream").remove();
             //verif_iframe_start();
