@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.5"
+CONFIG_VERSION = "0.19.6"
 
 
 # ======================================================================================================================
@@ -383,6 +383,7 @@ QUEUE_NAME_UI_NOTIFICATION = "/queue_ui_notification"
 CONTINUOUS_INFORMATION_SENDING = True
 ALIVE_SENDING_TIMEOUT = 1
 
+TIMEOUT_JOYSTICK_USER_ACTION = 1
 
 # ======================================================================================================================
 # EXTRACTION MANAGER SETTINGS
