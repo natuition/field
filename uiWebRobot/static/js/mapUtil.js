@@ -275,19 +275,19 @@ function createMap(coords_field,coords_other){
                 }
             });
             map.addLayer({
-                'id': 'lastPosLayer',
-                'type': 'circle',
-                'source': 'lastPos',
-                'paint': {
-                    'circle-radius': 3,
-                    'circle-color': [
-                        'match',
-                        ['get', 'quality'],
-                        '4',
-                        '#e55e5e',// red for quality 4
-                        '#fbb03b' // orange for other
-                    ]
-                }
+                id: "lastPosLayer",
+                type: "circle",
+                source: "lastPos",
+                paint: {
+                    "circle-radius": 5,
+                    "circle-color": [
+                        "match",
+                        ["get", "quality"],
+                        "4",
+                        "#e55e5e", // red for quality 4
+                        "#fbb03b", // orange for other
+                    ],
+                },
             });
         }
 
