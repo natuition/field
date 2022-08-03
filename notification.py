@@ -42,11 +42,16 @@ class NotificationClient:
         self._close()
 
     def stop(self):
-        if config.CONTINUOUS_INFORMATION_SENDING:
-            msg = ""
-            if self.extracted_plants is not None:
-                msg += f";{self.extracted_plants}"
-            self.socket.send(f"STOP;{utility.get_current_time()}{msg}".encode("utf-8"))
+        try:
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                msg = ""
+                if self.extracted_plants is not None:
+                    msg += f";{self.extracted_plants}"
+                self.socket.send(f"STOP;{utility.get_current_time()}{msg}".encode("utf-8"))
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            pass
         print("[Notification] Stopping service...")
         self._keep_thread_alive = False
         self._close()

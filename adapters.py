@@ -1834,3 +1834,90 @@ class GPSUbloxAdapter:
     def _hot_reset(self):
         Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
         self._serial.write(bytearray.fromhex(Mythread))
+
+
+class GPSUbloxAdapterWithoutThread:
+    """Provides access to the robot's on-board GPS navigator (UBLOX card)"""
+
+    def __init__(self, ser_port, ser_baudrate, last_pos_count):
+        self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate)
+        # self._hot_reset()
+        self._USBNMEA_OUT()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
+
+    def disconnect(self):
+        self._serial.close()
+
+    def get_fresh_position(self):
+        """Waits for new fresh position from gps and returns it, blocking until new position received.
+        Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
+        features)"""
+
+        return self._read_from_gps()
+
+    def get_last_position(self):
+        """Waits until at least one position is stored, returns last saved position copy at the moment of call
+        (reference type safe)"""
+
+        return self._read_from_gps()
+
+    def get_last_positions_list(self):
+        """Waits until at least one position is stored, returns list of last saved positions copies at the moment of
+        call (reference type safe)"""
+
+        raise NotImplementedError("Test without list")
+
+    def _read_from_gps(self):
+        """Returns GPS coordinates of the current position"""
+
+        while True:
+            try:
+                read_line = self._serial.readline()
+                if isinstance(read_line, bytes):
+                    data = str(read_line)
+                    # if len(data) == 3:
+                    #    print("None GNGGA or RTCM threads")
+                    if "GNGGA" in data and ",,," not in data:
+                        # bad string with no position data
+                        # print(data)  # debug
+                        data = data.split(",")
+                        lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
+                        point_quality = data[6]
+                        return [lati, longi, point_quality]  # , float(data[11])  # alti
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except:
+                continue
+
+    def _D2M2(self, Lat, NS, Lon, EW):
+        """Traduce NMEA format ddmmss to ddmmmm"""
+
+        Latdd = float(Lat[:2])
+        Latmmmmm = float(Lat[2:])
+        Latddmmmm = Latdd + (Latmmmmm / 60.0)
+        if NS == 'S':
+            Latddmmmm = -Latddmmmm
+
+        Londd = float(Lon[:3])
+        Lonmmmmm = float(Lon[3:])
+        Londdmmmm = Londd + (Lonmmmmm / 60.0)
+        if EW == 'W':
+            Londdmmmm = -Londdmmmm
+        return round(Latddmmmm, 7), round(Londdmmmm, 7)
+
+    def _USBNMEA_OUT(self):
+        """Start sending NMEA out on USB port at 19200 baud"""
+
+        Matrame = "B5 62 06 00 14 00 03 00 00 00 00 00 00 00 00 00 00 00 23 00 03 00 00 00 00 00 43 AE"
+        self._serial.write(bytearray.fromhex(Matrame))
+
+    # Start a Hot restart
+    def _hot_reset(self):
+        Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
+        self._serial.write(bytearray.fromhex(Mythread))
+

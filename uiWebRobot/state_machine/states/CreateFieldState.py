@@ -218,7 +218,7 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Getting point A..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+        with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
             self.A = utility.average_point(gps, None, self.nav, self.logger)
 
         self.socketio.emit('newPos', json.dumps([self.A[1], self.A[0]]), namespace='/map')
@@ -242,7 +242,7 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Getting point B..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+        with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
             self.B = utility.average_point(gps, None, self.nav, self.logger)
 
         self.socketio.emit('newPos', json.dumps([self.B[1], self.B[0]]), namespace='/map')
