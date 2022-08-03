@@ -1639,7 +1639,9 @@ def main():
                 # TODO: save field in debug
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
-                    notification.set_field(field_gps_coords)
+                    link_path = subprocess.check_output(['readlink', '-f', 'field.txt']).decode("utf-8")
+                    field_name = (link_path.split("/")[-1]).split(".")[0]
+                    notification.set_field(field_gps_coords, field_name)
 
                 # save path points and point to start from index
                 with open(config.PREVIOUS_PATH_POINTS_FILE, "wb") as path_points_file:
