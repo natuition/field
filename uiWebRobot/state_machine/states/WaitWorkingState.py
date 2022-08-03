@@ -1,5 +1,6 @@
 import sys
 sys.path.append('../')
+import time
 
 from flask_socketio import SocketIO
 import threading
@@ -93,11 +94,28 @@ class WaitWorkingState(State.State):
                                                  daemon=True)
         self.__voltage_thread.start()
 
+        self.__last_joystick_info = time.time()
+        self.__check_joystick_info_alive = True
+        self.__joystick_info_thread = threading.Thread(target=self.__check_joystick_info_tf,
+                                                 daemon=True)
+        self.__joystick_info_thread.start()
+
+    def __check_joystick_info_tf(self):
+        while self.__check_joystick_info_alive:
+            if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
+                self.vesc_engine.apply_rpm(0, self.vesc_engine.PROPULSION_KEY)
+
+    def __stop_thread(self):
+        self.send_last_pos_thread_alive = False
+        self.__voltage_thread_alive = False
+        self.__check_joystick_info_alive = False
+        self.__voltage_thread.join()
+        self._send_last_pos_thread.join()
+        self.__joystick_info_thread.join()
+
     def on_event(self, event):
         if event == Events.Events.CREATE_FIELD:
-            self.send_last_pos_thread_alive = False
-            self._send_last_pos_thread.join()
-            self.__voltage_thread_alive = False
+            self.__stop_thread()
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
@@ -105,9 +123,7 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
             return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
-            self.send_last_pos_thread_alive = False
-            self._send_last_pos_thread.join()
-            self.__voltage_thread_alive = False
+            self.__stop_thread()
             self.statusOfUIObject.startButton = ButtonState.CHARGING
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
@@ -124,9 +140,7 @@ class WaitWorkingState(State.State):
                 self.vesc_engine = None
             return StartingState.StartingState(self.socketio, self.logger, (event == Events.Events.START_AUDIT))
         elif event in [Events.Events.CONTINUE_MAIN, Events.Events.CONTINUE_AUDIT]:
-            self.send_last_pos_thread_alive = False
-            self._send_last_pos_thread.join()
-            self.__voltage_thread_alive = False
+            self.__stop_thread()
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
@@ -152,13 +166,10 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_ENABLE
             return self
         elif event == Events.Events.CLOSE_APP:
-            self.send_last_pos_thread_alive = False
-            self._send_last_pos_thread.join()
+            self.__stop_thread()
             return self
         else:
-            self.send_last_pos_thread_alive = False
-            self._send_last_pos_thread.join()
-            self.__voltage_thread_alive = False
+            self.__stop_thread()
             try:
                 if self.smoothie is not None:
                     self.smoothie.disconnect()
@@ -173,8 +184,10 @@ class WaitWorkingState(State.State):
             return ErrorState.ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
+        print(data)
         # print(f"[{self.__class__.__name__}] -> Move '"+str(data["x"])+"','"+str(data["y"])+"'.")
         if data["type"] == 'joystick':
+            self.__last_joystick_info = time.time()
             x = int(data["x"])
             if x < 0:
                 x *= -(config.A_MIN / 100)
@@ -205,7 +218,7 @@ class WaitWorkingState(State.State):
                  "fields_list": fields_list}), namespace='/map')
 
         elif data["type"] == 'removeField':
-
+            print("here-removeField")
             os.remove("../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
             fields_list = UIWebRobot.load_field_list("../fields")
 

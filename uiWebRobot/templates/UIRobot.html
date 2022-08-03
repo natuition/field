@@ -138,7 +138,7 @@
     </section>
         
     <div id="joystick"
-        class="status {% if statusOfUIObject['joystick'] %} display-flex {% else %} display-none {% endif %}">
+        class="status {% if statusOfUIObject['joystick'] %} display-flex {% else %} display-none {% endif %} unselectable">
         <img style="display:none;" id="source" src="{{ url_for('static', filename='icon.png') }}"">
     </div>
     

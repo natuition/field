@@ -15,14 +15,10 @@ function createJoystick(){
         var xCurrentValue = joy.GetX();
         var yCurrentValue = joy.GetY();
         if(!document.getElementById('canvas_joystick').classList.contains("disable")){
-            if(xCurrentValue==0 && yCurrentValue==0&&!isInCenter){
-                //console.log("X:"+0 + ", Y:"+0); 
-                socketio.emit('data', {type: 'joystick', x : -xCurrentValue , y : yCurrentValue});
-                isInCenter=true;
-            }else{
-                //console.log("X:"+xCurrentValue + ", Y:"+yCurrentValue); 
-                socketio.emit('data', {type: 'joystick', x : -xCurrentValue , y : yCurrentValue});
-                isInCenter=false;
+            if(xCurrentValue!=0 || yCurrentValue!=0 || !isInCenter){
+                socketio.emit('data', {type: 'joystick', x : -xCurrentValue , y : parseInt(yCurrentValue)});
+                if(xCurrentValue==0 && yCurrentValue==0) isInCenter=true;
+                else  isInCenter=false;
             }
         }
     }, 200);
