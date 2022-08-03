@@ -140,3 +140,4 @@ deployement/configFinalSN*
 install_serv/vpn
 fields/*.json
 fields/test_generate_field/*
+*.DS_Store*
