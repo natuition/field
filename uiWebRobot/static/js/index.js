@@ -65,16 +65,28 @@ function clickHandler() {
     }
 }
 
+function disable_button_after_start_or_continue(){
+    $('#canvas_joystick').addClass('disable'); 
+
+    $('#Newfield').addClass('disabled');
+    $('#Newfield').attr('disabled','');
+
+    $('#RemoveField').addClass('disabled');
+    $('#RemoveField').attr('disabled','');
+
+    $('#Wheel').addClass('disabled-wheel');
+}
+
 socketButton.on('start', function(dataServ) {
     if(dataServ["status"] == "pushed"){
 
         $('.begin__button--continue').addClass('disabled');
         $('.begin__button--continue').attr('disabled', '');
 
-        $('#canvas_joystick').addClass('disable'); 
-
         $('.begin__button--start').addClass('active');
         $('.begin__button--start').attr('disabled', '');
+
+        disable_button_after_start_or_continue();
 
         //$(auditButton).addClass('fix');
     }
@@ -85,10 +97,10 @@ socketButton.on('continue', function(dataServ) {
         $('.begin__button--start').addClass('disabled');
         $('.begin__button--start').attr('disabled', '');
 
-        $('#canvas_joystick').addClass('disable'); 
-
         $('.begin__button--continue').addClass('active');
         $('.begin__button--continue').attr('disabled', '');
+
+        disable_button_after_start_or_continue();
 
         //$(auditButton).addClass('fix');
     }
