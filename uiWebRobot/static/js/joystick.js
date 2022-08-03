@@ -14,7 +14,8 @@ function createJoystick(){
     setInterval(function(){ 
         var xCurrentValue = joy.GetX();
         var yCurrentValue = joy.GetY();
-        if(!document.getElementById('canvas_joystick').classList.contains("disable")){
+        let style_main = getComputedStyle(document.getElementById('main')).display
+        if(!document.getElementById('canvas_joystick').classList.contains("disable") && style_main != 'none'){
             if(xCurrentValue!=0 || yCurrentValue!=0 || !isInCenter){
                 socketio.emit('data', {type: 'joystick', x : -xCurrentValue , y : parseInt(yCurrentValue)});
                 if(xCurrentValue==0 && yCurrentValue==0) isInCenter=true;
