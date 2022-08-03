@@ -81,7 +81,7 @@ class WaitWorkingState(State.State):
         self.field = None
 
         self.send_last_pos_thread_alive = True
-        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self.send_last_pos_thread_alive, self.socketio), daemon=True)
+        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio), daemon=True)
         self._send_last_pos_thread.start()
 
         self.__voltage_thread_alive = True
@@ -100,12 +100,16 @@ class WaitWorkingState(State.State):
                                                  daemon=True)
         self.__joystick_info_thread.start()
 
+        self.can_go_setting = True
+
     def __check_joystick_info_tf(self):
         while self.__check_joystick_info_alive:
             if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
                 self.vesc_engine.apply_rpm(0, self.vesc_engine.PROPULSION_KEY)
+            time.sleep(0.5)
 
     def __stop_thread(self):
+        self.can_go_setting = False
         self.send_last_pos_thread_alive = False
         self.__voltage_thread_alive = False
         self.__check_joystick_info_alive = False

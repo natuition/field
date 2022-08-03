@@ -254,6 +254,9 @@ class UIWebRobot:
         if str(self.__stateMachine.currentState) != "WaitWorkingState":
             return redirect('/')
 
+        if not self.__stateMachine.currentState.can_go_setting:
+            return redirect('/')
+
         IA_list = UIWebRobot.load_ai_list("../yolo")
         setting_page_manager = SettingPageManager(self.__socketio, self.__ui_languages, self.__config, self.__reload_config)
         try:

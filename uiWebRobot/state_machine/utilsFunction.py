@@ -33,13 +33,6 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV3,
                     input_voltage["input_voltage"] = vesc_data["input_voltage"]
         time.sleep(1)
 
-
-def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio):
-    with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
-        while send_last_pos_thread_alive:
-            lastPos = gps.get_fresh_position()
-            socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
-
 def sendInputVoltage(socketio, input_voltage):
     try:
         input_voltage = round(float(input_voltage) * 2) / 2
@@ -47,6 +40,11 @@ def sendInputVoltage(socketio, input_voltage):
         pass
     socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
 
+def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio):
+    with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
+        while send_last_pos_thread_alive():
+            lastPos = gps.get_fresh_position()
+            socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
 
 def initVesc(logger: utility.Logger):
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
