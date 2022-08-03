@@ -68,7 +68,7 @@ class CreateFieldState(State.State):
             self.notificationQueue = None
 
         #self.__send_last_pos_thread_alive = True
-        #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self,), daemon=True)
+        #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self.send_last_pos_thread_alive, self.socketio), daemon=True)
 
     def on_event(self, event):
         if event == Events.Events.STOP:
@@ -94,7 +94,7 @@ class CreateFieldState(State.State):
                 self.manoeuvre = False
 
             #self.__send_last_pos_thread_alive = True
-            #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self,), daemon=True)
+            #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self.send_last_pos_thread_alive, self.socketio), daemon=True)
             #self._send_last_pos_thread.start()
 
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE

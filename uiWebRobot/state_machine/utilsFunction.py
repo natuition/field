@@ -34,11 +34,11 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV3,
         time.sleep(1)
 
 
-def send_last_pos_thread_tf(self):
+def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio):
     with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
-        while self.send_last_pos_thread_alive:
+        while send_last_pos_thread_alive:
             lastPos = gps.get_fresh_position()
-            self.socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
 
 def sendInputVoltage(socketio, input_voltage):
     try:

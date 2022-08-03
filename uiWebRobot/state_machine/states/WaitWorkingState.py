@@ -81,7 +81,7 @@ class WaitWorkingState(State.State):
         self.field = None
 
         self.send_last_pos_thread_alive = True
-        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self,), daemon=True)
+        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(self.send_last_pos_thread_alive, self.socketio), daemon=True)
         self._send_last_pos_thread.start()
 
         self.__voltage_thread_alive = True
