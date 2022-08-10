@@ -1567,7 +1567,7 @@ def main():
                     notification.set_field(load_coordinates(config.INPUT_GPS_FIELD_FILE), field_name)
 
                 # TODO: check if files exist and handle damaged/incorrect data cases
-                with open(config.PREVIOUS_PATH_POINTS_FILE, "r b") as path_points_file:
+                with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
                     path_points = pickle.load(path_points_file)
                 with open(config.PREVIOUS_PATH_INDEX_FILE, "r") as path_index_file:
                     str_index = path_index_file.readline()
