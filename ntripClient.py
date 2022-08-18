@@ -62,31 +62,31 @@ class NtripClient(object):
         self.last_id = None
         self.lat = lat
         self.long = long
-        self.height=height
+        self.height = height
         self.lastSend = time.time()
 
     def setPosition(self, lat, long):
-        self.flagN="N"
-        self.flagE="E"
-        if long>180:
-            long=(long-360)*-1
-            self.flagE="W"
-        elif (long<0 and long>= -180):
-            long=long*-1
-            self.flagE="W"
-        elif long<-180:
-            long=long+360
-            self.flagE="E"
+        self.flagN = "N"
+        self.flagE = "E"
+        if long > 180:
+            long = (long - 360) * -1
+            self.flagE = "W"
+        elif (long < 0 and long >= -180):
+            long = long * -1
+            self.flagE = "W"
+        elif long < -180:
+            long = long + 360
+            self.flagE = "E"
         else:
-            self.long=long
-        if lat<0:
-            lat=lat*-1
-            self.flagN="S"
-        self.longDeg=int(long)
-        self.latDeg=int(lat)
-        self.longMin=(long-self.longDeg)*60
-        self.latMin=(lat-self.latDeg)*60
-        
+            self.long = long
+        if lat < 0:
+            lat = lat * -1
+            self.flagN = "S"
+        self.longDeg = int(long)
+        self.latDeg = int(lat)
+        self.longMin = (long - self.longDeg) * 60
+        self.latMin = (lat - self.latDeg) * 60
+
     def calcultateCheckSum(self, stringToCheck):
         xsum_calc = 0
         for char in stringToCheck:
@@ -94,26 +94,28 @@ class NtripClient(object):
         return "%02X" % xsum_calc
 
     def getGGABytes(self):
-        r = random.randint(-9,9)/100000
-        self.setPosition(self.lat+r, self.long+r)
+        r = random.randint(-9, 9) / 100000
+        self.setPosition(self.lat + r, self.long + r)
         now = datetime.datetime.utcnow()
-        ggaString= "GPGGA,%02d%02d%04.2f,%02d%011.8f,%1s,%03d%011.8f,%1s,1,05,0.19,+00000,M,%5.3f,M,," % \
-            (now.hour,now.minute,now.second,self.latDeg,self.latMin,self.flagN,self.longDeg,self.longMin,self.flagE,self.height)
+        ggaString = "GPGGA,%02d%02d%04.2f,%02d%011.8f,%1s,%03d%011.8f,%1s,1,05,0.19,+00000,M,%5.3f,M,," % \
+                    (now.hour, now.minute, now.second, self.latDeg, self.latMin, self.flagN, self.longDeg, self.longMin,
+                     self.flagE, self.height)
         checksum = self.calcultateCheckSum(ggaString)
-        return bytes("$%s*%s\r\n" % (ggaString, checksum),'ascii')
+        return bytes("$%s*%s\r\n" % (ggaString, checksum), 'ascii')
 
     def getMountPointString(self):
-        token= base64.b64encode("{}:{}".format(self.user, self.password).encode('ascii')).decode('ascii')
+        token = base64.b64encode("{}:{}".format(self.user, self.password).encode('ascii')).decode('ascii')
 
         if self.password != None:
-            mountPointString = "GET {} HTTP/1.1\r\n".format(self.mountpoint) +\
-            "User-Agent: {}\r\n".format(useragent) +\
-            "Authorization: Basic {}\r\n".format(token)
+            mountPointString = "GET {} HTTP/1.1\r\n".format(self.mountpoint) + \
+                               "User-Agent: {}\r\n".format(useragent) + \
+                               "Authorization: Basic {}\r\n".format(token)
         else:
             userstr = self.user
             if sys.version_info.major >= 3:
                 userstr = self.base64_user
-            mountPointString = "GET %s HTTP/1.0\r\nUser-Agent: %s\r\nAuthorization: Basic %s\r\n" % (self.mountpoint, useragent, userstr)
+            mountPointString = "GET %s HTTP/1.0\r\nUser-Agent: %s\r\nAuthorization: Basic %s\r\n" % (
+                self.mountpoint, useragent, userstr)
 
         if self.v2:
             mountPointString += "Ntrip-Version: Ntrip/2.0\r\n"
@@ -136,16 +138,16 @@ class NtripClient(object):
                 try:
                     self.socket.sendall(mps)
                 except Exception:
-                    self.socket = None
+                    self.socket = None  # TODO is this non closed connection?
                     return None
             try:
                 casterResponse = self.socket.recv(4096)
             except ssl.SSLWantReadError:
-                    return None
+                return None
             except IOError as e:
                 if e.errno == errno.EWOULDBLOCK:
                     return None
-                self.socket = None
+                self.socket = None  # TODO is this non closed connection?
                 casterResponse = ''
             if sys.version_info.major >= 3:
                 casterResponse = str(casterResponse, 'ascii')
@@ -159,14 +161,14 @@ class NtripClient(object):
                     raise NtripError("Unauthorized request")
                 elif line.find("404 Not Found") != -1:
                     raise NtripError("Mount Point does not exist")
-                elif line.find("ICY 200 OK")>=0:
-                    #Request was valid
+                elif line.find("ICY 200 OK") >= 0:
+                    # Request was valid
                     self.socket.sendall(self.getGGABytes())
-                elif line.find("HTTP/1.0 200 OK")>=0:
-                    #Request was valid
+                elif line.find("HTTP/1.0 200 OK") >= 0:
+                    # Request was valid
                     self.socket.sendall(self.getGGABytes())
-                elif line.find("HTTP/1.1 200 OK")>=0:
-                    #Request was valid
+                elif line.find("HTTP/1.1 200 OK") >= 0:
+                    # Request was valid
                     self.socket.sendall(self.getGGABytes())
             return None
         # normal data read
@@ -174,7 +176,7 @@ class NtripClient(object):
             try:
                 data = self.socket.recv(1)
             except ssl.SSLWantReadError:
-                    return None
+                return None
             except IOError as e:
                 if e.errno == errno.EWOULDBLOCK:
                     return None
@@ -191,12 +193,12 @@ class NtripClient(object):
                 return None
             if self.rtcm3.read(data):
                 self.last_id = self.rtcm3.get_packet_ID()
-                
-                if time.time()-self.lastSend>=4 and config.SEND_LOCATION_TO_NTRIP:
+
+                if time.time() - self.lastSend >= 4 and config.SEND_LOCATION_TO_NTRIP:
                     print("Envoi de la trame GPGGA...")
                     self.socket.sendall(self.getGGABytes())
                     self.lastSend = time.time()
-                    
+
                 return self.rtcm3.get_packet()
 
     def connect(self):
@@ -218,7 +220,7 @@ class NtripClient(object):
     def readAndSendLoop(self):
         ser: serial.Serial = None
         try:
-            ser: serial.Serial = serial.Serial(self.output,self.baudrate, timeout=10)
+            ser: serial.Serial = serial.Serial(self.output, self.baudrate, timeout=10)
         except serial.SerialException:
             NtripError(f"Error to connection to '{self.output}' at {self.baudrate} !")
             exit(1)
@@ -228,27 +230,29 @@ class NtripClient(object):
                 data = self.read()
                 if data is None:
                     continue
-                
+
                 if self.last_id in config.RTK_ID_SEND or not len(config.RTK_ID_SEND):
                     ser.write(data)
 
         except KeyboardInterrupt:
             print("Fermeture des connexions...")
+            # TODO will not close connections properly if something else than KBI was raised
             ser.close()
             if self.socket:
                 self.socket.close()
 
         print("Connexions fermées.")
 
+
 if __name__ == '__main__':
-    
+
     ntripArgs = {}
-    
+
     if utility.get_ublox_address() is not None:
         ntripArgs['output'] = utility.get_ublox_address()
     else:
         ntripArgs['output'] = config.NTRIP_OUTPUT_PORT
-        
+
     ntripArgs['baudrate'] = config.NTRIP_OUTPUT_BAUDRATE
 
     if config.SEND_LOCATION_TO_NTRIP or config.FIND_MOUNTPOINT:
@@ -259,9 +263,9 @@ if __name__ == '__main__':
                 ntripArgs['long'] = pos[1]
                 print(f"Current latitude : {pos[0]}, longitude : {pos[1]} for send to ntrip.")
             except Exception as e:
-                print("Error not found coords ! ",e)
+                print("Error not found coords ! ", e)
                 exit(1)
-            
+
     ntripArgs['user'] = config.NTRIP_USER
     ntripArgs['password'] = config.NTRIP_PASSWORD
     ntripArgs['caster'] = config.NTRIP_CASTER
@@ -269,15 +273,22 @@ if __name__ == '__main__':
     ntripArgs['mountpoint'] = config.NTRIP_MOUNTPOINT
 
     if config.FIND_MOUNTPOINT:
-        browser = NtripBrowser(ntripArgs['caster'], ntripArgs['port'], coordinates=(ntripArgs['lat'], ntripArgs['long']), maxdist=config.MAX_DISTANCE_MOUNTPOINT)
+        browser = NtripBrowser(ntripArgs['caster'], ntripArgs['port'],
+                               coordinates=(ntripArgs['lat'], ntripArgs['long']),
+                               maxdist=config.MAX_DISTANCE_MOUNTPOINT)
         try:
             mountpoints = browser.get_mountpoints()["str"]
             if mountpoints:
                 mountpoint = mountpoints[0]
-                print(f"The mountpoint '{mountpoint['Mountpoint']}' is use, it's about {int(mountpoint['Distance'])} kilometers from us at the coordinate [lat:{mountpoint['Latitude']},long:{mountpoint['Longitude']}].")
+                print(
+                    f"The mountpoint '{mountpoint['Mountpoint']}' is use, it's about {int(mountpoint['Distance'])} "
+                    f"kilometers from us at the coordinate [lat:{mountpoint['Latitude']},"
+                    f"long:{mountpoint['Longitude']}].")
                 ntripArgs['mountpoint'] = mountpoint["Mountpoint"]
             else:
-                print(f"Not found mountpoint {config.MAX_DISTANCE_MOUNTPOINT} kilometers around, the mountpoint in config named '{config.NTRIP_MOUNTPOINT}' is use.")
+                print(
+                    f"Not found mountpoint {config.MAX_DISTANCE_MOUNTPOINT} kilometers around, the mountpoint in"
+                    f" config named '{config.NTRIP_MOUNTPOINT}' is use.")
             sys.stdout.flush()
         except (UnableToConnect, ExceededTimeoutError):
             pass
