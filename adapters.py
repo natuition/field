@@ -1,7 +1,6 @@
 import connectors
 import multiprocessing
 import time
-
 import utility
 from config import config
 import cv2 as cv
@@ -12,6 +11,7 @@ import serial
 import pyvesc
 import re
 import RPi.GPIO as GPIO
+import socket
 
 
 class SmoothieAdapter:
@@ -1921,3 +1921,272 @@ class GPSUbloxAdapterWithoutThread:
         Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
         self._serial.write(bytearray.fromhex(Mythread))
 
+
+class GPSUbloxAdapterProxyServer:
+    def __init__(self, host, port, tick_delay=0.005):
+        # proxy clients connection listener
+        self.__proxies_conn_listener = socket.socket()
+        self.__proxies_conn_listener.bind((host, port))
+        self.__proxies_conn_listener.listen(5)
+        self.__keep_proxies_conn_listener_alive = True
+        self.__current_proxies_clients = []
+        self.__current_proxies_clients_locker = threading.Lock()
+        self.__conn_accept_th = threading.Thread(
+            target=self.__proxies_conn_listener_tf,
+            name="__conn_accept_th",
+            daemon=True)
+
+        # gps points broadcast
+        self.__keep_gps_broadcaster_alive = True
+        self.__gps_broadcaster_th = threading.Thread(
+            target=self.__gps_broadcaster_tf,
+            name="__gps_broadcaster_th",
+            daemon=True)
+
+        self.__tick_delay = tick_delay
+        self.__buffered_point = None
+        self.__buffered_point_is_fresh = False
+        self.__buffered_point_locker = threading.Lock()
+
+        self.__conn_accept_th.start()
+        self.__gps_broadcaster_th.start()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.__keep_proxies_conn_listener_alive = False
+        self.__keep_gps_broadcaster_alive = False
+
+        self.__proxies_conn_listener.close()
+        with self.__current_proxies_clients_locker:
+            for client in self.__current_proxies_clients:
+                client: socket.socket
+                try:
+                    client.shutdown(socket.SHUT_RDWR)
+                finally:
+                    pass
+                try:
+                    client.close()
+                finally:
+                    pass
+
+    @property
+    def point_buffer_is_free(self):
+        with self.__buffered_point_locker:
+            return not self.__buffered_point_is_fresh
+
+    def send_nonblocking(self, point: str):
+        """Sets point to inner buffer for further sending to all subscribed clients.
+
+        NOTE that inner buffer can keep a single point at once, setting points too fast will lead to missing some of
+        them. Use point_buffer_is_free property to check if previous point was sent and inner buffer is free before
+        calling this method.
+        """
+
+        if type(point) != str:
+            raise TypeError(f"point must be 'str' type, got {type(point).__name__} instead")
+        if len(point) == 0:
+            raise ValueError("given point str is empty")
+        separators = point.count(",")
+        if separators != 2:
+            raise ValueError(f"expected 2 separators ',' in given point, got {str(separators)} instead")
+
+        with self.__buffered_point_locker:
+            self.__buffered_point = point.encode("ascii")
+            self.__buffered_point_is_fresh = True
+
+    def __proxies_conn_listener_tf(self):
+        """Target function for new proxies connections establishing thread.
+        """
+
+        while self.__keep_proxies_conn_listener_alive:
+            try:
+                client, address = self.__proxies_conn_listener.accept()
+                with self.__current_proxies_clients_locker:
+                    self.__current_proxies_clients.append(client)
+            except KeyboardInterrupt:
+                print("Connections accepting thread got a KeyboardInterrupt (parent process should get it instead)")
+            except Exception as ex:
+                if not self.__keep_proxies_conn_listener_alive:
+                    print(ex)
+
+    def __gps_broadcaster_tf(self):
+        """Target function for GPS points broadcaster thread.
+
+        Broadcasts new GPS points to all connected clients.
+        """
+
+        connections_to_close = []
+        gps_point = ""
+
+        while self.__keep_gps_broadcaster_alive:
+            # TODO or merge this with NTRIP and access to a new GPS point from NTRIP pool
+
+            time.sleep(self.__tick_delay)
+
+            with self.__buffered_point_locker:
+                if not self.__buffered_point_is_fresh:
+                    continue
+                else:
+                    gps_point = self.__buffered_point
+                    self.__buffered_point_is_fresh = False
+
+            with self.__current_proxies_clients_locker:
+                # send gps points to all connected clients
+                for idx, current_client in enumerate(self.__current_proxies_clients):
+                    current_client: socket.socket
+
+                    if not self.__keep_gps_broadcaster_alive:
+                        break
+
+                    try:
+                        current_client.sendall(gps_point)
+                    except KeyboardInterrupt:
+                        print("GPS broadcaster thread got a KeyboardInterrupt (parent process should get it instead)")
+                    except (socket.error, socket.herror, socket.gaierror):
+                        connections_to_close.append(idx)
+                    except Exception as ex:
+                        if not self.__keep_gps_broadcaster_alive:
+                            print(ex)
+
+                # try to close, and remove client objects which likely loss a connection
+                # (there were any socket module exceptions during using these clients)
+                for idx in reversed(connections_to_close):
+                    if not self.__keep_gps_broadcaster_alive:
+                        break
+
+                    try:
+                        self.__current_proxies_clients[idx].shutdown(socket.SHUT_RDWR)
+                    except KeyboardInterrupt:
+                        print("GPS broadcaster thread got a KeyboardInterrupt (parent process should get it instead)")
+                    except Exception as ex:
+                        if not self.__keep_gps_broadcaster_alive:
+                            print(ex)
+
+                    try:
+                        self.__current_proxies_clients[idx].close()
+                    except KeyboardInterrupt:
+                        print("GPS broadcaster thread got a KeyboardInterrupt (parent process should get it instead)")
+                    except Exception as ex:
+                        if not self.__keep_gps_broadcaster_alive:
+                            print(ex)
+
+                    del self.__current_proxies_clients[idx]
+
+            if len(connections_to_close) > 0:
+                connections_to_close.clear()
+
+
+class GPSUbloxAdapterProxyClient:
+    def __init__(self, host, port, tick_delay=0.005):
+        self.__tick_delay = tick_delay
+
+        self.__host = host
+        self.__port = port
+        self.__gps_server_conn = None
+
+        self.__keep_gps_server_reading_alive = True
+        self.__gps_server_reader_th = threading.Thread(
+            target=self.__gps_server_reading_tf,
+            name="__gps_server_reader_th",
+            daemon=True)
+
+        self.__last_point = None
+        self.__point_is_fresh = False
+        self.__last_point_locker = threading.Lock()
+
+        self.__gps_server_reader_th.start()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.__keep_gps_server_reading_alive = False
+        self.__gps_server_conn.close()
+
+    def disconnect(self):
+        """Obsolete for old code supporting. In new code use context manager or close() method instead.
+        """
+
+        self.close()
+
+    def __reconnect(self):
+        if self.__gps_server_conn is not None:
+            try:
+                self.__gps_server_conn.shutdown(socket.SHUT_RDWR)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            finally:
+                pass
+
+            try:
+                self.__gps_server_conn.close()
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            finally:
+                pass
+
+        while self.__keep_gps_server_reading_alive:
+            try:
+                self.__gps_server_conn = socket.socket()
+                error_indicator = self.__gps_server_conn.connect_ex((self.__host, self.__port))
+                if error_indicator == 0:
+                    break
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            finally:
+                pass
+
+    def __gps_server_reading_tf(self):
+        need_to_reconnect = False
+
+        while self.__keep_gps_server_reading_alive:
+            if need_to_reconnect:
+                self.__reconnect()
+                need_to_reconnect = False
+
+            try:
+                if self.__gps_server_conn is None:
+                    need_to_reconnect = True
+                    continue
+
+                # TODO in case data is bigger than 4k chunk need an accumulating reading loop with endswith "\n"?
+                str_point = self.__gps_server_conn.recv(4096).decode()
+                if str_point == "":
+                    need_to_reconnect = True
+                    continue
+                gps_point = str_point.split(",")
+                gps_point = [float(gps_point[0]), float(gps_point[1]), gps_point[2].replace("'", "").replace('"', "")]
+            except KeyboardInterrupt:
+                print("GPS server reading thread got a KeyboardInterrupt (parent process should get it instead)")
+                raise KeyboardInterrupt
+            except (socket.error, socket.herror, socket.gaierror):
+                need_to_reconnect = True
+                continue
+            except (ValueError, IndexError):
+                continue
+
+            with self.__last_point_locker:
+                self.__last_point = gps_point
+                self.__point_is_fresh = True
+
+    def get_last_position(self):
+        with self.__last_point_locker:
+            return self.__last_point
+
+    def get_fresh_position(self):
+        with self.__last_point_locker:
+            self.__point_is_fresh = False
+
+        while True:
+            with self.__last_point_locker:
+                if self.__point_is_fresh:
+                    return self.__last_point
+            time.sleep(self.__tick_delay)
