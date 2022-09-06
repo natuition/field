@@ -225,7 +225,8 @@ class YoloTRTDetector:
                  trt_model_path,  # serialized engine path
                  classes_names_path,  # path to a file with a model objects classes names
                  confidence_threshold,  # remove detections with lower than this confidence
-                 nms_threshold):
+                 nms_threshold,
+                 input_size):
         # check for args errors
         assert 0 < confidence_threshold < 1, "Confidence threshold should be a float between zero and one (non-inclusive)"
         assert 0 < nms_threshold < 1, "NMS Threshold should be a float between zero and one (non-inclusive)"
@@ -235,8 +236,8 @@ class YoloTRTDetector:
         self.__confidence_threshold = confidence_threshold
         self.__nms_threshold = nms_threshold
         self.__class_names = load_class_names(classes_names_path)
-        self.__width = 416
-        self.__height = 416
+        self.__width = input_size[0]
+        self.__height = input_size[1]
         self.sharedArray = None
 
         self.__cfx = None

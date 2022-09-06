@@ -40,7 +40,8 @@ def main():
         config.PERIPHERY_MODEL_PATH,
         config.PERIPHERY_CLASSES_FILE,
         config.PERIPHERY_CONFIDENCE_THRESHOLD,
-        config.PERIPHERY_NMS_THRESHOLD)
+        config.PERIPHERY_NMS_THRESHOLD,
+        config.PERIPHERY_INPUT_SIZE)
     with adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                           config.CROP_H_TO, config.CV_ROTATE_CODE,
                                           config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
