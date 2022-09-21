@@ -153,7 +153,8 @@ if __name__ == '__main__':
                 config.PERIPHERY_MODEL_PATH,
                 config.PERIPHERY_CLASSES_FILE,
                 config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                config.PERIPHERY_NMS_THRESHOLD)
+                config.PERIPHERY_NMS_THRESHOLD,
+                config.PERIPHERY_INPUT_SIZE)
 
     process_thread = threading.Thread(target=captureFrames)
     process_thread.daemon = True

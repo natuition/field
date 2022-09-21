@@ -25,9 +25,11 @@ IMAGES_OUTPUT_DIR = "mds_output/"
 # NN 1; will be compared to txt or to NN 2 dependent on NN_TO_TXT setting
 NN_1_MODEL_PATH = "yolo/Y0016.trt"
 NN_1_CLASSES_FILE = "yolo/Y0016.names"
+NN_1_INPUT_SIZE = (416, 416)
 # NN 2
 NN_2_MODEL_PATH = "yolo/Y0016.trt"
 NN_2_CLASSES_FILE = "yolo/Y0016.names"
+NN_2_INPUT_SIZE = (416, 416)
 
 # OTHER SETTINGS
 # False: compare given NN_1 to txt markup; True: compare NN_1 to NN_2

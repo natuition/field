@@ -6,28 +6,30 @@ socketio.on("reconnect_attempt", (attempt) => {
 var joystick_created = false;
 
 function createJoystick(){
-    let value = document.getElementById('joystick').clientHeight;
-    var joy = new JoyStick('joystick',{title:"canvas_joystick",autoReturnToCenter:true,width:value,height:value});
+    if(!joystick_created && window.orientation==0){
+        let value = document.getElementById('joystick').clientHeight;
+        var joy = new JoyStick('joystick',{title:"canvas_joystick",autoReturnToCenter:true,width:value,height:value});
 
-    var isInCenter = false;
+        var isInCenter = false;
 
-    setInterval(function(){ 
-        var xCurrentValue = joy.GetX();
-        var yCurrentValue = joy.GetY();
-        let style_main = getComputedStyle(document.getElementById('main')).display
-        if(!document.getElementById('canvas_joystick').classList.contains("disable") && style_main != 'none'){
-            if(xCurrentValue!=0 || yCurrentValue!=0 || !isInCenter){
-                socketio.emit('data', {type: 'joystick', x : -xCurrentValue , y : parseInt(yCurrentValue)});
-                if(xCurrentValue==0 && yCurrentValue==0) isInCenter=true;
-                else  isInCenter=false;
+        setInterval(function(){ 
+            var xCurrentValue = joy.GetX();
+            var yCurrentValue = joy.GetY();
+            let style_main = getComputedStyle(document.getElementById('main')).display
+            if(!document.getElementById('canvas_joystick').classList.contains("disable") && style_main != 'none'){
+                if(xCurrentValue!=0 || yCurrentValue!=0 || !isInCenter){
+                    socketio.emit('data', {type: 'joystick', x : -xCurrentValue , y : parseInt(yCurrentValue)});
+                    if(xCurrentValue==0 && yCurrentValue==0) isInCenter=true;
+                    else  isInCenter=false;
+                }
             }
-        }
-    }, 200);
-    joystick_created = true;
+        }, 200);
+        joystick_created = true;
+    }
 }
 
-if(window.orientation==0) createJoystick();
+createJoystick();
 
 window.addEventListener("orientationchange", function() {
-    if(window.orientation==0 && !joystick_created) createJoystick();
+    createJoystick();
   }, false);
