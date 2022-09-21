@@ -41,7 +41,8 @@ def sendInputVoltage(socketio, input_voltage):
     socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
 
 def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio):
-    with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
+    #with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
+    with adapters.GPSUbloxAdapterProxyClient(config.NTRIP_PROXY_SERVER_HOST, config.NTRIP_PROXY_SERVER_PORT) as gps:
         while send_last_pos_thread_alive():
             lastPos = gps.get_fresh_position()
             socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)

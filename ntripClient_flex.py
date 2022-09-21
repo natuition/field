@@ -65,7 +65,7 @@ class NtripClient(object):
         self.height = height
         self.lastSend = time.time()
 
-        self.__gps_server = adapters.GPSUbloxAdapterProxyServer("127.0.0.1", 2004, tick_delay=0.005)
+        self.__gps_server = adapters.GPSUbloxAdapterProxyServer(config.NTRIP_PROXY_SERVER_HOST, config.NTRIP_PROXY_SERVER_PORT, tick_delay=config.NTRIP_PROXY_SERVER_TICK_DELAY)
 
     def setPosition(self, lat, long):
         self.flagN = "N"

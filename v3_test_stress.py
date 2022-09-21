@@ -84,7 +84,8 @@ def __th_detection():
 
 def __th_gps():
     print("Loading gps...")
-    with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+    #with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+    with adapters.GPSUbloxAdapterProxyClient(config.NTRIP_PROXY_SERVER_HOST, config.NTRIP_PROXY_SERVER_PORT) as gps:
         print("Starting reading from gps...")
         show_ok_msg = True
         while KEEP_WORKING:

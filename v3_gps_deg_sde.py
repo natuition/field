@@ -793,7 +793,8 @@ def main():
         vesc_engine = adapters.VescAdapter(int(config.VESC_RPM_SLOW), config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                            config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE)
         print("Loading gps...")
-        gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        #gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        gps = adapters.GPSUbloxAdapterProxyClient(config.NTRIP_PROXY_SERVER_HOST, config.NTRIP_PROXY_SERVER_PORT)
 
         # set smoothie's A axis to 0 (nav turn wheels)
         response = smoothie.set_current_coordinates(A=0)

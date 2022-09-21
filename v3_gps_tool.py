@@ -13,7 +13,8 @@ def save_gps_coordinates(points: list, file_name):
 
 
 def main():
-    with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+    with adapters.GPSUbloxAdapterProxyClient(config.NTRIP_PROXY_SERVER_HOST, config.NTRIP_PROXY_SERVER_PORT) as gps:
+    #with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
         i = 1
         points = []
 

@@ -61,8 +61,8 @@ def main():
         with adapters.SmoothieAdapter(config.SMOOTHIE_HOST) as smoothie:
             with adapters.VescAdapter(config.VESC_RPM, config.VESC_MOVING_TIME, config.VESC_ALIVE_FREQ,
                                       config.VESC_CHECK_FREQ, config.VESC_PORT, config.VESC_BAUDRATE) as vesc_engine:
-                with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE,
-                                              config.GPS_POSITIONS_TO_KEEP) as gps:
+                with adapters.GPSUbloxAdapterProxyClient(config.NTRIP_PROXY_SERVER_HOST, config.NTRIP_PROXY_SERVER_PORT) as gps :
+                #with adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
                     print("done.")
                     field_gps_coords = ask_for_ab_points(gps)
                     save_gps_coordinates(field_gps_coords, "field " + get_current_time() + ".txt")

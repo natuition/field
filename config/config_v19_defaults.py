@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.6"
+CONFIG_VERSION = "0.19.7"
 
 
 # ======================================================================================================================
@@ -426,6 +426,10 @@ NTRIP_OUTPUT_BAUDRATE = 115200
 NTRIP_RESTART_TIMEOUT = 60
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
 RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
+
+NTRIP_PROXY_SERVER_HOST = "127.0.0.1"
+NTRIP_PROXY_SERVER_PORT = 2004
+NTRIP_PROXY_SERVER_TICK_DELAY = 0.005
 
 
 # ======================================================================================================================

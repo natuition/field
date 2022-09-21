@@ -36,7 +36,8 @@ class Self_Testing:
         self.smoothie = adapters.SmoothieAdapter(smoothie_address)
         self.vesc = adapters.VescAdapter(config.VESC_RPM_SLOW, 5, config.VESC_ALIVE_FREQ,
                                          config.VESC_CHECK_FREQ, vesc_address, config.VESC_BAUDRATE)
-        self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        #self.gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        self.gps = adapters.GPSUbloxAdapterProxyClient(config.NTRIP_PROXY_SERVER_HOST, config.NTRIP_PROXY_SERVER_PORT)
         self.camera = adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                                        config.CROP_H_TO, config.CV_ROTATE_CODE,
                                                        config.ISP_DIGITAL_GAIN_RANGE_FROM,
