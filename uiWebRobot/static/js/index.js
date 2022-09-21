@@ -168,6 +168,8 @@ socketButton.on('stop', function(dataServ) {
             statusActive.classList.remove('display-flex')
             statusActive.classList.add('display-none')
 
+            createJoystick();
+
             $('#canvas_joystick').removeClass('disable'); 
 
             otherButton = button.name=='Start'?"continue":"start";
