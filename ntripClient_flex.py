@@ -259,7 +259,7 @@ class NtripClient(object):
                 if ser.in_waiting > 0:
                     try:
                         read_line = ser.readline()
-                        print(f"UBLX : {read_line}")
+                        #print(f"UBLX : {read_line}")
                         if isinstance(read_line, bytes):
                             data = str(read_line)
                             # if len(data) == 3:
