@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.6"
+CONFIG_VERSION = "0.19.7"
 
 
 # ======================================================================================================================
@@ -147,13 +147,24 @@ SMOOTH_APPROACHING_MAX_POINTS = NUMBER_OF_BEZIER_POINT * 4 + 10
 # EXTRACTION SETTINGS
 # ======================================================================================================================
 EXTRACTION_CONTROLLER = 1  # 1 is smoothie, 2 is vesc
-#If EXTRACTION_CONTROLLER = 2
+# === If EXTRACTION_CONTROLLER = 2 ===
 EXTRACTION_MODE = 1  # 0 is reserved, 1 is extractions, 2 is milling
 EXTRACTION_CORK_DOWN_RPM = 20000
 EXTRACTION_CORK_UP_RPM = -5500
 EXTRACTION_CORK_DOWN_TIME = 1  # seconds; how much time cork should move down during plant extraction
 EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME = 3  # seconds
-#end of EXTRACTION_CONTROLLER = 2
+# this will have effect only if Z axis is controlled by vesc (this config EXTRACTION_CONTROLLER key)
+# True: will try to drop and pick cork again if stopper hit was registered earlier than Z_AXIS_PICKUP_MIN_TIME;
+# False: cork pickup will work as usual, relying on GPIO stopper and EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME timeout;
+ALLOW_VESC_CORK_PICKUP_MIN_TIME = True
+# this will have effect only if ALLOW_VESC_CORK_PICKUP_MIN_TIME is set to True;
+# seconds; if cork stopper hits earlier than this time - robot will try to drop and pick cork again
+VESC_CORK_PICKUP_MIN_TIME = 1  # TODO: NEED A TEST TO SET A PROPER VALUE!
+# int; ALWAYS MUST BE >= 1 FOR CORK PROPER WORKING REGARDLESS OF OTHER SETTINGS INCLUDING config.EXTRACTION_CONTROLLER!
+# values bigger than 1 will have effect only if ALLOW_VESC_CORK_PICKUP_MIN_TIME is set to True;
+# defines how many times robot will try to drop and pick cork if there are troubles with stopper before error is raised
+VESC_CORK_PICKUP_MAX_TRIES = 3
+# === end of EXTRACTION_CONTROLLER = 2 ===
 
 AVOID_CORK_VIEW_OBSCURING = True  # is True: adds offsets to control points to make a plant to be at the top half of the undistorted zone
 

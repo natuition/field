@@ -980,41 +980,76 @@ class ExtractionMethods:
         res = smoothie.RESPONSE_OK
         all_ext_z_start_t = start_t = time.time()
 
-        # extraction, cork down
-        if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
-            res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
-            smoothie.wait_for_all_actions_done()
-            if res != smoothie.RESPONSE_OK:  # or smoothie.checkendstop("Z")==1
-                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
-                msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
-                return msg, False
-        elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
-            vesc_adapter.set_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
-            vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_DOWN_TIME, vesc_adapter.EXTRACTION_KEY)
-            vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
-            vesc_adapter.wait_for_stop(vesc_adapter.EXTRACTION_KEY)
+        # this loop implements multiple tries of cork re-picking
+        for _ in range(config.VESC_CORK_PICKUP_MAX_TRIES):
+            # extraction, cork down
+            if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
+                res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:  # or smoothie.checkendstop("Z")==1
+                    data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                    msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
+                    return msg, False
+            elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
+                vesc_adapter.set_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
+                vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_DOWN_TIME, vesc_adapter.EXTRACTION_KEY)
+                vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
+                vesc_adapter.wait_for_stop(vesc_adapter.EXTRACTION_KEY)
+            else:
+                # TODO raise unsupported controller code error
+                pass
 
-        # extraction, cork up
-        if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
-            res = smoothie.ext_cork_up()
-            smoothie.wait_for_all_actions_done()
-            if res != smoothie.RESPONSE_OK:
-                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
-                msg = "Couldn't move the extractor up, smoothie error occurred:\n" + res + \
-                      "\nemergency exit as I don't want break the corkscrew."
-                return msg, True
-        elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
-            vesc_adapter.set_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
-            vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME, vesc_adapter.EXTRACTION_KEY)
-            vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
-            cork_is_stuck = not vesc_adapter.wait_for_stopper_hit(vesc_adapter.EXTRACTION_KEY,
-                                                                  config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME)
-            vesc_adapter.stop_moving(vesc_adapter.EXTRACTION_KEY)
-            if cork_is_stuck:
-                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
-                msg = "Not sure that extractor was properly picked up as vesc stopper hit wasn't registered (cork " \
-                      "picking up was stopped by security timeout). Emergency exit as I don't want break the corkscrew."
-                return msg, True
+            # extraction, cork up
+            if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
+                res = smoothie.ext_cork_up()
+                smoothie.wait_for_all_actions_done()
+                if res != smoothie.RESPONSE_OK:
+                    data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                    msg = "Couldn't move the extractor up, smoothie error occurred:\n" + res + \
+                          "\nemergency exit as I don't want break the corkscrew."
+                    return msg, True
+            elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
+                vesc_adapter.set_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
+                vesc_adapter.set_time_to_move(
+                    config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME,
+                    vesc_adapter.EXTRACTION_KEY)
+
+                cork_pick_start_t = time.time()
+
+                vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
+                cork_is_stuck = not vesc_adapter.wait_for_stopper_hit(
+                    vesc_adapter.EXTRACTION_KEY,
+                    config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME)
+                vesc_adapter.stop_moving(vesc_adapter.EXTRACTION_KEY)
+
+                cork_pick_end_t = time.time()
+
+                if config.ALLOW_VESC_CORK_PICKUP_MIN_TIME and \
+                        cork_pick_end_t - cork_pick_start_t < config.VESC_CORK_PICKUP_MIN_TIME:
+                    continue
+
+                if cork_is_stuck:
+                    data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                    msg = "Not sure that extractor was properly picked up as vesc stopper hit wasn't registered " \
+                          "(cork picking up was stopped by security timeout). Emergency exit as I don't want break " \
+                          "the corkscrew."
+                    return msg, True
+
+                # if execution came here - cork picking time is between min and max time so everything's ok - stop loop
+                break
+            else:
+                # TODO raise unsupported controller code error
+                pass
+
+            # don't do cork pick re-tries if they are disabled or if Z axis controller is smoothie
+            if not config.ALLOW_VESC_CORK_PICKUP_MIN_TIME or config.EXTRACTION_CONTROLLER == 1:
+                break
+        else:
+            data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+            msg = "Not sure that extractor was properly picked up as vesc stopper hit was registered too early " \
+                  "(cork pickup time is lesser than VESC_CORK_PICKUP_MIN_TIME). " \
+                  "Emergency exit as I don't want break the corkscrew."
+            return msg, True
 
         data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
         data_collector.add_cork_moving_time_data(time.time() - start_t)
