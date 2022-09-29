@@ -1540,7 +1540,7 @@ def main():
                                     config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
             adapters.VescAdapterV3(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
                                    config.VESC_STOPPER_CHECK_FREQ) as vesc_engine, \
-            adapters.SmoothieAdapter(smoothie_address) as smoothie, \
+            adapters.SmoothieAdapter(smoothie_address, vesc_engine) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
             adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                              config.CROP_H_TO, config.CV_ROTATE_CODE,
@@ -2047,58 +2047,31 @@ def main():
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:
-        # put the wheel straight
-        # vesc z axis calibration in case it's used for z axis control instead of smoothie
-        # (to prevent cork breaking when smoothie calibrates)
-        smoothie_safe_calibration = True
-        if config.EXTRACTION_CONTROLLER == 2:
-            with adapters.VescAdapterV3(
+        # put the wheels straight
+        with \
+                adapters.VescAdapterV3(
                     vesc_address,
                     config.VESC_BAUDRATE,
                     config.VESC_ALIVE_FREQ,
                     config.VESC_CHECK_FREQ,
-                    config.VESC_STOPPER_CHECK_FREQ) as vesc_engine:
-                # Z-5 fix (move cork little down to stop touching stopper)
-                vesc_engine.set_rpm(config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM, vesc_engine.EXTRACTION_KEY)
-                vesc_engine.set_time_to_move(
-                    config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME,
-                    vesc_engine.EXTRACTION_KEY)
-                vesc_engine.start_moving(vesc_engine.EXTRACTION_KEY)
-                vesc_engine.wait_for_stop(vesc_engine.EXTRACTION_KEY)
-
-                # calibration
-                vesc_engine.set_rpm(config.VESC_EXTRACTION_CALIBRATION_RPM, vesc_engine.EXTRACTION_KEY)
-                vesc_engine.set_time_to_move(
-                    config.VESC_EXTRACTION_CALIBRATION_MAX_TIME,
-                    vesc_engine.EXTRACTION_KEY)
-                vesc_engine.start_moving(vesc_engine.EXTRACTION_KEY)
-                res = vesc_engine.wait_for_stopper_hit(
-                    vesc_engine.EXTRACTION_KEY,
-                    config.VESC_EXTRACTION_CALIBRATION_MAX_TIME)
-                vesc_engine.stop_moving(vesc_engine.EXTRACTION_KEY)
-                if not res:
-                    smoothie_safe_calibration = False
-                    print(
-                        "Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received)\n",
-                        "WHEELS POSITION WILL NOT BE SAVED PROPERLY!", sep="")
-        if smoothie_safe_calibration:
-            with adapters.SmoothieAdapter(smoothie_address) as smoothie:
-                # put the wheel straight
-                msg = "Put the wheel straight"
-                logger_full.write(msg + "\n")
-                if config.VERBOSE:
+                    config.VESC_STOPPER_CHECK_FREQ) as vesc_engine, \
+                adapters.SmoothieAdapter(smoothie_address, vesc_engine) as smoothie:
+            # put the wheel straight
+            msg = "Put the wheel straight"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE:
+                print(msg)
+            with open(config.LAST_ANGLE_WHEELS_FILE, "r+") as wheels_angle_file:
+                angle = float(wheels_angle_file.read())
+                smoothie.set_current_coordinates(A=angle)
+                response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
+                if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
+                    msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
                     print(msg)
-                with open(config.LAST_ANGLE_WHEELS_FILE, "r+") as wheels_angle_file:
-                    angle = float(wheels_angle_file.read())
-                    smoothie.set_current_coordinates(A=angle)
-                    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
-                    if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                        msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
-                        print(msg)
-                        logger_full.write(msg + "\n")
-                    else:
-                        wheels_angle_file.seek(0)
-                        wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+                    logger_full.write(msg + "\n")
+                else:
+                    wheels_angle_file.seek(0)
+                    wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
 
         # save adapter points history
         try:

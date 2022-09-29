@@ -808,14 +808,14 @@ class ExtractionManagerV3:
                         config.MILLING_CORK_STOPPER_REACHING_MAX_TIME,
                         self.__vesc_engine.EXTRACTION_KEY)  # stop by movement timeout if GPIO fails
                     self.__vesc_engine.start_moving(self.__vesc_engine.EXTRACTION_KEY)
-                    res = self.__vesc_engine.wait_for_stopper_hit(
-                        self.__vesc_engine.EXTRACTION_KEY,
-                        config.MILLING_CORK_STOPPER_REACHING_MAX_TIME)
-                    self.__vesc_engine.stop_moving(self.__vesc_engine.EXTRACTION_KEY)
-                    if not res:
-                        msg = "WARNING: Miller vesc engine was stopped by timeout, not by stopper!"
+                    res = self.__smoothie.ext_cork_up()
+                    if res != self.__smoothie.RESPONSE_OK:
+                        self.__vesc_engine.start_moving(self.__vesc_engine.EXTRACTION_KEY)
+                        msg = "WARNING: Smoothie's answer is not OK for cork pick up request:\n" + res
                         print(msg)
                         self.__logger_full.write(msg + "\n")
+                    self.__smoothie.wait_for_all_actions_done()
+                    self.__vesc_engine.stop_moving(self.__vesc_engine.EXTRACTION_KEY)
 
         # set camera back to the Y min X max / 2
         res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
@@ -1017,9 +1017,13 @@ class ExtractionMethods:
                 cork_pick_start_t = time.time()
 
                 vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
-                cork_is_stuck = not vesc_adapter.wait_for_stopper_hit(
-                    vesc_adapter.EXTRACTION_KEY,
-                    config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME)
+                res = smoothie.ext_cork_up()
+                if res != smoothie.RESPONSE_OK:
+                    vesc_adapter.stop_moving(vesc_adapter.EXTRACTION_KEY)
+                    data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                    msg = "Smoothie's answer is not OK for cork up request:\n" + res
+                    return msg, True
+                smoothie.wait_for_all_actions_done()
                 vesc_adapter.stop_moving(vesc_adapter.EXTRACTION_KEY)
 
                 cork_pick_end_t = time.time()
@@ -1028,14 +1032,8 @@ class ExtractionMethods:
                         cork_pick_end_t - cork_pick_start_t < config.VESC_CORK_PICKUP_MIN_TIME:
                     continue
 
-                if cork_is_stuck:
-                    data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
-                    msg = "Not sure that extractor was properly picked up as vesc stopper hit wasn't registered " \
-                          "(cork picking up was stopped by security timeout). Emergency exit as I don't want break " \
-                          "the corkscrew."
-                    return msg, True
-
                 # if execution came here - cork picking time is between min and max time so everything's ok - stop loop
+                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
                 break
             else:
                 # TODO raise unsupported controller code error

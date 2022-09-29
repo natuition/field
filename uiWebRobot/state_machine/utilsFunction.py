@@ -77,7 +77,7 @@ def initSmoothie(logger: utility.Logger):
             logger.write_and_flush(msg + "\n")
             print(msg)
             exit(1)
-    smoothie = adapters.SmoothieAdapter(smoothie_address)
+    smoothie = adapters.SmoothieAdapter(smoothie_address, None, calibration_at_init=False)
     return smoothie
 
 
