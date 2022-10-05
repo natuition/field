@@ -1022,6 +1022,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     fwd = SI_speed_fwd
     rev = SI_speed_rev
 
+    # this applies different spiral side interval sizes dependent on audit or usual job mode
+    # TODO this also means that previous spiral interval key is not having any effect anymore?
     spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
 
     _break = False
@@ -1035,7 +1037,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     _ , a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
     if not add_points_to_path(path, [a, fwd]):
-        raise Exception("Field are too small !")
+        raise RuntimeError("Failed to add original point A into generated path. "
+                           "This could happen if input field's point A is None.")
 
     first_bezier_turn = compute_bezier_points(a2,b,b1)
     second_bezier_turn = compute_bezier_points(b2,c,c1)
@@ -1155,7 +1158,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
 
         if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
-            raise Exception("Field are too small !")
+            raise RuntimeError("Some of intermediate points [B1 B2 D1 D2] for next spiral generation are None. "
+                               "This may happen if current distance between points is too small for robot maneuvers.")
 
         d2_int_prev = d2_int
 
@@ -1163,7 +1167,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
 
         if not check_points_for_nones(a_new, b_new, c_new, d_new):
-            raise Exception("Field are too small !")
+            raise RuntimeError("Some of next iteration field points [A_new B_new C_new D_new] are None. "
+                               "This may happen if current distance between points is too small for robot maneuvers.")
 
         # get moving points A1 - ... - D2 spiral
         a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
@@ -1171,20 +1176,21 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         c1, c2 = compute_x1_x2_points(c, d, nav, logger)
         d1, d2 = compute_x1_x2_points(d, a, nav, logger)
 
-        if None in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
+        if None in [a, b, c, d, a1, b1, c1, d1, a2, b2, c2, d2]:
             if nav.get_distance(a,b) >= nav.get_distance(b,c):
                 a = compute_x1_x2(a, d, spiralSidesInterval, nav)[0]
                 b = compute_x1_x2(b, c, spiralSidesInterval, nav)[0]
-                return add_forward_backward_path([a,b,c,d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
+                return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
             else:
-                raise Exception("Field are too small !")
+                raise RuntimeError("Some of [A A1 A2 B B1 B2 C C1 C2 D D1 D2] points are None AND AB < BC. "
+                                   "Old code, not sure why author raises an exception for such condition.")
 
         a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
         _ , a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
 
         if None in [a1_spiral, a_spiral]:
-            raise Exception("Field are too small !")
-        
+            raise RuntimeError("One of [A_spiral A1_spiral] points are None. This case actually should never happen.")
+
         first_bezier_turn = compute_bezier_points(a2,b,b1)
         second_bezier_turn = compute_bezier_points(b2,c,c1)
         third_bezier_turn = compute_bezier_points(c2,d,d1)
@@ -1606,13 +1612,17 @@ def main():
 
                     field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
 
+                    msg = "Loaded field: " + str(field_gps_coords)
+                    print(msg)
+                    logger_full.write(msg + "\n")
+
                 # check field corner points count
                 if len(field_gps_coords) == 4:
-                    # TODO: save field in debug
-
                     field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
-                    print("field_gps_coords : ",field_gps_coords)
-                    # TODO: save reduced field in debug
+
+                    msg = "Reduced field: " + str(field_gps_coords)
+                    print(msg)
+                    logger_full.write(msg + "\n")
 
                     # generate path points
                     path_start_index = 1
@@ -1629,11 +1639,9 @@ def main():
                     
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
-
                 elif len(field_gps_coords) == 2: 
                     path_start_index = 1
                     path_points = field_gps_coords
-
                 else:
                     msg = "Expected 4 or 2 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(
                         field_gps_coords)
@@ -1641,7 +1649,6 @@ def main():
                     logger_full.write(msg + "\n")
                     notification.setStatus(SyntheseRobot.HS)
                     exit(1)
-                # TODO: save field in debug
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
                     link_path = subprocess.check_output(['readlink', '-f', 'field.txt']).decode("utf-8")
@@ -1663,8 +1670,6 @@ def main():
                 msg = "List of path points is empty, saving canceled."
                 print(msg)
                 logger_full.write(msg + "\n")
-            
-            #raise Exception("Path generate")
 
             if len(path_points) < 2:
                 msg = "Expected at least 2 points in path, got " + str(len(path_points)) + \
