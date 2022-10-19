@@ -358,8 +358,15 @@ class SettingPageManager:
         radio_btn_spiral = RadioButton("spiral", "Spiral", lambda new_value : self.__changeConfigValue("BEZIER_PATH", new_value))
         radio_btn_spiral.set_checked(self.__config.BEZIER_PATH)
 
-        slider_sides_interval = Slider("sides_interval", "Sides interval", lambda new_value : self.__changeConfigDict(self.__config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL", True, new_value))
-        slider_sides_interval.set_number_parameters(0,3000,5,self.__config.SPIRAL_SIDES_INTERVAL[True])
+        slider_sides_interval = Slider(
+            "sides_interval",
+            "Sides interval",
+            lambda new_value: self.__changeConfigValue(
+                "SPIRAL_SIDES_INTERVAL",
+                new_value
+            )
+        )
+        slider_sides_interval.set_number_parameters(0, 3000, 5, self.__config.SPIRAL_SIDES_INTERVAL)
 
         radio_btn_group_path_choice = RadioButtonGroup("path", "Choice of path:")
         radio_btn_group_path_choice.set_column_number(2)

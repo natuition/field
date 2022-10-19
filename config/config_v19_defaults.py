@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.7"
+CONFIG_VERSION = "0.19.8"
 
 
 # ======================================================================================================================
@@ -69,11 +69,11 @@ MANEUVERS_FREQUENCY = 0.25  #seconds
 WINDOW = float("inf")   # anyway, the integral is used for only some hundreds of time
 # AB moving vector used as A----A1--B, where A1 is point when robot starts moving to next point.
 # this determines A1-B distance
-MANEUVER_START_DISTANCE = {False:5000, True:4000} # this parameter depends on whether the audit mode is false or true
+MANEUVER_START_DISTANCE = 5000  # this parameter depends on whether the audit mode is false or true
 USE_SPEED_LIMIT = True  # when distance to target point is less than specified in the config
 DECREASE_SPEED_TRESHOLD = 5000  # millimeters
 SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history), should be positive here, in config
-SPIRAL_SIDES_INTERVAL = {False: 450, True: 3000} # distance between sides of spiral robot movements, 
+SPIRAL_SIDES_INTERVAL = 450  # distance between sides of spiral robot movements,
 # expected to be equal to working area width, may be any positive val
 # this parameter depends on whether the audit mode is false or true
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms

@@ -850,17 +850,6 @@ def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: 
         exit(1)
 
 
-def getAuditDependentConfigParam(configParam: dict, paramName: str, logger_full: utility.Logger):
-    if config.AUDIT_MODE in configParam:
-        return configParam[config.AUDIT_MODE]
-    else:
-        msg = f"Audit mode {config.AUDIT_MODE} isn't present in {paramName}."
-        if config.VERBOSE:
-            print(msg)
-        logger_full.write(msg + "\n")
-        exit(1)
-
-
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
     """
     Computes p. x1 with config distance from p. A and p. x2 with the same distance from p. B. Distance is loaded from
@@ -875,19 +864,17 @@ def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComput
 
     cur_vec_dist = nav.get_distance(point_a, point_b)
 
-    maneuverStartDistance = getAuditDependentConfigParam(config.MANEUVER_START_DISTANCE,"MANEUVER_START_DISTANCE",logger)
-
     # check if moving vector is too small for maneuvers
-    if maneuverStartDistance * 2 >= cur_vec_dist:
+    if config.MANEUVER_START_DISTANCE * 2 >= cur_vec_dist:
         msg = "No place for maneuvers; config start maneuver distance is (that will be multiplied by 2): " + \
-              str(maneuverStartDistance) + " current moving vector distance is: " + str(cur_vec_dist) + \
+              str(config.MANEUVER_START_DISTANCE) + " current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
         # print(msg)
         logger.write(msg + "\n")
         return None, None
 
-    point_x1 = nav.get_point_on_vector(point_a, point_b, maneuverStartDistance)
-    point_x2 = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - maneuverStartDistance)
+    point_x1 = nav.get_point_on_vector(point_a, point_b, config.MANEUVER_START_DISTANCE)
+    point_x2 = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.MANEUVER_START_DISTANCE)
     return point_x1, point_x2
 
 
@@ -903,21 +890,20 @@ def compute_x2_spiral(point_a: list, point_b: list, nav: navigation.GPSComputing
     """
 
     cur_vec_dist = nav.get_distance(point_a, point_b)
-    
-    maneuverStartDistance = getAuditDependentConfigParam(config.MANEUVER_START_DISTANCE,"MANEUVER_START_DISTANCE",logger)
-
-    spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
 
     # check if moving vector is too small for maneuvers
-    if maneuverStartDistance * 2 + spiralSidesInterval >= cur_vec_dist:
+    if config.MANEUVER_START_DISTANCE * 2 + config.SPIRAL_SIDES_INTERVAL >= cur_vec_dist:
         msg = "No place for maneuvers; Config maneuver distance is (that will be multiplied by 2): " + \
-              str(maneuverStartDistance) + " Config spiral interval: " + str(spiralSidesInterval) + \
+              str(config.MANEUVER_START_DISTANCE) + " Config spiral interval: " + str(config.SPIRAL_SIDES_INTERVAL) + \
               " Current moving vector distance is: " + str(cur_vec_dist) + " Given points are: " + str(point_a) + \
               " " + str(point_b)
         # print(msg)
         logger.write(msg + "\n")
         return None
-    return nav.get_point_on_vector(point_a, point_b, cur_vec_dist - maneuverStartDistance - spiralSidesInterval)
+    return nav.get_point_on_vector(
+        point_a,
+        point_b,
+        cur_vec_dist - config.MANEUVER_START_DISTANCE - config.SPIRAL_SIDES_INTERVAL)
 
 
 def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -932,24 +918,30 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
 
     cur_vec_dist = nav.get_distance(point_a, point_b)
 
-    spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
-
     # check if moving vector is too small for maneuvers
-    if spiralSidesInterval * 2 >= cur_vec_dist:
+    if config.SPIRAL_SIDES_INTERVAL * 2 >= cur_vec_dist:
         msg = "No place for maneuvers; Config spiral interval (that will be multiplied by 2): " + \
-              str(spiralSidesInterval) + " Current moving vector distance is: " + str(cur_vec_dist) + \
+              str(config.SPIRAL_SIDES_INTERVAL) + " Current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
         if config.VERBOSE:
             print(msg)
         logger.write(msg + "\n")
         return None, None
 
-    point_x1_int = nav.get_point_on_vector(point_a, point_b, spiralSidesInterval)
-    point_x2_int = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - spiralSidesInterval)
+    point_x1_int = nav.get_point_on_vector(point_a, point_b, config.SPIRAL_SIDES_INTERVAL)
+    point_x2_int = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.SPIRAL_SIDES_INTERVAL)
     return point_x1_int, point_x2_int
 
 
 def add_points_to_path(path: list, *args):
+    """Tries to add given points into given path.
+
+    Returns True if all points are added successfully
+    Returns False if one of given points is None
+
+    If point is None - previous not None points will be added, further points addition will is canceled and False is
+    returned"""
+
     for point in args:
         if point is None:
             return False
@@ -961,27 +953,36 @@ def add_points_to_path(path: list, *args):
 
 
 def check_points_for_nones(*args):
+    """Checks if any of given points is None.
+
+    Returns True if all given points are not Nones.
+    Returns False if any of given points is None."""
+
     for point in args:
         if point is None:
             return False
     return True
 
+
 def compute_bezier_points(point_0, point_1, point_2):
-    t = np.linspace(0,1,config.NUMBER_OF_BEZIER_POINT)
+    t = np.linspace(0, 1, config.NUMBER_OF_BEZIER_POINT)
     coords = list()
-    for i in t :
-        x = (point_0[0]-2*point_1[0]+point_2[0])*(i**2) + (2*point_1[0]-2*point_0[0])*i + point_0[0]
-        y = (point_0[1]-2*point_1[1]+point_2[1])*(i**2) + (2*point_1[1]-2*point_0[1])*i + point_0[1]
-        coords.append([x,y])
+    for i in t:
+        x = (point_0[0] - 2 * point_1[0] + point_2[0]) * (i ** 2) + (2 * point_1[0] - 2 * point_0[0]) * i + point_0[0]
+        y = (point_0[1] - 2 * point_1[1] + point_2[1]) * (i ** 2) + (2 * point_1[1] - 2 * point_0[1]) * i + point_0[1]
+        coords.append([x, y])
     return coords
+
 
 def get_rectangle_isosceles_side(turning_radius):
     return (0.5*(turning_radius*((2**0.5)-1))**2)**0.5 #Bezier refer \Nextcloud\3. Engineering\navigation
+
 
 def corner_finish_rounds(turning_radius : float):
     if config.VERBOSE:
         print("black corridor width at full steering %2.0f"%get_rectangle_isosceles_side(turning_radius)," millimeters")
     return int((get_rectangle_isosceles_side(turning_radius))/config.FIELD_REDUCE_SIZE)+1 #how many corner round due to robot working width
+
 
 def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float, currently_path: list):
     
@@ -993,9 +994,7 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
     fwd = SI_speed_fwd
     rev = SI_speed_rev
 
-    spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
-
-    while nav.get_distance(b,c)>spiralSidesInterval:
+    while nav.get_distance(b, c) > config.SPIRAL_SIDES_INTERVAL:
 
         if not add_points_to_path(currently_path, [b,fwd]):
             return currently_path
@@ -1003,8 +1002,8 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
         if not add_points_to_path(currently_path, [a,rev]):
             return currently_path
 
-        a = compute_x1_x2(a, d, spiralSidesInterval, nav)[0]
-        b = compute_x1_x2(b, c, spiralSidesInterval, nav)[0]
+        a = compute_x1_x2(a, d, config.SPIRAL_SIDES_INTERVAL, nav)[0]
+        b = compute_x1_x2(b, c, config.SPIRAL_SIDES_INTERVAL, nav)[0]
 
     if not add_points_to_path(currently_path, [b,fwd]):
         return currently_path
@@ -1022,10 +1021,6 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     fwd = SI_speed_fwd
     rev = SI_speed_rev
 
-    # this applies different spiral side interval sizes dependent on audit or usual job mode
-    # TODO this also means that previous spiral interval key is not having any effect anymore?
-    spiralSidesInterval = getAuditDependentConfigParam(config.SPIRAL_SIDES_INTERVAL,"SPIRAL_SIDES_INTERVAL",logger)
-
     _break = False
 
     # get moving points A1 - ... - D2 spiral
@@ -1033,8 +1028,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     b1, b2 = compute_x1_x2_points(b, c, nav, logger)
     c1, c2 = compute_x1_x2_points(c, d, nav, logger)
     d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-    a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
-    _ , a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
+    a1_spiral = nav.get_coordinate(a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
+    _ , a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL,nav)
 
     if not add_points_to_path(path, [a, fwd]):
         raise RuntimeError("Failed to add original point A into generated path. "
@@ -1045,10 +1040,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     third_bezier_turn = compute_bezier_points(c2,d,d1)
     fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
 
-    maneuverStartDistance = getAuditDependentConfigParam(config.MANEUVER_START_DISTANCE,"MANEUVER_START_DISTANCE",logger)
+    turning_radius = config.MANEUVER_START_DISTANCE   # minimum turning radius given in millimeter
 
-    turning_radius = maneuverStartDistance   # minimum turning radius given in millimeter
-    
     if config.ADD_CORNER_TO_BEZIER_PATH:
         rnd = 0
         rnds = corner_finish_rounds(turning_radius)
@@ -1136,8 +1129,8 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
                 if point is None:
                     return path
 
-            a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
-            _, a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
+            a1_spiral = nav.get_coordinate(a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
+            _, a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL,nav)
 
             for point in [a1_spiral, a_spiral]:
                 if point is None:
@@ -1178,15 +1171,15 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
 
         if None in [a, b, c, d, a1, b1, c1, d1, a2, b2, c2, d2]:
             if nav.get_distance(a,b) >= nav.get_distance(b,c):
-                a = compute_x1_x2(a, d, spiralSidesInterval, nav)[0]
-                b = compute_x1_x2(b, c, spiralSidesInterval, nav)[0]
+                a = compute_x1_x2(a, d, config.SPIRAL_SIDES_INTERVAL, nav)[0]
+                b = compute_x1_x2(b, c, config.SPIRAL_SIDES_INTERVAL, nav)[0]
                 return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
             else:
                 raise RuntimeError("Some of [A A1 A2 B B1 B2 C C1 C2 D D1 D2] points are None AND AB < BC. "
                                    "Old code, not sure why author raises an exception for such condition.")
 
-        a1_spiral = nav.get_coordinate(a1, a, 90, spiralSidesInterval)
-        _ , a_spiral = compute_x1_x2(d,a,spiralSidesInterval,nav)
+        a1_spiral = nav.get_coordinate(a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
+        _ , a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL,nav)
 
         if None in [a1_spiral, a_spiral]:
             raise RuntimeError("One of [A_spiral A1_spiral] points are None. This case actually should never happen.")
@@ -1235,14 +1228,123 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             next_b1, _ = compute_x1_x2_points(b_new, c_new, nav, logger)
 
             if None in fourth_bezier_turn or None in [next_a2, b_new, next_b1]:
-                return add_forward_backward_path([d,a,b,c], nav, logger, SI_speed_fwd, SI_speed_rev, path)     
+                return add_forward_backward_path([d,a,b,c], nav, logger, SI_speed_fwd, SI_speed_rev, path)
             # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
             fourth_bezier_turn_with_speed = [[point,fwd] for point in fourth_bezier_turn]
             if not add_points_to_path(path, *(fourth_bezier_turn_with_speed)):
                 raise Exception("Error during generate path (build_bezier_with_corner_path:05 !")
 
-
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
+
+
+def build_bezier_with_corner_path_new(abcd_points: list,
+                                      nav: navigation.GPSComputing,
+                                      logger: utility.Logger,
+                                      SI_speed_fwd: float,
+                                      SI_speed_rev: float):
+    if config.ADD_CORNER_TO_BEZIER_PATH:
+        raise NotImplementedError("config.ADD_CORNER_TO_BEZIER_PATH feature is not ready in new path builder yet")
+
+    if len(abcd_points) != 4:
+        msg = f"Expected 4 ABCD points as input field, got {str(len(abcd_points))} instead"
+        raise ValueError(msg)
+
+    for point_name, point in zip("ABCD", abcd_points):
+        if point is None:
+            msg = f"Point {point_name} of given field is None"
+            raise ValueError(msg)
+
+    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
+    path = []
+    center_fill_start_point = 0  # 0 is unidentified, 1 is A, 2 is D
+    fwd = SI_speed_fwd
+    rev = SI_speed_rev
+
+    if not add_points_to_path(path, [a, fwd]):
+        raise RuntimeError("Failed to add point A (the once of input field description points) into generated path")
+
+    while True:
+        # get moving points A1 - ... - D2 spiral
+        a1, a2 = compute_x1_x2_points(a, b, nav, logger)
+        b1, b2 = compute_x1_x2_points(b, c, nav, logger)
+        c1, c2 = compute_x1_x2_points(c, d, nav, logger)
+        d1, _ = compute_x1_x2_points(d, a, nav, logger)
+        if not check_points_for_nones(a1, a2, b1, b2, c1, c2, d1):
+            center_fill_start_point = 1
+            break
+
+        b_corner_bezier = compute_bezier_points(a2, b, b1)
+        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, fwd], b_corner_bezier)):
+            raise RuntimeError("Failed to add B corner's bezier curve to path. This expected never to happen.")
+
+        c_corner_bezier = compute_bezier_points(b2, c, c1)
+        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, fwd], c_corner_bezier)):
+            raise RuntimeError("Failed to add C corner's bezier curve to path. This expected never to happen.")
+
+        d_corner_bezier = compute_bezier_points(c2, d, d1)
+        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, fwd], d_corner_bezier)):
+            raise RuntimeError("Failed to add D corner's bezier curve to path. This expected never to happen.")
+
+        # check before computing d2 and A corner bezier curve (see d2 computing comments below for details)
+        if nav.get_distance(d, a) <= config.MANEUVER_START_DISTANCE * 2 + config.SPIRAL_SIDES_INTERVAL \
+                or nav.get_distance(a, b) <= config.MANEUVER_START_DISTANCE:
+            center_fill_start_point = 2
+            break
+
+        # d2 isn't as other x2 points as d2 distance from A is spiral_sides_interval + start_turn_distance
+        # instead of just start_turn_distance, so DA acceptable length computing is different (+spiral side interval)
+        d2 = nav.get_point_on_vector(a, d, config.SPIRAL_SIDES_INTERVAL + config.MANEUVER_START_DISTANCE)
+        a_spiral = nav.get_point_on_vector(a, d, config.SPIRAL_SIDES_INTERVAL)
+        # a1_spiral point is inside the initial field, corner of D-A_spiral-A1_spiral = 90 degrees
+        a1_spiral = nav.get_coordinate(a_spiral, d, 90, config.MANEUVER_START_DISTANCE)
+
+        a_corner_bezier = compute_bezier_points(d2, a_spiral, a1_spiral)
+        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, fwd], a_corner_bezier)):
+            raise RuntimeError("Failed to add A corner's bezier curve to path. This expected never to happen.")
+
+        # get A'B'C'D' (intermediate points used to compute new ABCD points for next iteration)
+        # (int points are requiring given vector length >= spiral_sides_interval * 2
+        # it is very small value and can be exceeded only if robot can turn almost inplace)
+        b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
+        d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
+        if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
+            msg = "Some of intermediate points [B1_int B2_int D1_int D2_int] for next spiral generation are None. " \
+                  "This could happen if spiral shift value is higher than robot's maneuverability. " \
+                  "Check config.MANEUVER_START_DISTANCE and config.SPIRAL_SIDES_INTERVAL for wrong values."
+            raise RuntimeError(msg)
+
+        a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
+        c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
+        if not check_points_for_nones(a_new, b_new, c_new, d_new):
+            msg = "Some of points [A_new B_new C_new D_new] for next spiral generation iteration are None. " \
+                  "This could happen if spiral shift value is higher than robot's maneuverability. " \
+                  "Check config.MANEUVER_START_DISTANCE and config.SPIRAL_SIDES_INTERVAL for wrong values."
+            raise RuntimeError(msg)
+
+        a, b, c, d = a_new, b_new, c_new, d_new
+
+    if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
+        if center_fill_start_point == 0:
+            msg = "Asked to fill field's center during path building, but filling start position point flag was not " \
+                  "changed from it's initial value."
+            raise RuntimeError(msg)
+        elif center_fill_start_point == 1:
+            # TODO fill missing field center using new build_forward_backward_path, points order a, b, c, d
+            msg = "Field forward-backward center filling is not ready yet. " \
+                  "Disable it for now by setting config.ADD_FORWARD_BACKWARD_TO_END_PATH to False."
+            raise NotImplementedError(msg)
+        elif center_fill_start_point == 2:
+            # TODO fill missing field center using new build_forward_backward_path, points order d, a, b, c
+            msg = "Field forward-backward center filling is not ready yet. " \
+                  "Disable it for now by setting config.ADD_FORWARD_BACKWARD_TO_END_PATH to False."
+            raise NotImplementedError(msg)
+        else:
+            msg = "Asked to fill field's center during path building, but filling start position point flag value " \
+                  "is not supported."
+            raise NotImplementedError(msg)
+
+    return path
+
 
 def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
     path = []
@@ -1306,6 +1408,7 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
         return add_forward_backward_path([a,b,c,d], nav, logger, SI_speed_fwd, SI_speed_rev, path)       
     else:
         return add_forward_backward_path([c,b,a,d], nav, logger, SI_speed_rev, SI_speed_fwd, path)
+
 
 def compute_x1_x2(point_a, point_b, distance, nav: navigation.GPSComputing):
     """
@@ -1629,7 +1732,12 @@ def main():
                     if config.TRADITIONAL_PATH:
                         path_points = build_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
                     if config.BEZIER_PATH:
-                        path_points = build_bezier_with_corner_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
+                        path_points = build_bezier_with_corner_path_new(
+                            field_gps_coords,
+                            nav,
+                            logger_full,
+                            config.SI_SPEED_FWD,
+                            config.SI_SPEED_REV)
                     if config.FORWARD_BACKWARD_PATH:
                         a,b,c,d = field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]
                         if nav.get_distance(a,b) >= nav.get_distance(b,c):
