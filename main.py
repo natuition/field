@@ -985,7 +985,8 @@ def corner_finish_rounds(turning_radius : float):
 
 
 def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float, currently_path: list):
-    
+    raise NotImplementedError("an obsolete code, use build_forward_backward_path() instead")
+
     if not config.ADD_FORWARD_BACKWARD_TO_END_PATH and not config.FORWARD_BACKWARD_PATH:
         return currently_path
     
@@ -1014,7 +1015,70 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
     return currently_path
 
 
+def build_forward_backward_path(abcd_points: list,
+                                nav: navigation.GPSComputing,
+                                logger: utility.Logger,
+                                SI_speed_fwd: float,
+                                SI_speed_rev: float,
+                                path: list = None):
+    """Builds zigzag (forward-backward) path to fill given ABCD field.
+    Can process 4 non 90 degrees corners fields.
+
+    Will append zigzag points into the existing path if it is not None, otherwise creates a path from scratch.
+    Returns python list of gps [[latitude, longitude], speed] points."""
+
+    if type(abcd_points) != list:
+        msg = f"Given ABCD path must be a list, got {type(abcd_points).__name__} instead"
+        raise TypeError(msg)
+
+    if len(abcd_points) != 4:
+        msg = f"Expected 4 ABCD points as input field, got {str(len(abcd_points))} points instead"
+        raise ValueError(msg)
+
+    for point_name, point in zip("ABCD", abcd_points):
+        if type(point) != list:
+            msg = f"Point {point_name} of given ABCD field must be a list, got {type(point).__name__} instead"
+            raise TypeError(msg)
+        if len(point) < 2:
+            msg = f"Point {point_name} of given ABCD field must contain >=2 items, found {str(len(point))} instead"
+            raise ValueError(msg)
+
+    if path is None:
+        path = []
+    elif type(path) != list:
+        msg = f"Given ABCD path must be a list type, got {type(path).__name__} instead"
+        raise TypeError(msg)
+
+    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
+
+    # separate stop-flags and BC & AD length control allows correct processing 4 corner non 90 degrees fields
+    bc_dist_ok = ad_dist_ok = True
+
+    while bc_dist_ok or ad_dist_ok:
+        if not add_points_to_path(path, [b, SI_speed_fwd]):
+            msg = f"Failed to add point B={str(b)} to path. This expected never to happen."
+            raise RuntimeError(msg)
+
+        if not add_points_to_path(path, [a, SI_speed_rev]):
+            msg = f"Failed to add point A={str(a)} to path. This expected never to happen."
+            raise RuntimeError(msg)
+
+        if nav.get_distance(b, c) >= config.SPIRAL_SIDES_INTERVAL:
+            b = nav.get_point_on_vector(b, c, config.SPIRAL_SIDES_INTERVAL)
+        else:
+            bc_dist_ok = False
+
+        if nav.get_distance(a, d) >= config.SPIRAL_SIDES_INTERVAL:
+            a = nav.get_point_on_vector(a, d, config.SPIRAL_SIDES_INTERVAL)
+        else:
+            ad_dist_ok = False
+
+    return path
+
+
 def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
+    raise NotImplementedError("an obsolete code, use build_bezier_path() instead")
+
     path = []
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
@@ -1237,30 +1301,41 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
 
-def build_bezier_with_corner_path_new(abcd_points: list,
-                                      nav: navigation.GPSComputing,
-                                      logger: utility.Logger,
-                                      SI_speed_fwd: float,
-                                      SI_speed_rev: float):
+def build_bezier_path(abcd_points: list,
+                      nav: navigation.GPSComputing,
+                      logger: utility.Logger,
+                      SI_speed_fwd: float,
+                      SI_speed_rev: float):
+    """Builds spiral path to fill given ABCD field.
+
+    Fills field's missing center with zigzag (forward-backward) movement if config.ADD_FORWARD_BACKWARD_TO_END_PATH
+    is set to True.
+    Returns python list of gps [[latitude, longitude], speed] points."""
+
     if config.ADD_CORNER_TO_BEZIER_PATH:
         raise NotImplementedError("config.ADD_CORNER_TO_BEZIER_PATH feature is not ready in new path builder yet")
 
+    if type(abcd_points) != list:
+        msg = f"Given ABCD path must be a list, got {type(abcd_points).__name__} instead"
+        raise TypeError(msg)
+
     if len(abcd_points) != 4:
-        msg = f"Expected 4 ABCD points as input field, got {str(len(abcd_points))} instead"
+        msg = f"Expected 4 ABCD points as input field, got {str(len(abcd_points))} points instead"
         raise ValueError(msg)
 
     for point_name, point in zip("ABCD", abcd_points):
-        if point is None:
-            msg = f"Point {point_name} of given field is None"
+        if type(point) != list:
+            msg = f"Point {point_name} of given ABCD field must be a list, got {type(point).__name__} instead"
+            raise TypeError(msg)
+        if len(point) < 2:
+            msg = f"Point {point_name} of given ABCD field must contain >=2 items, found {str(len(point))} instead"
             raise ValueError(msg)
 
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
     path = []
     center_fill_start_point = 0  # 0 is unidentified, 1 is A, 2 is D
-    fwd = SI_speed_fwd
-    rev = SI_speed_rev
 
-    if not add_points_to_path(path, [a, fwd]):
+    if not add_points_to_path(path, [a, SI_speed_fwd]):
         raise RuntimeError("Failed to add point A (the once of input field description points) into generated path")
 
     while True:
@@ -1274,15 +1349,15 @@ def build_bezier_with_corner_path_new(abcd_points: list,
             break
 
         b_corner_bezier = compute_bezier_points(a2, b, b1)
-        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, fwd], b_corner_bezier)):
+        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, SI_speed_fwd], b_corner_bezier)):
             raise RuntimeError("Failed to add B corner's bezier curve to path. This expected never to happen.")
 
         c_corner_bezier = compute_bezier_points(b2, c, c1)
-        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, fwd], c_corner_bezier)):
+        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, SI_speed_fwd], c_corner_bezier)):
             raise RuntimeError("Failed to add C corner's bezier curve to path. This expected never to happen.")
 
         d_corner_bezier = compute_bezier_points(c2, d, d1)
-        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, fwd], d_corner_bezier)):
+        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, SI_speed_fwd], d_corner_bezier)):
             raise RuntimeError("Failed to add D corner's bezier curve to path. This expected never to happen.")
 
         # check before computing d2 and A corner bezier curve (see d2 computing comments below for details)
@@ -1299,7 +1374,7 @@ def build_bezier_with_corner_path_new(abcd_points: list,
         a1_spiral = nav.get_coordinate(a_spiral, d, 90, config.MANEUVER_START_DISTANCE)
 
         a_corner_bezier = compute_bezier_points(d2, a_spiral, a1_spiral)
-        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, fwd], a_corner_bezier)):
+        if not add_points_to_path(path, *map(lambda gps_point: [gps_point, SI_speed_fwd], a_corner_bezier)):
             raise RuntimeError("Failed to add A corner's bezier curve to path. This expected never to happen.")
 
         # get A'B'C'D' (intermediate points used to compute new ABCD points for next iteration)
@@ -1328,16 +1403,22 @@ def build_bezier_with_corner_path_new(abcd_points: list,
             msg = "Asked to fill field's center during path building, but filling start position point flag was not " \
                   "changed from it's initial value."
             raise RuntimeError(msg)
-        elif center_fill_start_point == 1:
-            # TODO fill missing field center using new build_forward_backward_path, points order a, b, c, d
-            msg = "Field forward-backward center filling is not ready yet. " \
-                  "Disable it for now by setting config.ADD_FORWARD_BACKWARD_TO_END_PATH to False."
-            raise NotImplementedError(msg)
-        elif center_fill_start_point == 2:
-            # TODO fill missing field center using new build_forward_backward_path, points order d, a, b, c
-            msg = "Field forward-backward center filling is not ready yet. " \
-                  "Disable it for now by setting config.ADD_FORWARD_BACKWARD_TO_END_PATH to False."
-            raise NotImplementedError(msg)
+        elif center_fill_start_point == 1:  # when robot is going to stop spiral movement at point A'n
+            path = build_forward_backward_path(
+                [a, b, c, d],
+                nav,
+                logger,
+                SI_speed_fwd,
+                SI_speed_rev,
+                path)
+        elif center_fill_start_point == 2:  # when robot is going to stop spiral movement at point D'n
+            path = build_forward_backward_path(
+                [d, a, b, c],
+                nav,
+                logger,
+                SI_speed_fwd,
+                SI_speed_rev,
+                path)
         else:
             msg = "Asked to fill field's center during path building, but filling start position point flag value " \
                   "is not supported."
@@ -1347,6 +1428,8 @@ def build_bezier_with_corner_path_new(abcd_points: list,
 
 
 def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
+    raise NotImplementedError("an obsolete code, use more advanced path builders like bezier or zigzag")
+
     path = []
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
@@ -1730,21 +1813,27 @@ def main():
                     # generate path points
                     path_start_index = 1
                     if config.TRADITIONAL_PATH:
-                        path_points = build_path(field_gps_coords, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
-                    if config.BEZIER_PATH:
-                        path_points = build_bezier_with_corner_path_new(
+                        path_points = build_path(
                             field_gps_coords,
                             nav,
                             logger_full,
                             config.SI_SPEED_FWD,
                             config.SI_SPEED_REV)
-                    if config.FORWARD_BACKWARD_PATH:
-                        a,b,c,d = field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]
-                        if nav.get_distance(a,b) >= nav.get_distance(b,c):
-                            path_points = add_forward_backward_path([a,b,c,d], nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV, [])
-                        else:
-                            path_points = add_forward_backward_path([d,a,b,c], nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV, [])
-                    
+                    elif config.BEZIER_PATH:
+                        path_points = build_bezier_path(
+                            field_gps_coords,
+                            nav,
+                            logger_full,
+                            config.SI_SPEED_FWD,
+                            config.SI_SPEED_REV)
+                    elif config.FORWARD_BACKWARD_PATH:
+                        path_points = build_forward_backward_path(
+                            field_gps_coords,
+                            nav,
+                            logger_full,
+                            config.SI_SPEED_FWD,
+                            config.SI_SPEED_REV)
+
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
                 elif len(field_gps_coords) == 2: 
