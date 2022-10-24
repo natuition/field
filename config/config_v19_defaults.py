@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.8"
+CONFIG_VERSION = "0.19.9"
 
 
 # ======================================================================================================================
@@ -176,6 +176,9 @@ MYOPIA_PATCH = True
 
 # set to True to disable weeds extractions during movement to first point when continuing previous path (continue mode)
 FIRST_POINT_NO_EXTRACTIONS = False
+
+# True: set on pause extractions and wait for manual continue permission; False: usual extraction
+SET_EXTRACTIONS_ON_DEBUG_PAUSE = False
 
 
 # ======================================================================================================================
@@ -372,7 +375,7 @@ ANTI_THEFT_ZONE_RADIUS = 5000
 GPS_QUALITY_IGNORE = False #If this is activated, stops the robot when it no longer has quality 4. 
 # It restarts the ntrip service and waits to find quality 4
 
-ROBOT_SN = "SN012" 
+ROBOT_SN = "SN012"
 
 
 # ======================================================================================================================

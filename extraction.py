@@ -179,6 +179,11 @@ class ExtractionManagerV3:
             if config.VERBOSE:
                 print(msg)
 
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            msg = f"EXT. PAUSE: Found {str(len(smoothie_positions))} plants after PDZ scan; press enter:"
+            self.__logger_full.write(msg + "\n")
+            input(msg)
+
         plant_index = 0
         # loop over plants that were detected during PDZ sectored scans and extract them (main ext loop)
         for init_pos_sm_x, init_pos_sm_y in smoothie_positions:
@@ -188,6 +193,14 @@ class ExtractionManagerV3:
                 self.__logger_full.write_and_flush(msg+"\n")
             cur_pos_sm_x, cur_pos_sm_y = init_pos_sm_x, init_pos_sm_y
 
+            if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                msg = f"EXT. PAUSE: Starting plant {str(plant_index)} of {str(len(smoothie_positions))} extraction."
+                self.__logger_full.write(msg + "\n")
+                print(msg)
+                msg = f"EXT. PAUSE: Target is X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
+                self.__logger_full.write(msg + "\n")
+                input(msg)
+
             # modify coordinates to try to avoid corkscrew tube view obscuring
             if config.AVOID_CORK_VIEW_OBSCURING:
                 # determine shift direction depending at which working area quarter target is
@@ -195,8 +208,18 @@ class ExtractionManagerV3:
                     else -config.AVOID_CORK_VIEW_OBSCURING_DIST_X
                 if config.X_MIN < init_pos_sm_x + obscuring_offset_x < config.X_MAX:
                     cur_pos_sm_x += obscuring_offset_x
+                    if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                        msg = f"EXT. PAUSE: Due to obscuring avoidance target has changed to " \
+                              f"X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
+                        self.__logger_full.write(msg + "\n")
+                        input(msg)
                 if config.Y_MIN < init_pos_sm_y + config.AVOID_CORK_VIEW_OBSCURING_DIST_Y < config.Y_MAX:
                     cur_pos_sm_y += config.AVOID_CORK_VIEW_OBSCURING_DIST_Y
+                    if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                        msg = f"EXT. PAUSE: Due to obscuring avoidance target has changed to " \
+                              f"X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
+                        self.__logger_full.write(msg + "\n")
+                        input(msg)
 
             # affects robot's behaviour if no plants were detected; responsible for delta scans and extractions checking
             scan_is_first = True
@@ -233,6 +256,11 @@ class ExtractionManagerV3:
                             self.__data_collector.add_all_ext_xy_t(time.time() - ext_xy_start_t)
                             exit(1)
                 self.__data_collector.add_all_ext_xy_t(time.time() - ext_xy_start_t)
+
+                if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                    msg = f"EXT. PAUSE: Arrived to plant {str(plant_index)}, preparing to specify scan; press enter:"
+                    self.__logger_full.write(msg + "\n")
+                    input(msg)
 
                 # make a scan, keep only plants that are in undistorted zone
                 # TODO: possibly here will be multiple scans with average coordinates
@@ -273,6 +301,13 @@ class ExtractionManagerV3:
                             label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_weeds_in_undist",
                             plants_boxes=plants_boxes)
 
+                if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                    msg = f"EXT. PAUSE: Found {str(len(cur_pos_plant_boxes_undist))} plants in undistorted zone " \
+                          f"during specify scan (saved in debug images if allowed, going to do delta scans if 0 and" \
+                          f" allowed); press enter:"
+                    self.__logger_full.write(msg + "\n")
+                    input(msg)
+
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
                 if len(cur_pos_plant_boxes_undist) == 0:
                     if scan_is_first:
@@ -299,6 +334,12 @@ class ExtractionManagerV3:
                                 [dl_sm_init_x + config.SEEK_DELTA_DISTANCE, dl_sm_init_y]
                             ]
                             for delta_sm_x, delta_sm_y in delta_seeking_target_positions:
+                                if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                                    msg = f"EXT. PAUSE: Starting delta X={str(delta_sm_x)} Y={str(delta_sm_y)} " \
+                                          f"scan (will be skipped if out of working range); press enter:"
+                                    self.__logger_full.write(msg + "\n")
+                                    input(msg)
+
                                 # check if coordinates are in working range
                                 if not (config.X_MIN < delta_sm_x < config.X_MAX and
                                         config.Y_MIN < delta_sm_y < config.Y_MAX):
@@ -349,6 +390,15 @@ class ExtractionManagerV3:
                                             config.DEBUG_IMAGES_PATH,
                                             label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),delta_weeds_in_undist",
                                             plants_boxes=cur_pos_plant_boxes_undist)
+
+                                    if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                                        msg = f"EXT. PAUSE: Found {str(len(cur_pos_plant_boxes_undist))} plants " \
+                                              f"in undistorted zone during delta scan, going to extract, changed " \
+                                              f"plant {str(plant_index)} start position to X={str(cur_pos_sm_x)}, " \
+                                              f"Y={str(cur_pos_sm_y)}; press enter:"
+                                        self.__logger_full.write(msg + "\n")
+                                        input(msg)
+
                                     break
                                 else:
                                     msg = "No plants found during delta scan iteration"
@@ -378,13 +428,22 @@ class ExtractionManagerV3:
                 # try to filter extracted plants by comparison new plants list and initial plants list
                 # if plant in a new list is away from all plants in old - then it probably was extracted and shifted
                 # so skip it
-                if config.FILTER_EXTRACTED_PLANTS and scan_is_first:
-                    initial_plants = cur_pos_plant_boxes_undist
-                if config.FILTER_EXTRACTED_PLANTS and not scan_is_first:
-                    cur_pos_plant_boxes_undist = self.__filter_extracted_plants(initial_plants,
-                                                                                cur_pos_plant_boxes_undist,
-                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST,
-                                                                                self.__logger_full)
+                if config.FILTER_EXTRACTED_PLANTS:
+                    if scan_is_first:
+                        initial_plants = cur_pos_plant_boxes_undist
+                    else:
+                        cur_pos_plant_boxes_undist = self.__filter_extracted_plants(
+                            initial_plants,
+                            cur_pos_plant_boxes_undist,
+                            config.FILTER_EXT_PLANTS_TRIGGER_DIST,
+                            self.__logger_full)
+
+                        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE and \
+                                len(initial_plants) != len(cur_pos_plant_boxes_undist):
+                            msg = f"EXT. PAUSE: Plants list was filtered due to config.FILTER_EXTRACTED_PLANTS " \
+                                  f"setting, check log file for details; press enter:"
+                            self.__logger_full.write_and_flush(msg + "\n")
+                            input(msg)
 
                 scan_is_first = False
 
@@ -414,6 +473,12 @@ class ExtractionManagerV3:
                 # extract these plants
                 for ext_sm_x, ext_sm_y, type_name in smoothie_plants_positions:
                     extraction_pattern = self.__extraction_map.get_strategy(ext_sm_x, ext_sm_y)
+
+                    if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                        msg = f"EXT. PAUSE: Going to plant AbsX={str(ext_sm_x)}, AbsY={str(ext_sm_y)}; press enter:"
+                        self.__logger_full.write(msg + "\n")
+                        input(msg)
+
                     if extraction_pattern:
                         # go to position
                         ext_xy_start_t = time.time()
@@ -449,6 +514,12 @@ class ExtractionManagerV3:
                     else:
                         msg = "Did too many extraction tries at this position, no strategies to try left"
                         self.__logger_full.write(msg + "\n")
+
+                        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                            msg = f"EXT. PAUSE: Skipped plant as extraction strategy was None (already tried all " \
+                                  f"strategies); press enter:"
+                            self.__logger_full.write(msg + "\n")
+                            input(msg)
 
         # set camera back to the Y min X max / 2
         ext_xy_start_t = time.time()
@@ -977,6 +1048,10 @@ class ExtractionMethods:
                            data_collector: datacollection.DataCollector):
         """Extract a plant with a single corkscrew drop to the center"""
 
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            msg = f"EXP. PAUSE: Ready to put cork down; press enter:"
+            print(msg)
+
         res = smoothie.RESPONSE_OK
         all_ext_z_start_t = start_t = time.time()
 
@@ -996,8 +1071,12 @@ class ExtractionMethods:
                 vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.wait_for_stop(vesc_adapter.EXTRACTION_KEY)
             else:
-                # TODO raise unsupported controller code error
-                pass
+                msg = f"config.EXTRACTION_CONTROLLER={str(config.EXTRACTION_CONTROLLER)} is not implemented"
+                raise NotImplementedError(msg)
+
+            if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                msg = f"EXT. PAUSE: Cork is down, going to pick it up; press enter:"
+                input(msg)
 
             # extraction, cork up
             if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
@@ -1038,8 +1117,8 @@ class ExtractionMethods:
                 # if execution came here - cork picking time is between min and max time so everything's ok - stop loop
                 break
             else:
-                # TODO raise unsupported controller code error
-                pass
+                msg = f"config.EXTRACTION_CONTROLLER={str(config.EXTRACTION_CONTROLLER)} is not implemented"
+                raise NotImplementedError(msg)
 
             # don't do cork pick re-tries if they are disabled or if Z axis controller is smoothie
             if not config.ALLOW_VESC_CORK_PICKUP_MIN_TIME or config.EXTRACTION_CONTROLLER == 1:
@@ -1242,6 +1321,8 @@ class ExtractionMethods:
                      vesc_adapter: adapters.VescAdapterV3,
                      extraction_map: ExtractionMap,
                      data_collector: datacollection.DataCollector):
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            print("EXT. PAUSE: Starting pattern plus.")
 
         sm_cur = smoothie.get_adapter_current_coordinates()
         positions = [
@@ -1281,6 +1362,8 @@ class ExtractionMethods:
                   vesc_adapter: adapters.VescAdapterV3,
                   extraction_map: ExtractionMap,
                   data_collector: datacollection.DataCollector):
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            print("EXT. PAUSE: Starting pattern X.")
 
         sm_cur = smoothie.get_adapter_current_coordinates()
         positions = [
