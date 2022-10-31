@@ -1802,7 +1802,8 @@ class GPSUbloxAdapter:
                         data = data.split(",")
                         lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
                         point_quality = data[6]
-                        return [lati, longi, point_quality]  # , float(data[11])  # alti
+                        if -90 <= lati <= 90 and -180 <= longi <= 180:
+                            return [lati, longi, point_quality]  # , float(data[11])  # alti
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:
