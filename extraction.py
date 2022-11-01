@@ -311,8 +311,7 @@ class ExtractionManagerV3:
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
                 if len(cur_pos_plant_boxes_undist) == 0:
                     if scan_is_first:
-                        msg = "No plants detected (plant was in working zone before)," \
-                              "trying to do delta movement and find this plant"
+                        msg = "No plants detected (plant was in working zone before)"
                         self.__logger_full.write(msg + "\n")
                         if config.VERBOSE:
                             print(msg)
@@ -320,6 +319,9 @@ class ExtractionManagerV3:
                         if config.ALLOW_DELTA_SEEKING:
                             delta_start_t = time.time()
                             delta_shifts_count = 0
+
+                            msg = "Trying to do delta scans and find this plant"
+                            self.__logger_full.write(msg + "\n")
 
                             if config.DELTA_SEEKING_IGNORE_OBSCURING:
                                 dl_sm_init_x, dl_sm_init_y = init_pos_sm_x, init_pos_sm_y
