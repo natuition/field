@@ -139,7 +139,6 @@ def move_to_point_and_extract(coords_from_to: list,
                               periphery_det: detection.YoloOpenCVDetection,
                               precise_det: detection.YoloOpenCVDetection,
                               logger_full: utility.Logger,
-                              logger_table: utility.Logger,
                               report_field_names,
                               trajectory_saver: utility.TrajectorySaver,
                               working_zone_polygon,
@@ -167,7 +166,6 @@ def move_to_point_and_extract(coords_from_to: list,
     :param periphery_det:
     :param precise_det:
     :param logger_full:
-    :param logger_table:
     :param report_field_names:
     :param trajectory_saver:
     :param working_zone_polygon:
@@ -799,27 +797,27 @@ def move_to_point_and_extract(coords_from_to: list,
 
         lastNtripRestart = navigation.NavigationV3.check_reboot_Ntrip(gps_quality, lastNtripRestart, logger_full)
 
-        msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
-            order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
-            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(10)+corridor.ljust(9)+str(centroid_factor).ljust(16)+str(
-            cruise_factor).ljust(14)
+        msg = str(gps_quality).ljust(5) + \
+              str(raw_angle).ljust(8) + \
+              str(angle_kp_ki).ljust(8) + \
+              str(order_angle_sm).ljust(8) + \
+              str(sum_angles).ljust(8) + \
+              str(distance).ljust(13) + \
+              str(ad_wheels_pos).ljust(8) + \
+              str(sm_wheels_pos).ljust(9) + \
+              point_status.ljust(12) + \
+              str(perpendicular).ljust(10) + \
+              corridor.ljust(9) + \
+              str(centroid_factor).ljust(16) + \
+              str(cruise_factor).ljust(14)
         print(msg)
         logger_full.write(msg + "\n")
 
-        # TODO possible bug: reading sensors data from vesc 4 times per second
-        # load sensors data to csv
-        s = ","
-        msg = str(gps_quality) + s + str(raw_angle) + s + str(angle_kp_ki) + s + str(order_angle_sm) + s + \
-            str(sum_angles) + s + str(distance) + s + str(ad_wheels_pos) + s + str(sm_wheels_pos)
+        # TODO vesc sensors are being asked 4 times per second
+        # send voltage
         vesc_data = vesc_engine.get_sensors_data(report_field_names, vesc_engine.PROPULSION_KEY)
-        if vesc_data is not None:
-            msg += s
-            for key in vesc_data:
-                msg += str(vesc_data[key]) + s
-                if config.CONTINUOUS_INFORMATION_SENDING and key == "input_voltage":
-                    notification.set_input_voltage(vesc_data[key])
-            msg = msg[:-1]
-        logger_table.write(msg + "\n")
+        if config.CONTINUOUS_INFORMATION_SENDING and vesc_data is not None and "input_voltage" in vesc_data:
+            notification.set_input_voltage(vesc_data["input_voltage"])
 
         prev_pos = cur_pos
 
@@ -1621,7 +1619,6 @@ def main():
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     nav = navigation.GPSComputing()
     logger_full = utility.Logger(log_cur_dir + "log full.txt", append_file=config.CONTINUE_PREVIOUS_PATH)
-    logger_table = utility.Logger(log_cur_dir + "log table.csv", append_file=config.CONTINUE_PREVIOUS_PATH)
 
     # X axis movement during periphery scans config settings validation
     if config.ALLOW_X_MOVEMENT_DURING_SCANS:
@@ -1893,11 +1890,6 @@ def main():
             msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|centroid factor|cruise factor'
             print(msg)
             logger_full.write(msg + "\n")
-            msg = 'GpsQ,Raw ang,Res ang,Ord ang,Sum ang,Distance,Adapter,Smoothie,'
-            for field_name in report_field_names:
-                msg += field_name + ","
-            msg = msg[:-1]
-            logger_table.write(msg + "\n")
 
             # path points visiting loop
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
@@ -2034,7 +2026,6 @@ def main():
                                 periphery_detector,
                                 precise_detector,
                                 logger_full,
-                                logger_table,
                                 report_field_names,
                                 trajectory_saver,
                                 working_zone_polygon,
@@ -2070,7 +2061,6 @@ def main():
                                         periphery_detector,
                                         precise_detector,
                                         logger_full,
-                                        logger_table,
                                         report_field_names,
                                         trajectory_saver,
                                         working_zone_polygon,
@@ -2155,7 +2145,6 @@ def main():
                         periphery_detector,
                         precise_detector,
                         logger_full,
-                        logger_table,
                         report_field_names,
                         trajectory_saver,
                         working_zone_polygon,
@@ -2339,7 +2328,6 @@ def main():
         logger_full.write(msg + "\n")
         print(msg)
         logger_full.close()
-        logger_table.close()
 
         try:
             posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
