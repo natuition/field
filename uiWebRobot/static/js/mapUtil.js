@@ -275,25 +275,26 @@ function createMap(coords_field,coords_other){
                 }
             });
             map.addLayer({
-                'id': 'lastPosLayer',
-                'type': 'circle',
-                'source': 'lastPos',
-                'paint': {
-                    'circle-radius': 3,
-                    'circle-color': [
-                        'match',
-                        ['get', 'quality'],
-                        '4',
-                        '#e55e5e',// red for quality 4
-                        '#fbb03b' // orange for other
-                    ]
-                }
+                id: "lastPosLayer",
+                type: "circle",
+                source: "lastPos",
+                paint: {
+                    "circle-radius": 5,
+                    "circle-color": [
+                        "match",
+                        ["get", "quality"],
+                        "4",
+                        "#e55e5e", // red for quality 4
+                        "#fbb03b", // orange for other
+                    ],
+                },
             });
         }
 
         socketMap.on('updatePath', function(dataServ) {
             dataServ = JSON.parse(dataServ)
             var coords = dataServ[0]
+            console.log(coords[0])
             var last_coord = coords[coords.length - 1]
             var quality = dataServ[1]
 

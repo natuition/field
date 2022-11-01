@@ -177,14 +177,14 @@ def on_client_config(data):
         shutil.copyfile(f"../config/config.py", config_final_path)
         shutil.chown(config_final_path, "violette", "violette")
         #smoothie_conf
-        disks = json.loads(subprocess.check_output(['lsblk', '-Jo', 'KNAME,SIZE,TYPE']).decode("utf-8"))["blockdevices"]
-        disk = [disk for disk in disks if disk["type"]=="part" and disk["size"]=="14,9G"][0]
-        os.system(f"sudo mount /dev/{disk['kname']} /media/smoothie")
-        d = utility.get_current_time().split(" ")[0].split("-")
-        config_final_path = f"./configFinal{config.ROBOT_SN}/config_{d[0]}_{d[1]}_{d[2]}.txt"
-        shutil.copyfile(f"/media/smoothie/config", config_final_path)
-        os.system(f"sudo umount -l /dev/{disk['kname']}")
-        shutil.chown(config_final_path, "violette", "violette")
+        disk = subprocess.check_output('lsblk -Jo KNAME,SIZE,TYPE | grep \'"type": "part"\' | grep \'"size": "14.9G\' | grep -Po \'"kname": ".*?"\' | cut -d \' \' -f 2 | tr -dc \'[:alnum:]\'',shell=True).decode("utf-8")
+        if disk:
+            os.system(f"sudo mount /dev/{disk} /media/smoothie")
+            d = utility.get_current_time().split(" ")[0].split("-")
+            config_final_path = f"./configFinal{config.ROBOT_SN}/config_{d[0]}_{d[1]}_{d[2]}.txt"
+            shutil.copyfile(f"/media/smoothie/config", config_final_path)
+            os.system(f"sudo umount -l /dev/{disk}")
+            shutil.chown(config_final_path, "violette", "violette")
         socketio.emit('apply_config', {'apply_done': True}, namespace='/server', broadcast=True)
 
 @socketio.on('validate_log', namespace='/server')

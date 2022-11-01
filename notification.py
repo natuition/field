@@ -42,11 +42,16 @@ class NotificationClient:
         self._close()
 
     def stop(self):
-        if config.CONTINUOUS_INFORMATION_SENDING:
-            msg = ""
-            if self.extracted_plants is not None:
-                msg += f";{self.extracted_plants}"
-            self.socket.send(f"STOP;{utility.get_current_time()}{msg}".encode("utf-8"))
+        try:
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                msg = ""
+                if self.extracted_plants is not None:
+                    msg += f";{self.extracted_plants}"
+                self.socket.send(f"STOP;{utility.get_current_time()}{msg}".encode("utf-8"))
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            pass
         print("[Notification] Stopping service...")
         self._keep_thread_alive = False
         self._close()
@@ -79,8 +84,9 @@ class NotificationClient:
     def set_treated_plant(self, treated_plant):
         self.treated_plant = treated_plant
 
-    def set_field(self, field):
+    def set_field(self, field, field_name):
         self.field = field
+        self.field_name = field_name
         self.antiTheftZone = navigation.AntiTheftZone(field)
 
     def set_input_voltage(self, input_voltage):
@@ -107,7 +113,7 @@ class NotificationClient:
                 if config.CONTINUOUS_INFORMATION_SENDING:
 
                     if self.time_start is not None and self.input_voltage is not None and self.treated_plant is not None and self.field is not None and not self.first_send:
-                            self.socket.send(f"START;{self.time_start};{self.input_voltage};{self.treated_plant};{self.field}".encode("utf-8"))
+                            self.socket.send(f"START;{self.time_start};{self.input_voltage};{self.treated_plant};{self.field};{self.field_name}".encode("utf-8"))
                             self.first_send = True
 
                     if self.first_send:

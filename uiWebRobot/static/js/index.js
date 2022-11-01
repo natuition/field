@@ -11,7 +11,7 @@ socketBroadcast.on("reconnect_attempt", (attempt) => {
     if(attempt > 2) location.reload();
 });
 
-var newFieldButton = document.querySelector('#Newfield');
+const newFieldButton = document.querySelector('#Newfield');
 const startButton = document.querySelector('#Start');
 const continueButton = document.querySelector('#Continue');
 const stopButton = document.querySelector('#Stop');
@@ -39,9 +39,6 @@ if(choose_field_selector != null){
     }
 }
 
-var header_map = document.querySelector('.ruler');
-document.getElementById('map__header').style.width = $(header_map).width() + "px";
-
 var audit = false;
 
 var reloader = 0;
@@ -68,16 +65,28 @@ function clickHandler() {
     }
 }
 
+function disable_button_after_start_or_continue(){
+    $('#canvas_joystick').addClass('disable'); 
+
+    $('#Newfield').addClass('disabled');
+    $('#Newfield').attr('disabled','');
+
+    $('#RemoveField').addClass('disabled');
+    $('#RemoveField').attr('disabled','');
+
+    $('#Wheel').addClass('disabled-wheel');
+}
+
 socketButton.on('start', function(dataServ) {
     if(dataServ["status"] == "pushed"){
 
         $('.begin__button--continue').addClass('disabled');
         $('.begin__button--continue').attr('disabled', '');
 
-        $('#canvas').addClass('disable'); 
-
         $('.begin__button--start').addClass('active');
         $('.begin__button--start').attr('disabled', '');
+
+        disable_button_after_start_or_continue();
 
         //$(auditButton).addClass('fix');
     }
@@ -88,10 +97,10 @@ socketButton.on('continue', function(dataServ) {
         $('.begin__button--start').addClass('disabled');
         $('.begin__button--start').attr('disabled', '');
 
-        $('#canvas').addClass('disable'); 
-
         $('.begin__button--continue').addClass('active');
         $('.begin__button--continue').attr('disabled', '');
+
+        disable_button_after_start_or_continue();
 
         //$(auditButton).addClass('fix');
     }
@@ -159,7 +168,9 @@ socketButton.on('stop', function(dataServ) {
             statusActive.classList.remove('display-flex')
             statusActive.classList.add('display-none')
 
-            $('#canvas').removeClass('disable'); 
+            createJoystick();
+
+            $('#canvas_joystick').removeClass('disable'); 
 
             otherButton = button.name=='Start'?"continue":"start";
 
@@ -173,6 +184,10 @@ socketButton.on('stop', function(dataServ) {
 
             newFieldButton.classList.remove("disabled");
             newFieldButton.removeAttribute("disabled");
+
+            removeFieldButton.classList.remove("disabled");
+            removeFieldButton.removeAttribute("disabled");
+
             wheelButton.classList.remove("disabled-wheel");
             //document.getElementById("webCamStream").remove();
             //verif_iframe_start();
@@ -325,7 +340,6 @@ function verif_iframe_start(){
                         ifrm.width = "414px";
                         ifrm.height = "250px";
                         ifrm.style = "margin: 0 auto;display:block; border: none; border-radius: 20px; max-width: 374px; min-height: 210px; width: 100%; height: 100%;";
-                        ifrm.style.width = $(header_map).width() + "px";
                         $( "#conteneur_stats" ).append(ifrm);
                     }
                 }

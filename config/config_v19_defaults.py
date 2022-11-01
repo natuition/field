@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.4"
+CONFIG_VERSION = "0.19.9"
 
 
 # ======================================================================================================================
@@ -69,11 +69,11 @@ MANEUVERS_FREQUENCY = 0.25  #seconds
 WINDOW = float("inf")   # anyway, the integral is used for only some hundreds of time
 # AB moving vector used as A----A1--B, where A1 is point when robot starts moving to next point.
 # this determines A1-B distance
-MANEUVER_START_DISTANCE = {False:5000, True:4000} # this parameter depends on whether the audit mode is false or true
+MANEUVER_START_DISTANCE = 5000  # this parameter depends on whether the audit mode is false or true
 USE_SPEED_LIMIT = True  # when distance to target point is less than specified in the config
 DECREASE_SPEED_TRESHOLD = 5000  # millimeters
 SUM_ANGLES_HISTORY_MAX = 1000  # max value and min -value of sum(angles_history), should be positive here, in config
-SPIRAL_SIDES_INTERVAL = {False: 450, True: 3000} # distance between sides of spiral robot movements, 
+SPIRAL_SIDES_INTERVAL = 450  # distance between sides of spiral robot movements,
 # expected to be equal to working area width, may be any positive val
 # this parameter depends on whether the audit mode is false or true
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
@@ -147,13 +147,24 @@ SMOOTH_APPROACHING_MAX_POINTS = NUMBER_OF_BEZIER_POINT * 4 + 10
 # EXTRACTION SETTINGS
 # ======================================================================================================================
 EXTRACTION_CONTROLLER = 1  # 1 is smoothie, 2 is vesc
-#If EXTRACTION_CONTROLLER = 2
+# === If EXTRACTION_CONTROLLER = 2 ===
 EXTRACTION_MODE = 1  # 0 is reserved, 1 is extractions, 2 is milling
 EXTRACTION_CORK_DOWN_RPM = 20000
 EXTRACTION_CORK_UP_RPM = -5500
 EXTRACTION_CORK_DOWN_TIME = 1  # seconds; how much time cork should move down during plant extraction
 EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME = 3  # seconds
-#end of EXTRACTION_CONTROLLER = 2
+# this will have effect only if Z axis is controlled by vesc (this config EXTRACTION_CONTROLLER key)
+# True: will try to drop and pick cork again if stopper hit was registered earlier than Z_AXIS_PICKUP_MIN_TIME;
+# False: cork pickup will work as usual, relying on GPIO stopper and EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME timeout;
+ALLOW_VESC_CORK_PICKUP_MIN_TIME = True
+# this will have effect only if ALLOW_VESC_CORK_PICKUP_MIN_TIME is set to True;
+# seconds; if cork stopper hits earlier than this time - robot will try to drop and pick cork again
+VESC_CORK_PICKUP_MIN_TIME = 1  # TODO: NEED A TEST TO SET A PROPER VALUE!
+# int; ALWAYS MUST BE >= 1 FOR CORK PROPER WORKING REGARDLESS OF OTHER SETTINGS INCLUDING config.EXTRACTION_CONTROLLER!
+# values bigger than 1 will have effect only if ALLOW_VESC_CORK_PICKUP_MIN_TIME is set to True;
+# defines how many times robot will try to drop and pick cork if there are troubles with stopper before error is raised
+VESC_CORK_PICKUP_MAX_TRIES = 3
+# === end of EXTRACTION_CONTROLLER = 2 ===
 
 AVOID_CORK_VIEW_OBSCURING = True  # is True: adds offsets to control points to make a plant to be at the top half of the undistorted zone
 
@@ -165,6 +176,9 @@ MYOPIA_PATCH = True
 
 # set to True to disable weeds extractions during movement to first point when continuing previous path (continue mode)
 FIRST_POINT_NO_EXTRACTIONS = False
+
+# True: set on pause extractions and wait for manual continue permission; False: usual extraction
+SET_EXTRACTIONS_ON_DEBUG_PAUSE = False
 
 
 # ======================================================================================================================
@@ -179,6 +193,11 @@ VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when m
 VESC_CHECK_FREQ = 0.001  # freq of checking need to stop
 FAST_TO_SLOW_TIME = 5
 VESC_STOPPER_CHECK_FREQ = 0.001
+
+INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
+FREQUENCY_INCREMENTAL_RPM = 0.025  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
+STEP_INCREMENTAL_RPM = 500 # RPM step max by tick defined by RPM_FREQUENCY
+
 # engine 1 (master vesc)
 # enables propulsion vesc initialization and usage
 VESC_ALLOW_PROPULSION = True # propulsion GPIO stopper PIN number, set to None to disable stopper usage or if no stopper is used for this vesc
@@ -356,7 +375,7 @@ ANTI_THEFT_ZONE_RADIUS = 5000
 GPS_QUALITY_IGNORE = False #If this is activated, stops the robot when it no longer has quality 4. 
 # It restarts the ntrip service and waits to find quality 4
 
-ROBOT_SN = "SN012" 
+ROBOT_SN = "SN012"
 
 
 # ======================================================================================================================
@@ -378,6 +397,7 @@ QUEUE_NAME_UI_NOTIFICATION = "/queue_ui_notification"
 CONTINUOUS_INFORMATION_SENDING = True
 ALIVE_SENDING_TIMEOUT = 1
 
+TIMEOUT_JOYSTICK_USER_ACTION = 1
 
 # ======================================================================================================================
 # EXTRACTION MANAGER SETTINGS
@@ -460,36 +480,36 @@ MILLING_PLANT_BOX_Y_SIZE_SCALE = 1
 # ======================================================================================================================
 # YOLO PERIPHERY NETWORK SETTINGS
 # ======================================================================================================================
-PERIPHERY_CONFIDENCE_THRESHOLD = 0.1
 PERIPHERY_HIER_THRESHOLD = 0.5
 PERIPHERY_NMS_THRESHOLD = 0.4
 PERIPHERY_INPUT_SIZE = (416, 416)
 PERIPHERY_CONFIG_FILE = "yolo/Y0016_416.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/Y0016.weights"
-PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
 PERIPHERY_DNN_BACKEND = 5
 PERIPHERY_DNN_TARGET = 6
 PERIPHERY_WRAPPER = 1
 PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 
+PERIPHERY_CONFIDENCE_THRESHOLD = 0.1
+PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
 PERIPHERY_MODEL_PATH = "yolo/Y0016.trt"
-
 
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
-PRECISE_CONFIDENCE_THRESHOLD = 0.1
 PRECISE_HIER_THRESHOLD = 0.5
 PRECISE_NMS_THRESHOLD = 0.4
 PRECISE_INPUT_SIZE = (832, 832)
 PRECISE_CONFIG_FILE = "yolo/Y0016_832.cfg"
 PRECISE_WEIGHTS_FILE = "yolo/Y0016.weights"
-PRECISE_CLASSES_FILE = "yolo/Y0016.names"
 PRECISE_DATA_FILE = "yolo/Y0016.data"
 PRECISE_DNN_BACKEND = 5
 PRECISE_DNN_TARGET = 6
 PRECISE_WRAPPER = 1
 
+PRECISE_CONFIDENCE_THRESHOLD = 0.1
+PRECISE_CLASSES_FILE = "yolo/Y0016.names"
+PRECISE_MODEL_PATH = "yolo/Y0016.trt"
 
 # ======================================================================================================================
 # CAMERA SETTINGS

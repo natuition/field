@@ -6,9 +6,14 @@
     box-sizing: border-box;
 }
 
+html{
+    height: 100%;
+}
+
 body {
     font-family: "Merriweather Sans";
     color: #fff;
+    height: 100%;
 }
 
 .display-none {
@@ -25,17 +30,29 @@ body {
 
 .main {
     width: 100%;
-    max-width: 720px;
     margin: 0 auto;
 }
 
-.header {
+.header__color, .header__color--checklist {
     width: 100%;
     background-color: #47a857;
     padding: 20px 20px 30px 20px;
     border-bottom-left-radius: 20px;
-    box-shadow: 0px 8px 20px 0px rgba(25, 29, 37, 0.12);
     border-bottom-right-radius: 20px;
+}
+
+.header__color{
+    height: 20vh;
+    position:absolute;
+    z-index:-999;
+}
+
+#map__header{
+    display:block; 
+    border: none; 
+    border-radius: 20px; 
+    height: 100%; 
+    width: 100%;
 }
 
 .header__info,
@@ -69,17 +86,22 @@ body {
     font-weight: 500;
     font-size: 24px;
     margin-top: 30px;
+    padding: 0 0 10px 20px;
 }
 
-.header__subtitle {
+.header__subtitle, .header__subtitle--checklist {
     font-size: 16px;
     font-weight: 300;
-    margin-top: 10px;
-    max-width: 300px;
     line-height: 22px;
+    color: #fff;
+    padding: 0 20px;
 }
 
-.checklist {
+.header__subtitle--checklist{
+    padding-bottom: 20px!important;
+}
+
+.checklist, .setting{
     padding: 20px;
 }
 
@@ -92,6 +114,34 @@ body {
     color: #8994a1;
     font-size: 14px;
     font-weight: 300;
+}
+
+.setting__category--title{
+    color: #8994a1;
+    font-size: 16px;
+    font-weight: 350;
+    text-decoration: underline;
+}
+
+.setting__category{
+    margin-bottom: 30px;
+}
+
+.radio_ckeckbox{
+    width: 100%;
+    display: inline-grid;
+    margin: 5px 0px 0px 0px;
+    padding: 5px 5px 8px 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.setting--button {
+    width: 100%;
+    display: flex;
+    justify-content:space-around;
+    align-items: center;
+    margin-top: 2.5px;
 }
 
 .checkbox__item--title {
@@ -145,11 +195,13 @@ body {
     display: flex;
     position: relative;
     align-items: center;
+    flex-grow: 1;
 }
 
 .checklist__select--role svg {
     position: absolute;
     right: 15px;
+    bottom: 15px;
 }
 
 .checklist__select--role select {
@@ -157,7 +209,7 @@ body {
     border-radius: 4px;
     border: none;
     font-weight: 300;
-    font-size: 14px;
+    font-size: 1.8vh;
     color: #778493;
     outline: none;
     width: 100%;
@@ -168,8 +220,30 @@ body {
 
 
 .finish__check {
+    margin: 0 auto;
+    margin-top: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background-color: rgb(71, 168, 87);
     box-shadow: 0px 4px 14px 0px rgba(71, 168, 87, 0.6);
+    width: 15vh;
+    height: 6vh;
+    font-size: 2vh;
+    border-radius: 30px;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-weight: 700;
+}
+
+.finish__check:hover {
+    background-color: rgb(64, 146, 77)!important; 
+}
+
+.setting_btn{
+    /*background-color: rgb(234, 40, 40)!important; 
+    box-shadow: 0px 4px 14px 0px rgba(234, 40, 40, 0.6)!important; */
     display: flex;
     margin: 0 auto;
     justify-content: center;
@@ -187,14 +261,11 @@ body {
     font-weight: 700;
 }
 
-.finish__check:hover {
-    background-color: rgb(64, 146, 77);
-}
-
 .header__map,
 .header__map img {
-    max-width: 375px;
-    width: 100%;
+    /*max-width: 375px;*/
+    padding: 0 40px;
+    height: 50vw;
 }
 
 .header__map {
@@ -204,7 +275,6 @@ body {
 
 .header__begin {
     padding: 0;
-    height: 230px;
 }
 
 .header__begin .header__info {
@@ -217,27 +287,31 @@ body {
     border-radius: 19px;
     background-color: #f9fafc;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     padding: 20px;
     padding-bottom: 5px;
+    flex-wrap: wrap;
+    justify-content: space-around;
 }
 
 .ruler__main--assets {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    min-width: 280px;
+    flex-grow: 1;
 }
 
 .ruler__assets--title {
     display: flex;
     align-items: center;
     color: #778493;
-    font-size: 12px;
+    font-size: 1.5vh;
     font-weight: 300;
 }
 
 .ruler__assets--title span {
-    font-size: 14px;
+    font-size: 1.7vh;
     font-weight: 500;
     background-color: #eef0f3;
     padding: 8px;
@@ -289,13 +363,15 @@ body {
     justify-content:space-around;
     align-items: center;
     margin-top: 2.5px;
+    max-width: 300px;
+    min-width: 280px;
 }
 
 .ruler__main--button button {
     border-width: 1px;
     border-color: rgb(71, 168, 87);
     border-style: solid;
-    font-size: 15px;
+    font-size: 1.5vh;
     color: #778493;
     font-weight: 600;
     /*position: absolute;*/
@@ -381,11 +457,9 @@ body {
     justify-content: center;
     background-color: rgb(71, 168, 87);
     box-shadow: 0px 4px 14px 0px rgba(71, 168, 87, 0.6);
-    max-width: 155px;
-    /*width: 100%;*/
-    width: 40%;
-    height: 50px;
-    font-size: 16px;
+    width: 15vh;
+    height: 6vh;
+    font-size: 2vh;
     border-radius: 30px;
     border: none;
     outline: none;
@@ -409,6 +483,19 @@ body {
 
 .begin__button--start:hover {
     background-color: rgb(71, 160, 84);
+}
+
+.begin__button{
+    /*position: absolute;*/
+    display: flex;
+    flex-wrap:wrap;
+    width: 100%;
+    justify-content:
+    space-between;
+    bottom: 0px;
+    padding: 11px; 
+    padding-left: 20px;
+    padding-right: 20px;
 }
 
 .status__active {
@@ -555,12 +642,13 @@ body {
     margin-right: 10px;
 }
 
-.unselectable {
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+.unselectable, * {
+    -webkit-touch-callout: none !important; /* iOS Safari */
+    -webkit-user-select: none !important; /* Safari */
+     -khtml-user-select: none !important; /* Konqueror HTML */
+       -moz-user-select: none !important; /* Old versions of Firefox */
+        -ms-user-select: none !important; /* Internet Explorer/Edge */
+            user-select: none !important;
 }
 
 .arret{
@@ -660,6 +748,7 @@ svg.fa-sync-alt, svg.fa-check{
 
 .ruler {
     flex-wrap: wrap;
+    margin-top: 10px;
 }
 
 select{
@@ -669,4 +758,39 @@ select{
 #choose_field_selector{
     margin-top: 5px;
     margin-bottom: 10px;
+    min-width: 280px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+#joystick{
+    flex-grow: 1;
+    margin:0px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media screen and (orientation:landscape) {
+    .main{
+        display: none;
+    }
+    .landscape{
+        display: block;
+    }
+    .header__color {
+        height: 17vw;
+    }
+}
+
+@media screen and (orientation:portrait) {
+    .main{
+        display: block;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .landscape{
+        display: none;
+    }
 }

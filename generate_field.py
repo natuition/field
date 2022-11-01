@@ -3,6 +3,8 @@ import navigation
 from urllib.parse import quote, unquote
 import os
 import json
+from main import build_bezier_with_corner_path
+from config import config
 
 def save_gps_coordinates(points: list, file_name: str):
 
@@ -69,33 +71,52 @@ def save_gps_coordinates_geojson(points: list, file_name: str):
         json.dump(collection, outfile, indent=4)
     os.chown(file_name, -1, -1)
 
-def create_field_and_save_geojson(nav: navigation.GPSComputing, start_point: list, end_point: list, width_field: float):
-    length_field = nav.get_distance(start_point,end_point)
-    c_point = nav.get_coordinate(end_point, start_point, 90, width_field)
-    d_point = nav.get_coordinate(c_point, end_point, 90, length_field)
-    return [end_point, c_point, d_point, start_point]
+def create_field(nav: navigation.GPSComputing,length_field: float, width_field: float):
+    a_point = [46.15763479582952, -1.13396555185318]
+    tmp_point = [46.15720608290609, -1.1349992081522942]
+    b_point = nav.get_coordinate(a_point, tmp_point, 0, length_field)
+    c_point = nav.get_coordinate(b_point, a_point, 90, width_field)
+    d_point = nav.get_coordinate(c_point, b_point, 90, length_field)
+    return [a_point, b_point], [b_point, c_point, d_point, a_point]
 
-def reverse_list_content(points: list):
-    for point in points:
-        point.reverse()
+def reverse_element_list(*args: list):
+    new = list()
+    for lists in args:
+        new.append([li[::-1] for li in lists])
+    return new
 
 def main():
+
+    length_field = 25000
+    width_field = 25000
     nav = navigation.GPSComputing()
-    coords_1 = [46.15763479582952, -1.13396555185318]
-    coords_2 = [46.15720608290609, -1.1349992081522942]
-    path_robot = [coords_1.copy(), coords_2.copy()]
-    field_1 = create_field_and_save_geojson(nav, coords_1.copy(), coords_2.copy(), 22500)
-    field_2 = create_field_and_save_geojson(nav, coords_1.copy(), coords_2.copy(), 55000)
+    path_robot, field = create_field(nav, length_field, width_field)
+    save_gps_coordinates(field,"./fields/field_1.txt")
+    field, path_robot = reverse_element_list(field, path_robot)
+    save_gps_coordinates_geojson([field, path_robot], "./fields/fields.json")
 
-    save_gps_coordinates(field_1,"./fields/field_1.txt")
-    save_gps_coordinates(field_2,"./fields/field_2.txt")
+def test_field_generate():
 
-    reverse_list_content(field_1)
-    reverse_list_content(field_2)
-    reverse_list_content(path_robot)
+    nav = navigation.GPSComputing()
+    logger_full = utility.Logger("./fields/test_generate_path.log", append_file=False)
 
-    save_gps_coordinates_geojson([field_1, field_2, path_robot], "./fields/fields.json")
+    path = "./fields/test_generate_field/"
 
+    utility.create_directories(path)
+
+    for index, field_test in enumerate([[30000, 30000],[35000, 30000],[25000, 25000],[30000, 35000],[30000, 20000],[20000, 30000]]):
+        length_field = field_test[0]
+        width_field = field_test[1]
+
+        total_path = path+f"field_{index+1}_l-{length_field}_w-{width_field}/"
+        utility.create_directories(total_path)
+        
+        _, field = create_field(nav, length_field, width_field)
+        path_points = build_bezier_with_corner_path(field, nav, logger_full, config.SI_SPEED_FWD, config.SI_SPEED_REV)
+        save_gps_coordinates(field, total_path+f"field_{index+1}.txt")
+        save_gps_coordinates_geojson([field], total_path+f"field_{index+1}.json")
+        save_gps_coordinates(path_points, total_path+f"current_path_points_field_{index+1}.txt")
 
 if __name__ == "__main__":
-    main()
+    #main()
+    test_field_generate()
