@@ -1657,7 +1657,16 @@ def main():
             exit(1)
 
     # load yolo networks
-    print("Loading periphery detector...")
+    if config.NN_MODELS_COUNT < 1:
+        msg = f"Key 'config.NN_MODELS_COUNT' has 0 or negative value which is wrong as need at least 1 model for work"
+        print(msg)
+        logger_full.write(msg + "\n")
+        exit()
+
+    # load periphery NN
+    msg = "Loading periphery detector..."
+    print(msg)
+    logger_full.write(msg + "\n")
     if config.PERIPHERY_WRAPPER == 1:
         periphery_detector = detection.YoloTRTDetector(
             config.PERIPHERY_MODEL_PATH,
@@ -1666,40 +1675,57 @@ def main():
             config.PERIPHERY_NMS_THRESHOLD,
             config.PERIPHERY_INPUT_SIZE)
     elif config.PERIPHERY_WRAPPER == 2:
-        periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
-                                                           config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
-                                                           config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                                           config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
-                                                           config.PERIPHERY_DNN_TARGET)
+        periphery_detector = detection.YoloOpenCVDetection(
+            config.PERIPHERY_CLASSES_FILE,
+            config.PERIPHERY_CONFIG_FILE,
+            config.PERIPHERY_WEIGHTS_FILE,
+            config.PERIPHERY_INPUT_SIZE,
+            config.PERIPHERY_CONFIDENCE_THRESHOLD,
+            config.PERIPHERY_NMS_THRESHOLD,
+            config.PERIPHERY_DNN_BACKEND,
+            config.PERIPHERY_DNN_TARGET)
     else:
         msg = "Wrong config.PERIPHERY_WRAPPER = " + str(config.PERIPHERY_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
         notification.setStatus(SyntheseRobot.HS)
         exit(1)
 
-    print("Loading precise detector...")
-    if config.PRECISE_WRAPPER == 1:
-        precise_detector = detection.YoloTRTDetector(
-            config.PRECISE_MODEL_PATH,
-            config.PRECISE_CLASSES_FILE,
-            config.PRECISE_CONFIDENCE_THRESHOLD,
-            config.PRECISE_NMS_THRESHOLD,
-            config.PRECISE_INPUT_SIZE)
-        if config.CONTINUOUS_INFORMATION_SENDING:
-            notification.set_treated_plant(precise_detector.get_classes_names())
-    elif config.PRECISE_WRAPPER == 2:
-        precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
-                                                         config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
-                                                         config.PRECISE_CONFIDENCE_THRESHOLD,
-                                                         config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
-                                                         config.PRECISE_DNN_TARGET)
-        if config.CONTINUOUS_INFORMATION_SENDING:
-            notification.set_treated_plant(detection.classes)
-    else:
-        msg = "Wrong config.PRECISE_WRAPPER = " + str(config.PRECISE_WRAPPER) + " code. Exiting."
+    # load precise NN
+    if config.NN_MODELS_COUNT > 1:
+        msg = "Loading precise detector..."
+        print(msg)
         logger_full.write(msg + "\n")
-        notification.setStatus(SyntheseRobot.HS)
-        exit(1)
+        if config.PRECISE_WRAPPER == 1:
+            precise_detector = detection.YoloTRTDetector(
+                config.PRECISE_MODEL_PATH,
+                config.PRECISE_CLASSES_FILE,
+                config.PRECISE_CONFIDENCE_THRESHOLD,
+                config.PRECISE_NMS_THRESHOLD,
+                config.PRECISE_INPUT_SIZE)
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                notification.set_treated_plant(precise_detector.get_classes_names())
+        elif config.PRECISE_WRAPPER == 2:
+            precise_detector = detection.YoloOpenCVDetection(
+                config.PRECISE_CLASSES_FILE,
+                config.PRECISE_CONFIG_FILE,
+                config.PRECISE_WEIGHTS_FILE,
+                config.PRECISE_INPUT_SIZE,
+                config.PRECISE_CONFIDENCE_THRESHOLD,
+                config.PRECISE_NMS_THRESHOLD,
+                config.PRECISE_DNN_BACKEND,
+                config.PRECISE_DNN_TARGET)
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                notification.set_treated_plant(detection.classes)
+        else:
+            msg = "Wrong config.PRECISE_WRAPPER = " + str(config.PRECISE_WRAPPER) + " code. Exiting."
+            logger_full.write(msg + "\n")
+            notification.setStatus(SyntheseRobot.HS)
+            exit(1)
+    else:
+        msg = "Using periphery detector as precise."
+        print(msg)
+        logger_full.write(msg + "\n")
+        precise_detector = periphery_detector
 
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
