@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.10"
+CONFIG_VERSION = "0.19.11"
 
 
 # ======================================================================================================================
@@ -377,6 +377,14 @@ ANTI_THEFT_ZONE_RADIUS = 5000
 
 GPS_QUALITY_IGNORE = False #If this is activated, stops the robot when it no longer has quality 4. 
 # It restarts the ntrip service and waits to find quality 4
+
+# True: enable cur position point ignore and stop robot if prev-cur position distance is bigger than
+# PREV_CUR_POINT_MAX_DIST
+ALLOW_GPS_PREV_CUR_DIST_FILTER = True
+# mms; max allowed distance between cur and prev position, will stop robot if is exceeded and
+# if ALLOW_GPS_PREV_CUR_DIST_FILTER=True
+PREV_CUR_POINT_MAX_DIST = 2000  # TODO value needs to be specified!
+
 
 ROBOT_SN = "SN012"
 

@@ -540,6 +540,7 @@ def move_to_point_and_extract(coords_from_to: list,
             else:
                 continue
 
+        # points filter by quality flag
         if config.GPS_QUALITY_IGNORE and cur_pos[2] != "4":
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             logger_full.write_and_flush("Stopping the robot for lack of quality gps 4, waiting for it...\n")
@@ -547,10 +548,30 @@ def move_to_point_and_extract(coords_from_to: list,
                 vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
             navigation.NavigationV3.check_reboot_Ntrip("1", 0, logger_full)
             while True:
-                cur_pos = gps.get_last_position()
+                cur_pos = gps.get_fresh_position()
                 if cur_pos[2] == "4":
-                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     logger_full.write_and_flush("The gps has regained quality 4, relaunch of the robot.\n")
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                    break
+
+        # points filter by distance
+        prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
+        if config.ALLOW_GPS_PREV_CUR_DIST_FILTER and prev_cur_distance > config.PREV_CUR_POINT_MAX_DIST:
+            vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+            msg = f"Stopping the robot due to GPS points filter by distance (assuming current position point " \
+                  f"{str(cur_pos)} is wrong as distance between current position and prev. position {str(prev_pos)}" \
+                  f" is bigger than config.PREV_CUR_POINT_MAX_DIST={str(config.PREV_CUR_POINT_MAX_DIST)})"
+            logger_full.write_and_flush(msg + "\n")
+            data_collector.add_vesc_moving_time_data(
+                vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+            while True:
+                cur_pos = gps.get_fresh_position()
+                prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
+                if prev_cur_distance <= config.PREV_CUR_POINT_MAX_DIST:
+                    msg = f"Starting moving again after GPS points filter by distance as distance become OK " \
+                          f"({str(prev_cur_distance)})"
+                    logger_full.write_and_flush(msg + "\n")
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     break
 
         point_reading_t = time.time()
@@ -656,7 +677,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 learn_go_straight_index = 0
 
         # NAVIGATION STATE MACHINE
-        if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
+        if prev_cur_distance < config.PREV_CUR_POINT_MIN_DIST:
             raw_angle = last_correct_raw_angle
             #print("The distance covered is low")
             point_status = "skipped"
