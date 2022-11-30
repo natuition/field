@@ -1692,6 +1692,502 @@ class VescAdapterV3:
         return None
 
 
+class VescAdapterV4:
+    """Provides multiple vesc control with smooth RPM controls
+
+    To add more vesc engines:
+    1) Add unique vesc ID key for users as class static member below
+    2) Add keys to config.py to make it possible to enable-disable your new vesc and set its settings easily
+    3) Add new vesc engine initialization code to 'INIT ALL ALLOWED VESCS HERE' section (use code there as example)
+    """
+
+    # unique vesc ID keys for users (it's a keys for vesc can IDs, not IDs themselves)
+    PROPULSION_KEY = 0
+    EXTRACTION_KEY = 1
+
+    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
+        self.__locker = threading.Lock()
+
+        gpio_is_initialized = False
+        self.__stopper_check_freq = stopper_check_freq
+        self.__alive_freq = alive_freq
+        self.__check_freq = check_freq
+        self.__next_alive_time = time.time()
+
+        self.__can_ids = dict()
+        self.__current_rpm = dict()
+        self.__target_rpm = dict()
+        self.__use_smooth_accel = dict()
+        self.__smooth_accel_next_t = dict()
+        self.__use_smooth_decel = dict()
+        self.__smooth_decel_next_t = dict()
+        self.__time_to_move = dict()
+        self.__start_time = dict()
+        self.__is_moving = dict()
+        self.__stop_request = dict()
+        self.__last_stop_time = dict()
+        self.__stopper_signals = dict()
+        self.__gpio_stoppers_pins = dict()
+
+        self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
+        self.__ser.flushInput()
+        self.__ser.flushOutput()
+
+        # INIT ALL ALLOWED VESCS HERE
+        # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
+        if config.VESC_ALLOW_PROPULSION:
+            if config.VESC_PROPULSION_AUTODETECT_CAN_ID:
+                raise NotImplementedError("can id detection is not confirmed to work fine")
+            else:
+                prop_can_id = config.VESC_PROPULSION_CAN_ID
+            self.__can_ids[self.PROPULSION_KEY] = prop_can_id  # parent vesc has ID=None
+            self.__current_rpm[self.PROPULSION_KEY] = 0
+            self.__target_rpm[self.PROPULSION_KEY] = 0
+            self.__use_smooth_accel[self.PROPULSION_KEY] = False
+            self.__smooth_accel_next_t[self.PROPULSION_KEY] = 0.0
+            self.__use_smooth_decel[self.PROPULSION_KEY] = False
+            self.__smooth_decel_next_t[self.PROPULSION_KEY] = 0.0
+            self.__time_to_move[self.PROPULSION_KEY] = 0
+            self.__start_time[self.PROPULSION_KEY] = 0.0
+            self.__is_moving[self.PROPULSION_KEY] = False
+            self.__stop_request[self.PROPULSION_KEY] = False
+            self.__last_stop_time[self.PROPULSION_KEY] = 0.0
+            self.__stopper_signals[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOP_SIGNAL
+            self.__gpio_stoppers_pins[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOPPER_PIN
+            if self.__gpio_stoppers_pins[self.PROPULSION_KEY] is not None:
+                if not gpio_is_initialized:
+                    GPIO.setmode(GPIO.BOARD)
+                    gpio_is_initialized = True
+                GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
+
+        # init EXTRACTION vesc
+        if config.VESC_ALLOW_EXTRACTION:
+            if config.VESC_EXTRACTION_AUTODETECT_CAN_ID:
+                raise NotImplementedError("can id detection is not confirmed to work fine")
+                # ext_can_id = self.__get_unregistered_can_id()
+            else:
+                ext_can_id = config.VESC_EXTRACTION_CAN_ID
+            if ext_can_id is not None:
+                self.__can_ids[self.EXTRACTION_KEY] = ext_can_id
+                self.__current_rpm[self.EXTRACTION_KEY] = 0
+                self.__target_rpm[self.EXTRACTION_KEY] = 0
+                self.__use_smooth_accel[self.EXTRACTION_KEY] = False
+                self.__smooth_accel_next_t[self.PROPULSION_KEY] = 0.0
+                self.__use_smooth_decel[self.EXTRACTION_KEY] = False
+                self.__smooth_decel_next_t[self.PROPULSION_KEY] = 0.0
+                self.__time_to_move[self.EXTRACTION_KEY] = 0
+                self.__start_time[self.EXTRACTION_KEY] = 0.0
+                self.__is_moving[self.EXTRACTION_KEY] = False
+                self.__stop_request[self.EXTRACTION_KEY] = False
+                self.__last_stop_time[self.EXTRACTION_KEY] = 0.0
+                self.__stopper_signals[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOP_SIGNAL
+                self.__gpio_stoppers_pins[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOPPER_PIN
+                if self.__gpio_stoppers_pins[self.EXTRACTION_KEY] is not None:
+                    if not gpio_is_initialized:
+                        GPIO.setmode(GPIO.BOARD)
+                        gpio_is_initialized = True
+                    GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
+            else:
+                # TODO what robot should do if initialization was failed?
+                print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
+        # init any new vescs (add vesc init code here)
+        # ...
+
+        self.__keep_thread_alive = True
+        self._movement_ctrl_th = threading.Thread(target=self._movement_ctrl_th_tf, daemon=True)
+        self._movement_ctrl_th.start()
+
+        # DO ALL ALLOWED CALIBRATIONS HERE
+        # propulsion vasc calibration
+        if config.VESC_PROPULSION_CALIBRATE_AT_INIT:
+            self.set_target_rpm(config.VESC_PROPULSION_CALIBRATION_RPM, self.PROPULSION_KEY)
+            self.set_time_to_move(config.VESC_PROPULSION_CALIBRATION_MAX_TIME, self.PROPULSION_KEY)
+            self.start_moving(self.PROPULSION_KEY)
+            res = self.wait_for_stopper_hit(self.PROPULSION_KEY, config.VESC_PROPULSION_CALIBRATION_MAX_TIME)
+            self.stop_moving(self.PROPULSION_KEY)
+            if not res:
+                # TODO what robot should do if calibration was failed (there was no stopper hit)?
+                print("Stopped vesc PROPULSION engine calibration due timeout (stopper signal wasn't received!)")
+
+        # extraction vesc calibration
+        if config.VESC_EXTRACTION_CALIBRATE_AT_INIT:
+            # Z-5 fix (move cork little down to stop touching stopper)
+            self.set_target_rpm(config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM, self.EXTRACTION_KEY)
+            self.set_time_to_move(config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME, self.EXTRACTION_KEY)
+            self.start_moving(self.EXTRACTION_KEY)
+            self.wait_for_stop(self.EXTRACTION_KEY)
+
+            # calibration
+            self.set_target_rpm(config.VESC_EXTRACTION_CALIBRATION_RPM, self.EXTRACTION_KEY)
+            self.set_time_to_move(config.VESC_EXTRACTION_CALIBRATION_MAX_TIME, self.EXTRACTION_KEY)
+            self.start_moving(self.EXTRACTION_KEY)
+            res = self.wait_for_stopper_hit(self.EXTRACTION_KEY, config.VESC_EXTRACTION_CALIBRATION_MAX_TIME)
+            self.stop_moving(self.EXTRACTION_KEY)
+            if not res:
+                # TODO what robot should do if calibration was failed (there was no stopper hit)?
+                print("Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!)")
+        # do any new calibrations (add vesc calibration code here)
+        # ...
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self.__ser.is_open:
+            self.__keep_thread_alive = False
+            cleanup_gpio = False
+
+            for engine_key in self.__can_ids:
+                self.stop_moving(engine_key)
+                if self.__gpio_stoppers_pins[engine_key] is not None:
+                    GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
+                    if not cleanup_gpio:
+                        cleanup_gpio = True
+
+            if cleanup_gpio:
+                GPIO.cleanup()
+
+            self._movement_ctrl_th.join(1)
+            self.__ser.close()
+
+    def __get_unregistered_can_id(self):
+        for can_id in range(0, 253):
+            data = self.__get_firmware_version(['version_major', 'version_minor'], can_id)
+            if data is not None and can_id not in self.__can_ids.values():
+                return can_id
+        return None
+
+    def __get_firmware_version(self, report_field_names, can_id):
+        with self.__locker:
+            self.__ser.write(pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id)))
+            in_buf = b''
+            while self.__ser.in_waiting > 0:
+                in_buf += self.__ser.read(self.__ser.in_waiting)
+
+        if len(in_buf) == 0:
+            return None
+        response, consumed = pyvesc.decode(in_buf)
+        if consumed == 0:
+            return None
+
+        if isinstance(response, pyvesc.GetFirmwareVersion):
+            report_row = {}
+            for field_name in report_field_names:
+                report_row[field_name] = getattr(response, field_name)
+            return report_row
+        return None
+
+    def _movement_ctrl_th_tf(self):
+        """Target function of movement control thread (only inner usage).
+
+        Implements keeping multiple vesc engines alive and stopping them by a timers if they were set.
+        """
+
+        try:
+            while self.__keep_thread_alive:
+                with self.__locker:
+                    # process each active engine
+                    for engine_key in self.__can_ids:
+                        if not self.__keep_thread_alive:
+                            break
+
+                        if not self.__is_moving[engine_key]:
+                            continue
+
+                        # engine movement timeout
+                        if time.time() - self.__start_time[engine_key] >= self.__time_to_move[engine_key] or \
+                                self.__stop_request[engine_key]:
+                            # immediate engine stop
+                            if not self.__use_smooth_decel[engine_key]:
+                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                self.__current_rpm[engine_key] = 0
+                                self.__last_stop_time[engine_key] = time.time()
+                                self.__is_moving[engine_key] = False
+                                self.__stop_request[engine_key] = False
+                            # smooth engine stop (if it's time to check)
+                            elif time.time() >= self.__smooth_decel_next_t[engine_key]:
+                                self.__smooth_decel_next_t[engine_key] = time.time() + config.VESC_SMOOTH_DECEL_TIME_STEP
+
+                                # reduce speed (RPM is bigger than step so step is possible)
+                                if abs(self.__current_rpm[engine_key]) > config.VESC_SMOOTH_DECEL_RPM_STEP:
+                                    self.__current_rpm[engine_key] += -config.VESC_SMOOTH_DECEL_RPM_STEP \
+                                        if self.__current_rpm[engine_key] > 0 else config.VESC_SMOOTH_DECEL_RPM_STEP
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                        self.__current_rpm[engine_key],
+                                        can_id=self.__can_ids[engine_key])))
+                                # stop engine (current RPM <= RPM step)
+                                else:
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                    self.__current_rpm[engine_key] = 0
+                                    self.__last_stop_time[engine_key] = time.time()
+                                    self.__is_moving[engine_key] = False
+                                    self.__stop_request[engine_key] = False
+                        # smooth start engine if needed
+                        elif self.__use_smooth_accel[engine_key] and time.time() >= self.__smooth_accel_next_t[engine_key]:
+                            self.__smooth_accel_next_t[engine_key] = time.time() + config.VESC_SMOOTH_ACCEL_TIME_STEP
+
+                            # set engine to target RPM as current-target difference is <= RPM step
+                            if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= \
+                                    config.VESC_SMOOTH_ACCEL_RPM_STEP:
+                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                    self.__target_rpm[engine_key],
+                                    can_id=self.__can_ids[engine_key])))
+                                self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
+                            # increase current RPM by RPM step
+                            else:
+                                self.__current_rpm[engine_key] += config.VESC_SMOOTH_ACCEL_RPM_STEP \
+                                    if self.__target_rpm[engine_key] > self.__current_rpm[engine_key] \
+                                    else -config.VESC_SMOOTH_ACCEL_RPM_STEP
+                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                    self.__current_rpm[engine_key],
+                                    can_id=self.__can_ids[engine_key])))
+
+                    # send alive to each active
+                    if time.time() > self.__next_alive_time:
+                        self.__next_alive_time = time.time() + self.__alive_freq
+                        for engine_key in self.__is_moving:
+                            if self.__is_moving[engine_key]:
+                                self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
+
+                # wait for next checking tick
+                time.sleep(self.__check_freq)
+        except serial.SerialException as ex:
+            print(ex)  # TODO should these exceptions to be ignored?
+
+    def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
+        with self.__locker:
+            self.__use_smooth_accel[engine_key] = smooth_acceleration
+            self.__use_smooth_decel[engine_key] = smooth_deceleration
+            self.__start_time[engine_key] = time.time()
+
+            if smooth_deceleration:
+                self.__smooth_decel_next_t[engine_key] = 0
+            if smooth_acceleration:
+                self.__smooth_accel_next_t[engine_key] = 0
+            else:
+                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                    self.__target_rpm[engine_key],
+                    can_id=self.__can_ids[engine_key])))
+                self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
+            self.__is_moving[engine_key] = True
+
+    def stop_moving(self, engine_key, smooth_deceleration: bool = False):
+        with self.__locker:
+            self.__use_smooth_decel[engine_key] = smooth_deceleration
+
+            if smooth_deceleration:
+                self.__smooth_decel_next_t[engine_key] = 0
+                self.__stop_request[engine_key] = True
+            else:
+                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                self.__current_rpm[engine_key] = 0
+                self.__last_stop_time[engine_key] = time.time()
+                self.__is_moving[engine_key] = False
+
+    def wait_for_stop(self, engine_key, timeout=None):
+        """Blocks caller thread until specified engine is end his work or timeout time is out (if timeout was set).
+
+        Returns True if engine has ended his work, returns False if timeout waiting time is out.
+        """
+
+        end_t = time.time() + timeout if timeout is not None else float("inf")
+
+        while True:
+            with self.__locker:
+                if not self.__is_moving[engine_key]:
+                    return True
+            if timeout is not None and time.time() > end_t:
+                return False
+            time.sleep(self.__check_freq)
+
+    def wait_for_stop_any(self, timeout=None):
+        raise NotImplementedError("this feature is not implemented yet")
+
+    def wait_for_stopper_hit(self,
+                             engine_key,
+                             timeout=None,
+                             stop_engine_if_timeout=True,
+                             stop_engine_if_stopper_hit=True):
+        """Blocks caller thread until specified engine stopper hit or timeout time is out (if timeout was set).
+
+        Returns True if stopper was hit, returns False if timeout waiting time is out
+        or engine was stopped by its own work timer.
+        """
+
+        if self.__gpio_stoppers_pins[engine_key] is None:
+            self.stop_moving(engine_key)
+            raise RuntimeError("stopper usage is not allowed in config \
+                (engine movement is terminated to prevent occasional damage cause)")
+
+        end_t = time.time() + timeout if timeout is not None else float("inf")
+
+        while True:
+            with self.__locker:
+                if not self.__is_moving[engine_key]:
+                    return False
+            if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
+                if stop_engine_if_stopper_hit:
+                    self.stop_moving(engine_key)
+                return True
+            if time.time() > end_t:
+                if stop_engine_if_timeout:
+                    self.stop_moving(engine_key)
+                return False
+            time.sleep(self.__stopper_check_freq)
+
+    def wait_for_stopper_hit_any(self):
+        raise NotImplementedError("this feature is not implemented yet")
+
+    def set_current_rpm(self, rpm, engine_key):
+        """Set as current and apply given RPM on specified by engine_key vesc engine.
+
+        NOTICE: engine will smoothly back to its target RPM if smooth acceleration is enabled for engine_key engine.
+        To apply RPM immediately, set RPM you want to apply as target RPM first by using set_target_rpm method before
+        calling this.
+        """
+
+        if not isinstance(rpm, (int, float)):
+            msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
+            raise TypeError(msg)
+
+        with self.__locker:
+            self.__ser.write(pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])))
+            self.__current_rpm[engine_key] = rpm
+
+    def set_target_rpm(self, rpm, engine_key):
+        """Set given RPM as target RPM for specified engine_key vesc engine.
+
+        NOTICE: engine will speed up to this RPM smoothly if smooth acceleration is enabled for engine_key vesc engine,
+        otherwise this RPM will be applied immediately during engine start. In this case high RPM values may lead to
+        strong jerk during the start.
+        """
+
+        if not isinstance(rpm, (int, float)):
+            msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
+            raise TypeError(msg)
+
+        with self.__locker:
+            self.__target_rpm[engine_key] = rpm
+
+    def set_time_to_move(self, time_to_move, engine_key):
+        if not isinstance(time_to_move, (int, float)):
+            msg = f"time_to_move must be int or float, got {type(time_to_move).__name__} instead"
+            raise TypeError(msg)
+        if time_to_move < 0:
+            msg = f"time_to_move must be >= 0, got {str(time_to_move)} instead"
+            raise ValueError(msg)
+
+        with self.__locker:
+            self.__time_to_move[engine_key] = time_to_move
+
+    def set_alive_freq(self, alive_freq):
+        if not isinstance(alive_freq, (int, float)):
+            msg = f"alive_freq must be int or float, got {type(alive_freq).__name__} instead"
+            raise TypeError(msg)
+        if alive_freq < 0:
+            msg = f"alive_freq must be >= 0, got {str(alive_freq)} instead"
+            raise ValueError(msg)
+
+        with self.__locker:
+            self.__alive_freq = alive_freq
+
+    def set_check_freq(self, check_freq):
+        if not isinstance(check_freq, (int, float)):
+            msg = f"check_freq must be int or float, got {type(check_freq).__name__} instead"
+            raise TypeError(msg)
+        if check_freq < 0:
+            msg = f"check_freq must be >= 0, got {str(check_freq)} instead"
+            raise ValueError(msg)
+
+        with self.__locker:
+            self.__check_freq = check_freq
+
+    def set_smooth_acceleration(self, smooth_acceleration: bool, engine_key):
+        if not isinstance(smooth_acceleration, bool):
+            msg = f"smooth_acceleration must be bool, got {type(smooth_acceleration).__name__} instead"
+            raise TypeError(msg)
+
+        with self.__locker:
+            self.__use_smooth_accel[engine_key] = smooth_acceleration
+
+    def set_smooth_deceleration(self, smooth_deceleration: bool, engine_key):
+        if not isinstance(smooth_deceleration, bool):
+            msg = f"smooth_deceleration must be bool, got {type(smooth_deceleration).__name__} instead"
+            raise TypeError(msg)
+
+        with self.__locker:
+            self.__use_smooth_decel[engine_key] = smooth_deceleration
+
+    def get_smooth_acceleration(self, engine_key):
+        with self.__locker:
+            return self.__use_smooth_accel[engine_key]
+
+    def get_smooth_deceleration(self, engine_key):
+        with self.__locker:
+            return self.__use_smooth_decel[engine_key]
+
+    def get_last_stop_time(self, engine_key):
+        with self.__locker:
+            return self.__last_stop_time[engine_key]
+
+    def get_last_start_time(self, engine_key):
+        with self.__locker:
+            return self.__start_time[engine_key]
+
+    def get_last_movement_time(self, engine_key):
+        """Returns last movement time if VESCs are not working at the moment;
+        returns current working time if VESCs are working at the moment.
+        """
+
+        with self.__locker:
+            if math.isclose(self.__start_time[engine_key], 0):
+                return 0
+            elif self.__is_moving[engine_key] or math.isclose(self.__last_stop_time[engine_key], 0):
+                return time.time() - self.__start_time[engine_key]
+            else:
+                return self.__last_stop_time[engine_key] - self.__start_time[engine_key]
+
+    def get_current_rpm(self, engine_key):
+        """Returns specified vesc engine current RPM"""
+
+        return self.__current_rpm[engine_key]
+
+    def get_target_rpm(self, engine_key):
+        """Returns specified vesc engine target RPM"""
+
+        return self.__target_rpm[engine_key]
+
+    def get_sensors_data(self, report_field_names, engine_key):
+        with self.__locker:
+            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+            in_buf = b''
+            while self.__ser.in_waiting > 0:
+                in_buf += self.__ser.read(self.__ser.in_waiting)
+
+        if len(in_buf) == 0:
+            return None
+        response, consumed = pyvesc.decode(in_buf)
+        if consumed == 0:
+            return None
+
+        if isinstance(response, pyvesc.GetValues):
+            report_row = {}
+            for field_name in report_field_names:
+                report_row[field_name] = getattr(response, field_name)
+            return report_row
+        return None
+
+    def is_moving(self, engine_key):
+        with self.__locker:
+            return self.__is_moving[engine_key]
+
+
 class GPSUbloxAdapter:
     """Provides access to the robot's on-board GPS navigator (UBLOX card)"""
 

@@ -133,7 +133,7 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 
 def move_to_point_and_extract(coords_from_to: list,
                               gps: adapters.GPSUbloxAdapter,
-                              vesc_engine: adapters.VescAdapterV3,
+                              vesc_engine: adapters.VescAdapterV4,
                               smoothie: adapters.SmoothieAdapter,
                               camera: adapters.CameraAdapterIMX219_170,
                               periphery_det: detection.YoloOpenCVDetection,
@@ -149,9 +149,9 @@ def move_to_point_and_extract(coords_from_to: list,
                               image_saver: utility.ImageSaver,
                               notification: NotificationClient,
                               extraction_manager_v3: ExtractionManagerV3,
-                              ui_msg_queue: posix_ipc.MessageQueue, 
-                              SI_speed: float, 
-                              wheels_straight: bool, 
+                              ui_msg_queue: posix_ipc.MessageQueue,
+                              SI_speed: float,
+                              wheels_straight: bool,
                               navigation_prediction: navigation.NavigationPrediction,
                               future_points: list,
                               allow_extractions: bool,
@@ -228,7 +228,7 @@ def move_to_point_and_extract(coords_from_to: list,
     # TODO: maybe should add sleep time as camera currently has delay
 
     if config.AUDIT_MODE:
-        vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+        vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
     try:
@@ -360,8 +360,9 @@ def move_to_point_and_extract(coords_from_to: list,
                     if config.VERBOSE:
                         print(msg)
                     vesc_engine.set_time_to_move(config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.set_rpm(config.SI_SPEED_STEP_FORWARD*config.MULTIPLIER_SI_SPEED_TO_RPM,
-                                        vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(
+                        config.SI_SPEED_STEP_FORWARD * config.MULTIPLIER_SI_SPEED_TO_RPM,
+                        vesc_engine.PROPULSION_KEY)
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
 
@@ -391,7 +392,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
                 if not vesc_engine.is_moving(vesc_engine.PROPULSION_KEY):
                     vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
             # switching (from slow to fast) mode
@@ -428,7 +429,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
-                    vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
                     continue
 
                 sm_cur_pos = smoothie.get_smoothie_current_coordinates(convert_to_mms=False)
@@ -484,26 +485,27 @@ def move_to_point_and_extract(coords_from_to: list,
                     # vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
                     continue
                 elif close_to_end:
-                    # TODO: won't execute (speed not applied bug) in case if rpm already was set by set_rpm() method (1)
-                    if vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY) != vesc_speed:
+                    cur_vesc_rpm = vesc_engine.get_current_rpm(vesc_engine.PROPULSION_KEY)
+                    if cur_vesc_rpm != vesc_speed:
                         msg = f"Applying slow speed {vesc_speed} at 'fast mode' " \
-                              f"(was {vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY)}) " \
+                              f"(was {cur_vesc_rpm}) " \
                               f"because of close_to_end flag trigger"
                         if config.LOG_SPEED_MODES:
                             logger_full.write(msg + "\n")
                         if config.PRINT_SPEED_MODES:
                             print(msg)
-                        vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_current_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
                 else:
-                    # TODO: won't execute (speed not applied bug) in case if rpm already was set by set_rpm() method (2)
-                    if vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY) != vesc_speed_fast:
-                        msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' " \
-                              f"(was {vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY)})"
+                    cur_vesc_rpm = vesc_engine.get_current_rpm(vesc_engine.PROPULSION_KEY)
+                    if cur_vesc_rpm != vesc_speed_fast:
+                        msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' (was {cur_vesc_rpm})"
                         if config.LOG_SPEED_MODES:
                             logger_full.write(msg + "\n")
                         if config.PRINT_SPEED_MODES:
                             print(msg)
-                        vesc_engine.apply_rpm(vesc_speed_fast, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(vesc_speed_fast, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_current_rpm(vesc_speed_fast, vesc_engine.PROPULSION_KEY)
 
         # NAVIGATION CONTROL
         cur_pos = gps.get_last_position()
@@ -616,7 +618,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         # TODO check for bug: arrival check applies single speed for all path (while multiple speeds are applied)
         # check if can arrived
-        if vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY) / config.MULTIPLIER_SI_SPEED_TO_RPM * \
+        if vesc_engine.get_current_rpm(vesc_engine.PROPULSION_KEY) / config.MULTIPLIER_SI_SPEED_TO_RPM * \
                 config.MANEUVERS_FREQUENCY > nav.get_distance(cur_pos, coords_from_to[1]):
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             data_collector.add_vesc_moving_time_data(
@@ -846,7 +848,7 @@ def move_to_point_and_extract(coords_from_to: list,
         logger_full.write(msg + "\n\n")
 
 
-def send_voltage_thread_tf(vesc_engine: adapters.VescAdapterV3, ui_msg_queue):
+def send_voltage_thread_tf(vesc_engine: adapters.VescAdapterV4, ui_msg_queue):
     vesc_data = None
     while vesc_data is None:
         vesc_data = vesc_engine.get_sensors_data(['input_voltage'], vesc_engine.PROPULSION_KEY)
@@ -1550,7 +1552,7 @@ def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputi
     return [a_new, b_new, c_new, d_new]
 
 
-def emergency_field_defining(vesc_engine: adapters.VescAdapterV3, gps: adapters.GPSUbloxAdapter,
+def emergency_field_defining(vesc_engine: adapters.VescAdapterV4, gps: adapters.GPSUbloxAdapter,
                              nav: navigation.GPSComputing, cur_log_dir, logger_full: utility.Logger):
     msg = "Using emergency field creation..."
     logger_full.write(msg + "\n")
@@ -1561,6 +1563,7 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapterV3, gps: adapters.
     msg = "Moving forward..."
     logger_full.write(msg + "\n")
     print(msg)
+    vesc_engine.set_time_to_move(float("inf"), vesc_engine.PROPULSION_KEY)
     vesc_engine.start_moving(engine_key=vesc_engine.PROPULSION_KEY)
     time.sleep(config.EMERGENCY_MOVING_TIME)
     vesc_engine.stop_moving(engine_key=vesc_engine.PROPULSION_KEY)
@@ -1774,7 +1777,7 @@ def main():
         with \
             utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt",
                                     config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
-            adapters.VescAdapterV3(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
+            adapters.VescAdapterV4(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
                                    config.VESC_STOPPER_CHECK_FREQ) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
@@ -2168,7 +2171,7 @@ def main():
                     direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
 
                     if direction_of_travel != last_direction_of_travel:
-                        vesc_engine.set_rpm(speed * config.MULTIPLIER_SI_SPEED_TO_RPM, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(speed * config.MULTIPLIER_SI_SPEED_TO_RPM, vesc_engine.PROPULSION_KEY)
 
                     if config.WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL and direction_of_travel != last_direction_of_travel:
                             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
@@ -2290,14 +2293,14 @@ def main():
         # (to prevent cork breaking when smoothie calibrates)
         smoothie_safe_calibration = True
         if config.EXTRACTION_CONTROLLER == 2:
-            with adapters.VescAdapterV3(
+            with adapters.VescAdapterV4(
                     vesc_address,
                     config.VESC_BAUDRATE,
                     config.VESC_ALIVE_FREQ,
                     config.VESC_CHECK_FREQ,
                     config.VESC_STOPPER_CHECK_FREQ) as vesc_engine:
                 # Z-5 fix (move cork little down to stop touching stopper)
-                vesc_engine.set_rpm(config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM, vesc_engine.EXTRACTION_KEY)
+                vesc_engine.set_target_rpm(config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM, vesc_engine.EXTRACTION_KEY)
                 vesc_engine.set_time_to_move(
                     config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME,
                     vesc_engine.EXTRACTION_KEY)
@@ -2305,7 +2308,7 @@ def main():
                 vesc_engine.wait_for_stop(vesc_engine.EXTRACTION_KEY)
 
                 # calibration
-                vesc_engine.set_rpm(config.VESC_EXTRACTION_CALIBRATION_RPM, vesc_engine.EXTRACTION_KEY)
+                vesc_engine.set_target_rpm(config.VESC_EXTRACTION_CALIBRATION_RPM, vesc_engine.EXTRACTION_KEY)
                 vesc_engine.set_time_to_move(
                     config.VESC_EXTRACTION_CALIBRATION_MAX_TIME,
                     vesc_engine.EXTRACTION_KEY)

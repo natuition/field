@@ -22,7 +22,7 @@ class CreateFieldState(State.State):
                  socketio: SocketIO,
                  logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
-                 vesc_engine: adapters.VescAdapterV3):
+                 vesc_engine: adapters.VescAdapterV4):
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
@@ -199,7 +199,7 @@ class FieldCreator:
     def __init__(self,
                  logger: utility.Logger,
                  nav: navigation.GPSComputing,
-                 vesc_engine: adapters.VescAdapterV3,
+                 vesc_engine: adapters.VescAdapterV4,
                  smoothie: adapters.SmoothieAdapter,
                  socketio: SocketIO):
         self.A = [0, 0]
@@ -210,7 +210,7 @@ class FieldCreator:
         self.field = []
         self.logger = logger
         self.nav = nav
-        self.vesc_emergency = vesc_engine
+        self.vesc_emergency: adapters.VescAdapterV4 = vesc_engine
         self.smoothie = smoothie
         self.socketio = socketio
 
@@ -224,12 +224,13 @@ class FieldCreator:
         self.socketio.emit('newPos', json.dumps([self.A[1], self.A[0]]), namespace='/map')
 
         if self.vesc_emergency is None:
-            self.vesc_emergency = initVesc(self.logger)
+            self.vesc_emergency: adapters.VescAdapterV4 = initVesc(self.logger)
         msg = f"[{self.__class__.__name__}] -> Moving forward..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-                                      self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(
+            config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+            self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
 
     def setSecondPoint(self):
@@ -265,6 +266,7 @@ class FieldCreator:
             self.field = [self.B, self.A]
 
         other_fields = UIWebRobot.get_other_field()
+        # TODO this takes a lot of resources during subprocess init, there's a more efficient solution in main.py
         current_field_name = subprocess.run(["readlink", "../field.txt"], stdout=subprocess.PIPE).stdout.decode(
             'utf-8').replace("fields/", "")[:-5]
 
@@ -300,8 +302,9 @@ class FieldCreator:
         return unquote(fieldName[:-4])
 
     def manoeuvre(self):
-        self.vesc_emergency.apply_rpm(-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-                                      self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(
+            -config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+            self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_BACKWARD, self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
@@ -309,8 +312,9 @@ class FieldCreator:
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
         self.smoothie.wait_for_all_actions_done()
 
-        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-                                      self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(
+            config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+            self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)

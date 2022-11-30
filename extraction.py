@@ -24,7 +24,7 @@ class ExtractionManagerV3:
                  precise_det: detection.YoloOpenCVDetection,
                  camera_positions: list,
                  pdz_distances: list,
-                 vesc_engine: adapters.VescAdapterV3):
+                 vesc_engine: adapters.VescAdapterV4):
 
         self.__smoothie = smoothie
         self.__camera = camera
@@ -844,7 +844,7 @@ class ExtractionManagerV3:
                         sm_milling_y_points.append(sm_top_y)
 
                     # put miller down and keep enabled
-                    self.__vesc_engine.set_rpm(config.MILLING_CORK_DOWN_RPM, self.__vesc_engine.EXTRACTION_KEY)
+                    self.__vesc_engine.set_target_rpm(config.MILLING_CORK_DOWN_RPM, self.__vesc_engine.EXTRACTION_KEY)
                     self.__vesc_engine.set_time_to_move(float("inf"), self.__vesc_engine.EXTRACTION_KEY)
                     self.__vesc_engine.start_moving(self.__vesc_engine.EXTRACTION_KEY)
                     time.sleep(config.MILLING_CORK_GROUND_REACHING_DELAY)
@@ -876,7 +876,7 @@ class ExtractionManagerV3:
 
                     # stop and pick up the cork after current plant milling is done
                     self.__vesc_engine.stop_moving(self.__vesc_engine.EXTRACTION_KEY)
-                    self.__vesc_engine.set_rpm(config.MILLING_CORK_UP_RPM, self.__vesc_engine.EXTRACTION_KEY)
+                    self.__vesc_engine.set_target_rpm(config.MILLING_CORK_UP_RPM, self.__vesc_engine.EXTRACTION_KEY)
                     self.__vesc_engine.set_time_to_move(
                         config.MILLING_CORK_STOPPER_REACHING_MAX_TIME,
                         self.__vesc_engine.EXTRACTION_KEY)  # stop by movement timeout if GPIO fails
@@ -1045,7 +1045,7 @@ class ExtractionMethods:
 
     @staticmethod
     def single_center_drop(smoothie: adapters.SmoothieAdapter,
-                           vesc_adapter: adapters.VescAdapterV3,
+                           vesc_adapter: adapters.VescAdapterV4,
                            extraction_map: ExtractionMap,
                            data_collector: datacollection.DataCollector):
         """Extract a plant with a single corkscrew drop to the center"""
@@ -1068,7 +1068,7 @@ class ExtractionMethods:
                     msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
                     return msg, False
             elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
-                vesc_adapter.set_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
+                vesc_adapter.set_target_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_DOWN_TIME, vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.wait_for_stop(vesc_adapter.EXTRACTION_KEY)
@@ -1090,7 +1090,7 @@ class ExtractionMethods:
                           "\nemergency exit as I don't want break the corkscrew."
                     return msg, True
             elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
-                vesc_adapter.set_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
+                vesc_adapter.set_target_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.set_time_to_move(
                     config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME,
                     vesc_adapter.EXTRACTION_KEY)
@@ -1320,7 +1320,7 @@ class ExtractionMethods:
 
     @staticmethod
     def pattern_plus(smoothie: adapters.SmoothieAdapter,
-                     vesc_adapter: adapters.VescAdapterV3,
+                     vesc_adapter: adapters.VescAdapterV4,
                      extraction_map: ExtractionMap,
                      data_collector: datacollection.DataCollector):
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
@@ -1361,7 +1361,7 @@ class ExtractionMethods:
 
     @staticmethod
     def pattern_x(smoothie: adapters.SmoothieAdapter,
-                  vesc_adapter: adapters.VescAdapterV3,
+                  vesc_adapter: adapters.VescAdapterV4,
                   extraction_map: ExtractionMap,
                   data_collector: datacollection.DataCollector):
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:

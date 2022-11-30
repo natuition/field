@@ -15,7 +15,7 @@ from urllib.parse import quote, unquote
 from config import config
 import application
 
-def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV3, socketio, input_voltage):
+def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
     last_update = 0
     vesc_data = None
     while voltage_thread_alive():
@@ -55,12 +55,12 @@ def initVesc(logger: utility.Logger):
         logger.write_and_flush(msg + "\n")
         print(msg)
         exit(1)
-    vesc_engine = adapters.VescAdapterV3(vesc_address,
+    vesc_engine = adapters.VescAdapterV4(vesc_address,
                                          config.VESC_BAUDRATE,
                                          config.VESC_ALIVE_FREQ,
                                          config.VESC_CHECK_FREQ,
                                          config.VESC_STOPPER_CHECK_FREQ)
-    vesc_engine.set_rpm(0, vesc_engine.PROPULSION_KEY)
+    vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
     vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
     return vesc_engine
 
