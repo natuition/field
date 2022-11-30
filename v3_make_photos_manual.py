@@ -58,9 +58,17 @@ def run_performance_test(camera):
             cur_time = utility.get_current_time()  # timestamp when frame was read
 
             saving_start_t = time.time()
-            cv.imwrite(path_piece + str(counter) + sep + cur_time + sep + "(prev. imwrite time " +
-                       str(saving_time_delta) + " seconds).jpg", frame)
-            saving_time_delta = time.time() - saving_start_t
+            cv.imwrite(path_piece +
+                       str(counter) +
+                       sep +
+                       cur_time +
+                       # sep +
+                       # "(prev. imwrite time " +
+                       # str(saving_time_delta) +
+                       # " seconds)" +
+                       ".jpg",
+                       frame)
+            # saving_time_delta = time.time() - saving_start_t
 
             counter += 1
     except KeyboardInterrupt:

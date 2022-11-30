@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.9"
+CONFIG_VERSION = "0.19.11"
 
 
 # ======================================================================================================================
@@ -345,6 +345,9 @@ X_MOVEMENT_CAMERA_X_F = [X_F_MAX, X_F_MAX]
 # Format is a list of dict items [{"top": int, "bot": int, "left": int, "right": int}, {...}, ...] where each dict is a
 # separate image zone having same index as it's camera position. Zone T B L R values are pixels from image scene center.
 X_MOVEMENT_IMAGE_ZONES = [{"top": 1000, "bot": 1000, "left": 1000, "right": 1000}]
+# count of models to load; supports 1 or 2 NN models for now
+# 1 = only periphery NN is loaded and used for all scans types; 2 = load periphery and precise
+NN_MODELS_COUNT = 1
 
 
 # ======================================================================================================================
@@ -374,6 +377,14 @@ ANTI_THEFT_ZONE_RADIUS = 5000
 
 GPS_QUALITY_IGNORE = False #If this is activated, stops the robot when it no longer has quality 4. 
 # It restarts the ntrip service and waits to find quality 4
+
+# True: enable cur position point ignore and stop robot if prev-cur position distance is bigger than
+# PREV_CUR_POINT_MAX_DIST
+ALLOW_GPS_PREV_CUR_DIST_FILTER = True
+# mms; max allowed distance between cur and prev position, will stop robot if is exceeded and
+# if ALLOW_GPS_PREV_CUR_DIST_FILTER=True
+PREV_CUR_POINT_MAX_DIST = 2000  # TODO value needs to be specified!
+
 
 ROBOT_SN = "SN012"
 
@@ -480,36 +491,34 @@ MILLING_PLANT_BOX_Y_SIZE_SCALE = 1
 # ======================================================================================================================
 # YOLO PERIPHERY NETWORK SETTINGS
 # ======================================================================================================================
+PERIPHERY_CONFIDENCE_THRESHOLD = 0.1
 PERIPHERY_HIER_THRESHOLD = 0.5
 PERIPHERY_NMS_THRESHOLD = 0.4
 PERIPHERY_INPUT_SIZE = (416, 416)
 PERIPHERY_CONFIG_FILE = "yolo/Y0016_416.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/Y0016.weights"
+PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
+PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 PERIPHERY_DNN_BACKEND = 5
 PERIPHERY_DNN_TARGET = 6
 PERIPHERY_WRAPPER = 1
-PERIPHERY_DATA_FILE = "yolo/Y0016.data"
-
-PERIPHERY_CONFIDENCE_THRESHOLD = 0.1
-PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
-PERIPHERY_MODEL_PATH = "yolo/Y0016.trt"
+PERIPHERY_MODEL_PATH = "yolo/Y0016.trt"  # for TRT wrapper
 
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
+PRECISE_CONFIDENCE_THRESHOLD = 0.1
 PRECISE_HIER_THRESHOLD = 0.5
 PRECISE_NMS_THRESHOLD = 0.4
 PRECISE_INPUT_SIZE = (832, 832)
 PRECISE_CONFIG_FILE = "yolo/Y0016_832.cfg"
 PRECISE_WEIGHTS_FILE = "yolo/Y0016.weights"
+PRECISE_CLASSES_FILE = "yolo/Y0016.names"
 PRECISE_DATA_FILE = "yolo/Y0016.data"
 PRECISE_DNN_BACKEND = 5
 PRECISE_DNN_TARGET = 6
 PRECISE_WRAPPER = 1
-
-PRECISE_CONFIDENCE_THRESHOLD = 0.1
-PRECISE_CLASSES_FILE = "yolo/Y0016.names"
-PRECISE_MODEL_PATH = "yolo/Y0016.trt"
+PRECISE_MODEL_PATH = "yolo/Y0016.trt"  # for TRT wrapper
 
 # ======================================================================================================================
 # CAMERA SETTINGS

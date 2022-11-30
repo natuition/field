@@ -139,7 +139,6 @@ def move_to_point_and_extract(coords_from_to: list,
                               periphery_det: detection.YoloOpenCVDetection,
                               precise_det: detection.YoloOpenCVDetection,
                               logger_full: utility.Logger,
-                              logger_table: utility.Logger,
                               report_field_names,
                               trajectory_saver: utility.TrajectorySaver,
                               working_zone_polygon,
@@ -167,7 +166,6 @@ def move_to_point_and_extract(coords_from_to: list,
     :param periphery_det:
     :param precise_det:
     :param logger_full:
-    :param logger_table:
     :param report_field_names:
     :param trajectory_saver:
     :param working_zone_polygon:
@@ -542,6 +540,7 @@ def move_to_point_and_extract(coords_from_to: list,
             else:
                 continue
 
+        # points filter by quality flag
         if config.GPS_QUALITY_IGNORE and cur_pos[2] != "4":
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             logger_full.write_and_flush("Stopping the robot for lack of quality gps 4, waiting for it...\n")
@@ -549,10 +548,30 @@ def move_to_point_and_extract(coords_from_to: list,
                 vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
             navigation.NavigationV3.check_reboot_Ntrip("1", 0, logger_full)
             while True:
-                cur_pos = gps.get_last_position()
+                cur_pos = gps.get_fresh_position()
                 if cur_pos[2] == "4":
-                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     logger_full.write_and_flush("The gps has regained quality 4, relaunch of the robot.\n")
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                    break
+
+        # points filter by distance
+        prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
+        if config.ALLOW_GPS_PREV_CUR_DIST_FILTER and prev_cur_distance > config.PREV_CUR_POINT_MAX_DIST:
+            vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+            msg = f"Stopping the robot due to GPS points filter by distance (assuming current position point " \
+                  f"{str(cur_pos)} is wrong as distance between current position and prev. position {str(prev_pos)}" \
+                  f" is bigger than config.PREV_CUR_POINT_MAX_DIST={str(config.PREV_CUR_POINT_MAX_DIST)})"
+            logger_full.write_and_flush(msg + "\n")
+            data_collector.add_vesc_moving_time_data(
+                vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+            while True:
+                cur_pos = gps.get_fresh_position()
+                prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
+                if prev_cur_distance <= config.PREV_CUR_POINT_MAX_DIST:
+                    msg = f"Starting moving again after GPS points filter by distance as distance become OK " \
+                          f"({str(prev_cur_distance)})"
+                    logger_full.write_and_flush(msg + "\n")
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     break
 
         point_reading_t = time.time()
@@ -658,7 +677,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 learn_go_straight_index = 0
 
         # NAVIGATION STATE MACHINE
-        if nav.get_distance(prev_pos, cur_pos) < config.PREV_CUR_POINT_MIN_DIST:
+        if prev_cur_distance < config.PREV_CUR_POINT_MIN_DIST:
             raw_angle = last_correct_raw_angle
             #print("The distance covered is low")
             point_status = "skipped"
@@ -799,27 +818,27 @@ def move_to_point_and_extract(coords_from_to: list,
 
         lastNtripRestart = navigation.NavigationV3.check_reboot_Ntrip(gps_quality, lastNtripRestart, logger_full)
 
-        msg = str(gps_quality).ljust(5) + str(raw_angle).ljust(8) + str(angle_kp_ki).ljust(8) + str(
-            order_angle_sm).ljust(8) + str(sum_angles).ljust(8) + str(distance).ljust(13) + str(ad_wheels_pos).ljust(
-            8) + str(sm_wheels_pos).ljust(9) + point_status.ljust(12)+str(perpendicular).ljust(10)+corridor.ljust(9)+str(centroid_factor).ljust(16)+str(
-            cruise_factor).ljust(14)
+        msg = str(gps_quality).ljust(5) + \
+              str(raw_angle).ljust(8) + \
+              str(angle_kp_ki).ljust(8) + \
+              str(order_angle_sm).ljust(8) + \
+              str(sum_angles).ljust(8) + \
+              str(distance).ljust(13) + \
+              str(ad_wheels_pos).ljust(8) + \
+              str(sm_wheels_pos).ljust(9) + \
+              point_status.ljust(12) + \
+              str(perpendicular).ljust(10) + \
+              corridor.ljust(9) + \
+              str(centroid_factor).ljust(16) + \
+              str(cruise_factor).ljust(14)
         print(msg)
         logger_full.write(msg + "\n")
 
-        # TODO possible bug: reading sensors data from vesc 4 times per second
-        # load sensors data to csv
-        s = ","
-        msg = str(gps_quality) + s + str(raw_angle) + s + str(angle_kp_ki) + s + str(order_angle_sm) + s + \
-            str(sum_angles) + s + str(distance) + s + str(ad_wheels_pos) + s + str(sm_wheels_pos)
+        # TODO vesc sensors are being asked 4 times per second
+        # send voltage
         vesc_data = vesc_engine.get_sensors_data(report_field_names, vesc_engine.PROPULSION_KEY)
-        if vesc_data is not None:
-            msg += s
-            for key in vesc_data:
-                msg += str(vesc_data[key]) + s
-                if config.CONTINUOUS_INFORMATION_SENDING and key == "input_voltage":
-                    notification.set_input_voltage(vesc_data[key])
-            msg = msg[:-1]
-        logger_table.write(msg + "\n")
+        if config.CONTINUOUS_INFORMATION_SENDING and vesc_data is not None and "input_voltage" in vesc_data:
+            notification.set_input_voltage(vesc_data["input_voltage"])
 
         prev_pos = cur_pos
 
@@ -1621,7 +1640,6 @@ def main():
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     nav = navigation.GPSComputing()
     logger_full = utility.Logger(log_cur_dir + "log full.txt", append_file=config.CONTINUE_PREVIOUS_PATH)
-    logger_table = utility.Logger(log_cur_dir + "log table.csv", append_file=config.CONTINUE_PREVIOUS_PATH)
 
     # X axis movement during periphery scans config settings validation
     if config.ALLOW_X_MOVEMENT_DURING_SCANS:
@@ -1660,7 +1678,16 @@ def main():
             exit(1)
 
     # load yolo networks
-    print("Loading periphery detector...")
+    if config.NN_MODELS_COUNT < 1:
+        msg = f"Key 'config.NN_MODELS_COUNT' has 0 or negative value which is wrong as need at least 1 model for work"
+        print(msg)
+        logger_full.write(msg + "\n")
+        exit()
+
+    # load periphery NN
+    msg = "Loading periphery detector..."
+    print(msg)
+    logger_full.write(msg + "\n")
     if config.PERIPHERY_WRAPPER == 1:
         periphery_detector = detection.YoloTRTDetector(
             config.PERIPHERY_MODEL_PATH,
@@ -1669,40 +1696,57 @@ def main():
             config.PERIPHERY_NMS_THRESHOLD,
             config.PERIPHERY_INPUT_SIZE)
     elif config.PERIPHERY_WRAPPER == 2:
-        periphery_detector = detection.YoloOpenCVDetection(config.PERIPHERY_CLASSES_FILE, config.PERIPHERY_CONFIG_FILE,
-                                                           config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_INPUT_SIZE,
-                                                           config.PERIPHERY_CONFIDENCE_THRESHOLD,
-                                                           config.PERIPHERY_NMS_THRESHOLD, config.PERIPHERY_DNN_BACKEND,
-                                                           config.PERIPHERY_DNN_TARGET)
+        periphery_detector = detection.YoloOpenCVDetection(
+            config.PERIPHERY_CLASSES_FILE,
+            config.PERIPHERY_CONFIG_FILE,
+            config.PERIPHERY_WEIGHTS_FILE,
+            config.PERIPHERY_INPUT_SIZE,
+            config.PERIPHERY_CONFIDENCE_THRESHOLD,
+            config.PERIPHERY_NMS_THRESHOLD,
+            config.PERIPHERY_DNN_BACKEND,
+            config.PERIPHERY_DNN_TARGET)
     else:
         msg = "Wrong config.PERIPHERY_WRAPPER = " + str(config.PERIPHERY_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
         notification.setStatus(SyntheseRobot.HS)
         exit(1)
 
-    print("Loading precise detector...")
-    if config.PRECISE_WRAPPER == 1:
-        precise_detector = detection.YoloTRTDetector(
-            config.PRECISE_MODEL_PATH,
-            config.PRECISE_CLASSES_FILE,
-            config.PRECISE_CONFIDENCE_THRESHOLD,
-            config.PRECISE_NMS_THRESHOLD,
-            config.PRECISE_INPUT_SIZE)
-        if config.CONTINUOUS_INFORMATION_SENDING:
-            notification.set_treated_plant(precise_detector.get_classes_names())
-    elif config.PRECISE_WRAPPER == 2:
-        precise_detector = detection.YoloOpenCVDetection(config.PRECISE_CLASSES_FILE, config.PRECISE_CONFIG_FILE,
-                                                         config.PRECISE_WEIGHTS_FILE, config.PRECISE_INPUT_SIZE,
-                                                         config.PRECISE_CONFIDENCE_THRESHOLD,
-                                                         config.PRECISE_NMS_THRESHOLD, config.PRECISE_DNN_BACKEND,
-                                                         config.PRECISE_DNN_TARGET)
-        if config.CONTINUOUS_INFORMATION_SENDING:
-            notification.set_treated_plant(detection.classes)
-    else:
-        msg = "Wrong config.PRECISE_WRAPPER = " + str(config.PRECISE_WRAPPER) + " code. Exiting."
+    # load precise NN
+    if config.NN_MODELS_COUNT > 1:
+        msg = "Loading precise detector..."
+        print(msg)
         logger_full.write(msg + "\n")
-        notification.setStatus(SyntheseRobot.HS)
-        exit(1)
+        if config.PRECISE_WRAPPER == 1:
+            precise_detector = detection.YoloTRTDetector(
+                config.PRECISE_MODEL_PATH,
+                config.PRECISE_CLASSES_FILE,
+                config.PRECISE_CONFIDENCE_THRESHOLD,
+                config.PRECISE_NMS_THRESHOLD,
+                config.PRECISE_INPUT_SIZE)
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                notification.set_treated_plant(precise_detector.get_classes_names())
+        elif config.PRECISE_WRAPPER == 2:
+            precise_detector = detection.YoloOpenCVDetection(
+                config.PRECISE_CLASSES_FILE,
+                config.PRECISE_CONFIG_FILE,
+                config.PRECISE_WEIGHTS_FILE,
+                config.PRECISE_INPUT_SIZE,
+                config.PRECISE_CONFIDENCE_THRESHOLD,
+                config.PRECISE_NMS_THRESHOLD,
+                config.PRECISE_DNN_BACKEND,
+                config.PRECISE_DNN_TARGET)
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                notification.set_treated_plant(detection.classes)
+        else:
+            msg = "Wrong config.PRECISE_WRAPPER = " + str(config.PRECISE_WRAPPER) + " code. Exiting."
+            logger_full.write(msg + "\n")
+            notification.setStatus(SyntheseRobot.HS)
+            exit(1)
+    else:
+        msg = "Using periphery detector as precise."
+        print(msg)
+        logger_full.write(msg + "\n")
+        precise_detector = periphery_detector
 
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
@@ -1893,11 +1937,6 @@ def main():
             msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|centroid factor|cruise factor'
             print(msg)
             logger_full.write(msg + "\n")
-            msg = 'GpsQ,Raw ang,Res ang,Ord ang,Sum ang,Distance,Adapter,Smoothie,'
-            for field_name in report_field_names:
-                msg += field_name + ","
-            msg = msg[:-1]
-            logger_table.write(msg + "\n")
 
             # path points visiting loop
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
@@ -2034,7 +2073,6 @@ def main():
                                 periphery_detector,
                                 precise_detector,
                                 logger_full,
-                                logger_table,
                                 report_field_names,
                                 trajectory_saver,
                                 working_zone_polygon,
@@ -2070,7 +2108,6 @@ def main():
                                         periphery_detector,
                                         precise_detector,
                                         logger_full,
-                                        logger_table,
                                         report_field_names,
                                         trajectory_saver,
                                         working_zone_polygon,
@@ -2155,7 +2192,6 @@ def main():
                         periphery_detector,
                         precise_detector,
                         logger_full,
-                        logger_table,
                         report_field_names,
                         trajectory_saver,
                         working_zone_polygon,
@@ -2339,7 +2375,6 @@ def main():
         logger_full.write(msg + "\n")
         print(msg)
         logger_full.close()
-        logger_table.close()
 
         try:
             posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
