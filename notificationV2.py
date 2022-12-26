@@ -19,7 +19,7 @@ class NotificationClientV2:
 
     def __init__(self, time_start):
         self.__port = 8080
-        self.__ip = "172.16.2.5" #"localhost"  # "172.16.0.9"
+        self.__ip = "192.168.1.28"  # "localhost"  # "172.16.0.9"
         self.__time_start = datetime.datetime.strptime(
             time_start, "%d-%m-%Y %H-%M-%S %f").replace(tzinfo=timezone('Europe/Berlin'))
         self.__keep_thread_alive = True
@@ -29,6 +29,8 @@ class NotificationClientV2:
         self.__path_point_number = 0
 
         self.__alive_sending_timeout = ALIVE_SENDING_TIMEOUT
+        self.__web_socket_timeout = 5
+        self.__reconnected = True
         self.__max_lenght_point_history = MAX_LENGHT_POINT_HISTORY
         self.__robot_sn = ROBOT_SN
 
@@ -102,7 +104,7 @@ class NotificationClientV2:
                 self.__init_treated_plant = True
             else:
                 # Todo
-                pass
+                raise Exception(response.status_code)
 
     def set_field(self, field, field_name):
         # field : [A, B, C, D] ou A : [lat, long]
@@ -133,7 +135,7 @@ class NotificationClientV2:
             self.init_field = True
         else:
             # Todo
-            pass
+            raise Exception(response.status_code)
         self.antiTheftZone = navigation.AntiTheftZone(field)
 
     def set_input_voltage(self, input_voltage):
@@ -157,33 +159,38 @@ class NotificationClientV2:
         if response.status_code == 201:
             session_id = response.json()["id"]
             # Todo --> proof to loose internet data
-            with closing(create_connection(f"ws://{self.__ip}:{self.__port}/api/v1/data_gathering/ws/{self.__robot_sn}/{session_id}")) as conn:
-                print("[Notification] Connected")
-                while self.__keep_thread_alive:
-                    frame = dict()
-                    if self.__coordinate_with_extracted_weed:
-                        coordinate_with_extracted_weed = {
-                            "coordinate_with_extracted_weed": list(
-                                self.__coordinate_with_extracted_weed)
-                        }
-                        frame.update(coordinate_with_extracted_weed)
-                        with self.__sync_locker:
-                            self.__coordinate_with_extracted_weed.clear()
-                    if frame:
-                        conn.send(json.dumps(frame))
-                    if self.__input_voltage:
-                        send_vesc_statistic = {
-                            "session_id": session_id,
-                            "voltage": self.__input_voltage,
-                            "timestamp": datetime.datetime.now().isoformat()
-                        }
-                        response = requests.post(
-                            f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/vesc_statistic", json=send_vesc_statistic)
+            while self.__keep_thread_alive:
+                try:
+                    with closing(create_connection(f"ws://{self.__ip}:{self.__port}/api/v1/data_gathering/ws/{self.__robot_sn}/{session_id}")) as conn:
+                        print("[Notification] Connected")
+                        while self.__keep_thread_alive:
+                            frame = dict()
+                            if self.__coordinate_with_extracted_weed:
+                                coordinate_with_extracted_weed = {
+                                    "coordinate_with_extracted_weed": list(
+                                        self.__coordinate_with_extracted_weed)
+                                }
+                                frame.update(coordinate_with_extracted_weed)
+                                with self.__sync_locker:
+                                    self.__coordinate_with_extracted_weed.clear()
+                                if frame:
+                                    conn.send(json.dumps(frame))
+                                if self.__input_voltage:
+                                    send_vesc_statistic = {
+                                        "session_id": session_id,
+                                        "voltage": self.__input_voltage,
+                                        "timestamp": datetime.datetime.now().isoformat()
+                                    }
+                                    response = requests.post(
+                                        f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/vesc_statistic", json=send_vesc_statistic)
 
-                        if response.status_code == 201:
-                            self.__input_voltage = None
-                        else:
-                            # Todo
-                            pass
-                    sleep(self.__alive_sending_timeout)
+                                    if response.status_code == 201:
+                                        self.__input_voltage = None
+                                    else:
+                                        # Todo
+                                        raise Exception(response.status_code)
+
+                            sleep(self.__alive_sending_timeout)
+                except BrokenPipeError as error:
+                    print("[Notification] Reconnecting...")
                 print("[Notification] Disconnected")

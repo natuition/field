@@ -3,13 +3,10 @@ from haversine import haversine
 import numpy as np
 from scipy.spatial import ConvexHull
 import utility
-import adapters
 import time
 from config import config
-from notification import NotificationClient
 import os
-import posix_ipc
-import json
+
 
 class GPSComputing:
     """
@@ -45,7 +42,7 @@ class GPSComputing:
         lat = math.degrees(math.asin(sin_lat))
 
         tg_long = (math.sin(distance) * math.sin(azimuth2)) / (math.cos(lat_point2) * math.cos(distance) - (
-                    math.sin(lat_point2) * math.sin(distance) * math.sin(azimuth2)))
+            math.sin(lat_point2) * math.sin(distance) * math.sin(azimuth2)))
         long = math.atan(tg_long)
         long = math.degrees(long + long_point2)
 
@@ -170,10 +167,11 @@ class GPSComputing:
             flag = 0
         else:
             perpendicular = 2 / start_stop * (
-                        per * (per - start_stop) * (per - point_start) * (per - point_stop)) ** 0.5
+                per * (per - start_stop) * (per - point_start) * (per - point_stop)) ** 0.5
 
             d = (deviation_point[0] - start_point[0]) * (stop_point[1] - start_point[1]) - \
-                (deviation_point[1] - start_point[1]) * (stop_point[0] - start_point[0])
+                (deviation_point[1] - start_point[1]) * \
+                (stop_point[0] - start_point[0])
             if d > 0:
                 flag = -1
             elif d < 0:
@@ -207,8 +205,10 @@ class GPSComputing:
         if start[0] != stop[0]:
             k = (stop[1] - start[1]) / (stop[0] - start[0])  # angle tangent
             angle = math.atan(k)
-            length_long = r * math.cos(angle)  # projection length on the axis of longitude
-            length_lat = r * math.sin(angle)  # projection length on latitude axis
+            # projection length on the axis of longitude
+            length_long = r * math.cos(angle)
+            # projection length on latitude axis
+            length_lat = r * math.sin(angle)
 
             count = int(r / interval)  # the number of points on the vector
             delta_length_long = length_long / count  # longitude increment
@@ -260,7 +260,8 @@ class GPSComputing:
 
         list_long.append(stop[0])
         list_lat.append(stop[1])
-        list_point = [[list_lat[i], list_long[i]] for i in range(0, len(list_long))]
+        list_point = [[list_lat[i], list_long[i]]
+                      for i in range(0, len(list_long))]
         return list_point
 
     def corner_points_old(self, gps_points):
@@ -271,7 +272,8 @@ class GPSComputing:
         """
 
         corner_points = []
-        points = [gps_points[len(gps_points) - 2]] + [gps_points[len(gps_points) - 1]] + gps_points
+        points = [gps_points[len(gps_points) - 2]] + \
+            [gps_points[len(gps_points) - 1]] + gps_points
         low_level = 180
         high_level = 180
         while True:
@@ -348,7 +350,8 @@ class GPSComputing:
         """
 
         corner_points = []
-        points = [gps_points[len(gps_points) - 2]] + [gps_points[len(gps_points) - 1]] + gps_points
+        points = [gps_points[len(gps_points) - 2]] + \
+            [gps_points[len(gps_points) - 1]] + gps_points
         level = 150
         while True:
             if len(corner_points) == 4:
@@ -384,7 +387,8 @@ class GPSComputing:
         """
 
         cos_angle = (vector_1[0] * vector_2[0] + vector_1[1] * vector_2[1]) / \
-                    ((vector_1[0] ** 2 + vector_1[1] ** 2) ** 0.5 * (vector_2[0] ** 2 + vector_2[1] ** 2) ** 0.5)
+                    ((vector_1[0] ** 2 + vector_1[1] ** 2) ** 0.5 *
+                     (vector_2[0] ** 2 + vector_2[1] ** 2) ** 0.5)
         cos_angle = round(cos_angle, 5)
         angle = math.acos(cos_angle)
         angle = math.degrees(angle)
@@ -401,7 +405,8 @@ class GPSComputing:
                        [corner_list[2][1], corner_list[2][0]], [corner_list[3][1], corner_list[3][0]]]
         corner_copy = list(corner_temp)
         min_long = sorted(corner_copy)[:2]
-        min_long_reverse = [[min_long[0][1], min_long[0][0]], [min_long[1][1], min_long[1][0]]]
+        min_long_reverse = [[min_long[0][1], min_long[0][0]], [
+            min_long[1][1], min_long[1][0]]]
         min_lat_reverse = min(min_long_reverse)
         first_point = [min_lat_reverse[1], min_lat_reverse[0]]
 
@@ -410,7 +415,8 @@ class GPSComputing:
         second_point = min_long_sort[0]
 
         corner_copy.remove(second_point)
-        max_long_reverse = [[corner_copy[0][1], corner_copy[0][0]], [corner_copy[1][1], corner_copy[1][0]]]
+        max_long_reverse = [[corner_copy[0][1], corner_copy[0][0]], [
+            corner_copy[1][1], corner_copy[1][0]]]
         max_lat_reverse = max(max_long_reverse)
         third_point = [max_lat_reverse[1], max_lat_reverse[0]]
 
@@ -423,61 +429,71 @@ class GPSComputing:
 
     def get_square_corners(self, center_point, corner_point):
         distance = self.get_distance(center_point, corner_point)
-        corner_1 = self.get_coordinate(center_point, corner_point, 90, distance)
-        corner_2 = self.get_coordinate(center_point, corner_point, -90, distance)
-        corner_3 = self.get_coordinate(center_point, corner_point,  180, distance)
-        corners = self._corner_sort([corner_point, corner_1, corner_2, corner_3])
+        corner_1 = self.get_coordinate(
+            center_point, corner_point, 90, distance)
+        corner_2 = self.get_coordinate(
+            center_point, corner_point, -90, distance)
+        corner_3 = self.get_coordinate(
+            center_point, corner_point,  180, distance)
+        corners = self._corner_sort(
+            [corner_point, corner_1, corner_2, corner_3])
         return corners
+
 
 class AntiTheftZone:
 
     def __init__(self, field: list):
         field = field
         self.nav = GPSComputing()
-        d1 = self.nav.get_distance(field[0],field[1])
-        middle_d1 = self.nav.get_point_on_vector(field[0],field[1], d1/2)
-        middle_opposite_d1 = self.nav.get_point_on_vector(field[2],field[3], d1/2)
-        d2 = self.nav.get_distance(middle_d1,middle_opposite_d1)
-        self.center = self.nav.get_point_on_vector(middle_d1,middle_opposite_d1, d2/2)
-        self.circumcircle_radius = self.hypotenuse(d1/2,d2/2)
+        d1 = self.nav.get_distance(field[0], field[1])
+        middle_d1 = self.nav.get_point_on_vector(field[0], field[1], d1/2)
+        middle_opposite_d1 = self.nav.get_point_on_vector(
+            field[2], field[3], d1/2)
+        d2 = self.nav.get_distance(middle_d1, middle_opposite_d1)
+        self.center = self.nav.get_point_on_vector(
+            middle_d1, middle_opposite_d1, d2/2)
+        self.circumcircle_radius = self.hypotenuse(d1/2, d2/2)
 
     def get_center(self):
         return self.center
 
-    def hypotenuse(self,a,b):
+    def hypotenuse(self, a, b):
         return math.sqrt(a**2+b**2)
 
     def coordianate_are_in_zone(self, coords: list):
-        return self.nav.get_distance(self.center,coords) <= self.circumcircle_radius + config.ANTI_THEFT_ZONE_RADIUS
+        return self.nav.get_distance(self.center, coords) <= self.circumcircle_radius + config.ANTI_THEFT_ZONE_RADIUS
+
 
 class NavigationV3:
 
     @staticmethod
     def check_reboot_Ntrip(gps_quality: str, lastNtripRestart: float, logger_full: utility.Logger):
-        if str(gps_quality) not in ["4","5"] and time.time() - lastNtripRestart > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
-            msg="Restart Ntrip because 60 seconds without corrections"
+        if str(gps_quality) not in ["4", "5"] and time.time() - lastNtripRestart > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
+            msg = "Restart Ntrip because 60 seconds without corrections"
             logger_full.write(msg + "\n")
-            if config.VERBOSE: 
+            if config.VERBOSE:
                 print(msg)
             os.system("sudo systemctl restart ntripClient.service")
             return time.time()
         return lastNtripRestart
 
+
 class NavigationPrediction:
 
     def __init__(self, logger_full: utility.Logger, nav: GPSComputing, log_cur_dir: str):
-        self.angle=0
+        self.angle = 0
         self.index_angle = 0
 
         self.logger_full = logger_full
         self.nav = nav
-        self.trajectorySaver = utility.TrajectorySaver(log_cur_dir + "navigation_prediction_history.txt", config.CONTINUE_PREVIOUS_PATH)
+        self.trajectorySaver = utility.TrajectorySaver(
+            log_cur_dir + "navigation_prediction_history.txt", config.CONTINUE_PREVIOUS_PATH)
 
-        #const
+        # const
         self.max_angle = math.radians(23)
-        self.E = 0.86 #wheelbase between the two axles of the wheels
-        self.K = 1/(60*1852) #Conversion factor meter to degree nautical mile
-        self.navigation_period = config.MANEUVERS_FREQUENCY #1
+        self.E = 0.86  # wheelbase between the two axles of the wheels
+        self.K = 1/(60*1852)  # Conversion factor meter to degree nautical mile
+        self.navigation_period = config.MANEUVERS_FREQUENCY  # 1
 
     def __enter__(self):
         return self
@@ -486,54 +502,59 @@ class NavigationPrediction:
         self.trajectorySaver.__exit__(exc_type, exc_val, exc_tb)
 
     def set_SI_speed(self, SI_speed: float):
-        self.speed = SI_speed #meter per second
+        self.speed = SI_speed  # meter per second
 
     def set_current_lat_long(self, cur_pos: list):
-        self.lat_current=cur_pos[0]
-        self.long_current=cur_pos[1]
+        self.lat_current = cur_pos[0]
+        self.long_current = cur_pos[1]
 
     def run_prediction(self, coords_from_to: list, cur_pos: list):
 
-        if self.angle>self.max_angle :
-            self.angle=self.max_angle
+        if self.angle > self.max_angle:
+            self.angle = self.max_angle
 
-        #Turning radius
+        # Turning radius
 
-        if math.sin(self.angle) != 0 :
-            rayon=self.E/math.sin(self.angle)
-            theta_rob=self.speed/rayon
-        else :
+        if math.sin(self.angle) != 0:
+            rayon = self.E/math.sin(self.angle)
+            theta_rob = self.speed/rayon
+        else:
             theta_rob = 0
-        
-        #Calculation of new coordinates
-        distance_deg=self.speed*self.navigation_period*self.K #Distance in degrees traveled by the robot
 
-        #The speed being constant, we want the time between each point to be 1 sec, as we have m/s, "distance=speed"
+        # Calculation of new coordinates
+        distance_deg = self.speed*self.navigation_period * \
+            self.K  # Distance in degrees traveled by the robot
 
-        psi=(math.pi-theta_rob)/2 #Trajectory angle - pi/2
-        delta=distance_deg*math.sin(psi) #Latitude difference between current and future position
-        beta=distance_deg*math.cos(psi) #Longitude difference between current and future position
+        # The speed being constant, we want the time between each point to be 1 sec, as we have m/s, "distance=speed"
 
-        latnew=self.lat_current+delta
-        longnew=self.long_current+beta
+        psi = (math.pi-theta_rob)/2  # Trajectory angle - pi/2
+        # Latitude difference between current and future position
+        delta = distance_deg*math.sin(psi)
+        # Longitude difference between current and future position
+        beta = distance_deg*math.cos(psi)
 
-        #Coordinates at n become n-1
-        self.set_current_lat_long([latnew,longnew])
-        
+        latnew = self.lat_current+delta
+        longnew = self.long_current+beta
+
+        # Coordinates at n become n-1
+        self.set_current_lat_long([latnew, longnew])
+
         self.latB = coords_from_to[1][0]
         self.longB = coords_from_to[1][1]
 
         if (self.latB-latnew) != 0:
-            angle = math.atan((self.longB-longnew)/(self.latB-latnew)) #Angle co,wheels sign
+            # Angle co,wheels sign
+            angle = math.atan((self.longB-longnew)/(self.latB-latnew))
         else:
             angle = math.pi/2
 
         msg = f"[PREDICTOR] Angle : {angle}."
         self.logger_full.write(msg + "\n")
-        new_foreseen_point = [latnew, longnew, f"quality_cur_pos:{cur_pos[2]}", self.index_angle]
+        new_foreseen_point = [latnew, longnew,
+                              f"quality_cur_pos:{cur_pos[2]}", self.index_angle]
 
         self.trajectorySaver.save_point(new_foreseen_point)
-        self.index_angle+=1
+        self.index_angle += 1
 
         msg = f"[PREDICTOR] Error : {self.nav.get_distance(new_foreseen_point, cur_pos)}."
         self.logger_full.write(msg + "\n")
