@@ -7,12 +7,7 @@ from websocket import create_connection
 import datetime
 from pytz import timezone
 import json
-
-# config:
-ALIVE_SENDING_TIMEOUT = 1
-CONTINUOUS_INFORMATION_SENDING = True
-ROBOT_SN = "SN000"
-MAX_LENGHT_POINT_HISTORY = 100
+from config import config
 
 
 class NotificationClientV2:
@@ -28,18 +23,18 @@ class NotificationClientV2:
         self.__field_id = None
         self.__path_point_number = 0
 
-        self.__alive_sending_timeout = ALIVE_SENDING_TIMEOUT
+        self.__alive_sending_timeout = config.ALIVE_SENDING_TIMEOUT
         self.__web_socket_timeout = 5
         self.__reconnected = True
-        self.__max_lenght_point_history = MAX_LENGHT_POINT_HISTORY
-        self.__robot_sn = ROBOT_SN
+        self.__max_lenght_point_history = config.MAX_LENGHT_POINT_HISTORY
+        self.__robot_sn = config.ROBOT_SN
 
         self.__coordinate_with_extracted_weed = list()
         self.__extracted_weeds = dict()
         self.__last_extracted_weeds_send = dict()
         self.__sync_locker = threading.Lock()
 
-        self.__continuous_information_sending = CONTINUOUS_INFORMATION_SENDING
+        self.__continuous_information_sending = config.CONTINUOUS_INFORMATION_SENDING
         self.__init_robot_on_datagathering()
 
         self.__report_th = threading.Thread(
