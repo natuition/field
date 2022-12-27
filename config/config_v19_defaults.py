@@ -450,7 +450,8 @@ QUEUE_NAME_UI_MAIN = "/queue_ui_main"
 QUEUE_NAME_UI_NOTIFICATION = "/queue_ui_notification"
 
 CONTINUOUS_INFORMATION_SENDING = True
-ALIVE_SENDING_TIMEOUT = 1
+ALIVE_SENDING_TIMEOUT = 1  # waiting time between two data sends to the natuition server
+# maximum number of points saved in memory when the robot is offline
 MAX_LENGHT_POINT_HISTORY = 100
 
 TIMEOUT_JOYSTICK_USER_ACTION = 1
