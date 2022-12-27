@@ -17,6 +17,7 @@ class DataCollector:
     def __init__(self,
                  db_full_path: str,
                  notification,
+                 notificationV2,
                  load_from_file=False,
                  file_path="",
                  ui_msg_queue=None,
@@ -50,6 +51,7 @@ class DataCollector:
 
         self.__start_time = time.time()
         self.__notification = notification
+        self.__notificationV2 = notificationV2
         self.__ui_msg_queue = ui_msg_queue
         self.__dump_at_receiving = dump_at_receiving
         self.__dump_file_path = file_path
@@ -74,7 +76,8 @@ class DataCollector:
         self.close()
 
     def close(self):
-        self.set_stopped_t(self.__previous_sessions_working_time + self.get_session_working_time())
+        self.set_stopped_t(
+            self.__previous_sessions_working_time + self.get_session_working_time())
 
         self.__db_cursor.close()
         self.__db_connection.close()
@@ -154,7 +157,8 @@ class DataCollector:
 
         if len(db_id) == 0:
             insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
-            self.__db_cursor.execute(insert_db_row_sql, ("stopped time", 0, ""))
+            self.__db_cursor.execute(
+                insert_db_row_sql, ("stopped time", 0, ""))
             self.__db_connection.commit()
             db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -172,7 +176,8 @@ class DataCollector:
 
         if len(db_id) == 0:
             insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
-            self.__db_cursor.execute(insert_db_row_sql, ("pdz scan time", 0, ""))
+            self.__db_cursor.execute(
+                insert_db_row_sql, ("pdz scan time", 0, ""))
             self.__db_connection.commit()
             db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -190,7 +195,8 @@ class DataCollector:
 
         if len(db_id) == 0:
             insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
-            self.__db_cursor.execute(insert_db_row_sql, ("all extractions time", 0, 'this includes "pdz scan time"'))
+            self.__db_cursor.execute(
+                insert_db_row_sql, ("all extractions time", 0, 'this includes "pdz scan time"'))
             self.__db_connection.commit()
             db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -228,7 +234,8 @@ class DataCollector:
 
         if len(db_id) == 0:
             insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
-            self.__db_cursor.execute(insert_db_row_sql, ("all extractions XY movement time", 0, ""))
+            self.__db_cursor.execute(
+                insert_db_row_sql, ("all extractions XY movement time", 0, ""))
             self.__db_connection.commit()
             db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -246,7 +253,8 @@ class DataCollector:
 
         if len(db_id) == 0:
             insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
-            self.__db_cursor.execute(insert_db_row_sql, ("all extractions image analysis time", 0, ""))
+            self.__db_cursor.execute(
+                insert_db_row_sql, ("all extractions image analysis time", 0, ""))
             self.__db_connection.commit()
             db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -264,7 +272,8 @@ class DataCollector:
 
         if len(db_id) == 0:
             insert_db_row_sql = "INSERT INTO working_times(name, time_spent, description) VALUES(?, ?, ?);"
-            self.__db_cursor.execute(insert_db_row_sql, ("all extractions Z extraction time", 0, ""))
+            self.__db_cursor.execute(
+                insert_db_row_sql, ("all extractions Z extraction time", 0, ""))
             self.__db_connection.commit()
             db_id = self.__db_cursor.execute(get_db_id_sql).fetchall()
 
@@ -523,9 +532,11 @@ class DataCollector:
         """
 
         if type(count) is not int:
-            raise TypeError("'count' type should be int, got " + type(count).__name__)
+            raise TypeError(
+                "'count' type should be int, got " + type(count).__name__)
         if count <= 0:
-            raise ValueError("'count' value should be greater than 0, got " + str(count))
+            raise ValueError(
+                "'count' value should be greater than 0, got " + str(count))
 
         if type_label in self.__detected_plants:
             self.__detected_plants[type_label] += count
@@ -542,9 +553,11 @@ class DataCollector:
         """
 
         if type(count) is not int:
-            raise TypeError("'count' type should be int, got " + type(count).__name__)
+            raise TypeError(
+                "'count' type should be int, got " + type(count).__name__)
         if count <= 0:
-            raise ValueError("'count' value should be greater than 0, got " + str(count))
+            raise ValueError(
+                "'count' value should be greater than 0, got " + str(count))
 
         if type_label in self.__extracted_plants:
             self.__extracted_plants[type_label] += count
@@ -553,6 +566,7 @@ class DataCollector:
 
         if self.__notification.is_continuous_information_sending():
             self.__notification.set_extracted_plants(self.__extracted_plants)
+            self.__notificationV2.set_extracted_plants(self.__extracted_plants)
 
         self.__send_to_ui()
 
@@ -602,9 +616,11 @@ class DataCollector:
         """Saves data as formatted txt file
         """
 
-        new_file = output_file_path + ".new"  # temp file to avoid data loss if any error occurred during saving
+        # temp file to avoid data loss if any error occurred during saving
+        new_file = output_file_path + ".new"
         with open(new_file, "w") as file:
-            file.write("Last session robot working time: " + self.__format_time(self.get_session_working_time()) + "\n")
+            file.write("Last session robot working time: " +
+                       self.__format_time(self.get_session_working_time()) + "\n")
             file.write("Total field robot working time: " +
                        self.__format_time(self.get_session_working_time() +
                                           self.__previous_sessions_working_time) + "\n\n")
@@ -612,20 +628,24 @@ class DataCollector:
             # detections statistics
             file.write("Total field detections\n")
             for label in self.__detected_plants:
-                file.write(label + ": " + str(self.__detected_plants[label]) + "\n")
+                file.write(label + ": " +
+                           str(self.__detected_plants[label]) + "\n")
             if len(self.__detected_plants) > 0:
                 file.write("\n")
 
             # extractions statistic
             file.write("Total field extractions\n")
             for label in self.__extracted_plants:
-                file.write(label + ": " + str(self.__extracted_plants[label]) + "\n")
+                file.write(label + ": " +
+                           str(self.__extracted_plants[label]) + "\n")
             if len(self.__extracted_plants) > 0:
                 file.write("\n")
 
             # vesc and cork statistic
-            file.write("Total field vesc moving time: " + self.__format_time(self.__vesc_moving_time) + "\n")
-            file.write("Total field cork moving time: " + self.__format_time(self.__cork_moving_time) + "\n")
+            file.write("Total field vesc moving time: " +
+                       self.__format_time(self.__vesc_moving_time) + "\n")
+            file.write("Total field cork moving time: " +
+                       self.__format_time(self.__cork_moving_time) + "\n")
 
         # swap old file with the new
         self.__swap_files(output_file_path, new_file)
