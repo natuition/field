@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.11"
+CONFIG_VERSION = "0.19.12"
 
 
 # ======================================================================================================================
@@ -430,6 +430,9 @@ DELTA_SEEKING_IGNORE_OBSCURING = False
 DEBUG_MATRIX_FILE = False
 FILTER_EXTRACTED_PLANTS = True
 FILTER_EXT_PLANTS_TRIGGER_DIST = 25  # px; trigger distance for previous option key
+# path to a csv file with a control points. Each point has 7 elements, current format is:
+# [X_px: int, Y_px: int, X_diff_px: int, Y_diff_px: int, Distance_px: float, X_mm: float, Y_mm: float]
+CONTROL_POINTS_CSV_PATH = "control_points_v2.csv"
 
 
 # ======================================================================================================================

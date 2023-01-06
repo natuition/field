@@ -38,7 +38,11 @@ class ExtractionManagerV3:
         self.__pdz_polygons = self.pdz_dist_to_poly(pdz_distances)
         self.__pdz_cv_rects = self.pdz_dist_to_rect_cv(pdz_distances)
         self.__extraction_map = ExtractionMap(config.EXTRACTION_MAP_CELL_SIZE_MM)
-        self.__converter = PxToMMConverter()
+        # self.__converter = PxToMMConverter()
+        self.__converter = PxToMmPredictorCP(
+            config.SCENE_CENTER_X,
+            config.SCENE_CENTER_Y,
+            config.CONTROL_POINTS_CSV_PATH)
         self.__vesc_engine = vesc_engine
 
         # check if PDZ data is correct
@@ -136,7 +140,8 @@ class ExtractionManagerV3:
             # convert plants boxes px coordinates into absolute smoothie coordinates
             for plant_box in cur_pos_plant_boxes_pdz:
                 # calculate values to move camera over a plant from current position (coords are relative)
-                rel_sm_x, rel_sm_y = self.__converter.convert_px_to_mm(plant_box.center_x, plant_box.center_y)
+                # rel_sm_x, rel_sm_y = self.__converter.convert_px_to_mm(plant_box.center_x, plant_box.center_y)
+                rel_sm_x, rel_sm_y, cp_idx = self.__converter.predict(plant_box.center_x, plant_box.center_y)
 
                 # convert smoothie relative coordinates to absolute
                 cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()
@@ -1441,3 +1446,96 @@ class PxToMMConverter:
 
         data = poly_features.fit_transform([values])  # charge the data into the matrix
         return self.__loaded_prediction_model[degree].predict(data)[0]  # model.predict() comes from scikit
+
+
+class PxToMmPredictorCP:
+    """Predicts distance in millimeters from scene center px to given point px
+
+    Uses raw control points for predictions"""
+
+    def __init__(self, scene_center_x: int, scene_center_y: int, cp_csv_path: str = None, control_points: list = None):
+        """Uses given control points list or loads it from given csv file path.
+
+        If there was given both control points list and path, given CP list will be used instead of loading from a file.
+        """
+
+        # get the list of control points
+        if control_points is not None:
+            self.__control_points = control_points
+        elif cp_csv_path is not None:
+            self.__control_points = self.load_control_points(cp_csv_path)
+        else:
+            msg = "can't load control points list as given cp_csv_path and control_points both are Nones"
+            raise RuntimeError(msg)
+
+        # validate control points
+        if not isinstance(self.__control_points, list):
+            msg = f"given control_points must be a list, got {type(self.__control_points).__name__} instead"
+            raise TypeError(msg)
+        for idx, item in enumerate(self.__control_points):
+            if not isinstance(item, (list, tuple)):
+                msg = f"control_points must contain lists or tuples, got {type(item).__name__} instead"
+                raise TypeError(msg)
+            if len(item) != 7:
+                msg = f"control_points[{str(idx)}] item length is {str(len(item))}, must be 7"
+                raise ValueError(msg)
+
+        self.__scene_center_x = scene_center_x
+        self.__scene_center_y = scene_center_y
+
+    @staticmethod
+    def load_control_points(cp_csv_path: str):
+        """Loads and parses control points from a given csv file path.
+
+        Returns list of control points, each CP is list of 7 elements with such a format:
+        [X_px: int, Y_px: int, X_diff_px: int, Y_diff_px: int, Distance_px: float, X_mm: float, Y_mm: float]
+        """
+
+        with open(cp_csv_path) as csv_file:
+            # format is: X_px, Y_px, X_diff_px, Y_diff_px, Distance_px, X_mm, Y_mm
+            # px data are ints, distance and mm data are floats
+            control_points = csv_file.readlines()[1:]  # cut header off
+
+        # convert each point to a list of numeric
+        for i in range(len(control_points)):
+            control_points[i] = control_points[i].strip().split(",")
+            for j in range(4):
+                control_points[i][j] = int(control_points[i][j].strip())
+            for j in range(4, 7):
+                control_points[i][j] = float(control_points[i][j].strip())
+
+        return control_points
+
+    def predict(self, point_x_px: int, point_y_px: int):
+        """Predict (x, y) mm distance from stored scene center for given px (x, y) point.
+
+        Return format is: (x_mm, y_mm, control_point_index)
+        """
+
+        # remember sign to apply it to mm values and mirror points coordinates into +x +y quarter
+        if point_x_px < self.__scene_center_x:
+            point_x_px = self.__scene_center_x + (self.__scene_center_x - point_x_px)
+            res_x_mm_sign = -1
+        else:
+            res_x_mm_sign = 1
+
+        if point_y_px > self.__scene_center_y:
+            point_y_px = self.__scene_center_y - (point_y_px - self.__scene_center_y)
+            res_y_mm_sign = -1
+        else:
+            res_y_mm_sign = 1
+
+        res_point_dist = float("inf")
+        res_point_idx = 0
+        for i in range(len(self.__control_points)):
+            cur_dist = math.sqrt(
+                (point_x_px - self.__control_points[i][0]) ** 2 + (point_y_px - self.__control_points[i][1]) ** 2
+            )
+            if cur_dist < res_point_dist:
+                res_point_dist = cur_dist
+                res_point_idx = i
+
+        # X_mm, Y_mm
+        return self.__control_points[res_point_idx][5] * res_x_mm_sign, \
+            self.__control_points[res_point_idx][6] * res_y_mm_sign, \
+            res_point_idx
