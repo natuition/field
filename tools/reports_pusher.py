@@ -141,7 +141,7 @@ def send_path_http(cur_session_data: dict, cur_session_id: int, weeds_types: dic
                         timeout=REQUESTS_TIMEOUT,
                         json={"label": weed_type}
                     )
-                    if res.status_code != CREATED_CODE:
+                    if res.status_code not in SUCCESS_CODES:
                         msg = f"Couldn't post weed {str({'label': weed_type})}\n" \
                               f"to {SERVER_HTTP_ADDRESS + POST_WEED_TYPE}\n" \
                               f"Response code: {str(res.status_code)}\n" \
