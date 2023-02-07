@@ -552,9 +552,25 @@ BUFF_CLEANING_DELAY = 0  # seconds of waiting before frame reading; should be po
 UNDISTORTED_ZONE_RADIUS = 300
 DELAY_BEFORE_2ND_SCAN = 0.3  # delay in seconds after robot stop and before second scan (M=1)
 WORKING_ZONE_POLY_POINTS = [[1000, 1050], [30, 1080], [45, 755], [40, 300], [640, 115], [1000, 70], [1360, 115], [1860, 300], [1955, 755], [1970, 1080]]
+# working zone polygon's points relative to scene center (used for abs points calculation during calibrations)
+WORKING_ZONE_POLY_POINTS_REL = [[621, 96], [622, -48], [609, -189], [585, -317], [558, -431], [389, -562], [-10, -564], [-407, -564], [-585, -445], [-611, -338], [-637, -208], [-646, -67], [-646, 89], [-21, 119]]
+# max res is used during deployment calibration to detect scene center position
+DEPLOYMENT_CAMERA_MAX_W = 3264
+# max res is used during deployment calibration to detect scene center position
+DEPLOYMENT_CAMERA_MAX_H = 2464
+# min possible camera framerate at max possible camera resolution
+DEPLOYMENT_CAMERA_MIN_FRAMERATE = 16
+# defines how much px must be grabbed from the top side of scene center during cropping
+DEPLOYMENT_CROP_GRAB_TOP_PX = 1260
+# defines how much px must be grabbed from the bottom side of scene center during cropping
+DEPLOYMENT_CROP_GRAB_BOT_PX = 240
+# defines how much px must be grabbed from the left side of scene center during cropping
+DEPLOYMENT_CROP_GRAB_LEFT_PX = 1000
+# defines how much px must be grabbed from the right side of scene center during cropping
+DEPLOYMENT_CROP_GRAB_RIGHT_PX = 1000
 
-CORK_TO_CAMERA_DISTANCE_X = -4 # # distance between camera and cork on the robot, X axis, relative, mm
-CORK_TO_CAMERA_DISTANCE_Y = 25 # distance between camera and cork on the robot, Y axis, relative, mm
+CORK_TO_CAMERA_DISTANCE_X = -4  # # distance between camera and cork on the robot, X axis, relative, mm
+CORK_TO_CAMERA_DISTANCE_Y = 25  # distance between camera and cork on the robot, Y axis, relative, mm
 
 
 # ======================================================================================================================

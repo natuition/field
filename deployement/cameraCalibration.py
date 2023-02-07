@@ -7,20 +7,27 @@ import fileinput
 import pwd
 import grp
 import time
-
 import sys
 sys.path.append('../')
 from config import config
 from extraction import ExtractionManagerV3
-import configDeployment
 import utility
 import adapters
+
 
 class CameraCalibration:
 
     def __init__(self):
-        self.crop_w_from ,self.crop_w_to, self.crop_h_from, self.crop_h_to =  config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM, config.CROP_H_TO
-        self.target_x, self.target_y = None, None
+        self.max_res_scene_center_y = None
+        self.max_res_scene_center_x = None
+        self.scene_center_x = None
+        self.scene_center_y = None
+        self.crop_w_from = config.CROP_W_FROM
+        self.crop_w_to = config.CROP_W_TO
+        self.crop_h_from = config.CROP_H_FROM
+        self.crop_h_to = config.CROP_H_TO
+        self.target_x = None
+        self.target_y = None
 
     def focus_adjustment_step(self):
         os.system("sudo systemctl restart nvargus-daemon")
@@ -33,18 +40,25 @@ class CameraCalibration:
 
     def step_crop_picture(self):
         image_saver = utility.ImageSaver()
-        CAMERA_W = 3264
-        CAMERA_H = 2464
-        CAMERA_FRAMERATE = 16
-        with    adapters.CameraAdapterIMX219_170(  0, CAMERA_W, 0, CAMERA_H,
-                                                    config.CV_ROTATE_CODE,
-                                                    config.ISP_DIGITAL_GAIN_RANGE_FROM,
-                                                    config.ISP_DIGITAL_GAIN_RANGE_TO,
-                                                    config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                                    config.EXPOSURE_TIME_RANGE_FROM/5, config.EXPOSURE_TIME_RANGE_TO/5,
-                                                    config.AE_LOCK, 
-                                                    CAMERA_W, CAMERA_H, CAMERA_W, CAMERA_H, CAMERA_FRAMERATE,
-                                                    config.CAMERA_FLIP_METHOD) as camera:
+        with adapters.CameraAdapterIMX219_170(
+                0,
+                config.DEPLOYMENT_CAMERA_MAX_W,
+                0,
+                config.DEPLOYMENT_CAMERA_MAX_H,
+                config.CV_ROTATE_CODE,
+                config.ISP_DIGITAL_GAIN_RANGE_FROM,
+                config.ISP_DIGITAL_GAIN_RANGE_TO,
+                config.GAIN_RANGE_FROM,
+                config.GAIN_RANGE_TO,
+                config.EXPOSURE_TIME_RANGE_FROM / 5,
+                config.EXPOSURE_TIME_RANGE_TO / 5,
+                config.AE_LOCK,
+                config.DEPLOYMENT_CAMERA_MAX_W,
+                config.DEPLOYMENT_CAMERA_MAX_H,
+                config.DEPLOYMENT_CAMERA_MAX_W,
+                config.DEPLOYMENT_CAMERA_MAX_H,
+                config.DEPLOYMENT_CAMERA_MIN_FRAMERATE,
+                config.CAMERA_FLIP_METHOD) as camera:
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
             frame = camera.get_image()
             img_origine = frame.copy()
@@ -54,8 +68,8 @@ class CameraCalibration:
             all_circles_rounded = np.uint16(np.around(all_circles))
             print('I have found ' + str(all_circles_rounded.shape[1]) + ' circles')
             if len(all_circles_rounded) == 1:
-                self.scene_center_x = all_circles_rounded[0][0][0]
-                self.scene_center_y = all_circles_rounded[0][0][1]
+                self.max_res_scene_center_x = all_circles_rounded[0][0][0]
+                self.max_res_scene_center_y = all_circles_rounded[0][0][1]
                 self.set_crop_values()
                 #circle_rad = all_circles_rounded[0][0][2]
             else:
@@ -155,16 +169,75 @@ class CameraCalibration:
         os.chown("../config/config.py", uid, gid)
 
     def set_crop_values(self):
-        rectX = self.scene_center_x - configDeployment.CAMERA_DISPLAY_W/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_W
-        rectY = self.scene_center_y - configDeployment.CAMERA_DISPLAY_H/2 - configDeployment.OFFSET_SCENE_CENTER_CENTER_CROP_VALUE_H - 230
-        self.crop_w_from = int(rectX)
-        self.crop_w_to = int(self.crop_w_from + configDeployment.CAMERA_DISPLAY_W)
-        self.crop_h_from = int(rectY)
-        self.crop_h_to = int(self.crop_h_from + configDeployment.CAMERA_DISPLAY_H)
-        CameraCalibration.__changeConfigValue("CROP_W_FROM",self.crop_w_from)
-        CameraCalibration.__changeConfigValue("CROP_W_TO",self.crop_w_to)
-        CameraCalibration.__changeConfigValue("CROP_H_FROM",self.crop_h_from)
-        CameraCalibration.__changeConfigValue("CROP_H_TO",self.crop_h_to)
+        """Version with multiple resolutions support"""
+
+        # convert scene center from calibration max res to working res
+        if config.DEPLOYMENT_CAMERA_MAX_W > config.CAMERA_W:
+            self.scene_center_x = int(
+                self.max_res_scene_center_x - (config.DEPLOYMENT_CAMERA_MAX_W - config.CAMERA_W) / 2)
+        elif config.DEPLOYMENT_CAMERA_MAX_W == config.CAMERA_W:
+            self.scene_center_x = self.max_res_scene_center_x
+        else:
+            msg = "Working camera resolution 'config.CAMERA_W' is bigger than max camera resolution " \
+                  "'config.DEPLOYMENT_CAMERA_MAX_W'"
+            print(msg)
+            raise ValueError(msg)
+        if config.DEPLOYMENT_CAMERA_MAX_H > config.CAMERA_H:
+            self.scene_center_y = int(
+                self.max_res_scene_center_y - (config.DEPLOYMENT_CAMERA_MAX_H - config.CAMERA_H) / 2)
+        elif config.DEPLOYMENT_CAMERA_MAX_H == config.CAMERA_H:
+            self.scene_center_y = self.max_res_scene_center_y
+        else:
+            msg = "Working camera resolution 'config.CAMERA_H' is bigger than max camera resolution " \
+                  "'config.DEPLOYMENT_CAMERA_MAX_H'"
+            print(msg)
+            raise ValueError(msg)
+
+        # define cropping settings
+        if config.APPLY_IMAGE_CROPPING:
+            self.crop_w_from = self.scene_center_x - config.DEPLOYMENT_CROP_GRAB_LEFT_PX
+            self.crop_w_to = self.scene_center_x + config.DEPLOYMENT_CROP_GRAB_RIGHT_PX
+            self.crop_h_from = self.scene_center_y - config.DEPLOYMENT_CROP_GRAB_TOP_PX
+            self.crop_h_to = self.scene_center_y + config.DEPLOYMENT_CROP_GRAB_BOT_PX
+        else:
+            self.crop_w_from = 0
+            self.crop_w_to = config.CAMERA_W
+            self.crop_h_from = 0
+            self.crop_h_to = config.CAMERA_H
+
+        # make sure crop values are in range of image size
+        if config.APPLY_IMAGE_CROPPING:
+            if self.crop_h_from < 0:
+                self.crop_h_from = 0
+            if self.crop_h_to > config.CAMERA_H:
+                self.crop_h_to = config.CAMERA_H
+            if self.crop_w_from < 0:
+                self.crop_w_from = 0
+            if self.crop_w_to > config.CAMERA_W:
+                self.crop_w_to = config.CAMERA_W
+
+        # convert scene center from working camera res to cropped res
+        if config.APPLY_IMAGE_CROPPING:
+            if self.crop_w_from > 0:
+                self.scene_center_x -= self.crop_w_from
+            if self.crop_h_from > 0:
+                self.scene_center_y -= self.crop_h_from
+
+        # re-compute working zone for new image sizes
+        abs_poly_points = []
+        for point in config.WORKING_ZONE_POLY_POINTS_REL:
+            abs_poly_points.append([
+                self.scene_center_x + point[0],
+                self.scene_center_y + point[1]
+            ])
+
+        CameraCalibration.__changeConfigValue("SCENE_CENTER_X", self.scene_center_x)
+        CameraCalibration.__changeConfigValue("SCENE_CENTER_Y", self.scene_center_y)
+        CameraCalibration.__changeConfigValue("WORKING_ZONE_POLY_POINTS", abs_poly_points)
+        CameraCalibration.__changeConfigValue("CROP_W_FROM", self.crop_w_from)
+        CameraCalibration.__changeConfigValue("CROP_W_TO", self.crop_w_to)
+        CameraCalibration.__changeConfigValue("CROP_H_FROM", self.crop_h_from)
+        CameraCalibration.__changeConfigValue("CROP_H_TO", self.crop_h_to)
 
 
 def main():
@@ -175,6 +248,7 @@ def main():
         if test_continue != "":
             return
         cameraCalibration.offset_calibration_step_move(smoothie)
+
 
 if __name__ == "__main__":
     main()
