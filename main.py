@@ -532,11 +532,16 @@ def move_to_point_and_extract(coords_from_to: list,
         if str(cur_pos) == str(prev_pos):
             if time.time() - point_reading_t > config.GPS_POINT_WAIT_TIME_MAX:
                 vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                msg = f"Stopping the robot due to exceeding time 'GPS_POINT_WAIT_TIME_MAX=" \
+                      f"{config.GPS_POINT_WAIT_TIME_MAX}' limit without new gps points from adapter"
+                logger_full.write_and_flush(msg + "\n")
                 data_collector.add_vesc_moving_time_data(
                     vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
                 while True:
                     cur_pos = gps.get_last_position()
                     if str(cur_pos) != str(prev_pos):
+                        msg = "New GPS point received, continuing movement"
+                        logger_full.write_and_flush(msg + "\n")
                         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                         break
             else:
