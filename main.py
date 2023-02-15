@@ -213,7 +213,7 @@ def move_to_point_and_extract(coords_from_to: list,
     x_scan_cur_idx = 0
     x_scan_idx_increasing = True
 
-    lastNtripRestart = time.time()
+    ntrip_restart_ts = time.time()
 
     # set camera to the Y min
     res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
@@ -529,17 +529,32 @@ def move_to_point_and_extract(coords_from_to: list,
 
         navigation_prediction.set_current_lat_long(cur_pos)
 
+        # skip same points (non-blocking reading returns old point if new point isn't available yet)
         if str(cur_pos) == str(prev_pos):
-            if time.time() - point_reading_t > config.GPS_POINT_WAIT_TIME_MAX:
+            # stop robot if there's no new points for a while
+            if time.time() - point_reading_t > config.GPS_POINT_TIME_BEFORE_STOP:
                 vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                msg = f"Stopping the robot due to exceeding time 'GPS_POINT_WAIT_TIME_MAX=" \
-                      f"{config.GPS_POINT_WAIT_TIME_MAX}' limit without new gps points from adapter"
+                msg = f"Stopping the robot due to exceeding time 'GPS_POINT_TIME_BEFORE_STOP=" \
+                      f"{config.GPS_POINT_TIME_BEFORE_STOP}' limit without new gps points from adapter"
                 logger_full.write_and_flush(msg + "\n")
-                data_collector.add_vesc_moving_time_data(
-                    vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+                data_collector.add_vesc_moving_time_data(vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+
+                gps_reconnect_ts = time.time()
+
                 while True:
                     cur_pos = gps.get_last_position()
-                    if str(cur_pos) != str(prev_pos):
+
+                    if str(cur_pos) == str(prev_pos):
+                        # reconnect gps adapter to ublox if there's no gps points for a while
+                        if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
+                            gps.reconnect()
+                            gps_reconnect_ts = time.time()
+                            msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new GPS " \
+                                  "point (new points filter)"
+                            if config.VERBOSE:
+                                print(msg)
+                            logger_full.write_and_flush(msg + "\n")
+                    else:
                         msg = "New GPS point received, continuing movement"
                         logger_full.write_and_flush(msg + "\n")
                         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
@@ -548,31 +563,113 @@ def move_to_point_and_extract(coords_from_to: list,
                 continue
 
         # points filter by quality flag
-        if config.GPS_QUALITY_IGNORE and cur_pos[2] != "4":
-            vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-            logger_full.write_and_flush("Stopping the robot for lack of quality gps 4, waiting for it...\n")
-            data_collector.add_vesc_moving_time_data(
-                vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
-            navigation.NavigationV3.check_reboot_Ntrip("1", 0, logger_full)
-            while True:
-                cur_pos = gps.get_fresh_position()
-                if cur_pos[2] == "4":
-                    logger_full.write_and_flush("The gps has regained quality 4, relaunch of the robot.\n")
-                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
-                    break
+        if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
+            # restart ntrip if enough time passed since the last ntrip restart
+            if time.time() - ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
+                msg = f"Restarting ntrip due to '{cur_pos[2]}' GPS point quality (quality filter)"
+                if config.VERBOSE:
+                    print(msg)
+                logger_full.write_and_flush(msg + "\n")
+                os.system("sudo systemctl restart ntripClient.service")
+                ntrip_restart_ts = time.time()
+
+            # stop robot due to bad point quality if allowed
+            if config.ALLOW_GPS_BAD_QUALITY_STOP:
+                vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                logger_full.write_and_flush("Stopping the robot for lack of quality gps 4, waiting for it...\n")
+                data_collector.add_vesc_moving_time_data(vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+
+                prev_bad_quality_pos = cur_pos
+                gps_reconnect_ts = time.time()
+
+                while True:
+                    cur_pos = gps.get_last_position()
+
+                    # check if it's a new point
+                    if str(cur_pos) == str(prev_bad_quality_pos):
+                        # reconnect gps adapter to ublox if there's no gps points for a while
+                        if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
+                            gps.reconnect()
+                            gps_reconnect_ts = time.time()
+                            msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new " \
+                                  "GPS point (quality filter)"
+                            if config.VERBOSE:
+                                print(msg)
+                            logger_full.write_and_flush(msg + "\n")
+                        continue
+                    else:
+                        prev_bad_quality_pos = cur_pos
+
+                    # check if it's a good quality point
+                    if cur_pos[2] != "4":
+                        if time.time() - ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
+                            msg = f"Restarting ntrip due to '{cur_pos[2]}' GPS point quality (quality filter, " \
+                                  f"robot is stopped)"
+                            if config.VERBOSE:
+                                print(msg)
+                            logger_full.write_and_flush(msg + "\n")
+                            os.system("sudo systemctl restart ntripClient.service")
+                            ntrip_restart_ts = time.time()
+                    else:
+                        msg = "The gps has regained quality 4, starting movement"
+                        if config.VERBOSE:
+                            print(msg)
+                        logger_full.write_and_flush(msg + "\n")
+                        vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                        break
 
         # points filter by distance
         prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
-        if config.ALLOW_GPS_PREV_CUR_DIST_FILTER and prev_cur_distance > config.PREV_CUR_POINT_MAX_DIST:
+        if config.ALLOW_GPS_PREV_CUR_DIST_STOP and prev_cur_distance > config.PREV_CUR_POINT_MAX_DIST:
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             msg = f"Stopping the robot due to GPS points filter by distance (assuming current position point " \
                   f"{str(cur_pos)} is wrong as distance between current position and prev. position {str(prev_pos)}" \
                   f" is bigger than config.PREV_CUR_POINT_MAX_DIST={str(config.PREV_CUR_POINT_MAX_DIST)})"
             logger_full.write_and_flush(msg + "\n")
-            data_collector.add_vesc_moving_time_data(
-                vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+            data_collector.add_vesc_moving_time_data(vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+
+            prev_bad_quality_pos = cur_pos
+            gps_reconnect_ts = distance_wait_start_ts = time.time()
+
             while True:
-                cur_pos = gps.get_fresh_position()
+                if time.time() - distance_wait_start_ts > config.GPS_DIST_WAIT_TIME_MAX:
+                    msg = f"Stopping waiting for good prev-cur distance due to timeout, using current point " \
+                          f"{cur_pos} and starting moving again"
+                    if config.VERBOSE:
+                        print(msg)
+                    logger_full.write_and_flush(msg + "\n")
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                    break
+
+                cur_pos = gps.get_last_position()
+
+                # check if it's a new point
+                if str(cur_pos) == str(prev_bad_quality_pos):
+                    # reconnect gps adapter to ublox if there's no gps points for a while
+                    if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
+                        gps.reconnect()
+                        gps_reconnect_ts = time.time()
+                        msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new " \
+                              "GPS point (distance filter)"
+                        if config.VERBOSE:
+                            print(msg)
+                        logger_full.write_and_flush(msg + "\n")
+                    continue
+                else:
+                    prev_bad_quality_pos = cur_pos
+
+                # check if it's a good quality point or ignore point quality if bad quality stop is not allowed
+                if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
+                    if time.time() - ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
+                        msg = f"Restarting ntrip due to '{cur_pos[2]}' GPS point quality (distance filter)"
+                        if config.VERBOSE:
+                            print(msg)
+                        logger_full.write_and_flush(msg + "\n")
+                        os.system("sudo systemctl restart ntripClient.service")
+                        ntrip_restart_ts = time.time()
+                    continue
+
+                # check if distance became ok
                 prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
                 if prev_cur_distance <= config.PREV_CUR_POINT_MAX_DIST:
                     msg = f"Starting moving again after GPS points filter by distance as distance become OK " \
@@ -819,12 +916,14 @@ def move_to_point_and_extract(coords_from_to: list,
             corridor = "left"
         elif current_corridor_side==1:
             corridor = "right"
-        
 
         raw_angle_cruise = round(raw_angle_cruise, 2)
 
-        lastNtripRestart = navigation.NavigationV3.check_reboot_Ntrip(gps_quality, lastNtripRestart, logger_full)
-
+        msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
+              'centroid factor|cruise factor'
+        if config.VERBOSE:
+            print(msg)
+        logger_full.write(msg + "\n")
         msg = str(gps_quality).ljust(5) + \
               str(raw_angle).ljust(8) + \
               str(angle_kp_ki).ljust(8) + \
@@ -1941,10 +2040,6 @@ def main():
             input(msg)
             logger_full.write(msg + "\n")
             """
-
-            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|centroid factor|cruise factor'
-            print(msg)
-            logger_full.write(msg + "\n")
 
             # path points visiting loop
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:

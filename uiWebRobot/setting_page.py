@@ -372,8 +372,8 @@ class SettingPageManager:
         radio_btn_group_path_choice.set_column_number(2)
         radio_btn_group_path_choice.set_radio_button_list([radio_btn_zig_zag,radio_btn_spiral])
 
-        checkbox_bad_gps = Checkbox("bad_gps", "Stop if bad GPS", lambda new_value : self.__changeConfigValue("GPS_QUALITY_IGNORE", new_value))
-        checkbox_bad_gps.set_checked(self.__config.GPS_QUALITY_IGNORE)
+        checkbox_bad_gps = Checkbox("bad_gps", "Stop if bad GPS", lambda new_value: self.__changeConfigValue("ALLOW_GPS_BAD_QUALITY_STOP", new_value))
+        checkbox_bad_gps.set_checked(self.__config.ALLOW_GPS_BAD_QUALITY_STOP)
 
         category_nav.add_items([radio_btn_group_path_choice,slider_sides_interval,checkbox_bad_gps])
 

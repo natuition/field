@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.00"
+CONFIG_VERSION = "0.20.1"
 
 
 # ======================================================================================================================
@@ -238,7 +238,25 @@ GPS_CHECK_IN_DEGRADED_MODE = 30 #Check if gps returned every GPS_CHECK_IN_DEGRAD
 
 SER2NET_CONNECT_GPS_PORT = False
 
-GPS_POINT_WAIT_TIME_MAX = 2 #time to stop robot if no gps point received
+# max time with no fresh GPS points before robot stops
+GPS_POINT_TIME_BEFORE_STOP = 2
+# max time with no fresh GPS points before gps adapter reconnects to ublox
+# (starts counting after robot was stopped, not after last point received)
+GPS_POINT_TIME_BEFORE_RECONNECT = 5
+# True: allow robot to restart ntrip service if received GPS point's quality is not '4'; False: ignore points quality
+ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART = True
+# True: allow robot to stop if GPS point quality is not '4'; False: don't stop the robot
+ALLOW_GPS_BAD_QUALITY_STOP = True
+# True: stop robot if prev-cur position distance is bigger than PREV_CUR_POINT_MAX_DIST and wait for another
+# cur_pos point with suitable distance, no more than specified in GPS_DIST_WAIT_TIME_MAX time;
+# False: ignore prev-cur position distance
+ALLOW_GPS_PREV_CUR_DIST_STOP = True
+# if ALLOW_GPS_PREV_CUR_DIST_STOP = True; mms; max allowed distance between cur and prev position, will stop robot
+# if distance has exceeded this value
+PREV_CUR_POINT_MAX_DIST = 10000
+# if ALLOW_GPS_PREV_CUR_DIST_STOP = True; seconds to wait for cur_pos point with prev-cur pos
+# distance < PREV_CUR_POINT_MAX_DIST before stop reading new points and accept current cur_pos point
+GPS_DIST_WAIT_TIME_MAX = 30
 
 
 # ======================================================================================================================
@@ -378,17 +396,6 @@ MIN_PERPENDICULAR_GO_STRAIGHT = 100 # in mm
 VALUES_LEARN_GO_STRAIGHT = 40
 
 ANTI_THEFT_ZONE_RADIUS = 5000
-
-GPS_QUALITY_IGNORE = True #If this is activated, stops the robot when it no longer has quality 4. 
-# It restarts the ntrip service and waits to find quality 4
-
-# True: enable cur position point ignore and stop robot if prev-cur position distance is bigger than
-# PREV_CUR_POINT_MAX_DIST
-ALLOW_GPS_PREV_CUR_DIST_FILTER = True
-# mms; max allowed distance between cur and prev position, will stop robot if is exceeded and
-# if ALLOW_GPS_PREV_CUR_DIST_FILTER=True
-PREV_CUR_POINT_MAX_DIST = 10000
-
 
 ROBOT_SN = "SN000"
 
