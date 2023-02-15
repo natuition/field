@@ -2191,18 +2191,20 @@ class VescAdapterV4:
 class GPSUbloxAdapter:
     """Provides access to the robot's on-board GPS navigator (UBLOX card)"""
 
-    def __init__(self, ser_port, ser_baudrate, last_pos_count):
+    def __init__(self, ser_port: str, ser_baudrate: int, last_pos_count: int):
+        if not isinstance(last_pos_count, int):
+            raise TypeError(f"last_pos_count must be int, got {type(last_pos_count).__name__} instead")
         if last_pos_count < 1:
-            raise ValueError("last_pos_count shouldn't be less than 1")
+            raise ValueError(f"last_pos_count shouldn't be less than 1, got {last_pos_count} instead")
 
         self._position_is_fresh = False
         self._last_pos_count = last_pos_count
+        self._ser_port = ser_port
+        self._ser_baudrate = ser_baudrate
         self._last_pos_container = []
         self._sync_locker = multiprocessing.RLock()
 
-        self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate)
-        # self._hot_reset()
-        self._USBNMEA_OUT()
+        self._serial = self._get_new_connection()
 
         self._keep_thread_alive = True
         self._reader_thread = threading.Thread(target=self._reader_thread_tf, daemon=True)
@@ -2212,11 +2214,23 @@ class GPSUbloxAdapter:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        self._keep_thread_alive = False
+        if self._serial.is_open:
+            self._serial.close()
 
     def disconnect(self):
-        self._keep_thread_alive = False
-        self._serial.close()
+        """Obsolete method, stills here for backward compatibility, use close() instead"""
+
+        self.close()
+
+    def reconnect(self):
+        self._serial = self._get_new_connection(self._serial)
 
     def get_fresh_position(self):
         """Waits for new fresh position from gps and returns it, blocking until new position received.
@@ -2332,23 +2346,40 @@ class GPSUbloxAdapter:
         Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
         self._serial.write(bytearray.fromhex(Mythread))
 
+    def _get_new_connection(self, old_conn: serial.Serial = None):
+        if old_conn is not None and old_conn.is_open:
+            old_conn.close()
+        new_conn = serial.Serial(port=self._ser_port, baudrate=self._ser_baudrate)
+        # self._hot_reset()
+        # self._USBNMEA_OUT()
+        return new_conn
+
 
 class GPSUbloxAdapterWithoutThread:
     """Provides access to the robot's on-board GPS navigator (UBLOX card)"""
 
-    def __init__(self, ser_port, ser_baudrate, last_pos_count):
+    def __init__(self, ser_port: str, ser_baudrate: int, last_pos_count: int):
         self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate)
         # self._hot_reset()
-        self._USBNMEA_OUT()
+        # self._USBNMEA_OUT()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self._serial.is_open:
+            self._serial.close()
 
     def disconnect(self):
-        self._serial.close()
+        """Obsolete method, stills here for backward compatibility, use close() instead"""
+
+        self.close()
 
     def get_fresh_position(self):
         """Waits for new fresh position from gps and returns it, blocking until new position received.
@@ -2417,4 +2448,3 @@ class GPSUbloxAdapterWithoutThread:
     def _hot_reset(self):
         Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
         self._serial.write(bytearray.fromhex(Mythread))
-
