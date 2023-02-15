@@ -921,8 +921,6 @@ def move_to_point_and_extract(coords_from_to: list,
 
         msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
               'centroid factor|cruise factor'
-        if config.VERBOSE:
-            print(msg)
         logger_full.write(msg + "\n")
         msg = str(gps_quality).ljust(5) + \
               str(raw_angle).ljust(8) + \
