@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.1"
+CONFIG_VERSION = "0.20.2"
 
 
 # ======================================================================================================================
@@ -398,6 +398,17 @@ VALUES_LEARN_GO_STRAIGHT = 40
 ANTI_THEFT_ZONE_RADIUS = 5000
 
 ROBOT_SN = "SN000"
+
+# posix_ipc.MessageQueue in main script setting
+# int: override OS's default max amount messages in queue before new msg sending will be blocked and forced to wait;
+# None: use OS default
+QUEUE_MESSAGES_MAX = 200
+# max seconds to wait for sending position in main loop. Currently positions are sent not more often than once per sec
+# Position sending will be canceled and skipped if wait time is exceeded this value.
+QUEUE_WAIT_TIME_MAX = 0.03
+# True: enable queue messages sending performance tracking and writing to log at cur target point arrival;
+# False: disable performance tracking and writing to log
+QUEUE_TRACK_PERFORMANCE = False
 
 
 # ======================================================================================================================

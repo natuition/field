@@ -209,6 +209,16 @@ def move_to_point_and_extract(coords_from_to: list,
     last_working_mode = 0
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
 
+    # message queue sending temporary performance tracker
+    if config.QUEUE_TRACK_PERFORMANCE:
+        ui_msg_queue_perf = {
+            "max_time": 0,
+            "min_time": float("inf"),
+            "total_time": 0,
+            "total_sends": 0,
+            "timeouts_exceeded": 0
+        }
+
     # x movements during periphery scans
     x_scan_cur_idx = 0
     x_scan_idx_increasing = True
@@ -663,8 +673,26 @@ def move_to_point_and_extract(coords_from_to: list,
 
         trajectory_saver.save_point(cur_pos)
         if ui_msg_queue is not None and time.time()-last_send_gps_time >= 1:
-            ui_msg_queue.send(json.dumps({"last_gps": cur_pos}))
-            last_send_gps_time = time.time()
+            try:
+                ui_msg_queue_send_ts = time.time()
+                ui_msg_queue.send(json.dumps({"last_gps": cur_pos}), timeout=config.QUEUE_WAIT_TIME_MAX)
+                last_send_gps_time = time.time()
+
+                if config.QUEUE_TRACK_PERFORMANCE:
+                    ui_msg_queue_send_et = last_send_gps_time - ui_msg_queue_send_ts
+                    if ui_msg_queue_send_et < ui_msg_queue_perf["min_time"]:
+                        ui_msg_queue_perf["min_time"] = ui_msg_queue_send_et
+                    if ui_msg_queue_send_et > ui_msg_queue_perf["max_time"]:
+                        ui_msg_queue_perf["max_time"] = ui_msg_queue_send_et
+                    ui_msg_queue_perf["total_time"] += ui_msg_queue_send_et
+                    ui_msg_queue_perf["total_sends"] += 1
+            except posix_ipc.BusyError:
+                msg = f"Current position wasn't sent to ui_msg_queue likely due to sending timeout " \
+                      f"(max wait time: config.QUEUE_WAIT_TIME_MAX={config.QUEUE_WAIT_TIME_MAX}"
+                logger_full.write(msg + "\n")
+
+                if config.QUEUE_TRACK_PERFORMANCE:
+                    ui_msg_queue_perf["timeouts_exceeded"] += 1
 
         if config.CONTINUOUS_INFORMATION_SENDING and not degraded_navigation_mode:
             notification.set_current_coordinate(cur_pos)
@@ -926,6 +954,13 @@ def move_to_point_and_extract(coords_from_to: list,
 
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
+
+    if config.QUEUE_TRACK_PERFORMANCE:
+        ui_msg_queue_perf["avg_time"] = ui_msg_queue_perf["total_time"] / ui_msg_queue_perf["total_sends"]
+        msg = f"Position sending performance report: {ui_msg_queue_perf}"
+        if config.VERBOSE:
+            print(msg)
+        logger_full.write(msg + "\n")
 
 
 def send_voltage_thread_tf(vesc_engine: adapters.VescAdapterV4, ui_msg_queue):
@@ -1702,7 +1737,10 @@ def main():
     utility.create_directories(log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
 
     try:
-        ui_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+        if config.QUEUE_MESSAGES_MAX is not None:
+            ui_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, max_messages=config.QUEUE_MESSAGES_MAX)
+        else:
+            ui_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
     except KeyboardInterrupt:
         raise KeyboardInterrupt
     except:
