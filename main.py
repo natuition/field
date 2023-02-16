@@ -919,9 +919,6 @@ def move_to_point_and_extract(coords_from_to: list,
 
         raw_angle_cruise = round(raw_angle_cruise, 2)
 
-        msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
-              'centroid factor|cruise factor'
-        logger_full.write(msg + "\n")
         msg = str(gps_quality).ljust(5) + \
               str(raw_angle).ljust(8) + \
               str(angle_kp_ki).ljust(8) + \
@@ -2038,6 +2035,11 @@ def main():
             input(msg)
             logger_full.write(msg + "\n")
             """
+
+            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
+                  'centroid factor|cruise factor'
+            print(msg)
+            logger_full.write(msg + "\n")
 
             # path points visiting loop
             with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
