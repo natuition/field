@@ -450,18 +450,36 @@ class AntiTheftZone:
     def coordianate_are_in_zone(self, coords: list):
         return self.nav.get_distance(self.center,coords) <= self.circumcircle_radius + config.ANTI_THEFT_ZONE_RADIUS
 
+
 class NavigationV3:
+    __ntrip_restart_ts = 0
 
     @staticmethod
-    def check_reboot_Ntrip(gps_quality: str, lastNtripRestart: float, logger_full: utility.Logger):
-        if str(gps_quality) not in ["4","5"] and time.time() - lastNtripRestart > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
-            msg="Restart Ntrip because 60 seconds without corrections"
+    def restart_ntrip_service(logger_full: utility.Logger):
+        """Will restart Ntrip service if time passed after last Ntrip restart is bigger than allowed in config
+
+        Returns True if did Ntrip restart, returns False otherwise.
+        """
+
+        if not config.NTRIP:
+            msg = f"Ntrip restart is aborted as Ntrip usage is disabled in config.NTRIP={config.NTRIP} key"
+            print(msg)
             logger_full.write(msg + "\n")
-            if config.VERBOSE: 
+            return False
+
+        if time.time() - NavigationV3.__ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT:
+            msg = "Restarting Ntrip service"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE:
                 print(msg)
             os.system("sudo systemctl restart ntripClient.service")
-            return time.time()
-        return lastNtripRestart
+            NavigationV3.__ntrip_restart_ts = time.time()
+            return True
+
+    @staticmethod
+    def get_last_ntrip_restart_ts():
+        return NavigationV3.__ntrip_restart_ts
+
 
 class NavigationPrediction:
 

@@ -213,8 +213,6 @@ def move_to_point_and_extract(coords_from_to: list,
     x_scan_cur_idx = 0
     x_scan_idx_increasing = True
 
-    ntrip_restart_ts = time.time()
-
     # set camera to the Y min
     res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                               Y_F=config.Y_F_MAX,
@@ -565,13 +563,7 @@ def move_to_point_and_extract(coords_from_to: list,
         # points filter by quality flag
         if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
             # restart ntrip if enough time passed since the last ntrip restart
-            if time.time() - ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
-                msg = f"Restarting ntrip due to '{cur_pos[2]}' GPS point quality (quality filter)"
-                if config.VERBOSE:
-                    print(msg)
-                logger_full.write_and_flush(msg + "\n")
-                os.system("sudo systemctl restart ntripClient.service")
-                ntrip_restart_ts = time.time()
+            navigation.NavigationV3.restart_ntrip_service(logger_full)
 
             # stop robot due to bad point quality if allowed
             if config.ALLOW_GPS_BAD_QUALITY_STOP:
@@ -602,14 +594,8 @@ def move_to_point_and_extract(coords_from_to: list,
 
                     # check if it's a good quality point
                     if cur_pos[2] != "4":
-                        if time.time() - ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
-                            msg = f"Restarting ntrip due to '{cur_pos[2]}' GPS point quality (quality filter, " \
-                                  f"robot is stopped)"
-                            if config.VERBOSE:
-                                print(msg)
-                            logger_full.write_and_flush(msg + "\n")
-                            os.system("sudo systemctl restart ntripClient.service")
-                            ntrip_restart_ts = time.time()
+                        # restart ntrip if enough time passed since the last ntrip restart
+                        navigation.NavigationV3.restart_ntrip_service(logger_full)
                     else:
                         msg = "The gps has regained quality 4, starting movement"
                         if config.VERBOSE:
@@ -660,13 +646,8 @@ def move_to_point_and_extract(coords_from_to: list,
 
                 # check if it's a good quality point or ignore point quality if bad quality stop is not allowed
                 if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
-                    if time.time() - ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
-                        msg = f"Restarting ntrip due to '{cur_pos[2]}' GPS point quality (distance filter)"
-                        if config.VERBOSE:
-                            print(msg)
-                        logger_full.write_and_flush(msg + "\n")
-                        os.system("sudo systemctl restart ntripClient.service")
-                        ntrip_restart_ts = time.time()
+                    # restart ntrip if enough time passed since the last ntrip restart
+                    navigation.NavigationV3.restart_ntrip_service(logger_full)
                     continue
 
                 # check if distance became ok
