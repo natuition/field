@@ -3,13 +3,9 @@ from haversine import haversine
 import numpy as np
 from scipy.spatial import ConvexHull
 import utility
-import adapters
 import time
 from config import config
-from notification import NotificationClient
 import os
-import posix_ipc
-import json
 
 class GPSComputing:
     """

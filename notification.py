@@ -111,7 +111,7 @@ class NotificationClient:
     def is_continuous_information_sending(self):
         return self.__continuous_information_sending
 
-    def _report_th_tf(self):
+    def __report_th_tf(self):
         while not self.__init_field or not self.__init_treated_plant:
             if not self.__init_treated_plant and self.__treated_plant is not None:
                 self.__send_treated_weed()
@@ -165,9 +165,8 @@ class NotificationClient:
                                         f"Error when sending input voltage: {response.status_code}.")
 
                                 self.__input_voltage = None
-
                         sleep(self.__alive_sending_timeout)
-            except BrokenPipeError as error:
+            except BrokenPipeError:
                 print("[Notification] Reconnecting...")
             print("[Notification] Disconnected")
 
