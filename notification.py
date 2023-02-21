@@ -1,165 +1,218 @@
-from socket import socket, AF_INET, SOCK_STREAM, error as SocketError
-import errno
 import threading
 from time import sleep
-from config import config
-import utility
 import navigation
+import requests
+from contextlib import closing
+from websocket import create_connection
+import datetime
+from pytz import timezone
+import json
+from config import config
+
 
 class SyntheseRobot:
     OP = "Robot_OP"
     HS = "Robot_HS"
     ANTI_THEFT = "Robot_ANTI_THEFT"
 
+
 class NotificationClient:
 
     def __init__(self, time_start):
-        self.port = 888
-        self.ip = "172.16.0.9"
-        self._keep_thread_alive = True
-        self.connected = False
-        self.timeout = config.ALIVE_SENDING_TIMEOUT
-        self.status = SyntheseRobot.OP
-        self.socket = socket(AF_INET, SOCK_STREAM)
-        self.socket.settimeout(10)
-        self.current_coordinate = []
-        self.treated_plant = None
-        self.field = None
-        self.input_voltage = None
-        self.extracted_plants = None
-        self.antiTheftZone = None
-        self.time_start = time_start
-        self.first_send = False
-        self.last_extracted_plants_send = dict()
-        self._report_th = threading.Thread(target=self._report_th_tf, daemon=True)
-        self._report_th.start()        
+        self.__port = 8080
+        self.__ip = "172.16.33.5"
+        self.__time_start = datetime.datetime.strptime(
+            time_start, "%d-%m-%Y %H-%M-%S %f").replace(tzinfo=timezone('Europe/Berlin'))
+        self.__keep_thread_alive = True
+        self.__input_voltage = None
+
+        self.__init_treated_plant = False
+        self.__treated_plant = None
+
+        self.__init_field = False
+        self.__field_id = None
+        self.__field = None
+        self.__field_name = None
+
+        self.__path_point_number = 0
+
+        self.__alive_sending_timeout = config.ALIVE_SENDING_TIMEOUT
+        self.__web_socket_timeout = 5
+        self.__reconnected = True
+        self.__max_lenght_point_history = config.MAX_LENGHT_POINT_HISTORY
+        self.__robot_sn = config.ROBOT_SN
+
+        self.__coordinate_with_extracted_weed = list()
+        self.__extracted_weeds = dict()
+        self.__last_extracted_weeds_send = dict()
+        self.__sync_locker = threading.Lock()
+
+        self.__continuous_information_sending = config.CONTINUOUS_INFORMATION_SENDING
+        self.__init_robot_on_datagathering()
+
+        self.__report_th = threading.Thread(
+            target=self.__report_th_tf, daemon=True)
+        self.__report_th.start()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._keep_thread_alive = False
-        self._close()
+        self.stop()
 
     def stop(self):
-        try:
-            if config.CONTINUOUS_INFORMATION_SENDING:
-                msg = ""
-                if self.extracted_plants is not None:
-                    msg += f";{self.extracted_plants}"
-                self.socket.send(f"STOP;{utility.get_current_time()}{msg}".encode("utf-8"))
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            pass
         print("[Notification] Stopping service...")
-        self._keep_thread_alive = False
-        self._close()
+        self.__keep_thread_alive = False
+        self.__report_th.join()
 
     def setStatus(self, status: SyntheseRobot):
-        self.status = status
-        if status == SyntheseRobot.HS:
-            self.socket.send(self.status.encode("utf-8"))
+        # Todo
+        pass
 
     def isConnected(self):
-        return self._keep_thread_alive
-
-    def _close(self):
-        try:
-            self.socket.send(f"CLOSE;{utility.get_current_time()}".encode("utf-8"))
-            self.socket.close() 
-        except:
-            pass
-        print("[Notification] Disconnected") 
+        return self.__keep_thread_alive
 
     def set_current_coordinate(self, current_coordinate):
-        if set(self.current_coordinate) != set(current_coordinate) and self.antiTheftZone is not None:
-            current_coordinate_in_zone = self.antiTheftZone.coordianate_are_in_zone(current_coordinate)
-            if current_coordinate_in_zone and self.status == SyntheseRobot.ANTI_THEFT:
-                self.status = SyntheseRobot.OP
-            elif not current_coordinate_in_zone and self.status == SyntheseRobot.OP:
-                self.status = SyntheseRobot.ANTI_THEFT
-        self.current_coordinate = current_coordinate
+        last_coordinate_with_extracted_weed = dict()
+        if self.__extracted_weeds:
+            extracted_weeds = dict()
+            for key, value in self.__extracted_weeds.items():
+                if key in self.__last_extracted_weeds_send:
+                    if value - self.__last_extracted_weeds_send[key] != 0:
+                        extracted_weeds[key] = value - \
+                            self.__last_extracted_weeds_send[key]
+                else:
+                    extracted_weeds[key] = value
+            self.__last_extracted_weeds_send = dict(
+                self.__extracted_weeds)
+            if extracted_weeds:
+                last_coordinate_with_extracted_weed["extracted_weeds"] = extracted_weeds
+        last_coordinate_with_extracted_weed["path_point_number"] = self.__path_point_number
+        self.__path_point_number += 1
+        with self.__sync_locker:
+            last_coordinate_with_extracted_weed["current_coordinate"] = current_coordinate
+            self.__coordinate_with_extracted_weed.append(
+                last_coordinate_with_extracted_weed)
+            if len(self.__coordinate_with_extracted_weed) > self.__max_lenght_point_history:
+                self.__coordinate_with_extracted_weed.pop(0)
 
     def set_treated_plant(self, treated_plant):
-        self.treated_plant = treated_plant
+        self.__treated_plant = treated_plant
 
     def set_field(self, field, field_name):
-        self.field = field
-        self.field_name = field_name
+        self.__field = field
+        self.__field_name = field_name
         self.antiTheftZone = navigation.AntiTheftZone(field)
 
     def set_input_voltage(self, input_voltage):
-        self.input_voltage = input_voltage
-    
-    def set_extracted_plants(self, extracted_plants):
-        self.extracted_plants = extracted_plants
+        self.__input_voltage = input_voltage
+
+    def set_extracted_plants(self, extracted_weeds):
+        self.__extracted_weeds = extracted_weeds
 
     def is_continuous_information_sending(self):
-        return config.CONTINUOUS_INFORMATION_SENDING
-         
+        return self.__continuous_information_sending
+
     def _report_th_tf(self):
-        print("[Notification] Connection in progress...")
-        while not self.connected and self._keep_thread_alive:
+        while not self.__init_field or not self.__init_treated_plant:
+            if not self.__init_treated_plant and self.__treated_plant is not None:
+                self.__send_treated_weed()
+                self.__init_treated_plant = True
+            if not self.__init_field and self.__field is not None and self.__field_name is not None:
+                self.__send_field()
+            sleep(0.5)
+        # init session
+        send_session = {
+            "start_time": self.__time_start.isoformat(),
+            "end_time": self.__time_start.isoformat(),
+            "robot_serial_number": self.__robot_sn,
+            "field_id": self.__field_id
+        }
+        response = requests.post(
+            f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/session", json=send_session)
+
+        if response != 201:
+            return Exception(response.status_code)
+
+        session_id = response.json()["id"]
+
+        while self.__keep_thread_alive:
             try:
-                self.socket.connect((self.ip, self.port))
-                print("[Notification] Connected")
-                self.connected = True
-            except:
-                sleep(10)
+                with closing(create_connection(f"ws://{self.__ip}:{self.__port}/api/v1/data_gathering/ws/{self.__robot_sn}/{session_id}")) as conn:
+                    print("[Notification] Connected")
+                    while self.__keep_thread_alive:
+                        frame = dict()
+                        if self.__coordinate_with_extracted_weed:
+                            coordinate_with_extracted_weed = {
+                                "coordinate_with_extracted_weed": list(
+                                    self.__coordinate_with_extracted_weed)
+                            }
+                            frame.update(coordinate_with_extracted_weed)
+                            with self.__sync_locker:
+                                self.__coordinate_with_extracted_weed.clear()
+                            if frame:
+                                conn.send(json.dumps(frame))
+                            if self.__input_voltage:
+                                send_vesc_statistic = {
+                                    "session_id": session_id,
+                                    "voltage": self.__input_voltage,
+                                    "timestamp": datetime.datetime.now().isoformat()
+                                }
+                                response = requests.post(
+                                    f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/vesc_statistic", json=send_vesc_statistic)
 
-        while self._keep_thread_alive:
-            try:
-                if config.CONTINUOUS_INFORMATION_SENDING:
+                                if response != 201:
+                                    return Exception(response.status_code)
 
-                    if self.time_start is not None and self.input_voltage is not None and self.treated_plant is not None and self.field is not None and not self.first_send:
-                            self.socket.send(f"START;{self.time_start};{self.input_voltage};{self.treated_plant};{self.field};{self.field_name}".encode("utf-8"))
-                            self.first_send = True
+                                self.__input_voltage = None
 
-                    if self.first_send:
-                        msg = ""
-                        if self.current_coordinate is not None:
-                            msg += f";{self.current_coordinate}"
-                        if self.extracted_plants is not None:
-                            send_dict = dict()
-                            for key, value in self.extracted_plants.items():
-                                if key in self.last_extracted_plants_send:
-                                    if value - self.last_extracted_plants_send[key] != 0:
-                                        send_dict[key] = value - self.last_extracted_plants_send[key]
-                                else:
-                                    send_dict[key] = value
-                            self.last_extracted_plants_send = dict(self.extracted_plants)
-                            if send_dict:
-                                msg += f";{send_dict}"
+                        sleep(self.__alive_sending_timeout)
+            except BrokenPipeError as error:
+                print("[Notification] Reconnecting...")
+            print("[Notification] Disconnected")
 
-                        if self.status==SyntheseRobot.ANTI_THEFT:
-                            msg = ""
-                        
-                        self.socket.send(f"{self.time_start};{self.status}{msg}".encode("utf-8"))
-                    else:
-                        self.socket.send(self.status.encode("utf-8"))
+    def __init_robot_on_datagathering(self):
+        response = requests.post(
+            f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/robot", json={"serial_number": self.__robot_sn})
+        if response.status_code != 201 and response.status_code != 400:
+            raise Exception("Can't save robot in database")
 
-                else:
-                    self.socket.send(self.status.encode("utf-8"))
+    def __send_treated_weed(self):
+        for weed_type_name in self.__treated_plant:
+            # create weed_type_name
+            weed_type = {"label": weed_type_name}
+            response = requests.post(
+                f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weed_type", json=weed_type)
+            if response != 201 and response != 200:
+                return Exception(response.status_code)
 
-                sleep(self.timeout)
+    def __send_field(self):
+        # field : [A, B, C, D] ou A : [lat, long]
+        # field_name : string
+        # create field_name
+        field = {"label": self.__field_name,
+                 "robot_serial_number": self.__robot_sn}
+        response = requests.post(
+            f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/field", json=field)
 
-            except SocketError:
-                if self.status == SyntheseRobot.HS:
-                    try:
-                        self.stop()
-                    except BrokenPipeError:
-                        pass
-                    break
-                print("[Notification] Connection lost reconnecting...")
-                reconnect = False
-                while not reconnect and self._keep_thread_alive:
-                    try:
-                        self.socket.connect((self.ip, self.port))
-                        reconnect = True
-                        print("[Notification] Reconnected")
-                    except:
-                        continue
-            except Exception:
-                self.stop()
-                break
+        if response != 201 and response != 200:
+            return Exception(response.status_code)
+
+        self.__field_id = response.json()["id"]
+
+        if response.status_code == 201:
+            for point in self.__field:
+                # create gps_point
+                send_gps_point = {
+                    "quality": 0, "latitude": point[0], "longitude": point[1]}
+                response = requests.post(
+                    f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/gps_point", json=send_gps_point)
+
+                if response.status_code == 201:
+                    gps_point_id = response.json()["id"]
+                    # link to field_name
+                    send_field_corner = {
+                        "field_id": self.__field_id, "gps_point_id": gps_point_id}
+                    response = requests.post(
+                        f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/field_corner", json=send_field_corner)
+        self.__init_field = True
