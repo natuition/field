@@ -155,7 +155,7 @@ class NotificationClient:
                                 send_vesc_statistic = {
                                     "session_id": session_id,
                                     "voltage": self.__input_voltage,
-                                    "timestamp": datetime.datetime.now().isoformat()
+                                    "timestamp": datetime.datetime.now(timezone('Europe/Berlin')).isoformat()
                                 }
                                 response = requests.post(
                                     f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/vesc_statistic", json=send_vesc_statistic)
