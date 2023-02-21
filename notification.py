@@ -20,7 +20,7 @@ class NotificationClient:
 
     def __init__(self, time_start):
         self.__port = 8080
-        self.__ip = "172.16.33.5"
+        self.__ip = "172.16.3.5"
         self.__time_start = datetime.datetime.strptime(
             time_start, "%d-%m-%Y %H-%M-%S %f").replace(tzinfo=timezone('Europe/Berlin'))
         self.__keep_thread_alive = True
@@ -37,8 +37,6 @@ class NotificationClient:
         self.__path_point_number = 0
 
         self.__alive_sending_timeout = config.ALIVE_SENDING_TIMEOUT
-        self.__web_socket_timeout = 5
-        self.__reconnected = True
         self.__max_lenght_point_history = config.MAX_LENGHT_POINT_HISTORY
         self.__robot_sn = config.ROBOT_SN
 
@@ -132,7 +130,8 @@ class NotificationClient:
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/session", json=send_session)
 
         if response != 201:
-            return Exception(response.status_code)
+            Exception(
+                f"Error when sending session: {response.status_code}.")
 
         session_id = response.json()["id"]
 
@@ -162,7 +161,8 @@ class NotificationClient:
                                     f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/vesc_statistic", json=send_vesc_statistic)
 
                                 if response != 201:
-                                    return Exception(response.status_code)
+                                    Exception(
+                                        f"Error when sending input voltage: {response.status_code}.")
 
                                 self.__input_voltage = None
 
@@ -184,7 +184,8 @@ class NotificationClient:
             response = requests.post(
                 f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weed_type", json=weed_type)
             if response != 201 and response != 200:
-                return Exception(response.status_code)
+                Exception(
+                    f"Error when sending treated weed: {response.status_code}.")
 
     def __send_field(self):
         # field : [A, B, C, D] ou A : [lat, long]
@@ -196,7 +197,7 @@ class NotificationClient:
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/field", json=field)
 
         if response != 201 and response != 200:
-            return Exception(response.status_code)
+            Exception(f"Error when sending field: {response.status_code}.")
 
         self.__field_id = response.json()["id"]
 
