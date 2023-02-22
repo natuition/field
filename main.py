@@ -285,7 +285,7 @@ def move_to_point_and_extract(coords_from_to: list,
             msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
                   str(per_det_end_t - per_det_start_t)
         else:
-            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. off time: " + \
+            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. (extractions are off) time: " + \
                   str(per_det_end_t - per_det_start_t)
         logger_full.write(msg + "\n")
 
@@ -784,6 +784,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     learn_go_straight = sum(learn_go_straight_history)/len(learn_go_straight_history)
                     msg = f"Average angle applied to the wheel for the robot to have found : {learn_go_straight}."
                     logger_full.write_and_flush(msg + "\n")
+                    # TODO opening and closing file 4 times per second
                     with open(config.LEARN_GO_STRAIGHT_FILE, "w+") as learn_go_straight_file:
                         learn_go_straight_file.write(str(learn_go_straight))
             else:
@@ -907,6 +908,7 @@ def move_to_point_and_extract(coords_from_to: list,
             print(msg)
             logger_full.write(msg + "\n")
         else:
+            # TODO opening and closing file too often (likely 4 times per second)
             # save wheels angle
             with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
                 wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
@@ -1911,61 +1913,105 @@ def main():
             ExtractionManagerV3(smoothie, camera, logger_full, data_collector, image_saver,
                                 log_cur_dir, periphery_detector, precise_detector,
                                 config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \
-            navigation.NavigationPrediction(logger_full=logger_full, nav=nav, log_cur_dir=log_cur_dir) as navigation_prediction :            
+            navigation.NavigationPrediction(
+                logger_full=logger_full,
+                nav=nav,
+                log_cur_dir=log_cur_dir) as navigation_prediction:
 
-            # load previous path
+            # continue previous path case
+            loading_previous_path_failed = False
+            loading_previous_index_failed = False
             if config.CONTINUE_PREVIOUS_PATH:
-                # TODO: create path manager
+                # TODO: maybe make a path manager and put field and path loading and checking etc there
 
                 msg = "Loading previous path points"
                 logger_full.write(msg + "\n")
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
+                    # TODO check for shortcut target file existance
+
                     link_path = subprocess.check_output(['readlink', '-f', 'field.txt']).decode("utf-8")
                     field_name = (link_path.split("/")[-1]).split(".")[0]
-                    notification.set_field(load_coordinates(config.INPUT_GPS_FIELD_FILE), field_name)
 
-                # TODO: check if files exist and handle damaged/incorrect data cases
-                with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
-                    path_points = pickle.load(path_points_file)
-                with open(config.PREVIOUS_PATH_INDEX_FILE, "r") as path_index_file:
-                    str_index = path_index_file.readline()
-                    if str_index == "":
-                        msg = "Path start index file " + config.PREVIOUS_PATH_INDEX_FILE + " is empty!"
+                    if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
+                        field_for_notification = load_coordinates(config.INPUT_GPS_FIELD_FILE)
+                        # TODO check if field corresponds notification input requirements (length, etc)
+                        notification.set_field(field_for_notification, field_name)
+                    else:
+                        msg = f"Couldn't find field file '{config.INPUT_GPS_FIELD_FILE}' to send field points to " \
+                              f"notification service. Sending is aborted."
                         print(msg)
                         logger_full.write(msg + "\n")
-                        notification.setStatus(SyntheseRobot.HS)
-                        exit(1)
-                    path_start_index = int(str_index)  # TODO check if possible to convert
 
-                # check if index is ok
-                if path_start_index == -1:
-                    msg = "Previous path is already passed"
+                if not os.path.isfile(config.PREVIOUS_PATH_POINTS_FILE):
+                    loading_previous_path_failed = True
+                    msg = f"Couldn't find '{config.PREVIOUS_PATH_POINTS_FILE}' file with previous path points. " \
+                          f"Trying to generate path points of current field from scratch."
                     print(msg)
                     logger_full.write(msg + "\n")
-                    notification.stop()
-                    exit(0)
-                elif path_start_index >= len(path_points) or path_start_index < 1:
-                    msg = "Path start index " + str(path_start_index) + " is out of path points list range (loaded " + \
-                        str(len(path_points)) + " points) (start index can't be zero as 1rst point is starting point)"
-                    print(msg)
-                    logger_full.write(msg + "\n")
-                    notification.setStatus(SyntheseRobot.HS)
-                    exit(1)
+                else:
+                    # data validation is done later as it needed both to loaded and new generated path
+                    with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
+                        path_points = pickle.load(path_points_file)
 
-            # load field points and generate new path
-            else:
+                    if not os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE):
+                        loading_previous_index_failed = True
+                        msg = f"Couldn't find '{config.PREVIOUS_PATH_INDEX_FILE}' file with point index to continue."
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                    else:
+                        with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
+                            str_index = path_index_file.readline().strip()
+                        try:
+                            path_start_index = int(str_index)
+                        except ValueError:
+                            loading_previous_index_failed = True
+                            msg = f"Couldn't convert path point index '{str_index}' into int."
+                            print(msg)
+                            logger_full.write(msg + "\n")
+
+                    if path_start_index == -1:
+                        msg = "Previous path is already passed"
+                        print(msg)
+                        logger_full.write_and_flush(msg + "\n")
+                        notification.stop()
+                        exit(0)
+                    elif path_start_index >= len(path_points) or path_start_index < 1:
+                        loading_previous_index_failed = True
+                        msg = f"Path start index {path_start_index} is out of path points list range (loaded " \
+                              f"{len(path_points)} points)"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+
+                    if loading_previous_index_failed:
+                        msg = "Creating new path index storage file, and going to start this field from 1rst point " \
+                              "due to index loading troubles (see log above for details)"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        path_start_index = 1
+                        with open(config.PREVIOUS_PATH_INDEX_FILE, "w") as path_index_file:
+                            path_index_file.write(str(path_start_index))
+
+            # load field points and generate new path or continue previous path errors case
+            if not config.CONTINUE_PREVIOUS_PATH or loading_previous_path_failed:
                 if config.USE_EMERGENCY_FIELD_GENERATION:
                     field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
                 else:
-                    msg = "Loading " + config.INPUT_GPS_FIELD_FILE
-                    logger_full.write(msg + "\n")
+                    # TODO check for shortcut target file existance
+                    if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
+                        msg = f"Loading '{config.INPUT_GPS_FIELD_FILE}' field file"
+                        logger_full.write(msg + "\n")
 
-                    field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                        field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
 
-                    msg = "Loaded field: " + str(field_gps_coords)
-                    print(msg)
-                    logger_full.write(msg + "\n")
+                        msg = "Loaded field: " + str(field_gps_coords)
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                    else:
+                        msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' file with field points!"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        exit()
 
                 # check field corner points count
                 if len(field_gps_coords) == 4:
@@ -2013,9 +2059,20 @@ def main():
                     exit(1)
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
+                    # TODO check for shortcut target file existance
+
                     link_path = subprocess.check_output(['readlink', '-f', 'field.txt']).decode("utf-8")
                     field_name = (link_path.split("/")[-1]).split(".")[0]
-                    notification.set_field(field_gps_coords, field_name)
+
+                    if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
+                        field_for_notification = load_coordinates(config.INPUT_GPS_FIELD_FILE)
+                        # TODO check if field corresponds notification input requirements (length, etc)
+                        notification.set_field(field_for_notification, field_name)
+                    else:
+                        msg = f"Couldn't find field file '{config.INPUT_GPS_FIELD_FILE}' to send field points to " \
+                              f"notification service. Sending is aborted."
+                        print(msg)
+                        logger_full.write(msg + "\n")
 
                 # save path points and point to start from index
                 with open(config.PREVIOUS_PATH_POINTS_FILE, "wb") as path_points_file:
@@ -2061,7 +2118,9 @@ def main():
             logger_full.write(msg + "\n")
 
             # path points visiting loop
-            with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
+            with open(
+                    config.PREVIOUS_PATH_INDEX_FILE,
+                    "r+" if os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE) else "w") as path_index_file:
                 next_calibration_time = time.time() + config.CORK_CALIBRATION_MIN_TIME
                 
                 try:
@@ -2441,24 +2500,46 @@ def main():
                     print(
                         "Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received)\n",
                         "WHEELS POSITION WILL NOT BE SAVED PROPERLY!", sep="")
+
+        # put the robot's wheels straight
         if smoothie_safe_calibration:
-            with adapters.SmoothieAdapter(smoothie_address) as smoothie:
-                # put the wheel straight
-                msg = "Put the wheel straight"
+            msg = f"Trying to put wheels straight before shutdown"
+            logger_full.write(msg + "\n")
+
+            if os.path.isfile(config.LAST_ANGLE_WHEELS_FILE):
+                msg = f"Found '{config.LAST_ANGLE_WHEELS_FILE}' file, trying to read wheels smoothie position"
                 logger_full.write(msg + "\n")
-                if config.VERBOSE:
-                    print(msg)
+
                 with open(config.LAST_ANGLE_WHEELS_FILE, "r+") as wheels_angle_file:
-                    angle = float(wheels_angle_file.read())
-                    smoothie.set_current_coordinates(A=angle)
-                    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
-                    if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                        msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
+                    line = wheels_angle_file.read().strip()
+                    angle = None
+                    try:
+                        angle = float(line)
+                        msg = f"Successfully loaded wheels smoothie position: {angle}"
+                        logger_full.write(msg + "\n")
+                    except ValueError:
+                        msg = f"Couldn't convert '{line}' into float position, leaving wheels position as it is"
                         print(msg)
                         logger_full.write(msg + "\n")
-                    else:
-                        wheels_angle_file.seek(0)
-                        wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+
+                    if angle is not None:
+                        with adapters.SmoothieAdapter(smoothie_address) as smoothie:
+                            smoothie.set_current_coordinates(A=angle)
+                            response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
+                            if response != smoothie.RESPONSE_OK:
+                                msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
+                                print(msg)
+                                logger_full.write(msg + "\n")
+                            else:
+                                wheels_angle_file.seek(0)
+                                wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+            else:
+                msg = f"Couldn't find '{config.LAST_ANGLE_WHEELS_FILE}' wheels smoothie position file.\n" \
+                      f"Creating new file with 0.0 position containing. Robot may navigate wrong of wheels are turned."
+                print(msg)
+                logger_full.write(msg + "\n")
+                with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
+                    wheels_angle_file.write("0.0")
 
         # save adapter points history
         try:
@@ -2494,7 +2575,7 @@ def main():
 
         # close log and hardware connections
         msg = "Closing loggers..."
-        logger_full.write(msg + "\n")
+        logger_full.write_and_flush(msg + "\n")
         print(msg)
         logger_full.close()
 
