@@ -12,6 +12,8 @@ import sqlite3
 class DataCollector:
     """This class stores and saves collected data as txt file, or (will be added later) sends data to the local
     database.
+
+    In case of loading data errors will ignore that data and start counting from scratch.
     """
 
     def __init__(self,
