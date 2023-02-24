@@ -92,11 +92,26 @@ def save_gps_coordinates(points: list, file_name):
 
 def changeConfigValue(path: str, value):
     with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
+        found_key = False
+
         for line in file:
-            if path in line:
+            # skip comments
+            if line.startswith("#"):
+                print(line, end='')
+                continue
+
+            # if key name is strictly equal
+            elements = line.split("=")
+            if len(elements) > 0 and elements[0].strip() == path:
                 print(path + " = " + str(value), end='\n')
+                found_key = True
             else:
                 print(line, end='')
+
+        # if key is absent - add it to the end of the file
+        if not found_key:
+            print(path + " = " + str(value), end='\n')
+
     uid = pwd.getpwnam("violette").pw_uid
     gid = grp.getgrnam("violette").gr_gid
     os.chown("../config/config.py", uid, gid)
