@@ -288,9 +288,6 @@ class DataCollector:
                 self.__detected_plants,
                 self.__extracted_plants,
                 self.__previous_sessions_working_time]}))
-            print("MESSAGE QUEUE IS NOT NONE!")
-        else:
-            print("MESSAGE QUEUE IS NONE!")
 
     @staticmethod
     def __format_time(seconds):
