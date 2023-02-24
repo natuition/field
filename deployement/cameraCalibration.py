@@ -13,6 +13,7 @@ from config import config
 from extraction import ExtractionManagerV3
 import utility
 import adapters
+import importlib
 
 
 class CameraCalibration:
@@ -253,6 +254,7 @@ class CameraCalibration:
         CameraCalibration.__changeConfigValue("CROP_W_TO", self.crop_w_to)
         CameraCalibration.__changeConfigValue("CROP_H_FROM", self.crop_h_from)
         CameraCalibration.__changeConfigValue("CROP_H_TO", self.crop_h_to)
+        importlib.reload(config)
 
 
 def main():
