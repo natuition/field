@@ -1928,18 +1928,38 @@ def main():
                 logger_full.write(msg + "\n")
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
-                    # TODO check for shortcut target file existance
-
-                    link_path = subprocess.check_output(['readlink', '-f', 'field.txt']).decode("utf-8")
-                    field_name = (link_path.split("/")[-1]).split(".")[0]
-
+                    # check if shortcut exists
                     if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
-                        field_for_notification = load_coordinates(config.INPUT_GPS_FIELD_FILE)
-                        # TODO check if field corresponds notification input requirements (length, etc)
-                        notification.set_field(field_for_notification, field_name)
+                        # old way
+                        # link_path = subprocess.check_output(
+                        #     ['readlink', '-f', config.INPUT_GPS_FIELD_FILE]).decode("utf-8").strip()
+                        link_path = os.path.realpath(config.INPUT_GPS_FIELD_FILE)
+                        field_name = (link_path.split("/")[-1]).split(".")[0]
+                        # check for shortcut target file existence
+                        if os.path.isfile(os.path.realpath(config.INPUT_GPS_FIELD_FILE)):
+                            try:
+                                field_for_notification = load_coordinates(config.INPUT_GPS_FIELD_FILE)
+                                if len(field_for_notification) > 0:
+                                    notification.set_field(field_for_notification, field_name)
+                                else:
+                                    msg = f"Loaded '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' field contains 0" \
+                                          f"points. Sending to notification is aborted."
+                                    print(msg)
+                                    logger_full.write(msg + "\n")
+                            except ValueError:
+                                msg = f"Failed to load field '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' due " \
+                                      f"to ValueError (file is likely corrupted). Sending field to notification is " \
+                                      f"aborted."
+                                print(msg)
+                                logger_full.write(msg + "\n")
+                        else:
+                            msg = f"Couldn't find field file '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' to " \
+                                  f"send field points to notification service. Sending is aborted."
+                            print(msg)
+                            logger_full.write(msg + "\n")
                     else:
-                        msg = f"Couldn't find field file '{config.INPUT_GPS_FIELD_FILE}' to send field points to " \
-                              f"notification service. Sending is aborted."
+                        msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' field shortcut file, sending to " \
+                              f"notification service is aborted."
                         print(msg)
                         logger_full.write(msg + "\n")
 
@@ -1997,18 +2017,32 @@ def main():
                 if config.USE_EMERGENCY_FIELD_GENERATION:
                     field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
                 else:
-                    # TODO check for shortcut target file existance
                     if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
-                        msg = f"Loading '{config.INPUT_GPS_FIELD_FILE}' field file"
-                        logger_full.write(msg + "\n")
+                        if os.path.isfile(os.path.realpath(config.INPUT_GPS_FIELD_FILE)):
+                            msg = f"Loading '{config.INPUT_GPS_FIELD_FILE}' field file"
+                            logger_full.write(msg + "\n")
 
-                        field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                            try:
+                                field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                            except ValueError:
+                                msg = f"Failed to load field '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' due " \
+                                      f"to ValueError (file is likely corrupted). " \
+                                      f"Exiting main as building path without field points is impossible."
+                                print(msg)
+                                logger_full.write(msg + "\n")
+                                exit()
 
-                        msg = "Loaded field: " + str(field_gps_coords)
-                        print(msg)
-                        logger_full.write(msg + "\n")
+                            msg = "Loaded field: " + str(field_gps_coords)
+                            print(msg)
+                            logger_full.write(msg + "\n")
+                        else:
+                            msg = f"Couldn't find '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' target file with" \
+                                  f"field points!"
+                            print(msg)
+                            logger_full.write(msg + "\n")
+                            exit()
                     else:
-                        msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' file with field points!"
+                        msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' shortcut file with field points!"
                         print(msg)
                         logger_full.write(msg + "\n")
                         exit()
@@ -2059,18 +2093,38 @@ def main():
                     exit(1)
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
-                    # TODO check for shortcut target file existance
-
-                    link_path = subprocess.check_output(['readlink', '-f', 'field.txt']).decode("utf-8")
-                    field_name = (link_path.split("/")[-1]).split(".")[0]
-
+                    # check for shortcut file existance
                     if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
-                        field_for_notification = load_coordinates(config.INPUT_GPS_FIELD_FILE)
-                        # TODO check if field corresponds notification input requirements (length, etc)
-                        notification.set_field(field_for_notification, field_name)
+                        # old way
+                        # link_path = subprocess.check_output(
+                        #     ['readlink', '-f', config.INPUT_GPS_FIELD_FILE]).decode("utf-8").strip()
+                        link_path = os.path.realpath(config.INPUT_GPS_FIELD_FILE)
+                        field_name = (link_path.split("/")[-1]).split(".")[0]
+                        # check for shortcut target file existence
+                        if os.path.isfile(os.path.realpath(config.INPUT_GPS_FIELD_FILE)):
+                            try:
+                                field_for_notification = load_coordinates(config.INPUT_GPS_FIELD_FILE)
+                                if len(field_for_notification) > 0:
+                                    notification.set_field(field_for_notification, field_name)
+                                else:
+                                    msg = f"Loaded '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' field contains 0" \
+                                          f"points. Sending to notification is aborted."
+                                    print(msg)
+                                    logger_full.write(msg + "\n")
+                            except ValueError:
+                                msg = f"Failed to load field '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' due " \
+                                      f"to ValueError (file is likely corrupted). Sending field to notification is " \
+                                      f"aborted."
+                                print(msg)
+                                logger_full.write(msg + "\n")
+                        else:
+                            msg = f"Couldn't find field file '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' to " \
+                                  f"send field points to notification service. Sending is aborted."
+                            print(msg)
+                            logger_full.write(msg + "\n")
                     else:
-                        msg = f"Couldn't find field file '{config.INPUT_GPS_FIELD_FILE}' to send field points to " \
-                              f"notification service. Sending is aborted."
+                        msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' field shortcut file, sending to " \
+                              f"notification service is aborted."
                         print(msg)
                         logger_full.write(msg + "\n")
 
