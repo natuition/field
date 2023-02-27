@@ -76,11 +76,11 @@ class CheckState(State.State):
         if data["type"] == 'allChecked':
             try:
                 with open("../yolo/" + data["strategy"] + ".conf") as file:
-                    for line in file.readlines():
-                        content = line.split("#")[0]
-                        content = re.sub('[^0-9a-zA-Z._="/]+', '', content)
-                        if content:
-                            changeConfigValue(content.split("=")[0], content.split("=")[1])
+                    for line in file:
+                        content = line.split("#")[0].strip()
+                        if content != "" and "=" in content:
+                            key, value = content.split("=")[:2]
+                            changeConfigValue(key.strip(), value.strip())
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
