@@ -1,31 +1,83 @@
-"""Spiral movement, detection and extraction over given by ABCD points area"""
+"""Spiral movement, detection and extraction over given by ABCD points area
+
+BE SURE TO IMPORT ANY NATUITION MODULES AFTER AND ONLY AFTER(!) CONFIG.PY LOADING!
+This is required to prevent modules loading corrupted config before main resolves this problem.
+"""
+
 import threading
 import os
 import sys
 from turtle import speed
-import adapters
-import navigation
-from config import config
 import time
-import utility
 import traceback
-import detection
 from matplotlib.patches import Polygon
 import math
 import cv2 as cv
 import numpy as np
-import stubs
-import extraction
-import datacollection
 import pickle
-from notification import NotificationClient
-from notification import SyntheseRobot
 import posix_ipc
 import json
-from extraction import ExtractionManagerV3
 import glob
 import importlib
 import subprocess
+import datetime
+import shutil
+import pytz
+
+# load config, if failed - copy and load config backups until success or no more backups
+try:
+    from config import config
+except KeyboardInterrupt:
+    raise KeyboardInterrupt
+except:
+    print("Failed to load current config.py!")
+
+    # load config backups
+    config_backups = [path for path in glob.glob("configBackup/*.py") if "config" in path]
+    for i in range(len(config_backups)):
+        ds = config_backups[i].split("_")[1:]  # date structure
+        config_backups[i] = [
+            config_backups[i],
+            datetime.datetime(
+                day=int(ds[0]),
+                month=int(ds[1]),
+                year=int(ds[2]),
+                hour=int(ds[3]),
+                minute=int(ds[4]),
+                second=int(ds[5][:ds[5].find(".")])
+            ).timestamp()
+        ]
+    config_backups.sort(key=lambda item: item[1], reverse=True)  # make last backups to be placed and used first
+
+    # try to find and set as current last valid config
+    for config_backup in config_backups:
+        try:
+            os.rename(
+                "config/config.py",
+                f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
+                f"_config.py")
+            shutil.copy(config_backup[0], "config/config.py")
+            from config import config
+            print("Successfully loaded config:", config_backup[0])
+            break
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            pass
+    else:
+        print("Couldn't find proper 'config.py' file in 'config' and 'configBackup' directories!")
+        exit()
+
+import adapters
+import navigation
+import utility
+import detection
+import stubs
+import extraction
+import datacollection
+from notification import NotificationClient
+from notification import SyntheseRobot
+from extraction import ExtractionManagerV3
 
 """
 import SensorProcessing
