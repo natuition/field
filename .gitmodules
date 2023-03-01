@@ -1,0 +1,3 @@
+[submodule "micro-services"]
+	path = micro-services
+	url = git@github.com:natuition/micro-services.git
