@@ -350,6 +350,7 @@ ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ = False
 
 CAMERA_POSITIONS = [(X_MAX/2, 0)] # smoothie global coordinates to take photos from for forming plants list. Format is (x, y)
 #CAMERA_POSITIONS = [(X_MAX/3, 0), (2*X_MAX/3, 0)] # smoothie global coordinates to take photos from for forming plants list. Format is (x, y)
+# pdz distances are amounts of px from scene center
 PDZ_DISTANCES = [{"top": 1000, "bot": 1000, "left": 1000, "right": 1000}] # precice detection zone sizes. At each camera position scan only plants inside this zone is added to extraction list
 # values are px count from scene center to. Format is {"top": int, "bot": int, "left": int, "right": int}
 
