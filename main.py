@@ -260,6 +260,7 @@ def move_to_point_and_extract(coords_from_to: list,
     current_working_mode = working_mode_slow
     last_working_mode = 0
     close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
+    bumper_is_pressed = None
 
     # message queue sending temporary performance tracker
     if config.QUEUE_TRACK_PERFORMANCE:
@@ -999,10 +1000,26 @@ def move_to_point_and_extract(coords_from_to: list,
         logger_full.write(msg + "\n")
 
         # TODO vesc sensors are being asked 4 times per second
-        # send voltage
+        # send voltage and track bumper state
         vesc_data = vesc_engine.get_sensors_data(report_field_names, vesc_engine.PROPULSION_KEY)
-        if config.CONTINUOUS_INFORMATION_SENDING and vesc_data is not None and "input_voltage" in vesc_data:
-            notification.set_input_voltage(vesc_data["input_voltage"])
+        if vesc_data is not None and "input_voltage" in vesc_data:
+            if bumper_is_pressed is None:
+                bumper_is_pressed = not vesc_data["input_voltage"] > config.VESC_BUMBER_UNTRIGGER_VOLTAGE
+                if bumper_is_pressed:
+                    msg = f"Bumper is pressed initially before starting moving to point. " \
+                          f"({vesc_data['input_voltage']}V)"
+                    logger_full.write(msg + "\n")
+            elif not bumper_is_pressed and vesc_data["input_voltage"] < config.VESC_BUMBER_TRIGGER_VOLTAGE:
+                bumper_is_pressed = True
+                msg = f"Bumper was pressed. ({vesc_data['input_voltage']}V)"
+                logger_full.write(msg + "\n")
+            elif bumper_is_pressed and vesc_data["input_voltage"] > config.VESC_BUMBER_UNTRIGGER_VOLTAGE:
+                bumper_is_pressed = False
+                msg = f"Bumper was unpressed. ({vesc_data['input_voltage']}V)"
+                logger_full.write(msg + "\n")
+
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                notification.set_input_voltage(vesc_data["input_voltage"])
 
         prev_pos = cur_pos
 

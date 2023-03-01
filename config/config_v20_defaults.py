@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.2"
+CONFIG_VERSION = "0.20.3"
 
 
 # ======================================================================================================================
@@ -197,6 +197,10 @@ VESC_STOPPER_CHECK_FREQ = 0.001
 INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
 FREQUENCY_INCREMENTAL_RPM = 0.025  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
 STEP_INCREMENTAL_RPM = 500 # RPM step max by tick defined by RPM_FREQUENCY
+# int; bumper is considered pressed if voltage is getting lesser (not equal) than this value
+VESC_BUMBER_TRIGGER_VOLTAGE = 1
+# int; bumper is considered unpressed if voltage is getting bigger (not equal) than this value
+VESC_BUMBER_UNTRIGGER_VOLTAGE = 1
 
 # engine 1 (master vesc)
 # enables propulsion vesc initialization and usage
@@ -207,7 +211,7 @@ VESC_PROPULSION_CALIBRATE_AT_INIT = False # Not used in current version of robot
 VESC_PROPULSION_CALIBRATION_RPM = 0 # Not used in current version of robot
 VESC_PROPULSION_CALIBRATION_MAX_TIME = 2  # Not used in current version of robot
 VESC_PROPULSION_AUTODETECT_CAN_ID = False # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
-VESC_PROPULSION_CAN_ID = None  # parent vesc has can_id=None 
+VESC_PROPULSION_CAN_ID = None  # parent vesc has can_id=None
 
 # engine 2
 # enables extraction vesc initialization and usage
