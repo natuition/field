@@ -306,20 +306,56 @@ class FieldCreator:
             -config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
             self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_BACKWARD, self.vesc_emergency.PROPULSION_KEY)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: starting vesc movement of " \
+                  f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: stopped vesc movement of " \
+                  f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
 
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: starting turning smoothie wheels to A={config.A_MIN}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
         self.smoothie.wait_for_all_actions_done()
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: stopped turning smoothie wheels to A={config.A_MIN}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
 
         self.vesc_emergency.set_target_rpm(
             config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
             self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: starting vesc movement of " \
+                  f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: stopped vesc movement of " \
+                  f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
 
+        if config.UI_VERBOSE_LOGGING:
+            msg = "Field creation: starting turning smoothie wheels to A=0"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=0)
         self.smoothie.wait_for_all_actions_done()
+        if config.UI_VERBOSE_LOGGING:
+            msg = "Field creation: stopped turning smoothie wheels to A=0"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
 
         self.vesc_emergency.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_emergency.PROPULSION_KEY)

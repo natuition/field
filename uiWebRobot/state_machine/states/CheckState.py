@@ -52,11 +52,33 @@ class CheckState(State.State):
         if event == Events.Events.LIST_VALIDATION:
             self.__voltage_thread_alive = False
             if self.cam:
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> Sending stop command to camera process..."
+                    self.logger.write_and_flush(msg)
                 os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
+                if config.UI_VERBOSE_LOGGING:
+                    msg = " DONE"
+                    self.logger.write_and_flush(msg + "\n")
+                    msg = f"[{self.__class__.__name__}] -> Waiting for camera process stop..."
+                    self.logger.write_and_flush(msg)
                 self.cam.wait()
+                if config.UI_VERBOSE_LOGGING:
+                    msg = " DONE"
+                    self.logger.write_and_flush(msg + "\n")
+                    msg = f"[{self.__class__.__name__}] -> Restarting camera nvargus-daemon service..."
+                    self.logger.write_and_flush(msg)
                 os.system("sudo systemctl restart nvargus-daemon")
+                if config.UI_VERBOSE_LOGGING:
+                    msg = " DONE"
+                    self.logger.write_and_flush(msg + "\n")
             if config.NTRIP:
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> Restarting ntripClient.service..."
+                    self.logger.write_and_flush(msg)
                 os.system("sudo systemctl restart ntripClient.service")
+                if config.UI_VERBOSE_LOGGING:
+                    msg = " DONE"
+                    self.logger.write_and_flush(msg + "\n")
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
         else:
             self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
@@ -84,7 +106,7 @@ class CheckState(State.State):
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                self.logger.write_and_flush(e + "\n")
+                self.logger.write_and_flush(str(e) + "\n")
                 return ErrorState.ErrorState(self.socketio, self.logger)
         elif data["type"] == 'getInputVoltage':
             sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])

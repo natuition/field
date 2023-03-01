@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.3"
+CONFIG_VERSION = "0.20.4"
 
 
 # ======================================================================================================================
@@ -394,6 +394,7 @@ VERBOSE_EXTRACT = True
 FILES_TO_KEEP_COUNT = 600
 LOG_SPEED_MODES = True
 PRINT_SPEED_MODES = True
+UI_VERBOSE_LOGGING = False
 
 LEARN_GO_STRAIGHT = True
 LEARN_GO_STRAIGHT_UI = False
