@@ -1,3 +1,0 @@
-[submodule "micro-services"]
-	path = micro-services/data_gathering/app/api/database/robotSynthesis.py 
-	url = https://github.com/natuition/micro-services
