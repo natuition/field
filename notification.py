@@ -2,18 +2,90 @@ import threading
 from time import sleep
 import navigation
 import requests
-from contextlib import closing
-from websocket import create_connection
-import datetime
-from pytz import timezone
+import websocket
+from datetime import datetime, timezone
 import json
 from config import config
+import socket
+import time
+import _thread as thread
 
 
-class SyntheseRobot:
-    OP = "Robot_OP"
-    HS = "Robot_HS"
-    ANTI_THEFT = "Robot_ANTI_THEFT"
+class RobotSynthesis:
+    OP = "OP"
+    WORKING = "WORKING"
+    HS = "HS"
+    ANTI_THEFT = "ANTI_THEFT"
+
+
+"""
+class RobotSynthesisServer:
+    def __init__(self, host, port, fleet_ip, fleet_port, fleet_tick_delay=60):
+        self.__fleet_tick_delay = fleet_tick_delay
+        self.__fleet_ip = fleet_ip
+        self.__fleet_port = fleet_port
+        # clients connection listener
+        self.__conn_listener = socket.socket()
+        self.__conn_listener.bind((host, port))
+        self.__conn_listener.listen(5)
+        self.__keep_conn_listener_alive = True
+        self.__conn_accept_th = threading.Thread(
+            target=self.__conn_listener_tf,
+            name="__conn_accept_th",
+            daemon=True)
+
+        self.__keep_robot_stynthesis_alive = True
+        self.__robot_stynthesis_th = threading.Thread(
+            target=self.__robot_stynthesis_tf,
+            name="__robot_stynthesis_th",
+            daemon=True)
+
+        self.__conn_accept_th.start()
+        self.__robot_stynthesis_th.start()
+
+        self.__robot_stynthesis = RobotSynthesis.OP
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.__keep_conn_listener_alive = False
+        self.__keep_robot_stynthesis_alive = False
+        self.__conn_listener.close()
+        self.__conn_accept_th.join()
+        self.__robot_stynthesis_th.join()
+
+    def __on_new_client(self, clientsocket, addr):
+        msg = clientsocket.recv(1024)
+        # TODO change self.__robot_stynthesis
+        clientsocket.close()
+
+    def __conn_listener_tf(self):
+        while self.__keep_conn_listener_alive:
+            try:
+                client, address = self.__conn_listener.accept()
+                thread.start_new_thread(
+                    self.__on_new_client, (client, address))
+            except KeyboardInterrupt:
+                print(
+                    "Connections accepting thread got a KeyboardInterrupt (parent process should get it instead)")
+            except Exception as ex:
+                if not self.__keep_conn_listener_alive:
+                    print(ex)
+
+    def __robot_stynthesis_tf(self):
+        while self.__keep_robot_stynthesis_alive:
+            send_robot_stynthesis = {
+                "robot_synthesis": self.__robot_stynthesis,
+                "robot_serial_number": self.__robot_sn
+            }
+            requests.post(
+                f"http://{self.__fleet_ip}:{self.__fleet_port}/api/v1/data_gathering/session", json=send_robot_stynthesis)
+            time.sleep(self.__fleet_tick_delay)
+"""
 
 
 class NotificationClient:
@@ -21,8 +93,8 @@ class NotificationClient:
     def __init__(self, time_start):
         self.__port = 8080
         self.__ip = "172.16.3.5"
-        self.__time_start = datetime.datetime.strptime(
-            time_start, "%d-%m-%Y %H-%M-%S %f").replace(tzinfo=timezone('Europe/Berlin'))
+        self.__time_start = datetime.strptime(
+            time_start, "%d-%m-%Y %H-%M-%S %f").replace(tzinfo=timezone.utc)
         self.__keep_thread_alive = True
         self.__input_voltage = None
 
@@ -33,6 +105,9 @@ class NotificationClient:
         self.__field_id = None
         self.__field = None
         self.__field_name = None
+
+        self.__session_id = None
+        self.__ws = None
 
         self.__path_point_number = 0
 
@@ -45,12 +120,16 @@ class NotificationClient:
         self.__last_extracted_weeds_send = dict()
         self.__sync_locker = threading.Lock()
 
+        print("1")
+
         self.__continuous_information_sending = config.CONTINUOUS_INFORMATION_SENDING
         self.__init_robot_on_datagathering()
 
-        self.__report_th = threading.Thread(
-            target=self.__report_th_tf, daemon=True)
-        self.__report_th.start()
+        print("2")
+
+        self.__start_report_th = threading.Thread(
+            target=self.__start_report_th_tf, daemon=True)
+        self.__start_report_th.start()
 
     def __enter__(self):
         return self
@@ -61,10 +140,12 @@ class NotificationClient:
     def stop(self):
         print("[Notification] Stopping service...")
         self.__keep_thread_alive = False
-        self.__report_th.join()
+        self.__start_report_th.join()
+        if self.__ws:
+            self.__ws.close()
 
-    def setStatus(self, status: SyntheseRobot):
-        # Todo
+    def setStatus(self, status: RobotSynthesis):
+        # TODO
         pass
 
     def isConnected(self):
@@ -111,7 +192,52 @@ class NotificationClient:
     def is_continuous_information_sending(self):
         return self.__continuous_information_sending
 
-    def __report_th_tf(self):
+    def __websocket_start(self):
+        self.__ws = websocket.WebSocketApp(f"ws://{self.__ip}:{self.__port}/api/v1/data_gathering/ws/robot/{self.__robot_sn}/{self.__session_id}",
+                                           on_open=self.__websocket_running, on_error=self.__websocket_on_error, on_close=self.__websocket_on_close)
+        self.__ws.run_forever(ping_interval=5, ping_timeout=3)
+
+    def __websocket_on_close(self, close_status_code, close_msg):
+        print("[Notification] Disconnected")
+
+    def __websocket_on_error(self, conn, error):
+        conn.close()
+        if self.__keep_thread_alive:
+            print("[Notification] Reconnecting...")
+            self.__websocket_start()
+
+    def __websocket_running(self, conn):
+        print("[Notification] Connected")
+        while self.__keep_thread_alive:
+            frame = dict()
+            if self.__coordinate_with_extracted_weed:
+                coordinate_with_extracted_weed = {
+                    "coordinate_with_extracted_weed": list(
+                        self.__coordinate_with_extracted_weed)
+                }
+                frame.update(coordinate_with_extracted_weed)
+                with self.__sync_locker:
+                    self.__coordinate_with_extracted_weed.clear()
+                if frame:
+                    conn.send(json.dumps(frame))
+                if self.__input_voltage:
+                    send_vesc_statistic = {
+                        "session_id": self.__session_id,
+                        "voltage": self.__input_voltage,
+                        "timestamp": datetime.now(tz=timezone.utc).isoformat()
+                    }
+                    response = requests.post(
+                        f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/vesc_statistic", json=send_vesc_statistic)
+
+                    if response != 201:
+                        Exception(
+                            f"Error when sending input voltage: {response.status_code}.")
+
+                    self.__input_voltage = None
+            sleep(self.__alive_sending_timeout)
+
+    def __start_report_th_tf(self):
+        print("A")
         while not self.__init_field or not self.__init_treated_plant:
             if not self.__init_treated_plant and self.__treated_plant is not None:
                 self.__send_treated_weed()
@@ -119,6 +245,7 @@ class NotificationClient:
             if not self.__init_field and self.__field is not None and self.__field_name is not None:
                 self.__send_field()
             sleep(0.5)
+        print("B")
         # init session
         send_session = {
             "start_time": self.__time_start.isoformat(),
@@ -129,51 +256,21 @@ class NotificationClient:
         response = requests.post(
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/session", json=send_session)
 
+        print("C")
+
         if response != 201:
             Exception(
                 f"Error when sending session: {response.status_code}.")
 
-        session_id = response.json()["id"]
+        self.__session_id = response.json()["id"]
 
-        while self.__keep_thread_alive:
-            try:
-                with closing(create_connection(f"ws://{self.__ip}:{self.__port}/api/v1/data_gathering/ws/{self.__robot_sn}/{session_id}")) as conn:
-                    print("[Notification] Connected")
-                    while self.__keep_thread_alive:
-                        frame = dict()
-                        if self.__coordinate_with_extracted_weed:
-                            coordinate_with_extracted_weed = {
-                                "coordinate_with_extracted_weed": list(
-                                    self.__coordinate_with_extracted_weed)
-                            }
-                            frame.update(coordinate_with_extracted_weed)
-                            with self.__sync_locker:
-                                self.__coordinate_with_extracted_weed.clear()
-                            if frame:
-                                conn.send(json.dumps(frame))
-                            if self.__input_voltage:
-                                send_vesc_statistic = {
-                                    "session_id": session_id,
-                                    "voltage": self.__input_voltage,
-                                    "timestamp": datetime.datetime.now(timezone('Europe/Berlin')).isoformat()
-                                }
-                                response = requests.post(
-                                    f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/vesc_statistic", json=send_vesc_statistic)
-
-                                if response != 201:
-                                    Exception(
-                                        f"Error when sending input voltage: {response.status_code}.")
-
-                                self.__input_voltage = None
-                        sleep(self.__alive_sending_timeout)
-            except BrokenPipeError:
-                print("[Notification] Reconnecting...")
-            print("[Notification] Disconnected")
+        print("[Notification] Connecting...")
+        self.__websocket_start()
 
     def __init_robot_on_datagathering(self):
         response = requests.post(
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/robot", json={"serial_number": self.__robot_sn})
-        if response.status_code != 201 and response.status_code != 400:
+        if response.status_code != 201 and response.status_code != 200:
             raise Exception("Can't save robot in database")
 
     def __send_treated_weed(self):
