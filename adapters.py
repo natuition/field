@@ -39,13 +39,18 @@ class SmoothieAdapter:
         self.__b_cur = multiprocessing.Value("d", 0)
         self.__c_cur = multiprocessing.Value("d", 0)
 
-        res = self.switch_to_relative()
-        if res == self.RESPONSE_IGNORED or "ignored" in res:
+        res = None
+        for i in range(3):
             res = self.switch_to_relative()
-        if res != self.RESPONSE_OK:
-            # TODO: what if so?
-            print("Switching smoothie to relative was failed! Smoothie's response:\n", res)
-            raise Exception("Switching smoothie to relative was failed!")
+            if res != self.RESPONSE_OK:
+                msg = f"Attempt {i + 1} of switching smoothie to relative is failed, smoothie response:\n{res}"
+                print(msg)
+            else:
+                break
+        else:
+            msg = f"All attempts of switching smoothie to relative were failed! Last smoothie's response:\n{res}"
+            print(msg)
+            raise Exception(msg)
 
         if config.SEEDER_QUANTITY > 0:
             self.__smc.write("M280 S13")
