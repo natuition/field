@@ -36,6 +36,8 @@ except:
     config_backups = [path for path in glob.glob("configBackup/*.py") if "config" in path]
     for i in range(len(config_backups)):
         ds = config_backups[i].split("_")[1:]  # date structure
+        ds.extend(ds.pop(-1).split(":"))
+        ds[-1] = ds[-1][:ds[-1].find(".")]
         config_backups[i] = [
             config_backups[i],
             datetime.datetime(
@@ -44,7 +46,7 @@ except:
                 year=int(ds[2]),
                 hour=int(ds[3]),
                 minute=int(ds[4]),
-                second=int(ds[5][:ds[5].find(".")])
+                second=int(ds[5])
             ).timestamp()
         ]
     config_backups.sort(key=lambda item: item[1], reverse=True)  # make last backups to be placed and used first
