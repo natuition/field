@@ -24,8 +24,20 @@ import datetime
 import shutil
 import pytz
 
+
 # load config, if failed - copy and load config backups until success or no more backups
+def is_config_empty(config_full_path: str):
+    with open(config_full_path, "r") as config_file:
+        for line in config_file:
+            if line not in ["", "\n"]:
+                return False
+    return True
+
+
 try:
+    if is_config_empty("config/config.py"):
+        raise Exception("config file is empty")
+
     from config import config
 except KeyboardInterrupt:
     raise KeyboardInterrupt
@@ -59,6 +71,10 @@ except:
                 f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
                 f"_config.py")
             shutil.copy(config_backup[0], "config/config.py")
+
+            if is_config_empty("config/config.py"):
+                raise Exception("config file is empty")
+
             from config import config
             print("Successfully loaded config:", config_backup[0])
             break
