@@ -18,7 +18,6 @@ class RobotSynthesis:
     ANTI_THEFT = "ANTI_THEFT"
 
 
-"""
 class RobotSynthesisServer:
     def __init__(self, host, port, fleet_ip, fleet_port, fleet_tick_delay=60):
         self.__fleet_tick_delay = fleet_tick_delay
@@ -44,6 +43,7 @@ class RobotSynthesisServer:
         self.__robot_stynthesis_th.start()
 
         self.__robot_stynthesis = RobotSynthesis.OP
+        self.__robot_sn = config.ROBOT_SN
 
     def __enter__(self):
         return self
@@ -60,6 +60,7 @@ class RobotSynthesisServer:
 
     def __on_new_client(self, clientsocket, addr):
         msg = clientsocket.recv(1024)
+        print(f"Receive :  '{msg.decode()}'.")
         # TODO change self.__robot_stynthesis
         clientsocket.close()
 
@@ -82,10 +83,97 @@ class RobotSynthesisServer:
                 "robot_synthesis": self.__robot_stynthesis,
                 "robot_serial_number": self.__robot_sn
             }
-            requests.post(
-                f"http://{self.__fleet_ip}:{self.__fleet_port}/api/v1/data_gathering/session", json=send_robot_stynthesis)
+            """requests.post(
+                f"http://{self.__fleet_ip}:{self.__fleet_port}/api/v1/data_gathering/session", json=send_robot_stynthesis)"""
+            print(
+                f"[RobotSynthesisServer] http://{self.__fleet_ip}:{self.__fleet_port}/api/v1/data_gathering/session : " + send_robot_stynthesis)
             time.sleep(self.__fleet_tick_delay)
-"""
+
+
+class RobotSynthesisClient:
+    def __init__(self, host, port):
+        self.__host = host
+        self.__port = port
+        self.__robot_synthesis_server_conn = None
+
+        self.__keep_robot_synthesis_server_writing_alive = True
+        self.__robot_synthesis_server_reader_th = threading.Thread(
+            target=self.__robot_synthesis_server_reading_tf,
+            name="__robot_synthesis_server_reader_th",
+            daemon=True)
+
+        self.__robot_synthesis_server_reader_th.start()
+
+        self.__last_robot_synthesis = RobotSynthesis.OP
+        self.__last_robot_synthesis_locker = threading.Lock()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.__keep_robot_synthesis_server_writing_alive = False
+        self.__robot_synthesis_server_conn.close()
+
+    def __reconnect(self):
+        if self.__robot_synthesis_server_conn is not None:
+            try:
+                self.__robot_synthesis_server_conn.shutdown(socket.SHUT_RDWR)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            finally:
+                pass
+
+            try:
+                self.__robot_synthesis_server_conn.close()
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            finally:
+                pass
+
+        while self.__keep_robot_synthesis_server_writing_alive:
+            try:
+                self.__robot_synthesis_server_conn = socket.socket()
+                error_indicator = self.__robot_synthesis_server_conn.connect_ex(
+                    (self.__host, self.__port))
+                if error_indicator == 0:
+                    break
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            finally:
+                pass
+
+    def set_last_robot_synthesis(self, robot_synthesis: RobotSynthesis):
+        with self.__last_robot_synthesis_locker:
+            self.__last_robot_synthesis = robot_synthesis
+
+    def __robot_synthesis_server_reading_tf(self):
+        need_to_reconnect = False
+
+        while self.__keep_robot_synthesis_server_writing_alive:
+            if need_to_reconnect:
+                self.__reconnect()
+                need_to_reconnect = False
+
+            try:
+                if self.__robot_synthesis_server_conn is None:
+                    need_to_reconnect = True
+                    continue
+
+                with self.__last_robot_synthesis_locker:
+                    self.__robot_synthesis_server_conn.sendall(
+                        self.__last_robot_synthesis.encode())
+            except KeyboardInterrupt:
+                print(
+                    "GPS server reading thread got a KeyboardInterrupt (parent process should get it instead)")
+                raise KeyboardInterrupt
+            except (socket.error, socket.herror, socket.gaierror):
+                need_to_reconnect = True
+                continue
+            except (ValueError, IndexError):
+                continue
 
 
 class NotificationClient:
@@ -120,12 +208,8 @@ class NotificationClient:
         self.__last_extracted_weeds_send = dict()
         self.__sync_locker = threading.Lock()
 
-        print("1")
-
         self.__continuous_information_sending = config.CONTINUOUS_INFORMATION_SENDING
         self.__init_robot_on_datagathering()
-
-        print("2")
 
         self.__start_report_th = threading.Thread(
             target=self.__start_report_th_tf, daemon=True)
@@ -237,7 +321,6 @@ class NotificationClient:
             sleep(self.__alive_sending_timeout)
 
     def __start_report_th_tf(self):
-        print("A")
         while not self.__init_field or not self.__init_treated_plant:
             if not self.__init_treated_plant and self.__treated_plant is not None:
                 self.__send_treated_weed()
@@ -245,7 +328,6 @@ class NotificationClient:
             if not self.__init_field and self.__field is not None and self.__field_name is not None:
                 self.__send_field()
             sleep(0.5)
-        print("B")
         # init session
         send_session = {
             "start_time": self.__time_start.isoformat(),
@@ -255,8 +337,6 @@ class NotificationClient:
         }
         response = requests.post(
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/session", json=send_session)
-
-        print("C")
 
         if response != 201:
             Exception(
