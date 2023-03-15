@@ -1,7 +1,6 @@
 import sys
 sys.path.append('../')
 import time
-
 from flask_socketio import SocketIO
 import threading
 
@@ -27,6 +26,10 @@ class WaitWorkingState(State.State):
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
                  vesc_engine: adapters.VescAdapterV4 = None):
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Self initialization"
+            self.logger.write_and_flush(msg + "\n")
+
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
@@ -58,6 +61,9 @@ class WaitWorkingState(State.State):
         self.lastValueX = 0
         self.lastValueY = 0
 
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Setting FrontEndObjects..."
+            self.logger.write_and_flush(msg)
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.ENABLE,
                                                 startButton=ButtonState.ENABLE,
                                                 continueButton=ButtonState.ENABLE,
@@ -67,9 +73,11 @@ class WaitWorkingState(State.State):
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
                                                 audit=AuditButtonState.EXTRACTION_ENABLE)
-
         if createField:
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
+        if config.UI_VERBOSE_LOGGING:
+            msg = " DONE"
+            self.logger.write_and_flush(msg + "\n")
 
         self.learn_go_straight_angle = 0
 
@@ -80,14 +88,28 @@ class WaitWorkingState(State.State):
                     self.logger.write_and_flush(f"LEARN_GO_STRAIGHT:{self.learn_go_straight_angle}\n")
                     self.smoothie.custom_move_to(A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Refreshing checklist..."
+            self.logger.write_and_flush(msg)
         self.socketio.emit('checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
+        if config.UI_VERBOSE_LOGGING:
+            msg = " DONE"
+            self.logger.write_and_flush(msg + "\n")
 
         self.field = None
 
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Starting 'send_last_pos_thread_tf' thread..."
+            self.logger.write_and_flush(msg)
         self.send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio), daemon=True)
         self._send_last_pos_thread.start()
+        if config.UI_VERBOSE_LOGGING:
+            msg = " DONE"
+            self.logger.write_and_flush(msg + "\n")
 
+            msg = f"[{self.__class__.__name__}] -> Starting 'voltage_thread_tf' thread..."
+            self.logger.write_and_flush(msg)
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
         self.__voltage_thread = threading.Thread(target=voltage_thread_tf,
@@ -97,14 +119,26 @@ class WaitWorkingState(State.State):
                                                        self.input_voltage),
                                                  daemon=True)
         self.__voltage_thread.start()
+        if config.UI_VERBOSE_LOGGING:
+            msg = " DONE"
+            self.logger.write_and_flush(msg + "\n")
 
+            msg = f"[{self.__class__.__name__}] -> Starting '__check_joystick_info_tf' thread..."
+            self.logger.write_and_flush(msg)
         self.__last_joystick_info = time.time()
         self.__check_joystick_info_alive = True
         self.__joystick_info_thread = threading.Thread(target=self.__check_joystick_info_tf,
                                                  daemon=True)
         self.__joystick_info_thread.start()
+        if config.UI_VERBOSE_LOGGING:
+            msg = " DONE"
+            self.logger.write_and_flush(msg + "\n")
 
         self.can_go_setting = True
+
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Self initialization DONE"
+            self.logger.write_and_flush(msg + "\n")
 
     def __check_joystick_info_tf(self):
         while self.__check_joystick_info_alive:
