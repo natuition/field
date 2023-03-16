@@ -3,7 +3,7 @@ from config import config
 import time
 
 def main():
-    with RobotSynthesisServer(5) as robot_synthesis_server:
+    with RobotSynthesisServer() as robot_synthesis_server:
         while True:
             time.sleep(1)
 
