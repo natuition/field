@@ -62,6 +62,7 @@ class RobotSynthesisServer:
         self.__conn_listener.close()
 
     def __on_new_client(self, clientsocket, addr):
+        print("[RobotSynthesisServer] New client, ready to receive info.", flush=True)
         while self.__keep_conn_listener_alive: 
             try:
                 msg = clientsocket.recv(1024)
@@ -70,10 +71,11 @@ class RobotSynthesisServer:
                 self.__robot_stynthesis = RobotSynthesis[msg.decode()]
             except KeyboardInterrupt:
                 print(
-                    "KeyboardInterrupt (parent process should get it instead)")
+                    "KeyboardInterrupt (parent process should get it instead)", flush=True)
         clientsocket.close()
 
     def __conn_accept_tf(self):
+        print("[RobotSynthesisServer] Ready to receive clients.", flush=True)
         while self.__keep_conn_listener_alive:
             try:
                 client, address = self.__conn_listener.accept()
@@ -81,7 +83,7 @@ class RobotSynthesisServer:
                     self.__on_new_client, (client, address))
             except KeyboardInterrupt:
                 print(
-                    "KeyboardInterrupt (parent process should get it instead)")
+                    "KeyboardInterrupt (parent process should get it instead)", flush=True)
             except Exception as ex:
                 if not self.__keep_conn_listener_alive:
                     print(ex)
@@ -95,9 +97,11 @@ class RobotSynthesisServer:
                 }
                 response = requests.post(
                     f"http://{self.__fleet_ip}:{self.__fleet_port}/api/v1/data_gathering/robot_status", json=[send_robot_stynthesis])
-                time.sleep(self.__fleet_tick_delay)
             except KeyboardInterrupt:
-                print("Connections accepting thread got a KeyboardInterrupt (parent process should get it instead)")
+                print("Connections accepting thread got a KeyboardInterrupt (parent process should get it instead)", flush=True)
+            except Exception: 
+                print("[RobotSynthesisServer] Can't send robot status to datagathering service.", flush=True)
+            time.sleep(self.__fleet_tick_delay)
 
 class RobotSynthesisClient:
     def __init__(self):
@@ -181,7 +185,7 @@ class RobotSynthesisClient:
                     time.sleep(1)
             except KeyboardInterrupt:
                 print(
-                    "KeyboardInterrupt (parent process should get it instead)")
+                    "KeyboardInterrupt (parent process should get it instead)", flush=True)
                 raise KeyboardInterrupt
             except (socket.error, socket.herror, socket.gaierror):
                 need_to_reconnect = True
@@ -238,7 +242,7 @@ class NotificationClient:
         self.stop()
 
     def stop(self):
-        print("[Notification] Stopping service...")
+        print("[Notification] Stopping service...", flush=True)
         self.__keep_thread_alive = False
         if self.__ws:
             self.__ws.close()
@@ -297,17 +301,17 @@ class NotificationClient:
         self.__ws.run_forever(ping_interval=5, ping_timeout=3)
 
     def __websocket_on_close(self, close_status_code, close_msg):
-        print("[Notification] Disconnected")
+        print("[Notification] Disconnected", flush=True)
 
     def __websocket_on_error(self, conn, error):
         conn.close()
         print(f"[Notification] Error : {error}.")
         if self.__keep_thread_alive:
-            print("[Notification] Reconnecting...")
+            print("[Notification] Reconnecting...", flush=True)
             self.__websocket_start()
 
     def __websocket_running(self, conn):
-        print("[Notification] Connected")
+        print("[Notification] Connected", flush=True)
         while self.__keep_thread_alive:
             frame = dict()
             if self.__coordinate_with_extracted_weed:
@@ -331,7 +335,7 @@ class NotificationClient:
 
                     if response != 201:
                         Exception(
-                            f"Error when sending input voltage: {response.status_code}.")
+                            f"Error when sending input voltage: {response.status_code}.", flush=True)
 
                     self.__input_voltage = None
             sleep(self.__alive_sending_timeout)
@@ -345,7 +349,7 @@ class NotificationClient:
                 self.__send_field()
             sleep(0.5)
         if self.__keep_thread_alive:
-            print("[Notification] Init session")
+            print("[Notification] Init session", flush=True)
             # init session
             send_session = {
                 "start_time": self.__time_start.isoformat(),
@@ -359,19 +363,19 @@ class NotificationClient:
 
             if response != 201:
                 Exception(
-                    f"Error when sending session: {response.status_code}.")
+                    f"Error when sending session: {response.status_code}.", flush=True)
 
             self.__session_id = response.json()["id"]
 
             if self.__keep_thread_alive:
-                print("[Notification] Connecting...")
+                print("[Notification] Connecting...", flush=True)
                 self.__websocket_start()
 
     def __init_robot_on_datagathering(self):
         response = requests.post(
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/robot", json={"serial_number": self.__robot_sn})
         if response.status_code != 201 and response.status_code != 200:
-            raise Exception("Can't save robot in database")
+            raise Exception("Can't save robot in database", flush=True)
 
     def __send_treated_weed(self):
         for weed_type_name in self.__treated_plant:
@@ -381,7 +385,7 @@ class NotificationClient:
                 f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weed_type", json=weed_type)
             if response != 201 and response != 200:
                 Exception(
-                    f"Error when sending treated weed: {response.status_code}.")
+                    f"Error when sending treated weed: {response.status_code}.", flush=True)
 
     def __send_field(self):
         # field : [A, B, C, D] ou A : [lat, long]
@@ -393,7 +397,7 @@ class NotificationClient:
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/field", json=field)
 
         if response != 201 and response != 200:
-            Exception(f"Error when sending field: {response.status_code}.")
+            Exception(f"Error when sending field: {response.status_code}.", flush=True)
 
         self.__field_id = response.json()["id"]
 
