@@ -416,6 +416,11 @@ QUEUE_WAIT_TIME_MAX = 0.03
 # False: disable performance tracking and writing to log
 QUEUE_TRACK_PERFORMANCE = False
 
+MAX_LENGHT_POINT_HISTORY = 100
+ROBOT_SYNTHESIS_HOST = "127.0.0.1"
+ROBOT_SYNTHESIS_PORT = 2006
+DATAGATHERING_HOST = "172.16.3.5"
+DATAGATHERING_PORT = 8080
 
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
@@ -435,7 +440,6 @@ QUEUE_NAME_UI_NOTIFICATION = "/queue_ui_notification"
 
 CONTINUOUS_INFORMATION_SENDING = True
 ALIVE_SENDING_TIMEOUT = 1
-MAX_LENGHT_POINT_HISTORY = 100
 
 TIMEOUT_JOYSTICK_USER_ACTION = 1
 
