@@ -61,6 +61,9 @@ class RobotSynthesisServer:
         self.__keep_robot_stynthesis_alive = False
         self.__conn_listener.close()
 
+    def wait(self):
+        self.__conn_accept_th.join()
+
     def __on_new_client(self, clientsocket, addr):
         print("[RobotSynthesisServer] New client, ready to receive info.", flush=True)
         while self.__keep_conn_listener_alive: 

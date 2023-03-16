@@ -4,8 +4,7 @@ import time
 
 def main():
     with RobotSynthesisServer() as robot_synthesis_server:
-        while True:
-            time.sleep(1)
+        robot_synthesis_server.wait()
 
 
 if "__main__" == __name__:
