@@ -4,16 +4,6 @@ BE SURE TO IMPORT ANY NATUITION MODULES AFTER AND ONLY AFTER(!) CONFIG.PY LOADIN
 This is required to prevent modules loading corrupted config before main resolves this problem.
 """
 
-from extraction import ExtractionManagerV3
-from notification import RobotSynthesis
-from notification import NotificationClient
-import datacollection
-import extraction
-import stubs
-import detection
-import utility
-import navigation
-import adapters
 import threading
 import os
 import sys
@@ -98,6 +88,16 @@ except:
         print("Couldn't find proper 'config.py' file in 'config' and 'configBackup' directories!")
         exit()
 
+import adapters
+import navigation
+import utility
+import detection
+import stubs
+import extraction
+import datacollection
+from extraction import ExtractionManagerV3
+from notification import RobotSynthesis
+from notification import NotificationClient
 
 """
 import SensorProcessing
@@ -2009,6 +2009,9 @@ def main():
             config.PERIPHERY_CONFIDENCE_THRESHOLD,
             config.PERIPHERY_NMS_THRESHOLD,
             config.PERIPHERY_INPUT_SIZE)
+        if config.CONTINUOUS_INFORMATION_SENDING and config.NN_MODELS_COUNT == 1:
+                notification.set_treated_plant(
+                    periphery_detector.get_classes_names())
     elif config.PERIPHERY_WRAPPER == 2:
         periphery_detector = detection.YoloOpenCVDetection(
             config.PERIPHERY_CLASSES_FILE,
@@ -2019,6 +2022,8 @@ def main():
             config.PERIPHERY_NMS_THRESHOLD,
             config.PERIPHERY_DNN_BACKEND,
             config.PERIPHERY_DNN_TARGET)
+        if config.CONTINUOUS_INFORMATION_SENDING and config.NN_MODELS_COUNT == 1:
+                notification.set_treated_plant(detection.classes)
     else:
         msg = "Wrong config.PERIPHERY_WRAPPER = " + \
             str(config.PERIPHERY_WRAPPER) + " code. Exiting."

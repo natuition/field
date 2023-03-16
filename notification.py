@@ -3,12 +3,13 @@ from time import sleep
 import navigation
 import requests
 import websocket
-from datetime import datetime, timezone
+from datetime import datetime
 import json
 from config import config
 import socket
 import time
 import _thread as thread
+import pytz
 
 
 class RobotSynthesis:
@@ -182,7 +183,7 @@ class NotificationClient:
         self.__port = 8080
         self.__ip = "172.16.3.5"
         self.__time_start = datetime.strptime(
-            time_start, "%d-%m-%Y %H-%M-%S %f").replace(tzinfo=timezone.utc)
+            time_start, "%d-%m-%Y %H-%M-%S %f").astimezone(pytz.utc)
         self.__keep_thread_alive = True
         self.__input_voltage = None
 
@@ -224,9 +225,9 @@ class NotificationClient:
     def stop(self):
         print("[Notification] Stopping service...")
         self.__keep_thread_alive = False
-        self.__start_report_th.join()
         if self.__ws:
             self.__ws.close()
+        self.__start_report_th.join()
 
     def setStatus(self, status: RobotSynthesis):
         # TODO
@@ -286,6 +287,7 @@ class NotificationClient:
 
     def __websocket_on_error(self, conn, error):
         conn.close()
+        print(f"[Notification] Error : {error}.")
         if self.__keep_thread_alive:
             print("[Notification] Reconnecting...")
             self.__websocket_start()
@@ -308,7 +310,7 @@ class NotificationClient:
                     send_vesc_statistic = {
                         "session_id": self.__session_id,
                         "voltage": self.__input_voltage,
-                        "timestamp": datetime.now(tz=timezone.utc).isoformat()
+                        "timestamp": datetime.now(pytz.timezone('Europe/Berlin')).isoformat()
                     }
                     response = requests.post(
                         f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/vesc_statistic", json=send_vesc_statistic)
@@ -321,31 +323,35 @@ class NotificationClient:
             sleep(self.__alive_sending_timeout)
 
     def __start_report_th_tf(self):
-        while not self.__init_field or not self.__init_treated_plant:
+        while (not self.__init_field or not self.__init_treated_plant) and self.__keep_thread_alive:
             if not self.__init_treated_plant and self.__treated_plant is not None:
                 self.__send_treated_weed()
                 self.__init_treated_plant = True
             if not self.__init_field and self.__field is not None and self.__field_name is not None:
                 self.__send_field()
             sleep(0.5)
-        # init session
-        send_session = {
-            "start_time": self.__time_start.isoformat(),
-            "end_time": self.__time_start.isoformat(),
-            "robot_serial_number": self.__robot_sn,
-            "field_id": self.__field_id
-        }
-        response = requests.post(
-            f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/session", json=send_session)
+        if self.__keep_thread_alive:
+            print("[Notification] Init session")
+            # init session
+            send_session = {
+                "start_time": self.__time_start.isoformat(),
+                "end_time": self.__time_start.isoformat(),
+                "robot_serial_number": self.__robot_sn,
+                "field_id": self.__field_id
+            }
 
-        if response != 201:
-            Exception(
-                f"Error when sending session: {response.status_code}.")
+            response = requests.post(
+                f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/session", json=send_session)
 
-        self.__session_id = response.json()["id"]
+            if response != 201:
+                Exception(
+                    f"Error when sending session: {response.status_code}.")
 
-        print("[Notification] Connecting...")
-        self.__websocket_start()
+            self.__session_id = response.json()["id"]
+
+            if self.__keep_thread_alive:
+                print("[Notification] Connecting...")
+                self.__websocket_start()
 
     def __init_robot_on_datagathering(self):
         response = requests.post(
