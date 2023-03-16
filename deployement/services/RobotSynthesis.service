@@ -1,0 +1,12 @@
+[Unit]
+Description=stream
+
+[Service]
+Type=simple
+User=violette
+WorkingDirectory=/home/violette/field/
+ExecStart=/usr/bin/sudo /usr/bin/python3.6 /home/violette/field/run_robot_synthesis_server.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
