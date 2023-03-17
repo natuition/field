@@ -1942,6 +1942,7 @@ def main():
             len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
 
     notification = NotificationClient(time_start)
+    notification.setStatus(RobotSynthesis.WORKING)
     data_collector = datacollection.DataCollector(
         log_cur_dir + config.STATISTICS_DB_FILE_NAME,
         notification,
@@ -2737,6 +2738,7 @@ def main():
             traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
+        notification.setStatus(RobotSynthesis.OP)
         notification.stop()
         if ui_msg_queue is not None:
             ui_msg_queue.close()
