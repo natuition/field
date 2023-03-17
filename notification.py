@@ -338,7 +338,7 @@ class NotificationClient:
 
                     if response != 201:
                         Exception(
-                            f"Error when sending input voltage: {response.status_code}.", flush=True)
+                            f"Error when sending input voltage: {response.status_code}.")
 
                     self.__input_voltage = None
             sleep(self.__alive_sending_timeout)
@@ -366,7 +366,7 @@ class NotificationClient:
 
             if response != 201:
                 Exception(
-                    f"Error when sending session: {response.status_code}.", flush=True)
+                    f"Error when sending session: {response.status_code}.")
 
             self.__session_id = response.json()["id"]
 
@@ -378,7 +378,7 @@ class NotificationClient:
         response = requests.post(
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/robot", json={"serial_number": self.__robot_sn})
         if response.status_code != 201 and response.status_code != 200:
-            raise Exception("Can't save robot in database", flush=True)
+            raise Exception("Can't save robot in database")
 
     def __send_treated_weed(self):
         for weed_type_name in self.__treated_plant:
@@ -388,7 +388,7 @@ class NotificationClient:
                 f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weed_type", json=weed_type)
             if response != 201 and response != 200:
                 Exception(
-                    f"Error when sending treated weed: {response.status_code}.", flush=True)
+                    f"Error when sending treated weed: {response.status_code}.")
 
     def __send_field(self):
         # field : [A, B, C, D] ou A : [lat, long]
@@ -400,7 +400,7 @@ class NotificationClient:
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/field", json=field)
 
         if response != 201 and response != 200:
-            Exception(f"Error when sending field: {response.status_code}.", flush=True)
+            Exception(f"Error when sending field: {response.status_code}.")
 
         self.__field_id = response.json()["id"]
 
