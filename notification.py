@@ -303,12 +303,11 @@ class NotificationClient:
                                            on_open=self.__websocket_running, on_error=self.__websocket_on_error, on_close=self.__websocket_on_close)
         self.__ws.run_forever(ping_interval=5, ping_timeout=3)
 
-    def __websocket_on_close(self, close_status_code, close_msg):
+    def __websocket_on_close(self, wsapp, close_status_code, close_msg):
         print("[Notification] Disconnected", flush=True)
 
     def __websocket_on_error(self, conn, error):
         conn.close()
-        print(f"[Notification] Error : {error}.")
         if self.__keep_thread_alive:
             print("[Notification] Reconnecting...", flush=True)
             self.__websocket_start()
