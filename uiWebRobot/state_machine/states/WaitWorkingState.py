@@ -26,14 +26,15 @@ class WaitWorkingState(State.State):
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
                  vesc_engine: adapters.VescAdapterV4 = None):
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Self initialization"
-            self.logger.write_and_flush(msg + "\n")
 
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
+
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Self initialization"
+            self.logger.write_and_flush(msg + "\n")
 
         try:
             if self.vesc_engine is None:
@@ -250,7 +251,6 @@ class WaitWorkingState(State.State):
             sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
 
         elif data["type"] == 'getField':
-
             coords, other_fields, current_field_name = updateFields(data["field_name"])
             fields_list = UIWebRobot.load_field_list("../fields")
             self.socketio.emit('newField', json.dumps(

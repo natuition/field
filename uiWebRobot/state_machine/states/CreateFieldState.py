@@ -269,8 +269,8 @@ class FieldCreator:
 
         other_fields = UIWebRobot.get_other_field()
 
-        link_path = os.path.realpath("../"+config.INPUT_GPS_FIELD_FILE)
-        field_name = (link_path.split("/")[-1]).split(".")[0]
+        link_path = os.path.realpath("../field.txt")
+        current_field_name = (link_path.split("/")[-1]).split(".")[0]
 
         self.socketio.emit('newField', json.dumps(
             {"field": self.formattingFieldPointsForSend(), "other_fields": other_fields,

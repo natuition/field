@@ -110,7 +110,7 @@ class UIWebRobot:
 
     @staticmethod
     def get_other_field():
-        link_path = os.path.realpath("../"+self.__config.INPUT_GPS_FIELD_FILE)
+        link_path = os.path.realpath("../field.txt")
         current_field = (link_path.split("/")[-1]).split(".")[0]
         field_list = UIWebRobot.load_field_list("../fields")
         if len(field_list)>=2:
@@ -235,7 +235,7 @@ class UIWebRobot:
             current_field = None
         else:
             Field_list.sort(key=str.casefold)
-            link_path = os.path.realpath("../"+self.__config.INPUT_GPS_FIELD_FILE)
+            link_path = os.path.realpath("../field.txt")
             current_field = (link_path.split("/")[-1]).split(".")[0]
             current_field = unquote(current_field, encoding='utf-8')
 
@@ -333,6 +333,7 @@ class UIWebRobot:
         os.system('sudo systemctl restart UI')
 
     def handle_exception(self, e):
+        print(e)
         # pass through HTTP errors
         if isinstance(e, HTTPException):
             return e
