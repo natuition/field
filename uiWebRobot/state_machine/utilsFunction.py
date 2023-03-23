@@ -165,7 +165,5 @@ def updateFields(field_name):
     coords.append(coords[0])
 
     other_fields = application.UIWebRobot.get_other_field()
-    current_field_name = subprocess.run(["readlink", "../field.txt"], stdout=subprocess.PIPE).stdout.decode(
-        'utf-8').replace("fields/", "")[:-5]
 
-    return coords, other_fields, unquote(current_field_name)
+    return coords, other_fields, field_name

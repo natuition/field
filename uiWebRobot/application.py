@@ -110,7 +110,8 @@ class UIWebRobot:
 
     @staticmethod
     def get_other_field():
-        current_field = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
+        link_path = os.path.realpath("../"+self.__config.INPUT_GPS_FIELD_FILE)
+        current_field = (link_path.split("/")[-1]).split(".")[0]
         field_list = UIWebRobot.load_field_list("../fields")
         if len(field_list)>=2:
             coords_other = []
@@ -234,7 +235,8 @@ class UIWebRobot:
             current_field = None
         else:
             Field_list.sort(key=str.casefold)
-            current_field = subprocess.run(["readlink","../field.txt"], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("fields/", "")[:-5]
+            link_path = os.path.realpath("../"+self.__config.INPUT_GPS_FIELD_FILE)
+            current_field = (link_path.split("/")[-1]).split(".")[0]
             current_field = unquote(current_field, encoding='utf-8')
 
         if str(self.__stateMachine.currentState) == "ErrorState":

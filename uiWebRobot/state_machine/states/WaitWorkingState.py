@@ -262,7 +262,6 @@ class WaitWorkingState(State.State):
             fields_list = UIWebRobot.load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/" + quote(fields_list[0], safe="", encoding='utf-8') + ".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(fields_list[0])
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
