@@ -149,9 +149,9 @@ def startLiveCam():
 
 
 def updateFields(field_name):
-    field_name = quote(field_name, safe="", encoding='utf-8')
+    field_name_quote = quote(field_name, safe="", encoding='utf-8')
 
-    cmd = "ln -sf 'fields/" + field_name + ".txt' ../field.txt"
+    cmd = "ln -sf 'fields/" + field_name_quote + ".txt' ../field.txt"
 
     os.system(cmd)
 
