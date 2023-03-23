@@ -11,6 +11,8 @@ import fileinput
 import grp
 import subprocess
 from urllib.parse import quote, unquote
+import telnetlib
+import threading
 
 from config import config
 import application
@@ -64,6 +66,16 @@ def initVesc(logger: utility.Logger):
     vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
     return vesc_engine
 
+def restart_ui_sm_init_error_th(event):
+    time.sleep(10)
+    if not event.is_set():
+        tn = telnetlib.Telnet("192.168.9.101")
+        tn.write(b"G28 XY\n")
+        tn.read_some()
+        tn.write(b"exit\n")
+        tn.read_all()
+        tn.close()
+        os.system("sudo systemctl restart UI.service")
 
 def initSmoothie(logger: utility.Logger):
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
@@ -77,7 +89,13 @@ def initSmoothie(logger: utility.Logger):
             logger.write_and_flush(msg + "\n")
             print(msg)
             exit(1)
+
+    event = threading.Event()
+    smoothie_creation_thread = threading.Thread(target=restart_ui_sm_init_error_th, args=(event,))
+    smoothie_creation_thread.start()
     smoothie = adapters.SmoothieAdapter(smoothie_address)
+    event.set()
+
     return smoothie
 
 
