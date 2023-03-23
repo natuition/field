@@ -24,8 +24,20 @@ import datetime
 import shutil
 import pytz
 
+
 # load config, if failed - copy and load config backups until success or no more backups
+def is_config_empty(config_full_path: str):
+    with open(config_full_path, "r") as config_file:
+        for line in config_file:
+            if line not in ["", "\n"]:
+                return False
+    return True
+
+
 try:
+    if is_config_empty("config/config.py"):
+        raise Exception("config file is empty")
+
     from config import config
 except KeyboardInterrupt:
     raise KeyboardInterrupt
@@ -36,6 +48,8 @@ except:
     config_backups = [path for path in glob.glob("configBackup/*.py") if "config" in path]
     for i in range(len(config_backups)):
         ds = config_backups[i].split("_")[1:]  # date structure
+        ds.extend(ds.pop(-1).split(":"))
+        ds[-1] = ds[-1][:ds[-1].find(".")]
         config_backups[i] = [
             config_backups[i],
             datetime.datetime(
@@ -44,7 +58,7 @@ except:
                 year=int(ds[2]),
                 hour=int(ds[3]),
                 minute=int(ds[4]),
-                second=int(ds[5][:ds[5].find(".")])
+                second=int(ds[5])
             ).timestamp()
         ]
     config_backups.sort(key=lambda item: item[1], reverse=True)  # make last backups to be placed and used first
@@ -57,6 +71,10 @@ except:
                 f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
                 f"_config.py")
             shutil.copy(config_backup[0], "config/config.py")
+
+            if is_config_empty("config/config.py"):
+                raise Exception("config file is empty")
+
             from config import config
             print("Successfully loaded config:", config_backup[0])
             break
