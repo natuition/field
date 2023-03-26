@@ -1,39 +1,39 @@
 const socketMap = io.connect('http://' + document.domain + ':' + location.port + '/map');
 const socketBroadcast = io.connect('http://' + document.domain + ':' + location.port + '/broadcast');
 socketMap.on("reconnect_attempt", (attempt) => {
-    if(attempt > 2) location.reload();
+    if (attempt > 2) location.reload();
 });
 
 var map;
 
 var firstFocus = false
 
-window.onload = ()=>{
-    if (typeof coords_field != "undefined"){
-        if (typeof coords_other != "undefined"){
-            document.addEventListener("DOMContentLoaded",createMap(coords_field,coords_other));
-        }else{
-            document.addEventListener("DOMContentLoaded",createMap(coords_field,[]));
+window.onload = () => {
+    if (typeof coords_field != "undefined") {
+        if (typeof coords_other != "undefined") {
+            document.addEventListener("DOMContentLoaded", createMap(coords_field, coords_other));
+        } else {
+            document.addEventListener("DOMContentLoaded", createMap(coords_field, []));
         }
-    }else{
-        if (typeof coords_other != "undefined"){
-            document.addEventListener("DOMContentLoaded",createMap([],coords_other));
-        }else{
-            document.addEventListener("DOMContentLoaded",createMap([],[]));
+    } else {
+        if (typeof coords_other != "undefined") {
+            document.addEventListener("DOMContentLoaded", createMap([], coords_other));
+        } else {
+            document.addEventListener("DOMContentLoaded", createMap([], []));
         }
     }
 
 }
 
-function createMap(coords_field,coords_other){
+function createMap(coords_field, coords_other) {
     var x_center = 0
     var y_center = 0
 
     if (coords_field.length > 0) {
 
         let cpt = 0
-        
-        for(const coord of coords_field){
+
+        for (const coord of coords_field) {
             x_center += coord[0]
             y_center += coord[1]
             cpt += 1
@@ -43,7 +43,7 @@ function createMap(coords_field,coords_other){
 
         var zoom = 17.5;
 
-    }else{
+    } else {
         y_center = 48.85304;
         x_center = 2.3499075;
 
@@ -55,19 +55,19 @@ function createMap(coords_field,coords_other){
     map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/satellite-v9',
-        center: [x_center,y_center],
+        center: [x_center, y_center],
         zoom: zoom
     });
 
     var coords_other_multipolygon = []
 
-    for (const other of coords_other) { 
+    for (const other of coords_other) {
         coords_other_multipolygon.push([other]);
     }
 
     map.on('load', function () {
         //Other field zone
-        if(typeof(map.getSource('other_field')) == "undefined"){
+        if (typeof (map.getSource('other_field')) == "undefined") {
             map.addSource('other_field', {
                 'type': 'geojson',
                 'data': {
@@ -77,7 +77,7 @@ function createMap(coords_field,coords_other){
                         'coordinates': coords_other_multipolygon
                     }
                 }
-            }); 
+            });
             map.addLayer({
                 'id': 'otherFieldLayer',
                 'type': 'fill',
@@ -90,7 +90,7 @@ function createMap(coords_field,coords_other){
             });
         }
         //Other field line
-        if(typeof(map.getSource('other_field_corner')) == "undefined"){
+        if (typeof (map.getSource('other_field_corner')) == "undefined") {
             map.addSource('other_field_corner', {
                 'type': 'geojson',
                 'data': {
@@ -100,7 +100,7 @@ function createMap(coords_field,coords_other){
                         'coordinates': coords_other
                     }
                 }
-            });    
+            });
             map.addLayer({
                 'id': 'other_field_cornerLayer',
                 'type': 'line',
@@ -116,7 +116,7 @@ function createMap(coords_field,coords_other){
             });
         }
         //Field zone
-        if(typeof(map.getSource('field')) == "undefined"){
+        if (typeof (map.getSource('field')) == "undefined") {
             map.addSource('field', {
                 'type': 'geojson',
                 'data': {
@@ -128,7 +128,7 @@ function createMap(coords_field,coords_other){
                         ]
                     }
                 }
-            }); 
+            });
             map.addLayer({
                 'id': 'fieldLayer',
                 'type': 'fill',
@@ -141,7 +141,7 @@ function createMap(coords_field,coords_other){
             });
         }
         //Field line
-        if(typeof(map.getSource('field_corner')) == "undefined"){
+        if (typeof (map.getSource('field_corner')) == "undefined") {
             map.addSource('field_corner', {
                 'type': 'geojson',
                 'data': {
@@ -151,7 +151,7 @@ function createMap(coords_field,coords_other){
                         'coordinates': coords_field
                     }
                 }
-            });    
+            });
             map.addLayer({
                 'id': 'field_cornerLayer',
                 'type': 'line',
@@ -167,7 +167,7 @@ function createMap(coords_field,coords_other){
             });
         }
         //Field start point
-        if(typeof(map.getSource('field_start')) == "undefined"){
+        if (typeof (map.getSource('field_start')) == "undefined") {
             map.addSource('field_start', {
                 'type': 'geojson',
                 'data': {
@@ -177,7 +177,7 @@ function createMap(coords_field,coords_other){
                         'coordinates': coords_field[coords_field.length - 1]
                     }
                 }
-            });    
+            });
             map.addLayer({
                 'id': 'field_startLayer',
                 'type': 'circle',
@@ -189,7 +189,7 @@ function createMap(coords_field,coords_other){
             });
         }
         //Instruction_line
-        if(typeof(map.getSource('instruction_line')) == "undefined"){
+        if (typeof (map.getSource('instruction_line')) == "undefined") {
             map.addSource('instruction_line', {
                 'type': 'geojson',
                 'data': {
@@ -199,7 +199,7 @@ function createMap(coords_field,coords_other){
                         'coordinates': []
                     }
                 }
-            });    
+            });
             map.addLayer({
                 'id': 'instruction_lineLayer',
                 'type': 'line',
@@ -215,7 +215,7 @@ function createMap(coords_field,coords_other){
             });
         }
         //Instruction_point
-        if(typeof(map.getSource('instruction_point')) == "undefined"){
+        if (typeof (map.getSource('instruction_point')) == "undefined") {
             map.addSource('instruction_point', {
                 'type': 'geojson',
                 'data': {
@@ -225,7 +225,7 @@ function createMap(coords_field,coords_other){
                         'coordinates': []
                     }
                 }
-            });    
+            });
             map.addLayer({
                 'id': 'instruction_pointLayer',
                 'type': 'circle',
@@ -237,7 +237,7 @@ function createMap(coords_field,coords_other){
             });
         }
         //Path line
-        if(typeof(map.getSource('pathRobot')) == "undefined"){
+        if (typeof (map.getSource('pathRobot')) == "undefined") {
             map.addSource('pathRobot', {
                 'type': 'geojson',
                 'data': {
@@ -263,10 +263,10 @@ function createMap(coords_field,coords_other){
             });
         }
         //Last pos
-        if(typeof(map.getSource('lastPos')) == "undefined"){
+        if (typeof (map.getSource('lastPos')) == "undefined") {
             map.addSource('lastPos', {
                 'type': 'geojson',
-                'data': { 
+                'data': {
                     'type': 'Feature',
                     'geometry': {
                         'type': 'Point',
@@ -291,14 +291,13 @@ function createMap(coords_field,coords_other){
             });
         }
 
-        socketMap.on('updatePath', function(dataServ) {
+        socketMap.on('updatePath', function (dataServ) {
             dataServ = JSON.parse(dataServ)
             var coords = dataServ[0]
-            console.log(coords[0])
             var last_coord = coords[coords.length - 1]
             var quality = dataServ[1]
 
-            if(coords.length>1){
+            if (coords.length > 1) {
 
                 map.getSource('pathRobot').setData({
                     'type': 'Feature',
@@ -308,8 +307,8 @@ function createMap(coords_field,coords_other){
                     }
                 });
             }
-            
-            map.getSource('lastPos').setData({ 
+
+            map.getSource('lastPos').setData({
                 'type': 'Feature',
                 'geometry': {
                     'type': 'Point',
@@ -319,8 +318,8 @@ function createMap(coords_field,coords_other){
                     'quality': quality
                 },
             });
-        
-            if(coords.length>1 || !firstFocus){
+
+            if (coords.length > 1 || !firstFocus) {
                 map.panTo(last_coord);
                 firstFocus = true;
             }
@@ -330,10 +329,10 @@ function createMap(coords_field,coords_other){
 
 }
 
-socketMap.on('updateDisplayInstructionPath', function(dataServ) {
+socketMap.on('updateDisplayInstructionPath', function (dataServ) {
     dataServ = JSON.parse(dataServ)
     //Instruction_line
-    if(typeof(map.getSource('instruction_line')) == "undefined"){
+    if (typeof (map.getSource('instruction_line')) == "undefined") {
         map.addSource('instruction_line', {
             'type': 'geojson',
             'data': {
@@ -343,7 +342,7 @@ socketMap.on('updateDisplayInstructionPath', function(dataServ) {
                     'coordinates': dataServ
                 }
             }
-        });    
+        });
         map.addLayer({
             'id': 'instruction_lineLayer',
             'type': 'line',
@@ -357,7 +356,7 @@ socketMap.on('updateDisplayInstructionPath', function(dataServ) {
                 'line-width': 2
             }
         });
-    }else{
+    } else {
         map.getSource('instruction_line').setData({
             'type': 'Feature',
             'geometry': {
@@ -367,7 +366,7 @@ socketMap.on('updateDisplayInstructionPath', function(dataServ) {
         });
     }
     //Instruction_point
-    if(typeof(map.getSource('instruction_point')) == "undefined"){
+    if (typeof (map.getSource('instruction_point')) == "undefined") {
         map.addSource('instruction_point', {
             'type': 'geojson',
             'data': {
@@ -377,7 +376,7 @@ socketMap.on('updateDisplayInstructionPath', function(dataServ) {
                     'coordinates': dataServ
                 }
             }
-        });    
+        });
         map.addLayer({
             'id': 'instruction_pointLayer',
             'type': 'circle',
@@ -387,7 +386,7 @@ socketMap.on('updateDisplayInstructionPath', function(dataServ) {
                 'circle-color': '#FF8C15'
             }
         });
-    }else{
+    } else {
         map.getSource('instruction_point').setData({
             'type': 'Feature',
             'geometry': {
@@ -398,23 +397,23 @@ socketMap.on('updateDisplayInstructionPath', function(dataServ) {
     }
 });
 
-socketMap.on('newField', function(dataServ) {
+socketMap.on('newField', function (dataServ) {
     dataServ = JSON.parse(dataServ);
 
-    if(dataServ["current_field_name"] == ""){
+    if (dataServ["current_field_name"] == "") {
         parent.document.location.reload()
     }
 
-    if(typeof(map.getSource('field')) == "undefined"){
+    if (typeof (map.getSource('field')) == "undefined") {
         createMap(dataServ);
-    }else{
-        
+    } else {
+
         var coords_other_multipolygon = []
 
-        for (const other of dataServ["other_fields"]) { 
+        for (const other of dataServ["other_fields"]) {
             coords_other_multipolygon.push([other]);
         }
-        if(map.getSource('other_field') == undefined){
+        if (map.getSource('other_field') == undefined) {
             map.addSource('other_field', {
                 'type': 'geojson',
                 'data': {
@@ -426,7 +425,7 @@ socketMap.on('newField', function(dataServ) {
                         ]
                     }
                 }
-            }); 
+            });
             map.addLayer({
                 'id': 'otherFieldLayer',
                 'type': 'fill',
@@ -437,7 +436,7 @@ socketMap.on('newField', function(dataServ) {
                     'fill-opacity': 0.4
                 }
             });
-        }else{
+        } else {
             map.getSource('other_field').setData({
                 'type': 'Feature',
                 'geometry': {
@@ -446,7 +445,7 @@ socketMap.on('newField', function(dataServ) {
                 }
             });
         }
-        if(map.getSource('other_field') == undefined){
+        if (map.getSource('other_field') == undefined) {
             map.addSource('other_field_corner', {
                 'type': 'geojson',
                 'data': {
@@ -456,7 +455,7 @@ socketMap.on('newField', function(dataServ) {
                         'coordinates': dataServ["other_fields"]
                     }
                 }
-            });    
+            });
             map.addLayer({
                 'id': 'other_field_cornerLayer',
                 'type': 'line',
@@ -470,7 +469,7 @@ socketMap.on('newField', function(dataServ) {
                     'line-width': 4
                 }
             });
-        }else{
+        } else {
             map.getSource('other_field_corner').setData({
                 'type': 'Feature',
                 'geometry': {
@@ -505,12 +504,12 @@ socketMap.on('newField', function(dataServ) {
             }
         });
 
-        if (dataServ["field"].length > 0){
+        if (dataServ["field"].length > 0) {
             var coords = dataServ["field"]
             let cpt = 0
             let x_center = 0
             let y_center = 0
-            for(const coord of coords){
+            for (const coord of coords) {
                 x_center += coord[0]
                 y_center += coord[1]
                 cpt += 1
@@ -518,7 +517,7 @@ socketMap.on('newField', function(dataServ) {
             x_center /= cpt
             y_center /= cpt
             map.flyTo({
-                center: [x_center,y_center],
+                center: [x_center, y_center],
                 speed: 2,
                 zoom: 17
             });
@@ -529,16 +528,16 @@ socketMap.on('newField', function(dataServ) {
 
         var current_field_name_found = false;
 
-        for (var j = 0; j < sel.options.length ; j++) {
+        for (var j = 0; j < sel.options.length; j++) {
             var opt = opts[j];
-            if(typeof dataServ["fields_list"] != "undefined"){
-                if(!dataServ["fields_list"].includes(opt.value) && !opt.disabled){
+            if (typeof dataServ["fields_list"] != "undefined") {
+                if (!dataServ["fields_list"].includes(opt.value) && !opt.disabled) {
                     sel.remove(j);
                 }
             }
         }
 
-        for (var j = 0; j < sel.options.length ; j++) {
+        for (var j = 0; j < sel.options.length; j++) {
             var opt = opts[j];
             if (opt.value == dataServ["current_field_name"]) {
                 sel.selectedIndex = j;
@@ -546,9 +545,9 @@ socketMap.on('newField', function(dataServ) {
             }
         }
 
-        if(!current_field_name_found){
-            if(typeof dataServ["fields_list"] != "undefined"){
-                if(dataServ["fields_list"].includes(dataServ["current_field_name"])){
+        if (!current_field_name_found) {
+            if (typeof dataServ["fields_list"] != "undefined") {
+                if (dataServ["fields_list"].includes(dataServ["current_field_name"])) {
                     var option = document.createElement('option');
                     option.value = option.text = dataServ["current_field_name"];
                     sel.add(option);
@@ -561,10 +560,10 @@ socketMap.on('newField', function(dataServ) {
                     }
                 }
             }
-            
+
         }
     }
 
-    socketBroadcast.emit('data', {type: "reloader", status : false});
-    
+    socketBroadcast.emit('data', { type: "reloader", status: false });
+
 });

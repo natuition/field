@@ -5,6 +5,7 @@ from flask_socketio import SocketIO
 import threading
 import signal
 import re
+from subprocess import TimeoutExpired
 
 from state_machine import State
 from state_machine.states import ErrorState
@@ -61,7 +62,11 @@ class CheckState(State.State):
                     self.logger.write_and_flush(msg + "\n")
                     msg = f"[{self.__class__.__name__}] -> Waiting for camera process stop..."
                     self.logger.write_and_flush(msg)
-                self.cam.wait()
+                try:
+                    self.cam.wait(timeout=5)
+                except TimeoutExpired:
+                    msg = f"[{self.__class__.__name__}] -> Timeout expire of waiting for camera process stop !"
+                    self.logger.write_and_flush(msg)
                 if config.UI_VERBOSE_LOGGING:
                     msg = " DONE"
                     self.logger.write_and_flush(msg + "\n")

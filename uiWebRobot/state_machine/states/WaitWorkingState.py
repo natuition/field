@@ -26,14 +26,15 @@ class WaitWorkingState(State.State):
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
                  vesc_engine: adapters.VescAdapterV4 = None):
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Self initialization"
-            self.logger.write_and_flush(msg + "\n")
 
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
+
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Self initialization"
+            self.logger.write_and_flush(msg + "\n")
 
         try:
             if self.vesc_engine is None:
@@ -250,7 +251,6 @@ class WaitWorkingState(State.State):
             sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
 
         elif data["type"] == 'getField':
-
             coords, other_fields, current_field_name = updateFields(data["field_name"])
             fields_list = UIWebRobot.load_field_list("../fields")
             self.socketio.emit('newField', json.dumps(
@@ -262,7 +262,6 @@ class WaitWorkingState(State.State):
             fields_list = UIWebRobot.load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/" + quote(fields_list[0], safe="", encoding='utf-8') + ".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(fields_list[0])
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
