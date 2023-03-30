@@ -1,7 +1,7 @@
-const statu = document.querySelector('.status')
-const statusActive = document.querySelector('.status__active')
-const statusTitle = document.querySelector('.status__active--title')
-const generateField = document.querySelector('.ruler')
+var statu = document.querySelector('.status')
+var statusActive = document.querySelector('.status__active')
+var statusTitle = document.querySelector('.status__active--title')
+var generateField = document.querySelector('.ruler')
 const socketButton = io.connect('http://' + document.domain + ':' + location.port + '/button');
 socketButton.on("reconnect_attempt", (attempt) => {
     if(attempt > 2) location.reload();
@@ -11,14 +11,14 @@ socketBroadcast.on("reconnect_attempt", (attempt) => {
     if(attempt > 2) location.reload();
 });
 
-const newFieldButton = document.querySelector('#Newfield');
-const startButton = document.querySelector('#Start');
-const continueButton = document.querySelector('#Continue');
-const stopButton = document.querySelector('#Stop');
-const wheelButton = document.querySelector('#Wheel');
-//const auditButton = document.querySelector('#Audit');
-const removeFieldButton = document.querySelector('#RemoveField');
-const choose_field_selector = document.querySelector('#field_selector');
+var newFieldButton = document.querySelector('#Newfield');
+var startButton = document.querySelector('#Start');
+var continueButton = document.querySelector('#Continue');
+var stopButton = document.querySelector('#Stop');
+var wheelButton = document.querySelector('#Wheel');
+//var auditButton = document.querySelector('#Audit');
+var removeFieldButton = document.querySelector('#RemoveField');
+var choose_field_selector = document.querySelector('#field_selector');
 
 //if(auditButton != null) auditButton.addEventListener('click', changeMode);
 if(newFieldButton != null) newFieldButton.addEventListener('click', clickHandler);
