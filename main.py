@@ -2391,12 +2391,16 @@ def main():
                 try:
                     start_position = utility.average_point(
                         gps, trajectory_saver, nav)
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
                 except:
                     pass
 
                 if ui_msg_queue is not None:
                     try:
                         ui_msg_queue.send(json.dumps({"start": True}))
+                    except KeyboardInterrupt:
+                        raise KeyboardInterrupt
                     except:
                         pass
 
