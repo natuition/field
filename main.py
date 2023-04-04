@@ -98,6 +98,7 @@ import datacollection
 from extraction import ExtractionManagerV3
 from notification import RobotSynthesis
 from notification import NotificationClient
+import connectors
 
 """
 import SensorProcessing
@@ -1908,6 +1909,38 @@ def send_name_of_file_of_gps_history(ui_msg_queue: posix_ipc.MessageQueue,
             print(msg)
 
 
+def get_bezier_indexes(path_points: list):
+    """ONLY for bezier path with NO backward-forward at corners. Presence of zigzags at field center is ok.
+
+    Returns list of bezier points indexes."""
+
+    if len(path_points) < 2:
+        raise ValueError(f"path_points must contain at least 2 points, got {len(path_points)} instead")
+
+    last_non_zigzag_idx = 0
+    for i in range(len(path_points)):
+        if math.isclose(path_points[i][1], 0):
+            raise ValueError(f"POINT {i} HAS 0 SPEED!")
+        elif path_points[i][1] > 0:
+            last_non_zigzag_idx = i
+        else:
+            break
+
+    a_non_bezier_indexes = [0]  # A points
+    b_non_bezier_indexes = [1]  # B points
+    while last_non_zigzag_idx > b_non_bezier_indexes[-1]:
+        a_non_bezier_indexes.append(a_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
+        b_non_bezier_indexes.append(b_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
+
+    non_bezier_indexes = a_non_bezier_indexes + b_non_bezier_indexes
+    bezier_indexes = []
+    for i in range(last_non_zigzag_idx + 1):
+        if i not in non_bezier_indexes:
+            bezier_indexes.append(i)
+
+    return bezier_indexes
+
+
 def main():
     time_start = utility.get_current_time()
     utility.create_directories(config.LOG_ROOT_DIR)
@@ -2386,6 +2419,48 @@ def main():
             with open(
                     config.PREVIOUS_PATH_INDEX_FILE,
                     "r+" if os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE) else "w") as path_index_file:
+                # TODO: temp. wheels mechanics hotfix. please don't repeat things I did here they are not good.
+                if config.ENABLE_ADDITIONAL_WHEELS_TURN:
+                    if config.TRADITIONAL_PATH:
+                        msg = f"wheels additional turn is enabled (cur. config.ENABLE_ADDITIONAL_WHEELS_TURN=True), " \
+                              f"and it's not compatible with traditional path (cur. config.TRADITIONAL_PATH=True)"
+                        raise RuntimeError(msg)
+                    if not config.BEZIER_PATH:
+                        msg = f"wheels additional turn is enabled, and it's compatible only with bezier path " \
+                              f"(cur. config.BEZIER_PATH=False)"
+                        raise RuntimeError(msg)
+                    if config.FORWARD_BACKWARD_PATH:
+                        msg = f"wheels additional turn is enabled, and it's not compatible with forward-backward " \
+                              f"path building option (cur. config.FORWARD_BACKWARD_PATH=True)"
+                        raise RuntimeError(msg)
+                    if config.ADD_CORNER_TO_BEZIER_PATH:
+                        msg = f"wheels additional turn is enabled, and it's not compatible with " \
+                              f"ADD_CORNER_TO_BEZIER_PATH building path option " \
+                              f"(cur. config.ADD_CORNER_TO_BEZIER_PATH=True)"
+                        raise RuntimeError(msg)
+
+                    smoothie_tel_conn = None
+                    try:
+                        bezier_points_indexes = get_bezier_indexes(path_points)
+                        smoothie_tel_conn = connectors.SmoothieV11TelnetConnector(config.SMOOTHIE_TELNET_HOST)
+                        smoothie_tel_conn.write("G91")
+                        res = smoothie_tel_conn.read_some()
+                        if res != smoothie.RESPONSE_OK:
+                            msg = f"Couldn't set smoothie telnet connection to relative mode:\n{res}\n" \
+                                  f"Telnet connection usage will be disabled."
+                            print(msg)
+                            logger_full.write(msg + "\n")
+                            smoothie_tel_conn = None
+                    except KeyboardInterrupt:
+                        raise KeyboardInterrupt
+                    except:
+                        msg = f"Wheels additional turn preparations are failed:\n" \
+                              f"{traceback.format_exc()}\n" \
+                              f"Telnet connection usage will be disabled."
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        smoothie_tel_conn = None
+
                 next_calibration_time = time.time() + config.CORK_CALIBRATION_MIN_TIME
 
                 try:
@@ -2674,6 +2749,32 @@ def main():
                         not config.USE_SMOOTH_APPROACHING_TO_FIELD else True,
                         x_scan_poly
                     )
+
+                    if config.ENABLE_ADDITIONAL_WHEELS_TURN and \
+                            i - 1 in bezier_points_indexes and i in bezier_points_indexes:
+                        cur_pos = gps.get_last_position()
+                        if cur_pos[2] != "4":
+                            msg = f"Additional wheels turn got point {cur_pos} with non 4 quality - " \
+                                  f"skipping wheels turn actions"
+                            logger_full.write(msg + "\n")
+                        else:
+                            deviation, side = nav.get_deviation(path_points[i-1][0], path_points[i][0], cur_pos)
+                            if deviation > config.ADDITIONAL_WHEELS_TURN_THRESHOLD and side == -1:
+                                msg = f"Wheels turn deviation threshold hit, trying to turn wheels"
+                                logger_full.write(msg + "\n")
+
+                                if smoothie_tel_conn is not None:
+                                    smoothie_tel_conn.write(
+                                        f"G0 {config.ADDITIONAL_WHEELS_KEY}"
+                                        f"{config.ADDITIONAL_WHEELS_VALUE} "
+                                        f"F{config.ADDITIONAL_WHEELS_FORCE}")
+                                    res = smoothie_tel_conn.read_some()
+                                    if res != smoothie.RESPONSE_OK:
+                                        msg = f"Couldn't do additional wheels turn, smoothie response:\n{res}"
+                                        logger_full.write(msg + "\n")
+                                else:
+                                    msg = f"Couldn't turn wheels as smoothie telnet connector is None"
+                                    logger_full.write(msg + "\n")
 
                     if config.NAVIGATION_TEST_MODE:
                         response = smoothie.custom_move_to(

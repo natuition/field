@@ -1,6 +1,5 @@
 import telnetlib
 import serial
-import time
 
 
 class SmoothieV11TelnetConnector:
@@ -14,17 +13,22 @@ class SmoothieV11TelnetConnector:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
+        self.close()
+
+    def close(self):
+        self._tn.write(b"exit\n")
+        self._tn.read_all()
+        self._tn.close()
+
+    def disconnect(self):
+        """Obsolete method, remains for backward compatibility. Use close() method instead."""
+
+        self.close()
 
     def get_telnet(self):
         """Only for debug!"""
 
         return self._tn
-
-    def disconnect(self):
-        self._tn.write(b"exit\n")
-        self._tn.read_all()
-        self._tn.close()
 
     def write(self, command: str):
         if type(command) != str:

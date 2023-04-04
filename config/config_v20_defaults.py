@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.4"
+CONFIG_VERSION = "0.20.5"
 
 
 # ======================================================================================================================
@@ -26,6 +26,7 @@ CONFIG_VERSION = "0.20.4"
 # PATHS SETTINGS
 # PREDICTION SETTINGS
 # NAVIGATION TEST MODE SETTINGS
+# UNSORTED KEYS
 # ======================================================================================================================
 
 
@@ -632,7 +633,7 @@ ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
 
 # ======================================================================================================================
 # NAVIGATION TEST MODE SETTINGS
-# =====================================================================================================================
+# ======================================================================================================================
 NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
 #The robot will aim for the furthest point, 
 #when it reaches this point it will wait for a press on enter to go to the furthest point from it.
@@ -642,3 +643,22 @@ POINT_A = [[46.1579425, -1.1344245], -0.5] #Point coordinate for test navigation
 # the speed represents the speed the robot will apply to reach this point.
 POINT_B = [[46.1577957, -1.1347992], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
+
+
+# ======================================================================================================================
+# UNSORTED KEYS
+# ======================================================================================================================
+# wheels mechanics hotfix update
+# enables temp. hotfix: checking robot position and wheels turning to right WITHOUT adapter usage
+ENABLE_ADDITIONAL_WHEELS_TURN = False
+# this address of telnet smoothie is used when wheels turning hotfix is enabled (ENABLE_ADDITIONAL_WHEELS_TURN = True)
+SMOOTHIE_TELNET_HOST = "192.168.9.101"
+# mms; wheels will be turned if robot position perpendicular distance is bigger than this value and robot is on the
+# left side of last movement line
+ADDITIONAL_WHEELS_TURN_THRESHOLD = 1500
+# smoothie wheels key
+ADDITIONAL_WHEELS_KEY = "A"
+# smoothie value to turn
+ADDITIONAL_WHEELS_VALUE = -5
+# smoothie force to turn
+ADDITIONAL_WHEELS_FORCE = 2000
