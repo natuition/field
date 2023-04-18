@@ -1,9 +1,9 @@
-from notification import RobotSynthesisServer
+from notification import RobotStateServer
 from config import config
 import time
 
 def main():
-    with RobotSynthesisServer() as robot_synthesis_server:
+    with RobotStateServer() as robot_synthesis_server:
         robot_synthesis_server.wait()
 
 

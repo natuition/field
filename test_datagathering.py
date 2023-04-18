@@ -19,7 +19,7 @@ try:
     with NotificationClient(time_start) as notif:
         gps_point = load_coordinates("./field.txt")
         notif.set_field(gps_point, "test_1")
-        notif.set_treated_plant(["Daisy", "Plantain", "Plaintain narroleaf"])
+        notif.set_treated_weed_types({"Daisy", "Plantain", "Plaintain narroleaf"})
         extracted_plants = dict()
         extracted_plants["Daisy"] = 1
         extracted_plants["Plantain"] = 0

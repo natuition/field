@@ -7,6 +7,7 @@ import os
 import pickle
 import json
 import sqlite3
+import notification
 
 
 class DataCollector:
@@ -18,7 +19,7 @@ class DataCollector:
 
     def __init__(self,
                  db_full_path: str,
-                 notification,
+                 notification_client: notification.NotificationClient,
                  load_from_file=False,
                  file_path="",
                  ui_msg_queue=None,
@@ -51,7 +52,7 @@ class DataCollector:
             self.__previous_sessions_working_time = 0
 
         self.__start_time = time.time()
-        self.__notification = notification
+        self.__notification = notification_client
         self.__ui_msg_queue = ui_msg_queue
         self.__dump_at_receiving = dump_at_receiving
         self.__dump_file_path = file_path
@@ -551,7 +552,7 @@ class DataCollector:
             self.__extracted_plants[type_label] = count
 
         if self.__notification.is_continuous_information_sending():
-            self.__notification.set_extracted_plants(self.__extracted_plants)
+            self.__notification.set_extracted_plants(self.__extracted_plants.copy())
 
         self.__send_to_ui()
 

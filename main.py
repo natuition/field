@@ -96,7 +96,7 @@ import stubs
 import extraction
 import datacollection
 from extraction import ExtractionManagerV3
-from notification import RobotSynthesis
+from notification import RobotStates
 from notification import NotificationClient
 import connectors
 
@@ -1975,7 +1975,7 @@ def main():
             len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
 
     notification = NotificationClient(time_start)
-    notification.setStatus(RobotSynthesis.WORKING)
+    notification.set_robot_state(RobotStates.WORKING)
     data_collector = datacollection.DataCollector(
         log_cur_dir + config.STATISTICS_DB_FILE_NAME,
         notification,
@@ -2011,7 +2011,7 @@ def main():
         msg = "Couldn't get vesc's USB address!"
         print(msg)
         logger_full.write(msg + "\n")
-        notification.setStatus(RobotSynthesis.HS)
+        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
         exit(1)
     if config.SMOOTHIE_BACKEND == 1:
         smoothie_address = config.SMOOTHIE_HOST
@@ -2022,7 +2022,7 @@ def main():
             msg = "Couldn't get smoothie's USB address!"
             print(msg)
             logger_full.write(msg + "\n")
-            notification.setStatus(RobotSynthesis.HS)
+            notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
             exit(1)
 
     # load yolo networks
@@ -2043,9 +2043,6 @@ def main():
             config.PERIPHERY_CONFIDENCE_THRESHOLD,
             config.PERIPHERY_NMS_THRESHOLD,
             config.PERIPHERY_INPUT_SIZE)
-        if config.CONTINUOUS_INFORMATION_SENDING and config.NN_MODELS_COUNT == 1:
-                notification.set_treated_plant(
-                    periphery_detector.get_classes_names())
     elif config.PERIPHERY_WRAPPER == 2:
         periphery_detector = detection.YoloOpenCVDetection(
             config.PERIPHERY_CLASSES_FILE,
@@ -2056,13 +2053,11 @@ def main():
             config.PERIPHERY_NMS_THRESHOLD,
             config.PERIPHERY_DNN_BACKEND,
             config.PERIPHERY_DNN_TARGET)
-        if config.CONTINUOUS_INFORMATION_SENDING and config.NN_MODELS_COUNT == 1:
-                notification.set_treated_plant(detection.classes)
     else:
         msg = "Wrong config.PERIPHERY_WRAPPER = " + \
             str(config.PERIPHERY_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
-        notification.setStatus(RobotSynthesis.HS)
+        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
         exit(1)
 
     # load precise NN
@@ -2077,9 +2072,6 @@ def main():
                 config.PRECISE_CONFIDENCE_THRESHOLD,
                 config.PRECISE_NMS_THRESHOLD,
                 config.PRECISE_INPUT_SIZE)
-            if config.CONTINUOUS_INFORMATION_SENDING:
-                notification.set_treated_plant(
-                    precise_detector.get_classes_names())
         elif config.PRECISE_WRAPPER == 2:
             precise_detector = detection.YoloOpenCVDetection(
                 config.PRECISE_CLASSES_FILE,
@@ -2090,19 +2082,23 @@ def main():
                 config.PRECISE_NMS_THRESHOLD,
                 config.PRECISE_DNN_BACKEND,
                 config.PRECISE_DNN_TARGET)
-            if config.CONTINUOUS_INFORMATION_SENDING:
-                notification.set_treated_plant(detection.classes)
         else:
             msg = "Wrong config.PRECISE_WRAPPER = " + \
                 str(config.PRECISE_WRAPPER) + " code. Exiting."
             logger_full.write(msg + "\n")
-            notification.setStatus(RobotSynthesis.HS)
+            notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
             exit(1)
     else:
         msg = "Using periphery detector as precise."
         print(msg)
         logger_full.write(msg + "\n")
         precise_detector = periphery_detector
+
+    if config.CONTINUOUS_INFORMATION_SENDING:
+        treated_plants = set()
+        treated_plants.update(periphery_detector.get_classes_names())
+        treated_plants.update(precise_detector.get_classes_names())
+        notification.set_treated_weed_types(list(treated_plants))
 
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
@@ -2231,7 +2227,7 @@ def main():
                         msg = "Previous path is already passed"
                         print(msg)
                         logger_full.write_and_flush(msg + "\n")
-                        notification.stop()
+                        notification.close()
                         exit(0)
                     elif path_start_index >= len(path_points) or path_start_index < 1:
                         loading_previous_index_failed = True
@@ -2329,7 +2325,7 @@ def main():
                         field_gps_coords)
                     print(msg)
                     logger_full.write(msg + "\n")
-                    notification.setStatus(RobotSynthesis.HS)
+                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
                     exit(1)
 
                 if config.CONTINUOUS_INFORMATION_SENDING:
@@ -2393,7 +2389,7 @@ def main():
                       " instead (1st point is starting point)."
                 print(msg)
                 logger_full.write(msg + "\n")
-                notification.setStatus(RobotSynthesis.HS)
+                notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
                 exit(1)
 
             # set smoothie's A axis to 0 (nav turn wheels)
@@ -2790,7 +2786,7 @@ def main():
                         test_continue = input(
                             "Press enter to continue the test, type anything to exit.")
                         if test_continue != "":
-                            notification.stop()
+                            notification.close()
                             break
                         try:
                             start_position = utility.average_point(
@@ -2837,21 +2833,21 @@ def main():
             msg = "Path is successfully passed."
             print(msg)
             logger_full.write(msg + "\n")
-            notification.stop()
+            notification.close()
     except KeyboardInterrupt:
         msg = "Stopped by a keyboard interrupt (Ctrl + C)\n" + \
             traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.setStatus(RobotSynthesis.OP)
-        notification.stop()
+        notification.set_robot_state(RobotStates.ENABLED)
+        notification.close()
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     except:
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.setStatus(RobotSynthesis.HS)
+        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:
