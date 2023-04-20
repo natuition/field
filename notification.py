@@ -522,7 +522,7 @@ class NotificationClient:
                 return
 
             # get list of weed types known by DB
-            response = requests.get(f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weed_types")
+            response = requests.get(f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weeds_types")
             if response.status_code != self.__RES_CODE_EXISTING:
                 msg = f"[NotificationClient] Failed to get weeds list from DB, res code: {response.status_code}"
                 print(msg)
