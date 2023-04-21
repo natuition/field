@@ -14,9 +14,9 @@ import traceback
 
 
 class RobotStates(enum.Enum):
-    ENABLED = "ENABLED"  # power is on, but robot is not currently at work
+    ENABLED = "OP"  # power is on, but robot is not currently at work
     WORKING = "WORKING"  # at work
-    OUT_OF_SERVICE = "OUT_OF_SERVICE"
+    OUT_OF_SERVICE = "HS"
     ANTI_THEFT = "ANTI_THEFT"
 
 
@@ -395,7 +395,7 @@ class NotificationClient:
                     pos_and_ext_weeds_json.clear()
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
-                except websocket.WebSocketException:
+                except (websocket.WebSocketException, BrokenPipeError):
                     self.__ws_reconnection_required = True
                 except:
                     msg = f"[NotificationClient] Failed to send points to remote server:\n{traceback.format_exc()}"
