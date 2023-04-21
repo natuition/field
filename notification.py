@@ -385,19 +385,23 @@ class NotificationClient:
                 self.__reconnect_ws()
 
             # send points data
-            with self.__pos_with_weeds_queue_sync_locker:
-                if self.__pos_with_weeds_queue and not pos_and_ext_weeds_json:
-                    pos_and_ext_weeds_json = {"coordinate_with_extracted_weed": self.__pos_with_weeds_queue.copy()}
-                    self.__pos_with_weeds_queue.clear()
+            if not pos_and_ext_weeds_json:
+                with self.__pos_with_weeds_queue_sync_locker:
+                    if self.__pos_with_weeds_queue:
+                        pos_and_ext_weeds_json = {"coordinate_with_extracted_weed": self.__pos_with_weeds_queue.copy()}
+                        self.__pos_with_weeds_queue.clear()
             if pos_and_ext_weeds_json:
                 try:
                     self.__ws.send(json.dumps(pos_and_ext_weeds_json))
                     pos_and_ext_weeds_json.clear()
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
+                # errors which are requiring reconnection
                 except (websocket.WebSocketException, BrokenPipeError):
                     self.__ws_reconnection_required = True
                 except:
+                    # TODO remove reconnection from here when list of all errors requiring reconnection is known and caught higher
+                    self.__ws_reconnection_required = True
                     msg = f"[NotificationClient] Failed to send points to remote server:\n{traceback.format_exc()}"
                     print(msg)
 
@@ -478,6 +482,9 @@ class NotificationClient:
             if self.__session_id is None and self.__keep_data_sender_th_alive:
                 time.sleep(0.5)
 
+        msg = "[NotificationClient] Initializations of remote DB are successfully done"
+        print(msg)
+
     def __send_session(self):
         with self.__field_sync_locker:
             if self.__field_id is None:
@@ -538,7 +545,7 @@ class NotificationClient:
                     f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weed_type",
                     json=weed_type)
                 if response.status_code != self.__RES_CODE_EXISTING and response.status_code != self.__RES_CODE_CREATED:
-                    msg = f"[NotificationClient] Error when sending treated weed '{weed_type}', res code: " \
+                    msg = f"[NotificationClient] Failed to send treated weed '{weed_type}', res code: " \
                           f"{response.status_code}"
                     print(msg)
                     return
