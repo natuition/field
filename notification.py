@@ -537,7 +537,7 @@ class NotificationClient:
                 response = requests.post(
                     f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weed_type",
                     json=weed_type)
-                if response != self.__RES_CODE_EXISTING and response != self.__RES_CODE_CREATED:
+                if response.status_code != self.__RES_CODE_EXISTING and response.status_code != self.__RES_CODE_CREATED:
                     msg = f"[NotificationClient] Error when sending treated weed '{weed_type}', res code: " \
                           f"{response.status_code}"
                     print(msg)
@@ -566,7 +566,7 @@ class NotificationClient:
                      "robot_serial_number": self.__robot_sn}
             response = requests.post(f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/field", json=field)
 
-            if response != self.__RES_CODE_EXISTING and response != self.__RES_CODE_CREATED:
+            if response.status_code != self.__RES_CODE_EXISTING and response.status_code != self.__RES_CODE_CREATED:
                 print(f"[NotificationClient] Failed send field '{field}', res code: '{response.status_code}'")
                 return
 

@@ -2098,7 +2098,7 @@ def main():
         treated_plants = set()
         treated_plants.update(periphery_detector.get_classes_names())
         treated_plants.update(precise_detector.get_classes_names())
-        notification.set_treated_weed_types(list(treated_plants))
+        notification.set_treated_weed_types(treated_plants)
 
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
