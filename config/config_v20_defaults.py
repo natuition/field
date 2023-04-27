@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.5"
+CONFIG_VERSION = "0.20.6"
 
 
 # ======================================================================================================================
@@ -109,8 +109,15 @@ SI_SPEED_FAST = 0.5
 MULTIPLIER_SI_SPEED_TO_RPM = -14285 #multiplier to go from speed to rpm vesc
 
 SLOW_FAST_MODE = True
-SLOW_MODE_MIN_TIME = 10 # seconds
+SLOW_MODE_MIN_TIME = 10  # seconds
 SLOW_FAST_MODE_HEAD_FACTOR = 0.5
+
+# protection to prevent robot leaving a field it works on
+# True: stop robot and set state to out if service if robot has left the field; False: disable leaving the field control
+ALLOW_FIELD_LEAVING_PROTECTION = True
+# mms; robot will stop if ALLOW_FIELD_LEAVING_PROTECTION=True and PERPENDICULAR from a field's line is bigger
+# than this value (all ABCDA field lines are checked) and it's on left side of the line
+LEAVING_PROTECTION_DISTANCE_MAX = 1000
 
 
 # ======================================================================================================================
