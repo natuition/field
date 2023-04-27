@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../')
 from config import config
 from state_machine.utilsFunction import *
 from state_machine import Events
@@ -9,8 +11,6 @@ import re
 import signal
 import threading
 from flask_socketio import SocketIO
-import sys
-sys.path.append('../')
 
 
 # This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.

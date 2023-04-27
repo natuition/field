@@ -1,19 +1,21 @@
-from application import UIWebRobot
-import adapters
-from config import config
-from state_machine.utilsFunction import *
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from state_machine import Events
-from state_machine.states import ErrorState
-from state_machine.states import ResumeState
-from state_machine.states import StartingState
-from state_machine.states import CreateFieldState
-from state_machine import State
-import threading
-from flask_socketio import SocketIO
-import time
 import sys
 sys.path.append('../')
+import time
+from flask_socketio import SocketIO
+import threading
+
+from state_machine import State
+from state_machine.states import CreateFieldState
+from state_machine.states import StartingState
+from state_machine.states import ResumeState
+from state_machine.states import ErrorState
+from state_machine import Events
+
+from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
+from state_machine.utilsFunction import *
+from config import config
+import adapters
+from application import UIWebRobot
 
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
