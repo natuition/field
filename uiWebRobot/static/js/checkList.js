@@ -26,6 +26,9 @@ function checkAllBoxAreChecked() {
         $('#checkbutton').addClass('active');
         $('#AI_selector').attr('disabled', '');
         socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
+        setTimeout(() => {
+            document.location.reload();
+        }, 3000);
     }
 
 }
