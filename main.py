@@ -235,7 +235,8 @@ def move_to_point_and_extract(coords_from_to: list,
                               navigation_prediction: navigation.NavigationPrediction,
                               future_points: list,
                               allow_extractions: bool,
-                              x_scan_poly: list):
+                              x_scan_poly: list,
+                              cur_field):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -256,8 +257,24 @@ def move_to_point_and_extract(coords_from_to: list,
     :param image_saver:
     :param notification:
     :param extraction_manager_v3:
+    :param cur_field: None or list of 4 ABCD points which are describing current field robot is working on.
     :return:
     """
+
+    if config.ALLOW_FIELD_LEAVING_PROTECTION and cur_field is not None and len(cur_field) > 2:
+        enable_field_leaving_protection = True
+    else:
+        enable_field_leaving_protection = False
+        if config.ALLOW_FIELD_LEAVING_PROTECTION:
+            if cur_field is None:
+                msg = f"WARNING: robot field leaving protection WILL NOT WORK as given field is None"
+                print(msg)
+                logger_full.write(msg)
+            elif len(cur_field) < 3:
+                msg = f"WARNING: robot field leaving protection WILL NOT WORK as given field contains " \
+                      f"{len(cur_field)} points (required ar least 3 points)"
+                print(msg)
+                logger_full.write(msg)
 
     extract = SI_speed > 0 and allow_extractions
 
@@ -812,6 +829,28 @@ def move_to_point_and_extract(coords_from_to: list,
         perpendicular, current_corridor_side = nav.get_deviation(
             coords_from_to[0], coords_from_to[1], cur_pos)
 
+        # stop the robot if it has left the field
+        if enable_field_leaving_protection:
+            for pt_idx in range(len(cur_field)):
+                last_point = pt_idx + 1 == len(cur_field)
+
+                if last_point:
+                    deviation, side = nav.get_deviation(cur_field[i], cur_field[0], cur_pos)
+                else:
+                    deviation, side = nav.get_deviation(cur_field[i], cur_field[i + 1], cur_pos)
+
+                if side != -1 and deviation > config.LEAVING_PROTECTION_DISTANCE_MAX:
+                    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                    data_collector.add_vesc_moving_time_data(
+                        vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+                    msg = f"Robot is stopped due to leaving the field. Cur pos: '{str(cur_pos)}'; " \
+                          f"Field comparison vector - P1: '{str(cur_field[i])}', " \
+                          f"P2: '{str(cur_field[0] if last_point else cur_field[i + 1])}'"
+                    print(msg)
+                    logger_full.write_and_flush(msg + "\n")
+                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    exit()
+
         # check if arrived
         _, side = nav.get_deviation(
             coords_from_to[1], stop_helping_point, cur_pos)
@@ -1131,7 +1170,7 @@ def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: 
         if config.VERBOSE:
             print(msg)
         logger_full.write(msg + "\n")
-        exit(1)
+        exit()
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -2012,7 +2051,7 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
         notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
-        exit(1)
+        exit()
     if config.SMOOTHIE_BACKEND == 1:
         smoothie_address = config.SMOOTHIE_HOST
     else:
@@ -2023,7 +2062,7 @@ def main():
             print(msg)
             logger_full.write(msg + "\n")
             notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
-            exit(1)
+            exit()
 
     # load yolo networks
     if config.NN_MODELS_COUNT < 1:
@@ -2058,7 +2097,7 @@ def main():
             str(config.PERIPHERY_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
         notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
-        exit(1)
+        exit()
 
     # load precise NN
     if config.NN_MODELS_COUNT > 1:
@@ -2087,7 +2126,7 @@ def main():
                 str(config.PRECISE_WRAPPER) + " code. Exiting."
             logger_full.write(msg + "\n")
             notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
-            exit(1)
+            exit()
     else:
         msg = "Using periphery detector as precise."
         print(msg)
@@ -2148,6 +2187,61 @@ def main():
                 nav=nav,
                 log_cur_dir=log_cur_dir) as navigation_prediction:
 
+            # try to load field ABCD points
+            field_gps_coords = None
+            field_name = None
+            if config.USE_EMERGENCY_FIELD_GENERATION and not config.CONTINUE_PREVIOUS_PATH:
+                field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
+            else:
+                # check if shortcut exists
+                if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
+                    # check if shortcut target file exists
+                    # old way: shortcut_target_path = subprocess.check_output(['readlink', '-f', config.INPUT_GPS_FIELD_FILE]).decode("utf-8").strip()
+                    shortcut_target_path = os.path.realpath(config.INPUT_GPS_FIELD_FILE)
+                    field_name = (shortcut_target_path.split("/")[-1]).split(".")[0]
+                    if os.path.isfile(shortcut_target_path):
+                        msg = f"Loading '{config.INPUT_GPS_FIELD_FILE}' field file"
+                        logger_full.write(msg + "\n")
+
+                        try:
+                            field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                        except ValueError:
+                            msg = f"Failed to load field '{shortcut_target_path}' due " \
+                                  f"to ValueError (file is likely corrupted)"
+                            print(msg)
+                            logger_full.write(msg + "\n")
+
+                        msg = f"Loaded field: {str(field_gps_coords)}"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                    else:
+                        msg = f"Couldn't find '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' target file with" \
+                              f"field points"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                else:
+                    msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' shortcut file with field points"
+                    print(msg)
+                    logger_full.write(msg + "\n")
+
+            # set field to notification
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                if field_gps_coords is None:
+                    msg = f"Sending field to notification is aborted as field is None"
+                    print(msg)
+                    logger_full.write(msg)
+                elif field_name is None:
+                    msg = f"Sending field to notification is aborted as field name is None"
+                    print(msg)
+                    logger_full.write(msg)
+                elif len(field_gps_coords) < 1:
+                    msg = f"Loaded '{shortcut_target_path}' field contains 0" \
+                          f"points. Sending to notification is aborted."
+                    print(msg)
+                    logger_full.write(msg + "\n")
+                else:
+                    notification.set_field(field_gps_coords.copy(), field_name)
+
             # continue previous path case
             loading_previous_path_failed = False
             loading_previous_index_failed = False
@@ -2156,45 +2250,6 @@ def main():
 
                 msg = "Loading previous path points"
                 logger_full.write(msg + "\n")
-
-                if config.CONTINUOUS_INFORMATION_SENDING:
-                    # check if shortcut exists
-                    if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
-                        # old way
-                        # link_path = subprocess.check_output(
-                        #     ['readlink', '-f', config.INPUT_GPS_FIELD_FILE]).decode("utf-8").strip()
-                        link_path = os.path.realpath(
-                            config.INPUT_GPS_FIELD_FILE)
-                        field_name = (link_path.split("/")[-1]).split(".")[0]
-                        # check for shortcut target file existence
-                        if os.path.isfile(os.path.realpath(config.INPUT_GPS_FIELD_FILE)):
-                            try:
-                                field_for_notification = load_coordinates(
-                                    config.INPUT_GPS_FIELD_FILE)
-                                if len(field_for_notification) > 0:
-                                    notification.set_field(
-                                        field_for_notification, field_name)
-                                else:
-                                    msg = f"Loaded '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' field contains 0" \
-                                          f"points. Sending to notification is aborted."
-                                    print(msg)
-                                    logger_full.write(msg + "\n")
-                            except ValueError:
-                                msg = f"Failed to load field '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' due " \
-                                      f"to ValueError (file is likely corrupted). Sending field to notification is " \
-                                      f"aborted."
-                                print(msg)
-                                logger_full.write(msg + "\n")
-                        else:
-                            msg = f"Couldn't find field file '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' to " \
-                                  f"send field points to notification service. Sending is aborted."
-                            print(msg)
-                            logger_full.write(msg + "\n")
-                    else:
-                        msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' field shortcut file, sending to " \
-                              f"notification service is aborted."
-                        print(msg)
-                        logger_full.write(msg + "\n")
 
                 if not os.path.isfile(config.PREVIOUS_PATH_POINTS_FILE):
                     loading_previous_path_failed = True
@@ -2228,7 +2283,7 @@ def main():
                         print(msg)
                         logger_full.write_and_flush(msg + "\n")
                         notification.close()
-                        exit(0)
+                        exit()
                     elif path_start_index >= len(path_points) or path_start_index < 1:
                         loading_previous_index_failed = True
                         msg = f"Path start index {path_start_index} is out of path points list range (loaded " \
@@ -2247,40 +2302,12 @@ def main():
 
             # load field points and generate new path or continue previous path errors case
             if not config.CONTINUE_PREVIOUS_PATH or loading_previous_path_failed:
-                if config.USE_EMERGENCY_FIELD_GENERATION:
-                    field_gps_coords = emergency_field_defining(
-                        vesc_engine, gps, nav, log_cur_dir, logger_full)
-                else:
-                    if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
-                        if os.path.isfile(os.path.realpath(config.INPUT_GPS_FIELD_FILE)):
-                            msg = f"Loading '{config.INPUT_GPS_FIELD_FILE}' field file"
-                            logger_full.write(msg + "\n")
-
-                            try:
-                                field_gps_coords = load_coordinates(
-                                    config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
-                            except ValueError:
-                                msg = f"Failed to load field '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' due " \
-                                      f"to ValueError (file is likely corrupted). " \
-                                      f"Exiting main as building path without field points is impossible."
-                                print(msg)
-                                logger_full.write(msg + "\n")
-                                exit()
-
-                            msg = "Loaded field: " + str(field_gps_coords)
-                            print(msg)
-                            logger_full.write(msg + "\n")
-                        else:
-                            msg = f"Couldn't find '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' target file with" \
-                                  f"field points!"
-                            print(msg)
-                            logger_full.write(msg + "\n")
-                            exit()
-                    else:
-                        msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' shortcut file with field points!"
-                        print(msg)
-                        logger_full.write(msg + "\n")
-                        exit()
+                if field_gps_coords is None:
+                    msg = f"Exiting main as building path without field points is impossible"
+                    print(msg)
+                    logger_full.write_and_flush(msg)
+                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    exit()
 
                 # check field corner points count
                 if len(field_gps_coords) == 4:
@@ -2326,46 +2353,7 @@ def main():
                     print(msg)
                     logger_full.write(msg + "\n")
                     notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
-                    exit(1)
-
-                if config.CONTINUOUS_INFORMATION_SENDING:
-                    # check for shortcut file existance
-                    if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
-                        # old way
-                        # link_path = subprocess.check_output(
-                        #     ['readlink', '-f', config.INPUT_GPS_FIELD_FILE]).decode("utf-8").strip()
-                        link_path = os.path.realpath(
-                            config.INPUT_GPS_FIELD_FILE)
-                        field_name = (link_path.split("/")[-1]).split(".")[0]
-                        # check for shortcut target file existence
-                        if os.path.isfile(os.path.realpath(config.INPUT_GPS_FIELD_FILE)):
-                            try:
-                                field_for_notification = load_coordinates(
-                                    config.INPUT_GPS_FIELD_FILE)
-                                if len(field_for_notification) > 0:
-                                    notification.set_field(
-                                        field_for_notification, field_name)
-                                else:
-                                    msg = f"Loaded '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' field contains 0" \
-                                          f"points. Sending to notification is aborted."
-                                    print(msg)
-                                    logger_full.write(msg + "\n")
-                            except ValueError:
-                                msg = f"Failed to load field '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' due " \
-                                      f"to ValueError (file is likely corrupted). Sending field to notification is " \
-                                      f"aborted."
-                                print(msg)
-                                logger_full.write(msg + "\n")
-                        else:
-                            msg = f"Couldn't find field file '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' to " \
-                                  f"send field points to notification service. Sending is aborted."
-                            print(msg)
-                            logger_full.write(msg + "\n")
-                    else:
-                        msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' field shortcut file, sending to " \
-                              f"notification service is aborted."
-                        print(msg)
-                        logger_full.write(msg + "\n")
+                    exit()
 
                 # save path points and point to start from index
                 with open(config.PREVIOUS_PATH_POINTS_FILE, "wb") as path_points_file:
@@ -2390,7 +2378,7 @@ def main():
                 print(msg)
                 logger_full.write(msg + "\n")
                 notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
-                exit(1)
+                exit()
 
             # set smoothie's A axis to 0 (nav turn wheels)
             response = smoothie.set_current_coordinates(A=0)
@@ -2613,7 +2601,8 @@ def main():
                                 navigation_prediction,
                                 path_points[i_inf:i_sup],
                                 not config.FIRST_POINT_NO_EXTRACTIONS,
-                                x_scan_poly
+                                x_scan_poly,
+                                field_gps_coords
                             )
                             if traj_path_start_index >= path_start_index:
                                 path_start_index = traj_path_start_index + 1
@@ -2648,7 +2637,8 @@ def main():
                                         navigation_prediction,
                                         path_points[i_inf:i_sup],
                                         not config.FIRST_POINT_NO_EXTRACTIONS,
-                                        x_scan_poly
+                                        x_scan_poly,
+                                        field_gps_coords
                                     )
                     elif config.FORWARD_BACKWARD_PATH:
                         msg = "USING RUDE TRAJECTORY APPROACHING as forward-backward path is not supported yet by " \
@@ -2743,7 +2733,8 @@ def main():
                         not i == path_start_index
                         if config.FIRST_POINT_NO_EXTRACTIONS and config.CONTINUE_PREVIOUS_PATH and
                         not config.USE_SMOOTH_APPROACHING_TO_FIELD else True,
-                        x_scan_poly
+                        x_scan_poly,
+                        field_gps_coords
                     )
 
                     if config.ENABLE_ADDITIONAL_WHEELS_TURN and \
