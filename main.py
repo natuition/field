@@ -839,7 +839,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 else:
                     deviation, side = nav.get_deviation(cur_field[pt_idx], cur_field[pt_idx + 1], cur_pos)
 
-                if side != -1 and deviation > config.LEAVING_PROTECTION_DISTANCE_MAX:
+                if side == -1 and deviation > config.LEAVING_PROTECTION_DISTANCE_MAX:
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
