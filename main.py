@@ -835,17 +835,17 @@ def move_to_point_and_extract(coords_from_to: list,
                 last_point = pt_idx + 1 == len(cur_field)
 
                 if last_point:
-                    deviation, side = nav.get_deviation(cur_field[i], cur_field[0], cur_pos)
+                    deviation, side = nav.get_deviation(cur_field[pt_idx], cur_field[0], cur_pos)
                 else:
-                    deviation, side = nav.get_deviation(cur_field[i], cur_field[i + 1], cur_pos)
+                    deviation, side = nav.get_deviation(cur_field[pt_idx], cur_field[pt_idx + 1], cur_pos)
 
                 if side != -1 and deviation > config.LEAVING_PROTECTION_DISTANCE_MAX:
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
                     msg = f"Robot is stopped due to leaving the field. Cur pos: '{str(cur_pos)}'; " \
-                          f"Field comparison vector - P1: '{str(cur_field[i])}', " \
-                          f"P2: '{str(cur_field[0] if last_point else cur_field[i + 1])}'"
+                          f"Field comparison vector - P1: '{str(cur_field[pt_idx])}', " \
+                          f"P2: '{str(cur_field[0] if last_point else cur_field[pt_idx + 1])}'"
                     print(msg)
                     logger_full.write_and_flush(msg + "\n")
                     notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
