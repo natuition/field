@@ -1,199 +1,233 @@
 <!doctype html>
 <html lang={{ui_language | tojson}}>
+
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <!-- <script defer type="text/javascript" src="{{ url_for('static', filename='fontawesome/solid.js') }}"></script>
     <script defer type="text/javascript" src="{{ url_for('static', filename='fontawesome/fontawesome.js') }}"></script> -->
-    <script type="text/javascript" src="/static/{{ now }}/js/offline_subscriber.js"></script> 
-    <script type="text/javascript" src="/static/{{ now }}/fontawesome/solid.js"></script> 
-    <script type="text/javascript" src="/static/{{ now }}/fontawesome/fontawesome.js"></script> 
+    <script type="text/javascript" src="/static/{{ now }}/fontawesome/solid.js"></script>
+    <script type="text/javascript" src="/static/{{ now }}/fontawesome/fontawesome.js"></script>
     <script src="/static/{{ now }}/js/voltage_indicator.js"></script>
     <script src="/static/{{ now }}/js/slider.js"></script>
     <title>Violette</title>
 </head>
+
 <body>
 
 
-{% if statusOfUIObject|length > 1 %}
+    {% if statusOfUIObject|length > 1 %}
 
 
-<div class="main" id="main">
+    <div class="main" id="main">
 
 
-    <script type="text/javascript">
-        const ui_languages = {{ui_languages | tojson}};
-        const ui_language = {{ui_language | tojson}};
-    </script>
+        <script type="text/javascript">
+            const ui_languages = {{ ui_languages | tojson}};
+            const ui_language = {{ ui_language | tojson}};
+        </script>
 
 
-    <header class="header header__begin">
-        <div class="header__color"></div>
-        <div class="header__info">
-            <div class="header__info--logo">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+        <header class="header header__begin">
+            <div class="header__color"></div>
+            <div class="header__info">
+                <div class="header__info--logo">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+                </div>
+                <div class="header__info--model--voltage">
+                    <div class="header__info--voltage">
+                        <p id="voltage_indicator" bumper_disable="true">? V</p>
+                    </div>
+                    <div class="header__info--model" onclick="location.href='/setting'">
+                        <p>{{ sn }}</p>
+                    </div>
+                </div>
             </div>
-            <div class="header__info--model--voltage">
-                <div class="header__info--voltage">
-                    <p id="voltage_indicator" bumper_disable="true">? V</p>
-                </div>
-                <div class="header__info--model" onclick="location.href='/setting'">
-                    <p>{{ sn }}</p>
-                </div>
+            <div class="header__map">
+                <iframe id="map__header" src="/map">
+                    <p>Votre navigateur ne supporte aucune iframe !</p>
+                </iframe>
             </div>
-        </div>
-        <div class="header__map">
-            <iframe id="map__header" src="/map">
-                <p>Votre navigateur ne supporte aucune iframe !</p>
-            </iframe>
-        </div>
-    </header>
-    
-    
-    <section class="ruler {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-none {% else %} display-flex {% endif %}" style="padding: 5px 20px;  justify-content: center;">
-        <div class="ruler__main">
-            <div class="ruler__main--assets">
-                <div class="ruler__assets--title">
-                    <p>{{(ui_languages["Length"])[ui_language]}} </p>
-                    <span id="rangeCol">{{statusOfUIObject['slider']}}</span>
-                </div>
-                <div class="ruler__assets--line">
-                    <input type="range" min="{{ slider_min }}" max="{{ slider_max }}" value="{{statusOfUIObject['slider']}}" step="{{ slider_step }}" id="r1" oninput="range('r1','rangeCol')"">
+        </header>
+
+
+        <section
+            class="ruler {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-none {% else %} display-flex {% endif %}"
+            style="padding: 5px 20px;  justify-content: center;">
+            <div class="ruler__main">
+                <div class="ruler__main--assets">
+                    <div class="ruler__assets--title">
+                        <p>{{(ui_languages["Length"])[ui_language]}} </p>
+                        <span id="rangeCol">{{statusOfUIObject['slider']}}</span>
+                    </div>
+                    <div class="ruler__assets--line">
+                        <input type="range" min="{{ slider_min }}" max="{{ slider_max }}"
+                            value="{{statusOfUIObject['slider']}}" step="{{ slider_step }}" id="r1"
+                            oninput="range('r1','rangeCol')"">
                 </div>
                 <script defer>
-                    range("r1", "rangeCol")
-                </script>
-            </div>
-            <div class="ruler__main--button">
-                {% if statusOfUIObject['fieldButton'] == None %}
-                    {% if statusOfUIObject['stopButton'] == 'charging' %}
-                    <button name="Newfield" id="Stop" class="unselectable active arret">
-                        <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                    {% elif statusOfUIObject['stopButton'] %}
-                    <button name="Newfield" id="Stop" class="unselectable arret">
-                        <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                    {% else %}
-                    <button name="Newfield" id="Stop" class="unselectable arret disabled" disabled="">
-                        <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                    {% endif %}
-                {% elif statusOfUIObject['fieldButton'] == 'charging' %}
-                <button name="Newfield" id="Newfield" class="unselectable active" disabled>
-                    <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
-                {% elif statusOfUIObject['fieldButton'] == 'validate' %}
-                    <button name="Newfield" id="ValidateZone" class="unselectable">
-                        <span class="submit">{{(ui_languages["Validate zone"])[ui_language]}}</span>
-                {% elif not statusOfUIObject['fieldButton'] %}
-                <button name="Newfield" id="Newfield" class="unselectable disabled" disabled>
-                    <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
-                {% else %}
-                <button name="Newfield" id="Newfield" class="unselectable">
-                    <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
-                {% endif %}
-                <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
-                <span class="check"><i class="fas fa-check scale"></i></span>
-                </button>
-                {% if statusOfUIObject['removeFieldButton'] and Field_list is not none %}
-                <button name="RemoveField" id="RemoveField" class="unselectable arret" style="padding:10px!important;">
-                <span class="submit">
-                    <svg id="trash" xmlns="http://www.w3.org/2000/svg" fill="#FFF" viewBox="0 0 24 24" width="24px" height="24px" style="margin:0;"><path d="M 10 2 L 9 3 L 4 3 L 4 5 L 20 5 L 20 3 L 15 3 L 14 2 L 10 2 z M 5 7 L 5 22 L 19 22 L 19 7 L 5 7 z M 8 9 L 10 9 L 10 20 L 8 20 L 8 9 z M 14 9 L 16 9 L 16 20 L 14 20 L 14 9 z"/></svg>
-                </span>
-                {% else %}
-                <button name="RemoveField" id="RemoveField" class="unselectable arret disabled" style="padding:10px!important;" disabled>
-                <span class="submit">
-                    <svg id="trash" xmlns="http://www.w3.org/2000/svg" fill="#5d61646b" viewBox="0 0 24 24" width="24px" height="24px" style="margin:0;"><path d="M 10 2 L 9 3 L 4 3 L 4 5 L 20 5 L 20 3 L 15 3 L 14 2 L 10 2 z M 5 7 L 5 22 L 19 22 L 19 7 L 5 7 z M 8 9 L 10 9 L 10 20 L 8 20 L 8 9 z M 14 9 L 16 9 L 16 20 L 14 20 L 14 9 z"/></svg>
-                </span>
-                {% endif %}
-                </button>
-                {% if statusOfUIObject['wheelButton'] %}
-                <img id="Wheel" class="unselectable" src="{{ url_for('static', filename='wheel.png') }}" height="30px" , width="30px">
-                {% else %}
-                <img id="Wheel" class="disabled-wheel unselectable" src="{{ url_for('static', filename='wheel.png') }}" height="30px" ,
-                    width="30px">
-                {% endif %}
-            </div>
-            <div id="choose_field_selector" class="checklist__select">
-                <div class="checklist__select--role">
-                    <select id="field_selector" style="background-color: rgb(238 240 243)!important; border-radius:20px;margin-top:5px;">
-                        {% if Field_list is none %}
-                        <option value='{{(ui_languages["no_field"])[ui_language]}}' disabled selected>{{(ui_languages["no_field"])[ui_language]}}</option>
-                        {% else %}
-                         <option value='{{(ui_languages["Choose_field"])[ui_language]}}' disabled>{{(ui_languages["Choose_field"])[ui_language]}}</option>
-                        {% for field in Field_list %}
-                        <option value='{{field}}' {% if field==current_field %}selected{% endif %}>{{field}}</option>                        
-                        {% endfor %}
-                        {% endif %}
-                    </select>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4" class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
-                        <path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"></path>
-                    </svg>
+                    range(" r1", "rangeCol") </script>
+                    </div>
+                    <div class="ruler__main--button">
+                        {% if statusOfUIObject['fieldButton'] == None %}
+                        {% if statusOfUIObject['stopButton'] == 'charging' %}
+                        <button name="Newfield" id="Stop" class="unselectable active arret">
+                            <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                            {% elif statusOfUIObject['stopButton'] %}
+                            <button name="Newfield" id="Stop" class="unselectable arret">
+                                <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                                {% else %}
+                                <button name="Newfield" id="Stop" class="unselectable arret disabled" disabled="">
+                                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                                    {% endif %}
+                                    {% elif statusOfUIObject['fieldButton'] == 'charging' %}
+                                    <button name="Newfield" id="Newfield" class="unselectable active" disabled>
+                                        <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
+                                        {% elif statusOfUIObject['fieldButton'] == 'validate' %}
+                                        <button name="Newfield" id="ValidateZone" class="unselectable">
+                                            <span class="submit">{{(ui_languages["Validate zone"])[ui_language]}}</span>
+                                            {% elif not statusOfUIObject['fieldButton'] %}
+                                            <button name="Newfield" id="Newfield" class="unselectable disabled"
+                                                disabled>
+                                                <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
+                                                {% else %}
+                                                <button name="Newfield" id="Newfield" class="unselectable">
+                                                    <span class="submit">{{(ui_languages["New
+                                                        zone"])[ui_language]}}</span>
+                                                    {% endif %}
+                                                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                                                    <span class="check"><i class="fas fa-check scale"></i></span>
+                                                </button>
+                                                {% if statusOfUIObject['removeFieldButton'] and Field_list is not none
+                                                %}
+                                                <button name="RemoveField" id="RemoveField" class="unselectable arret"
+                                                    style="padding:10px!important;">
+                                                    <span class="submit">
+                                                        <svg id="trash" xmlns="http://www.w3.org/2000/svg" fill="#FFF"
+                                                            viewBox="0 0 24 24" width="24px" height="24px"
+                                                            style="margin:0;">
+                                                            <path
+                                                                d="M 10 2 L 9 3 L 4 3 L 4 5 L 20 5 L 20 3 L 15 3 L 14 2 L 10 2 z M 5 7 L 5 22 L 19 22 L 19 7 L 5 7 z M 8 9 L 10 9 L 10 20 L 8 20 L 8 9 z M 14 9 L 16 9 L 16 20 L 14 20 L 14 9 z" />
+                                                        </svg>
+                                                    </span>
+                                                    {% else %}
+                                                    <button name="RemoveField" id="RemoveField"
+                                                        class="unselectable arret disabled"
+                                                        style="padding:10px!important;" disabled>
+                                                        <span class="submit">
+                                                            <svg id="trash" xmlns="http://www.w3.org/2000/svg"
+                                                                fill="#5d61646b" viewBox="0 0 24 24" width="24px"
+                                                                height="24px" style="margin:0;">
+                                                                <path
+                                                                    d="M 10 2 L 9 3 L 4 3 L 4 5 L 20 5 L 20 3 L 15 3 L 14 2 L 10 2 z M 5 7 L 5 22 L 19 22 L 19 7 L 5 7 z M 8 9 L 10 9 L 10 20 L 8 20 L 8 9 z M 14 9 L 16 9 L 16 20 L 14 20 L 14 9 z" />
+                                                            </svg>
+                                                        </span>
+                                                        {% endif %}
+                                                    </button>
+                                                    {% if statusOfUIObject['wheelButton'] %}
+                                                    <img id="Wheel" class="unselectable"
+                                                        src="{{ url_for('static', filename='wheel.png') }}"
+                                                        height="30px" , width="30px">
+                                                    {% else %}
+                                                    <img id="Wheel" class="disabled-wheel unselectable"
+                                                        src="{{ url_for('static', filename='wheel.png') }}"
+                                                        height="30px" , width="30px">
+                                                    {% endif %}
+                    </div>
+                    <div id="choose_field_selector" class="checklist__select">
+                        <div class="checklist__select--role">
+                            <select id="field_selector"
+                                style="background-color: rgb(238 240 243)!important; border-radius:20px;margin-top:5px;">
+                                {% if Field_list is none %}
+                                <option value='{{(ui_languages["no_field"])[ui_language]}}' disabled selected>
+                                    {{(ui_languages["no_field"])[ui_language]}}</option>
+                                {% else %}
+                                <option value='{{(ui_languages["Choose_field"])[ui_language]}}' disabled>
+                                    {{(ui_languages["Choose_field"])[ui_language]}}</option>
+                                {% for field in Field_list %}
+                                <option value='{{field}}' {% if field==current_field %}selected{% endif %}>{{field}}
+                                </option>
+                                {% endfor %}
+                                {% endif %}
+                            </select>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4"
+                                class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
+                                <path
+                                    d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </section>
-        
-    <div id="joystick"
-        class="status {% if statusOfUIObject['joystick'] %} display-flex {% else %} display-none {% endif %} unselectable">
-        <img style="display:none;" id="source" src="{{ url_for('static', filename='icon.png') }}"">
+        </section>
+
+        <div id="joystick"
+            class="status {% if statusOfUIObject['joystick'] %} display-flex {% else %} display-none {% endif %} unselectable">
+            <img style="display:none;" id="source" src="{{ url_for('static', filename='icon.png') }}"">
     </div>
     
-    <section id="conteneur_stats"
-        class="status__active {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-flex {% else %} display-none {% endif %}"
-        style="margin-top: 10px;flex-wrap: wrap;flex-grow: 1;">
-        <!--<div class="status__active--title {% if statusOfUIObject['audit'] == True or statusOfUIObject['audit'] == 'use' %} display-block  {% else %} display-none {% endif %}" style="margin-bottom: 20px;width: 100%;text-align:center;display:table;">
+    <section id=" conteneur_stats"
+                class="status__active {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-flex {% else %} display-none {% endif %}"
+                style="margin-top: 10px;flex-wrap: wrap;flex-grow: 1;">
+            <!--<div class="status__active--title {% if statusOfUIObject['audit'] == True or statusOfUIObject['audit'] == 'use' %} display-block  {% else %} display-none {% endif %}" style="margin-bottom: 20px;width: 100%;text-align:center;display:table;">
             <h2 style="color: #1b7b2a;">{{(ui_languages["Audit on"])[ui_language]}}</h2>
         </div>-->
-        <canvas id="pieChart" width="155" height="155" class="status__active--circle"></canvas>
-        <div class="status__active--time">
-            <div class="status__time--top">
-                <p id="workTime">Time: <span id="workTimeValue">00:00:00</span></p>
+            <canvas id="pieChart" width="155" height="155" class="status__active--circle"></canvas>
+            <div class="status__active--time">
+                <div class="status__time--top">
+                    <p id="workTime">Time: <span id="workTimeValue">00:00:00</span></p>
+                </div>
+                <div class="status__time--bottom">
+                </div>
             </div>
-            <div class="status__time--bottom">
-            </div>
-        </div>
-        <!--<iframe id="webCamStream" src="" width="414px" height="250px" style="margin: 0 auto;display:block; border: none; border-radius: 20px; max-width: 374px; min-height: 210px; width: 100%; height: 100%;">
+            <!--<iframe id="webCamStream" src="" width="414px" height="250px" style="margin: 0 auto;display:block; border: none; border-radius: 20px; max-width: 374px; min-height: 210px; width: 100%; height: 100%;">
         </iframe>-->
-    </section>
-    
-    <div class="begin__button">
-        
-        {% if Field_list is none %}
-            <button name="Start" id="Start" class="begin__button--start unselectable disabled" disabled>
-                <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
-        {% else %}
-        {% if statusOfUIObject['startButton'] == None %}
-            {% if statusOfUIObject['stopButton'] == 'charging' %}
-                <button name="Start" id="Stop" class="begin__button--stop unselectable active">
-                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-            {% elif statusOfUIObject['stopButton'] %}
-                <button name="Start" id="Stop" class="begin__button--stop unselectable">
-                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-            {% else %}
-                <button name="Start" id="Stop" class="begin__button--stop unselectable disabled" disabled>
-                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-            {% endif %}
-        {% elif statusOfUIObject['startButton'] == 'charging' %}
-            <button name="Start" id="Start" class="begin__button--start unselectable active" disabled>
-                <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
-        {% elif not statusOfUIObject['startButton'] %}
-            <button name="Start" id="Start" class="begin__button--start unselectable disabled" disabled>
-                <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
-        {% else %}
-            <button name="Start" id="Start" class="begin__button--start unselectable">
-                <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
-        {% endif %}
-        {% endif %}
-        
-        <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
-        <span class="check"><i class="fas fa-check scale"></i></span>
-        </button>
+            </section>
 
-        <!-- {% if statusOfUIObject['audit'] == 'use' %}
+            <div class="begin__button">
+
+                {% if Field_list is none %}
+                <button name="Start" id="Start" class="begin__button--start unselectable disabled" disabled>
+                    <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
+                    {% else %}
+                    {% if statusOfUIObject['startButton'] == None %}
+                    {% if statusOfUIObject['stopButton'] == 'charging' %}
+                    <button name="Start" id="Stop" class="begin__button--stop unselectable active">
+                        <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                        {% elif statusOfUIObject['stopButton'] %}
+                        <button name="Start" id="Stop" class="begin__button--stop unselectable">
+                            <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                            {% else %}
+                            <button name="Start" id="Stop" class="begin__button--stop unselectable disabled" disabled>
+                                <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                                {% endif %}
+                                {% elif statusOfUIObject['startButton'] == 'charging' %}
+                                <button name="Start" id="Start" class="begin__button--start unselectable active"
+                                    disabled>
+                                    <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
+                                    {% elif not statusOfUIObject['startButton'] %}
+                                    <button name="Start" id="Start" class="begin__button--start unselectable disabled"
+                                        disabled>
+                                        <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
+                                        {% else %}
+                                        <button name="Start" id="Start" class="begin__button--start unselectable">
+                                            <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
+                                            {% endif %}
+                                            {% endif %}
+
+                                            <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                                            <span class="check"><i class="fas fa-check scale"></i></span>
+                                        </button>
+
+                                        <!-- {% if statusOfUIObject['audit'] == 'use' %}
         <img id="Audit" class="unselectable audit fix" src="{{ url_for('static', filename='extraction-disable.png') }}" height="60px", width="30px">
         {% elif statusOfUIObject['audit'] == 'not-use' %}
         <img id="Audit" class="unselectable fix" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
@@ -205,36 +239,48 @@
         <img id="Audit" class="unselectable" src="{{ url_for('static', filename='extraction.png') }}" height="60px", width="30px">
         {% endif %} -->
 
-        {% if Field_list is none %}
-            <button name="Continue" id="Continue" class="begin__button--continue unselectable disabled" disabled>
-                <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
-        {% else %}
-        {% if statusOfUIObject['continueButton'] == None %}
-            {% if statusOfUIObject['stopButton'] == 'charging' %}
-                <button name="Continue" id="Stop" class="begin__button--stop unselectable active">
-                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-            {% else %}
-                <button name="Continue" id="Stop" class="begin__button--stop unselectable">
-                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-            {% endif %}
-        {% elif statusOfUIObject['continueButton'] == 'charging' %}
-            <button name="Continue" id="Continue" class="begin__button--continue unselectable active" disabled>
-                <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
-        {% elif not statusOfUIObject['continueButton'] %}
-            <button name="Continue" id="Continue" class="begin__button--continue unselectable disabled" disabled>
-                <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
-        {% else %}
-            <button name="Continue" id="Continue" class="begin__button--continue unselectable">
-                <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
-        {% endif %}
-        {% endif %}
-        <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
-        <span class="check"><i class="fas fa-check scale"></i></span>
-        </button>
-    </div>
-</div>
+                                        {% if Field_list is none %}
+                                        <button name="Continue" id="Continue"
+                                            class="begin__button--continue unselectable disabled" disabled>
+                                            <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
+                                            {% else %}
+                                            {% if statusOfUIObject['continueButton'] == None %}
+                                            {% if statusOfUIObject['stopButton'] == 'charging' %}
+                                            <button name="Continue" id="Stop"
+                                                class="begin__button--stop unselectable active">
+                                                <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                                                {% else %}
+                                                <button name="Continue" id="Stop"
+                                                    class="begin__button--stop unselectable">
+                                                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                                                    {% endif %}
+                                                    {% elif statusOfUIObject['continueButton'] == 'charging' %}
+                                                    <button name="Continue" id="Continue"
+                                                        class="begin__button--continue unselectable active" disabled>
+                                                        <span
+                                                            class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
+                                                        {% elif not statusOfUIObject['continueButton'] %}
+                                                        <button name="Continue" id="Continue"
+                                                            class="begin__button--continue unselectable disabled"
+                                                            disabled>
+                                                            <span
+                                                                class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
+                                                            {% else %}
+                                                            <button name="Continue" id="Continue"
+                                                                class="begin__button--continue unselectable">
+                                                                <span
+                                                                    class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
+                                                                {% endif %}
+                                                                {% endif %}
+                                                                <span class="loading"><i
+                                                                        class="fas fa-sync-alt fa-spin"></i></span>
+                                                                <span class="check"><i
+                                                                        class="fas fa-check scale"></i></span>
+                                                            </button>
+            </div>
+        </div>
 
-<!--<script type="text/javascript" src="{{ url_for('static', filename='js/joy.js') }}"></script>
+        <!--<script type="text/javascript" src="{{ url_for('static', filename='js/joy.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/joystick.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/Chart.min.js') }}"></script> 
 <script type="text/javascript" src="{{ url_for('static', filename='js/chartjs-plugin-doughnutlabel.min.js') }}"></script>   
@@ -242,166 +288,185 @@
 <script src="{{ url_for('static', filename='js/index.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/statistics.js') }}" defer></script>-->
 
-<script type="text/javascript" src="/static/{{ now }}/js/joy.js"></script>
-<script type="text/javascript" src="/static/{{ now }}/js/joystick.js" defer></script>
-<script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script> 
-<script type="text/javascript" src="/static/{{ now }}/js/chartjs-plugin-doughnutlabel.min.js"></script>   
-<script src="/static/{{ now }}/js/index.js" defer></script>
-<script src="/static/{{ now }}/js/statistics.js" defer></script>
+        <script type="text/javascript" src="/static/{{ now }}/js/joy.js"></script>
+        <script type="text/javascript" src="/static/{{ now }}/js/joystick.js" defer></script>
+        <script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script>
+        <script type="text/javascript" src="/static/{{ now }}/js/chartjs-plugin-doughnutlabel.min.js"></script>
+        <script src="/static/{{ now }}/js/index.js" defer></script>
+        <script src="/static/{{ now }}/js/statistics.js" defer></script>
 
-{% else %}
+        {% else %}
 
-
-<div class="main" id="main">
-    <header class="header header__begin header__color--checklist">
-        <div class="header__info">
-            <div class="header__info--logo">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
-            </div>
-            <div class="header__info--model--voltage">
-                <div class="header__info--voltage">
-                    <p id="voltage_indicator" bumper_disable="true">? V</p>
+        <div class="main" id="main">
+            <header class="header header__begin header__color--checklist">
+                <div class="header__info">
+                    <div class="header__info--logo">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+                    </div>
+                    <div class="header__info--model--voltage">
+                        <div class="header__info--voltage">
+                            <p id="voltage_indicator" bumper_disable="true">? V</p>
+                        </div>
+                        <div class="header__info--model">
+                            <p>{{ sn }}</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="header__info--model">
-                    <p>{{ sn }}</p>
+                <div class="header__title">
+                    {{(ui_languages["Checklist before start"])[ui_language]}}
                 </div>
-            </div>
-        </div>
-        <div class="header__title">
-            {{(ui_languages["Checklist before start"])[ui_language]}}
-        </div>
-        <div class="header__subtitle--checklist">
-            {{(ui_languages["Please ensure all further steps before starting VIOLETTE"])[ui_language]}}
-        </div>
-    </header>
-
-    <section class="checklist">
-        <div class="checkbox">
-            <label class="checkbox__item">
-                <p class="checkbox__item--title unselectable">
-                {{(ui_languages["Open middle cover"])[ui_language]}}</p>
-                <input type="checkbox" id="opencover" onclick="activateNext()">
-                <span class="checkmark">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857" class="bi bi-check" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                    </svg>
-                </span>
-            </label>
-        </div>
-        <div class="checkbox">
-            <label class="checkbox__item">
-                <p class="checkbox__item--title unselectable">
-                {{(ui_languages["Verify XY"])[ui_language]}}</p>
-                <input type="checkbox" id="XY" onclick="activateNext()">
-                <span class="checkmark">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857" class="bi bi-check" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                    </svg>
-                </span>
-            </label>
-        </div>
-        <div class="checkbox">
-            <label class="checkbox__item">
-                <p class="checkbox__item--title unselectable">
-                {{(ui_languages["Verify corkscrew"])[ui_language]}}</p>
-                <input type="checkbox" id="Z" onclick="activateNext()">
-                <span class="checkmark">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857" class="bi bi-check" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                    </svg>
-                </span>
-            </label>
-        </div>
-
-        <div class="checkbox">
-            <label class="checkbox__item">
-                <p class="checkbox__item--title unselectable">
-                {{(ui_languages["Verify camera"])[ui_language]}}</p>
-                <input type="checkbox" id="camera" onclick="activateNext()">
-                <span class="checkmark">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857" class="bi bi-check" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                    </svg>
-                </span>
-            </label>
-        </div>
-
-        <img id="frameCam" src="http://violette.lan:8080/video" style="margin: 25px 0px 0px 45px; width: 80%; border-radius: 20px;" >
-
-        <div class="checkbox">
-            <label class="checkbox__item">
-                <p class="checkbox__item--title unselectable">
-                {{(ui_languages["Close middle cove"])[ui_language]}}</p>
-                <input type="checkbox" id="closecover" onclick="activateNext()">
-                <span class="checkmark">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857" class="bi bi-check" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                    </svg>
-                </span>
-            </label>
-        </div>
-        <div class="checkbox">
-            <label class="checkbox__item">
-                <p class="checkbox__item--title unselectable">
-                {{(ui_languages["Wheels straight"])[ui_language]}}</p>
-                <input type="checkbox" id="wheelsStraight" onclick="activateNext()">
-                <span class="checkmark">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857" class="bi bi-check" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                    </svg>
-                </span>
-            </label>
-        </div>
-        <div class="checklist__select">
-            <div class="checklist__select--title">
-                {{(ui_languages["AI_selector"])[ui_language]}}
-            </div>
-            <div class="checklist__select--role">
-                <select id="AI_selector">
-                    <option value='{{(ui_languages["Choose_AI"])[ui_language]}}' disabled>{{(ui_languages["Choose_AI"])[ui_language]}}</option>
-                    {%  for ia in IA_list %}
-                    <option value='{{ia}}'>{{ia}}</option>
-                    {%  endfor %}
-                </select>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4" class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
-                    <path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"></path>
-                </svg>
-            </div>
-        </div>
-        <button name="checkbutton" id="checkbutton" class="finish__check unselectable disabled" onclick="checkAllBoxAreChecked()" disabled>
-            <span class="submit">{{(ui_languages["Finish check"])[ui_language]}}</span>
-            <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
-            <span class="check"><i class="fas fa-check scale"></i></span>
-        </button>
-    </section>
-</div>
-
-<!-- <script src="{{ url_for('static', filename='js/checkList.js') }}" defer></script>-->
-<script src="/static/{{ now }}/js/checkList.js" defer></script>
-
-{% endif %}
-
-<div class="landscape">
-    <header class="header header__begin">
-        <div class="header__color"></div>
-        <div class="header__info">
-            <div class="header__info--logo">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
-            </div>
-            <div class="header__info--model--voltage">
-                <div class="header__info--model">
-                    <p>{{ sn }}</p>
+                <div class="header__subtitle--checklist">
+                    {{(ui_languages["Please ensure all further steps before starting VIOLETTE"])[ui_language]}}
                 </div>
-            </div>
-        </div>
-        <div class="header__title">
-            {{(ui_languages["no_landscape"])[ui_language]}}
-        </div>
-    </header>
-</div>
+            </header>
 
-<!-- <script src="{{ url_for('static', filename='js/popup.js') }}" defer></script> -->
-<script src="/static/{{ now }}/js/popup.js" defer></script>
+            <section class="checklist">
+                <div class="checkbox">
+                    <label class="checkbox__item">
+                        <p class="checkbox__item--title unselectable">
+                            {{(ui_languages["Open middle cover"])[ui_language]}}</p>
+                        <input type="checkbox" id="opencover" onclick="activateNext()">
+                        <span class="checkmark">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857"
+                                class="bi bi-check" viewBox="0 0 16 16">
+                                <path
+                                    d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                            </svg>
+                        </span>
+                    </label>
+                </div>
+                <div class="checkbox">
+                    <label class="checkbox__item">
+                        <p class="checkbox__item--title unselectable">
+                            {{(ui_languages["Verify XY"])[ui_language]}}</p>
+                        <input type="checkbox" id="XY" onclick="activateNext()">
+                        <span class="checkmark">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857"
+                                class="bi bi-check" viewBox="0 0 16 16">
+                                <path
+                                    d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                            </svg>
+                        </span>
+                    </label>
+                </div>
+                <div class="checkbox">
+                    <label class="checkbox__item">
+                        <p class="checkbox__item--title unselectable">
+                            {{(ui_languages["Verify corkscrew"])[ui_language]}}</p>
+                        <input type="checkbox" id="Z" onclick="activateNext()">
+                        <span class="checkmark">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857"
+                                class="bi bi-check" viewBox="0 0 16 16">
+                                <path
+                                    d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                            </svg>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="checkbox">
+                    <label class="checkbox__item">
+                        <p class="checkbox__item--title unselectable">
+                            {{(ui_languages["Verify camera"])[ui_language]}}</p>
+                        <p id="no_cam" style="margin-top: 10px;">Waiting camera...</p>
+                        <input type="checkbox" id="camera" onclick="activateNext()">
+                        <span class="checkmark">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857"
+                                class="bi bi-check" viewBox="0 0 16 16">
+                                <path
+                                    d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                            </svg>
+                        </span>
+                    </label>
+                </div>
+
+                <img id="frameCam" src="{{ url_for('static', filename='loading.gif') }}"
+                    style="margin: 25px 0px 0px 45px;width: 80%; border-radius: 20px;">
+
+                <div class="checkbox">
+                    <label class="checkbox__item">
+                        <p class="checkbox__item--title unselectable">
+                            {{(ui_languages["Close middle cove"])[ui_language]}}</p>
+                        <input type="checkbox" id="closecover" onclick="activateNext()">
+                        <span class="checkmark">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857"
+                                class="bi bi-check" viewBox="0 0 16 16">
+                                <path
+                                    d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                            </svg>
+                        </span>
+                    </label>
+                </div>
+                <div class="checkbox">
+                    <label class="checkbox__item">
+                        <p class="checkbox__item--title unselectable">
+                            {{(ui_languages["Wheels straight"])[ui_language]}}</p>
+                        <input type="checkbox" id="wheelsStraight" onclick="activateNext()">
+                        <span class="checkmark">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857"
+                                class="bi bi-check" viewBox="0 0 16 16">
+                                <path
+                                    d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                            </svg>
+                        </span>
+                    </label>
+                </div>
+                <div class="checklist__select">
+                    <div class="checklist__select--title">
+                        {{(ui_languages["AI_selector"])[ui_language]}}
+                    </div>
+                    <div class="checklist__select--role">
+                        <select id="AI_selector">
+                            <option value='{{(ui_languages["Choose_AI"])[ui_language]}}' disabled>
+                                {{(ui_languages["Choose_AI"])[ui_language]}}</option>
+                            {% for ia in IA_list %}
+                            <option value='{{ia}}'>{{ia}}</option>
+                            {% endfor %}
+                        </select>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4"
+                            class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
+                            <path
+                                d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <button name="checkbutton" id="checkbutton" class="finish__check unselectable disabled"
+                    onclick="checkAllBoxAreChecked()" disabled>
+                    <span class="submit">{{(ui_languages["Finish check"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+            </section>
+        </div>
+
+        <!-- <script src="{{ url_for('static', filename='js/checkList.js') }}" defer></script>-->
+        <script src="/static/{{ now }}/js/checkList.js" defer></script>
+
+        {% endif %}
+
+        <div class="landscape">
+            <header class="header header__begin">
+                <div class="header__color"></div>
+                <div class="header__info">
+                    <div class="header__info--logo">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+                    </div>
+                    <div class="header__info--model--voltage">
+                        <div class="header__info--model">
+                            <p>{{ sn }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="header__title">
+                    {{(ui_languages["no_landscape"])[ui_language]}}
+                </div>
+            </header>
+        </div>
+
+        <!-- <script src="{{ url_for('static', filename='js/popup.js') }}" defer></script> -->
+        <script src="/static/{{ now }}/js/popup.js" defer></script>
 
 </body>
+
 </html>

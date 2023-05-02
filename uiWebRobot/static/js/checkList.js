@@ -4,7 +4,18 @@ socketio.on("reconnect_attempt", (attempt) => {
 });
 var isCheck = false
 
-document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
+show_cam();
+function show_cam() {
+    var img = new Image();
+    img.src = 'http://' + document.domain + ':8080/video';
+    img.onload = function () {
+        document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
+        $('#no_cam').remove();
+    }
+    img.onerror = function () {
+        setTimeout(show_cam(), 1000);
+    }
+}
 
 function canNext() {
     return document.getElementById('closecover').checked &&
@@ -13,7 +24,8 @@ function canNext() {
         document.getElementById('Z').checked &&
         document.getElementById('camera').checked &&
         document.getElementById('wheelsStraight').checked &&
-        document.getElementById("voltage_indicator").getAttribute("bumper_disable") == "true";
+        document.getElementById("voltage_indicator").getAttribute("bumper_disable") == "true" &&
+        document.getElementById('no_cam') == null;
 }
 
 function checkAllBoxAreChecked() {
