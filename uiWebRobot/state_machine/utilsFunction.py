@@ -73,16 +73,12 @@ def initVesc(logger: utility.Logger):
     return vesc_engine
 
 
-def restart_ui_sm_init_error_th(event):
-    time.sleep(10)
+def timeout_sm_th(event):
+    time.sleep(5)
     if not event.is_set():
-        tn = telnetlib.Telnet("192.168.9.101")
-        tn.write(b"G28 XY\n")
-        tn.read_some()
-        tn.write(b"exit\n")
-        tn.read_all()
-        tn.close()
-        os.system("sudo systemctl restart UI.service")
+        msg = "Couldn't get SmoothieAdapter!"
+        logger.write_and_flush(msg + "\n")
+        raise Exception(msg)
 
 
 def initSmoothie(logger: utility.Logger):
@@ -95,12 +91,11 @@ def initSmoothie(logger: utility.Logger):
         else:
             msg = "Couldn't get smoothie's USB address!"
             logger.write_and_flush(msg + "\n")
-            print(msg)
-            exit(1)
+            raise Exception(msg)
 
     event = threading.Event()
     smoothie_creation_thread = threading.Thread(
-        target=restart_ui_sm_init_error_th, args=(event,))
+        target=timeout_sm_th, args=(event,))
     smoothie_creation_thread.start()
     smoothie = adapters.SmoothieAdapter(smoothie_address)
     event.set()
