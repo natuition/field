@@ -1,7 +1,7 @@
 import connectors
 import multiprocessing
 import time
-
+import navigation
 import utility
 from config import config
 import cv2 as cv
@@ -2237,7 +2237,7 @@ class GPSUbloxAdapter:
     def reconnect(self):
         self._serial = self._get_new_connection(self._serial)
 
-    def get_fresh_position(self):
+    def get_fresh_position(self) -> list:
         """Waits for new fresh position from gps and returns it, blocking until new position received.
         Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
         features)"""
@@ -2260,30 +2260,68 @@ class GPSUbloxAdapter:
                     continue
             return self.get_last_position()
 
-    def get_last_position(self):
+    def get_fresh_position_v2(self) -> navigation.GPSPoint:
+        """Waits for new fresh position from gps and returns it, blocking until new position received.
+        Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
+        features)"""
+
+        # self._get_fresh_time = time.time()
+
+        # while len(self._last_pos_container) < 1:
+        # if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
+        # raise TimeoutError
+        # pass
+
+        with self._sync_locker:
+            self._position_is_fresh = False
+
+        while True:
+            # if time.time() - self._get_fresh_time > config.NO_GPS_TIMEOUT:
+            # raise TimeoutError
+            with self._sync_locker:
+                if not self._position_is_fresh:
+                    continue
+            return self.get_last_position_v2()
+
+    def get_last_position(self) -> list:
         """Waits until at least one position is stored, returns last saved position copy at the moment of call
-        (reference type safe)"""
+        (reference type safe)
+
+        Returned position is in "old list" format.
+        """
 
         while len(self._last_pos_container) < 1:
             pass
         with self._sync_locker:
-            position = self._last_pos_container[-1].copy()  # var may be need for context manager
-            return position
+            return self._last_pos_container[-1].as_old_list
+
+    def get_last_position_v2(self) -> navigation.GPSPoint:
+        """Waits until at least one position is stored, returns last saved position copy at the moment of call
+        (reference type safe)
+
+        Returned position is an instance of navigation.GPSPoint class.
+        """
+
+        while len(self._last_pos_container) < 1:
+            pass
+        with self._sync_locker:
+            # TODO currently it's not a deep copy
+            return self._last_pos_container[-1]
 
     def get_last_positions_list(self):
         """Waits until at least one position is stored, returns list of last saved positions copies at the moment of
         call (reference type safe)"""
 
         get_last_positions_list_time = time.time()
-
         positions = []
+
         while len(self._last_pos_container) < 1:
             if time.time() - get_last_positions_list_time > config.NO_GPS_TIMEOUT:
                 raise TimeoutError
-            pass
+
         with self._sync_locker:
-            for position in self._last_pos_container:
-                positions.append(position.copy())
+            for point in self._last_pos_container:
+                positions.append(point.as_old_list)
             return positions
 
     def get_stored_pos_count(self):
@@ -2318,7 +2356,8 @@ class GPSUbloxAdapter:
                         lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
                         point_quality = data[6]
                         if -90 <= lati <= 90 and -180 <= longi <= 180:
-                            return [lati, longi, point_quality]  # , float(data[11])  # alti
+                            # return [lati, longi, point_quality]  # , float(data[11])  # alti
+                            return navigation.GPSPoint(lati, longi, point_quality, float(data[1]), time.time())
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:

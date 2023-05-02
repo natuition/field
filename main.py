@@ -635,7 +635,8 @@ def move_to_point_and_extract(coords_from_to: list,
                             vesc_speed_fast, vesc_engine.PROPULSION_KEY)
 
         # NAVIGATION CONTROL
-        cur_pos = gps.get_last_position()
+        cur_pos_obj = gps.get_last_position_v2()
+        cur_pos = cur_pos_obj.as_old_list
 
         nav_start_t = time.time()
 
@@ -650,7 +651,8 @@ def move_to_point_and_extract(coords_from_to: list,
         # print("tock")
 
         if start_Nav_while:
-            prev_pos = cur_pos
+            prev_pos_obj = cur_pos_obj
+            prev_pos = prev_pos_obj.as_old_list
             start_Nav_while = False
 
         # mu_navigations_period, sigma_navigations_period = utility.mu_sigma(navigations_period)
@@ -658,7 +660,7 @@ def move_to_point_and_extract(coords_from_to: list,
         navigation_prediction.set_current_lat_long(cur_pos)
 
         # skip same points (non-blocking reading returns old point if new point isn't available yet)
-        if str(cur_pos) == str(prev_pos):
+        if math.isclose(cur_pos_obj.creation_ts, prev_pos_obj.creation_ts):
             # stop robot if there's no new points for a while
             if time.time() - point_reading_t > config.GPS_POINT_TIME_BEFORE_STOP:
                 vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
@@ -671,9 +673,10 @@ def move_to_point_and_extract(coords_from_to: list,
                 gps_reconnect_ts = time.time()
 
                 while True:
-                    cur_pos = gps.get_last_position()
+                    cur_pos_obj = gps.get_last_position_v2()
+                    cur_pos = cur_pos_obj.as_old_list
 
-                    if str(cur_pos) == str(prev_pos):
+                    if math.isclose(cur_pos_obj.creation_ts, prev_pos_obj.creation_ts):
                         # reconnect gps adapter to ublox if there's no gps points for a while
                         if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
                             gps.reconnect()
@@ -704,14 +707,15 @@ def move_to_point_and_extract(coords_from_to: list,
                 data_collector.add_vesc_moving_time_data(
                     vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
 
-                prev_bad_quality_pos = cur_pos
+                prev_bad_quality_pos_obj = cur_pos_obj
                 gps_reconnect_ts = time.time()
 
                 while True:
-                    cur_pos = gps.get_last_position()
+                    cur_pos_obj = gps.get_last_position_v2()
+                    cur_pos = cur_pos_obj.as_old_list
 
                     # check if it's a new point
-                    if str(cur_pos) == str(prev_bad_quality_pos):
+                    if math.isclose(cur_pos_obj.creation_ts, prev_bad_quality_pos_obj.creation_ts):
                         # reconnect gps adapter to ublox if there's no gps points for a while
                         if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
                             gps.reconnect()
@@ -723,7 +727,7 @@ def move_to_point_and_extract(coords_from_to: list,
                             logger_full.write_and_flush(msg + "\n")
                         continue
                     else:
-                        prev_bad_quality_pos = cur_pos
+                        prev_bad_quality_pos_obj = cur_pos_obj
 
                     # check if it's a good quality point
                     if cur_pos[2] != "4":
@@ -749,7 +753,7 @@ def move_to_point_and_extract(coords_from_to: list,
             data_collector.add_vesc_moving_time_data(
                 vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
 
-            prev_bad_quality_pos = cur_pos
+            prev_bad_quality_pos_obj = cur_pos_obj
             gps_reconnect_ts = distance_wait_start_ts = time.time()
 
             while True:
@@ -762,10 +766,11 @@ def move_to_point_and_extract(coords_from_to: list,
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     break
 
-                cur_pos = gps.get_last_position()
+                cur_pos_obj = gps.get_last_position_v2()
+                cur_pos = cur_pos_obj.as_old_list
 
                 # check if it's a new point
-                if str(cur_pos) == str(prev_bad_quality_pos):
+                if math.isclose(cur_pos_obj.creation_ts, prev_bad_quality_pos_obj.creation_ts):
                     # reconnect gps adapter to ublox if there's no gps points for a while
                     if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
                         gps.reconnect()
@@ -777,7 +782,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         logger_full.write_and_flush(msg + "\n")
                     continue
                 else:
-                    prev_bad_quality_pos = cur_pos
+                    prev_bad_quality_pos_obj = cur_pos_obj
 
                 # check if it's a good quality point or ignore point quality if bad quality stop is not allowed
                 if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
@@ -1135,7 +1140,8 @@ def move_to_point_and_extract(coords_from_to: list,
             if config.CONTINUOUS_INFORMATION_SENDING:
                 notification.set_input_voltage(vesc_data["input_voltage"])
 
-        prev_pos = cur_pos
+        prev_pos_obj = cur_pos_obj
+        prev_pos = prev_pos_obj.as_old_list
 
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")

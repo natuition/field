@@ -7,6 +7,7 @@ import time
 from config import config
 import os
 
+
 class GPSComputing:
     """
     Class containing methods for handling GPS-coordinates
@@ -551,3 +552,78 @@ class NavigationPrediction:
 
         msg = f"[PREDICTOR] Error : {self.nav.get_distance(new_foreseen_point, cur_pos)}."
         self.logger_full.write(msg + "\n")
+
+
+class GPSPoint:
+    def __init__(self,
+                 latitude,
+                 longitude,
+                 quality=None,
+                 creation_ts=None,
+                 receiving_ts=None):
+
+        self.__latitude = latitude
+        self.__longitude = longitude
+        self.__quality = quality
+        self.__creation_ts = creation_ts
+        self.__receiving_ts = receiving_ts
+
+    @property
+    def latitude(self):
+        return self.__latitude
+
+    @latitude.setter
+    def latitude(self, value):
+        if not isinstance(value, (int, float)):
+            raise TypeError(f"latitude must be int or float type, got '{type(value).__name__}' instead")
+
+        if not (-90 <= value <= 90):
+            raise ValueError(f"latitude must be in range [-90 - 90], got {value} instead")
+
+        self.__latitude = value
+
+    @property
+    def longitude(self):
+        return self.__longitude
+
+    @longitude.setter
+    def longitude(self, value):
+        if not isinstance(value, (int, float)):
+            raise TypeError(f"longitude must be int or float type, got '{type(value).__name__}' instead")
+
+        if not (-180 <= value <= 180):
+            raise ValueError(f"longitude must be in range [-180 - 180], got {value} instead")
+
+        self.__longitude = value
+
+    @property
+    def quality(self):
+        return self.__quality
+
+    @quality.setter
+    def quality(self, value):
+        # no validation as currently it is unknown what flags will be used
+        self.__quality = value
+
+    @property
+    def creation_ts(self):
+        return self.__creation_ts
+
+    @property
+    def receiving_ts(self):
+        return self.__receiving_ts
+
+    @property
+    def as_old_list(self):
+        point = [self.__latitude, self.__longitude]
+        if self.__quality is not None:
+            point.append(self.__quality)
+        return point
+
+    @property
+    def as_json(self):
+        raise NotImplementedError("this method is not implemented yet")
+
+    @staticmethod
+    def from_json(point: dict):
+        raise NotImplementedError("this method is not implemented yet")
