@@ -348,5 +348,10 @@
 		"fr": "Paramètres",
 		"en": "Settings",
 		"nl": "Instellingen"
+	},
+	"Waiting camera": {
+		"fr": "En attente de la caméra...", 
+		"en": "Waiting camera...",
+		"nl": "Wachten gps..."
 	}
 }
