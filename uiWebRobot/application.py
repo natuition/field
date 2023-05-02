@@ -333,7 +333,6 @@ class UIWebRobot:
         os.system('sudo systemctl restart UI')
 
     def handle_exception(self, e):
-        print(e)
         # pass through HTTP errors
         if isinstance(e, HTTPException):
             return e

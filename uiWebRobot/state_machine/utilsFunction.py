@@ -73,7 +73,7 @@ def initVesc(logger: utility.Logger):
     return vesc_engine
 
 
-def timeout_sm_th(event):
+def timeout_sm_th(event, logger):
     time.sleep(15)
     if not event.is_set():
         msg = "Couldn't get SmoothieAdapter!"
@@ -95,7 +95,7 @@ def initSmoothie(logger: utility.Logger):
 
     event = threading.Event()
     smoothie_creation_thread = threading.Thread(
-        target=timeout_sm_th, args=(event,))
+        target=timeout_sm_th, args=(event, logger))
     smoothie_creation_thread.start()
     smoothie = adapters.SmoothieAdapter(smoothie_address)
     event.set()
