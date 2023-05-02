@@ -74,7 +74,7 @@ def initVesc(logger: utility.Logger):
 
 
 def timeout_sm_th(event):
-    time.sleep(5)
+    time.sleep(15)
     if not event.is_set():
         msg = "Couldn't get SmoothieAdapter!"
         logger.write_and_flush(msg + "\n")
