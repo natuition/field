@@ -7,17 +7,23 @@ var isCheck = false
 var show_cam_interval = setInterval(show_cam, 1000);
 var count_next_interval;
 
-var count = 19;
-var last_count_txt = null;
+var count = 0;
+var last_para_txt = null;
+var loading_next = null;
 
 function count_next() {
-    var count_txt = document.createTextNode(count.toString() + " ");
-    var el = document.getElementById("checkbutton").getElementsByClassName('loading')[0];
-    if (last_count_txt != null) el.removeChild(last_count_txt);
-    el.prepend(count_txt);
-    last_count_txt = count_txt;
-    count = count - 1;
-    if (count == -1) clearInterval(count_next_interval);
+    loading_next.innerHTML = count.toString() + "% " + "<i class='fas fa-sync-alt fa-spin'></i>";
+    count = count + 5;
+    if (count > 100) {
+        clearInterval(count_next_interval);
+        alert("Paf");
+        $.ajax({
+            type: "GET",
+            url: 'http://' + document.domain + '/restart_ui',
+            asynch: true
+        });
+        document.location.reload();
+    }
 }
 
 function show_cam() {
@@ -56,7 +62,8 @@ function checkAllBoxAreChecked() {
         $('#checkbutton').addClass('active');
         $('#AI_selector').attr('disabled', '');
         socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
-        count_next_interval = setInterval(count_next, 1000);
+        loading_next = document.getElementById("checkbutton").getElementsByClassName('loading')[0];
+        count_next_interval = setInterval(count_next, 500);
     }
 
 }
@@ -73,6 +80,7 @@ function activateNext() {
 
 socketio.on('checklist', function (dataServ) {
     if (dataServ["status"] == "refresh") {
+        clearInterval(count_next_interval);
         document.location.reload();
     }
 });

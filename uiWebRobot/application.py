@@ -334,6 +334,7 @@ class UIWebRobot:
 
     def handle_exception(self, e):
         # pass through HTTP errors
+
         if isinstance(e, HTTPException):
             return e
 
