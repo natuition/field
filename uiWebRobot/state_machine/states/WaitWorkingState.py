@@ -45,6 +45,11 @@ class WaitWorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
                 self.vesc_engine = initVesc(self.logger)
+            else:
+                msg = f"[{self.__class__.__name__}] -> no need to initVesc"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
             self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
             self.vesc_engine.set_current_rpm(
                 0, self.vesc_engine.PROPULSION_KEY)
@@ -57,7 +62,18 @@ class WaitWorkingState(State.State):
                 msg = f"[{self.__class__.__name__}] -> initSmoothie"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
-                self.smoothie = initSmoothie(self.logger)
+                try:
+                    self.smoothie = initSmoothie(self.logger)
+                except Exception as e:
+                    if "[Timeout sm]" in str(e):
+                        self.smoothie = initSmoothie(self.logger)
+                    else:
+                        raise e
+            else:
+                msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
         except KeyboardInterrupt:
             raise KeyboardInterrupt
 

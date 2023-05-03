@@ -53,18 +53,18 @@ class CheckState(State.State):
             if self.cam:
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Sending kill signal to camera process..."
-                    self.logger.write_and_flush(msg)
+                    self.logger.write_and_flush(msg + "\n")
                     print(msg)
                 os.killpg(os.getpgid(self.cam.pid), signal.SIGKILL)
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Restarting camera nvargus-daemon service..."
-                    self.logger.write_and_flush(msg)
+                    self.logger.write_and_flush(msg + "\n")
                     print(msg)
                 os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Restarting ntripClient.service..."
-                    self.logger.write_and_flush(msg)
+                    self.logger.write_and_flush(msg + "\n")
                     print(msg)
                 os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)

@@ -5,6 +5,20 @@ socketio.on("reconnect_attempt", (attempt) => {
 var isCheck = false
 
 var show_cam_interval = setInterval(show_cam, 1000);
+var count_next_interval;
+
+var count = 19;
+var last_count_txt = null;
+
+function count_next() {
+    var count_txt = document.createTextNode(count.toString() + " ");
+    var el = document.getElementById("checkbutton").getElementsByClassName('loading')[0];
+    if (last_count_txt != null) el.removeChild(last_count_txt);
+    el.prepend(count_txt);
+    last_count_txt = count_txt;
+    count = count - 1;
+    if (count == -1) clearInterval(count_next_interval);
+}
 
 function show_cam() {
     try {
@@ -14,6 +28,7 @@ function show_cam() {
             document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
             $('#no_cam').remove();
             clearInterval(show_cam_interval);
+            activateNext();
         }
     } catch (error) {
         console.error(error);
@@ -41,6 +56,7 @@ function checkAllBoxAreChecked() {
         $('#checkbutton').addClass('active');
         $('#AI_selector').attr('disabled', '');
         socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
+        count_next_interval = setInterval(count_next, 1000);
     }
 
 }
