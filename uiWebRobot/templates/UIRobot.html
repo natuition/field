@@ -44,7 +44,9 @@
                 </div>
                 <div class="header__info--model--voltage">
                     <div class="header__info--voltage">
-                        <p id="voltage_indicator" bumper_disable="true">? V</p>
+                        <p id="voltage_indicator" bumper_disable="false">
+                            <i class="fas fa-spinner fa-spin" style="color: #fff;"></i>
+                        </p>
                     </div>
                     <div class="header__info--model" onclick="location.href='/setting'">
                         <p>{{ sn }}</p>
@@ -306,7 +308,9 @@
                     </div>
                     <div class="header__info--model--voltage">
                         <div class="header__info--voltage">
-                            <p id="voltage_indicator" bumper_disable="true">? V</p>
+                            <p id="voltage_indicator" bumper_disable="false">
+                                <i class="fas fa-spinner fa-spin" style="color: #fff;"></i>
+                            </p>
                         </div>
                         <div class="header__info--model">
                             <p>{{ sn }}</p>
