@@ -4,16 +4,15 @@ socketio.on("reconnect_attempt", (attempt) => {
 });
 var isCheck = false
 
-show_cam();
+var show_cam_interval = setInterval(show_cam(), 1000);
+
 function show_cam() {
     var img = new Image();
     img.src = 'http://' + document.domain + ':8080/video';
     img.onload = function () {
         document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
         $('#no_cam').remove();
-    }
-    img.onerror = function () {
-        setTimeout(show_cam(), 1000);
+        clearInterval(show_cam_interval);
     }
 }
 
