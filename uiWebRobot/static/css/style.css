@@ -794,3 +794,25 @@ select{
         display: none;
     }
 }
+
+#cam_div{
+    text-align: center;
+    margin: 25px 0px 0px 45px;
+    position: relative;
+}
+
+#cam_div div p{
+    color: #8994a1;
+    font-size: 14px;
+    font-weight: 300;
+    margin-top: 0 !important;
+    font-weight: bold;
+}
+
+#cam_div div{
+    position: absolute;
+    top: 75%;
+    left: 0;
+    padding-left: 5px;
+    width: 100%;
+}

@@ -369,7 +369,6 @@
                     <label class="checkbox__item">
                         <p class="checkbox__item--title unselectable">
                             {{(ui_languages["Verify camera"])[ui_language]}}</p>
-                        <p id="no_cam" style="margin-top: 10px;">{{(ui_languages["Waiting camera"])[ui_language]}}</p>
                         <input type="checkbox" id="camera" onclick="activateNext()">
                         <span class="checkmark">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#47a857"
@@ -381,8 +380,13 @@
                     </label>
                 </div>
 
-                <img id="frameCam" src="{{ url_for('static', filename='loading.gif') }}"
-                    style="margin: 25px 0px 0px 45px;width: 80%; border-radius: 20px;">
+                <div id="cam_div">
+                    <img id="frameCam" src="{{ url_for('static', filename='loading.gif') }}"
+                        style="width: 80%; border-radius: 20px;">
+                    <div>
+                        <p id="no_cam" style="margin-top: 10px;">{{(ui_languages["Waiting camera"])[ui_language]}}</p>
+                    </div>
+                </div>
 
                 <div class="checkbox">
                     <label class="checkbox__item">
