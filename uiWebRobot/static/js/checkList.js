@@ -4,15 +4,19 @@ socketio.on("reconnect_attempt", (attempt) => {
 });
 var isCheck = false
 
-var show_cam_interval = setInterval(show_cam(), 1000);
+var show_cam_interval = setInterval(show_cam, 1000);
 
 function show_cam() {
-    var img = new Image();
-    img.src = 'http://' + document.domain + ':8080/video';
-    img.onload = function () {
-        document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
-        $('#no_cam').remove();
-        clearInterval(show_cam_interval);
+    try {
+        var img = new Image();
+        img.src = 'http://' + document.domain + ':8080/video';
+        img.onload = function () {
+            document.getElementById('frameCam').src = 'http://' + document.domain + ':8080/video';
+            $('#no_cam').remove();
+            clearInterval(show_cam_interval);
+        }
+    } catch (error) {
+        console.error(error);
     }
 }
 
