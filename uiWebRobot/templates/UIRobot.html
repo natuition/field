@@ -23,18 +23,16 @@
 
 <body>
 
+    <script type="text/javascript">
+        const ui_languages = {{ ui_languages | tojson}};
+        const ui_language = {{ ui_language | tojson}};
+    </script>
+
 
     {% if statusOfUIObject|length > 1 %}
 
 
     <div class="main" id="main">
-
-
-        <script type="text/javascript">
-            const ui_languages = {{ ui_languages | tojson}};
-            const ui_language = {{ ui_language | tojson}};
-        </script>
-
 
         <header class="header header__begin">
             <div class="header__color"></div>

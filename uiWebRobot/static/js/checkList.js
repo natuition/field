@@ -16,7 +16,7 @@ function count_next() {
     count = count + 5;
     if (count > 100) {
         clearInterval(count_next_interval);
-        alert("Paf");
+        alert((ui_languages["Restart UI"])[ui_language]);
         $.ajax({
             type: "GET",
             url: 'http://' + document.domain + '/restart_ui',
@@ -61,9 +61,9 @@ function checkAllBoxAreChecked() {
         $('#checkbutton').addClass('unselectable');
         $('#checkbutton').addClass('active');
         $('#AI_selector').attr('disabled', '');
-        socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
         loading_next = document.getElementById("checkbutton").getElementsByClassName('loading')[0];
         count_next_interval = setInterval(count_next, 500);
+        socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
     }
 
 }

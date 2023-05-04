@@ -353,5 +353,10 @@
 		"fr": "En attente de la caméra...", 
 		"en": "Waiting camera...",
 		"nl": "Wachten camera..."
+	},
+	"Restart UI": {
+		"fr": "Une erreur c'est produite, nous avons relancé le robot pour vous.", 
+		"en": "Something went wrong, we restart robot for you.",
+		"nl": "Er ging iets mis, we herstarten de robot voor je."
 	}
 }
