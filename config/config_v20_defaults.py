@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.5"
+CONFIG_VERSION = "0.20.6"
 
 
 # ======================================================================================================================
@@ -500,7 +500,8 @@ SEEDER_EXT_OFFSET_X = 0  # mm; if not 0 - will move cork for this value on X axi
 SEEDER_EXT_OFFSET_X_F = 20000  # offset force for X axis
 SEEDER_EXT_OFFSET_Y = 25  # mm; if not 0 - will move cork for this value on Y axis before using seeder (extraction mode)
 SEEDER_EXT_OFFSET_Y_F = 20000  # offset force for Y axis
-
+SEEDER_CLOSE_COMMAND = 2 # Command send to close exit of robot's seeder (M280 S[SEEDER_CLOSE_COMMAND])
+SEEDER_OPEN_COMMAND = 5.5 # Command send to open exit of robot's seeder (M280 S[SEEDER_OPEN_COMMAND])
 
 # ======================================================================================================================
 # MILLING SETTINGS

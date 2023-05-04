@@ -53,7 +53,7 @@ class SmoothieAdapter:
             raise Exception(msg)
 
         if config.SEEDER_QUANTITY > 0:
-            self.__smc.write("M280 S2")
+            self.seeder_close()
             res = self.__smc.read_some()
             if res != self.RESPONSE_OK:
                 msg = "Couldn't lock seeder during smoothie adapter initialization! Smoothie response:\n" + res
@@ -591,21 +591,20 @@ class SmoothieAdapter:
                     return res
             return self.custom_move_to(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
 
-    #def seeder_fill(self):
     def seeder_close(self):
-        """Fills up robot's seeder with seeds from a storage.
+        """Close exit of robot's seeder
 
         Sends 'M280 S2' command to smoothie. Returns smoothie answer message."""
 
-        self.__smc.write("M280 S2")
+        self.__smc.write(f"M280 S{config.SEEDER_CLOSE_COMMAND}")
         return self.__smc.read_some()
 
     def seeder_open(self):
-        """Throws seeds out from seeder (need to fill seeder with seeds before throwing them)
+        """Open exit of robot's seeder
 
         Sends 'M280 S5.5' command to smoothie. Returns smoothie answer message."""
 
-        self.__smc.write("M280 S5.5")
+        self.__smc.write(f"M280 S{config.SEEDER_OPEN_COMMAND}")
         return self.__smc.read_some()
 
     def nav_calibrate_wheels(self):
