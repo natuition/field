@@ -41,16 +41,26 @@ class StateMachine:
             newState = ErrorState.ErrorState(self.socketio,self.logger,msg)
 
         if str(newState) in ["StartingState","ResumeState"]:
-            self.currentState = newState.on_event(Events.Events.CONFIG_IS_SET)
+            self.change_current_state(newState.on_event(Events.Events.CONFIG_IS_SET))
         else:
-            self.currentState = newState
+            self.change_current_state(newState)
 
         msg = f"Current state : {self.currentState}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
     
     def on_socket_data(self, data):
-        self.currentState = self.currentState.on_socket_data(data)
+        try:
+            self.currentState = self.currentState.on_socket_data(data)
+        except Exception as e:
+            self.logger.write_and_flush("[Error] "+str(e)+"\n")
+            self.change_current_state(ErrorState.ErrorState(self.socketio,self.logger,str(e)))
+    
+    def change_current_state(self, newState):
+        self.currentState = newState
+        msg = f"Current state : {self.currentState}."
+        self.logger.write_and_flush(msg+"\n")
+        print(msg)
 
     def getStatusOfControls(self):
         frontEndObjects: FrontEndObjects|dict = self.currentState.getStatusOfControls()
