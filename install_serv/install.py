@@ -192,12 +192,12 @@ def vesc_pr():
         return render_template('vesc_pr.html')
     else:
         if request.form['x'] == 'test_motor':
-            with adapters.VescAdapterV3(config.VESC_PORT,
+            with adapters.VescAdapterV4(config.VESC_PORT,
                                         config.VESC_BAUDRATE,
                                         config.VESC_ALIVE_FREQ,
                                         config.VESC_CHECK_FREQ,
                                         config.VESC_STOPPER_CHECK_FREQ) as vesc_engine:
-                vesc_engine.set_rpm(RPM, vesc_engine.PROPULSION_KEY)
+                vesc_engine.set_target_rpm(RPM, vesc_engine.PROPULSION_KEY)
                 vesc_engine.set_time_to_move(MOVING_TIME, vesc_engine.PROPULSION_KEY)
                 vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                 vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)

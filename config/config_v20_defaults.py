@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.19.12"
+CONFIG_VERSION = "0.20.6"
 
 
 # ======================================================================================================================
@@ -26,6 +26,7 @@ CONFIG_VERSION = "0.19.12"
 # PATHS SETTINGS
 # PREDICTION SETTINGS
 # NAVIGATION TEST MODE SETTINGS
+# UNSORTED KEYS
 # ======================================================================================================================
 
 
@@ -108,8 +109,15 @@ SI_SPEED_FAST = 0.5
 MULTIPLIER_SI_SPEED_TO_RPM = -14285 #multiplier to go from speed to rpm vesc
 
 SLOW_FAST_MODE = True
-SLOW_MODE_MIN_TIME = 10 # seconds
+SLOW_MODE_MIN_TIME = 10  # seconds
 SLOW_FAST_MODE_HEAD_FACTOR = 0.5
+
+# protection to prevent robot leaving a field it works on
+# True: stop robot and set state to out if service if robot has left the field; False: disable leaving the field control
+ALLOW_FIELD_LEAVING_PROTECTION = True
+# mms; robot will stop if ALLOW_FIELD_LEAVING_PROTECTION=True and PERPENDICULAR from a field's line is bigger
+# than this value (all ABCDA field lines are checked) and it's on left side of the line
+LEAVING_PROTECTION_DISTANCE_MAX = 1000
 
 
 # ======================================================================================================================
@@ -159,7 +167,7 @@ EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME = 3  # seconds
 ALLOW_VESC_CORK_PICKUP_MIN_TIME = True
 # this will have effect only if ALLOW_VESC_CORK_PICKUP_MIN_TIME is set to True;
 # seconds; if cork stopper hits earlier than this time - robot will try to drop and pick cork again
-VESC_CORK_PICKUP_MIN_TIME = 1  # TODO: NEED A TEST TO SET A PROPER VALUE!
+VESC_CORK_PICKUP_MIN_TIME = 1
 # int; ALWAYS MUST BE >= 1 FOR CORK PROPER WORKING REGARDLESS OF OTHER SETTINGS INCLUDING config.EXTRACTION_CONTROLLER!
 # values bigger than 1 will have effect only if ALLOW_VESC_CORK_PICKUP_MIN_TIME is set to True;
 # defines how many times robot will try to drop and pick cork if there are troubles with stopper before error is raised
@@ -197,6 +205,10 @@ VESC_STOPPER_CHECK_FREQ = 0.001
 INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
 FREQUENCY_INCREMENTAL_RPM = 0.025  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
 STEP_INCREMENTAL_RPM = 500 # RPM step max by tick defined by RPM_FREQUENCY
+# int; bumper is considered pressed if voltage is getting lesser (not equal) than this value
+VESC_BUMBER_TRIGGER_VOLTAGE = 1
+# int; bumper is considered unpressed if voltage is getting bigger (not equal) than this value
+VESC_BUMBER_UNTRIGGER_VOLTAGE = 1
 
 # engine 1 (master vesc)
 # enables propulsion vesc initialization and usage
@@ -207,7 +219,7 @@ VESC_PROPULSION_CALIBRATE_AT_INIT = False # Not used in current version of robot
 VESC_PROPULSION_CALIBRATION_RPM = 0 # Not used in current version of robot
 VESC_PROPULSION_CALIBRATION_MAX_TIME = 2  # Not used in current version of robot
 VESC_PROPULSION_AUTODETECT_CAN_ID = False # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
-VESC_PROPULSION_CAN_ID = None  # parent vesc has can_id=None 
+VESC_PROPULSION_CAN_ID = None  # parent vesc has can_id=None
 
 # engine 2
 # enables extraction vesc initialization and usage
@@ -222,6 +234,10 @@ VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME = 0.3 # seconds; calibration small movem
 VESC_EXTRACTION_AUTODETECT_CAN_ID = False # set to False to use vesc can id from this config, set to True to try detect vesc can id during initialization
 VESC_EXTRACTION_CAN_ID = 0 # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
 
+VESC_SMOOTH_ACCEL_RPM_STEP = 2500
+VESC_SMOOTH_ACCEL_TIME_STEP = 0.1  
+VESC_SMOOTH_DECEL_RPM_STEP = 2500
+VESC_SMOOTH_DECEL_TIME_STEP = 0.1
 
 # ======================================================================================================================
 # GPS SETTINGS
@@ -234,7 +250,25 @@ GPS_CHECK_IN_DEGRADED_MODE = 30 #Check if gps returned every GPS_CHECK_IN_DEGRAD
 
 SER2NET_CONNECT_GPS_PORT = False
 
-GPS_POINT_WAIT_TIME_MAX = 5 #time to stop robot if no gps point received
+# max time with no fresh GPS points before robot stops
+GPS_POINT_TIME_BEFORE_STOP = 2
+# max time with no fresh GPS points before gps adapter reconnects to ublox
+# (starts counting after robot was stopped, not after last point received)
+GPS_POINT_TIME_BEFORE_RECONNECT = 5
+# True: allow robot to restart ntrip service if received GPS point's quality is not '4'; False: ignore points quality
+ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART = True
+# True: allow robot to stop if GPS point quality is not '4'; False: don't stop the robot
+ALLOW_GPS_BAD_QUALITY_STOP = True
+# True: stop robot if prev-cur position distance is bigger than PREV_CUR_POINT_MAX_DIST and wait for another
+# cur_pos point with suitable distance, no more than specified in GPS_DIST_WAIT_TIME_MAX time;
+# False: ignore prev-cur position distance
+ALLOW_GPS_PREV_CUR_DIST_STOP = True
+# if ALLOW_GPS_PREV_CUR_DIST_STOP = True; mms; max allowed distance between cur and prev position, will stop robot
+# if distance has exceeded this value
+PREV_CUR_POINT_MAX_DIST = 10000
+# if ALLOW_GPS_PREV_CUR_DIST_STOP = True; seconds to wait for cur_pos point with prev-cur pos
+# distance < PREV_CUR_POINT_MAX_DIST before stop reading new points and accept current cur_pos point
+GPS_DIST_WAIT_TIME_MAX = 30
 
 
 # ======================================================================================================================
@@ -267,7 +301,7 @@ Z_F_MIN = 1
 Z_F_MAX = 2000 
 EXTRACTION_Z = 30 # drill version value
 Z_F_EXTRACTION_UP = 1500 
-Z_F_EXTRACTION_DOWN = 1700 
+Z_F_EXTRACTION_DOWN = 1950 
 Z_COEFFICIENT_TO_MM = 1  # not used yet
 
 # CALIBRATION
@@ -290,8 +324,8 @@ AFTER_CALIBRATION_AXIS_OFFSET = 0
 CORK_CALIBRATION_MIN_TIME = 3600 
 
 # DIRECTION WHEELS
-A_MIN = -10 
-A_MAX = 10 
+A_MIN = -6 
+A_MAX = 6 
 #NOT USED
 B_MIN = -float("inf")
 B_MAX = float("inf")
@@ -324,6 +358,7 @@ ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ = False
 
 CAMERA_POSITIONS = [(X_MAX/2, 0)] # smoothie global coordinates to take photos from for forming plants list. Format is (x, y)
 #CAMERA_POSITIONS = [(X_MAX/3, 0), (2*X_MAX/3, 0)] # smoothie global coordinates to take photos from for forming plants list. Format is (x, y)
+# pdz distances are amounts of px from scene center
 PDZ_DISTANCES = [{"top": 1000, "bot": 1000, "left": 1000, "right": 1000}] # precice detection zone sizes. At each camera position scan only plants inside this zone is added to extraction list
 # values are px count from scene center to. Format is {"top": int, "bot": int, "left": int, "right": int}
 
@@ -347,7 +382,7 @@ X_MOVEMENT_CAMERA_X_F = [X_F_MAX, X_F_MAX]
 X_MOVEMENT_IMAGE_ZONES = [{"top": 1000, "bot": 1000, "left": 1000, "right": 1000}]
 # count of models to load; supports 1 or 2 NN models for now
 # 1 = only periphery NN is loaded and used for all scans types; 2 = load periphery and precise
-NN_MODELS_COUNT = 1
+NN_MODELS_COUNT = 2
 
 
 # ======================================================================================================================
@@ -367,6 +402,7 @@ VERBOSE_EXTRACT = True
 FILES_TO_KEEP_COUNT = 600
 LOG_SPEED_MODES = True
 PRINT_SPEED_MODES = True
+UI_VERBOSE_LOGGING = False
 
 LEARN_GO_STRAIGHT = True
 LEARN_GO_STRAIGHT_UI = False
@@ -375,24 +411,29 @@ VALUES_LEARN_GO_STRAIGHT = 40
 
 ANTI_THEFT_ZONE_RADIUS = 5000
 
-GPS_QUALITY_IGNORE = False #If this is activated, stops the robot when it no longer has quality 4. 
-# It restarts the ntrip service and waits to find quality 4
+ROBOT_SN = "SN000"
 
-# True: enable cur position point ignore and stop robot if prev-cur position distance is bigger than
-# PREV_CUR_POINT_MAX_DIST
-ALLOW_GPS_PREV_CUR_DIST_FILTER = True
-# mms; max allowed distance between cur and prev position, will stop robot if is exceeded and
-# if ALLOW_GPS_PREV_CUR_DIST_FILTER=True
-PREV_CUR_POINT_MAX_DIST = 2000  # TODO value needs to be specified!
+# posix_ipc.MessageQueue in main script setting
+# int: override OS's default max amount messages in queue before new msg sending will be blocked and forced to wait;
+# None: use OS default
+QUEUE_MESSAGES_MAX = 200
+# max seconds to wait for sending position in main loop. Currently positions are sent not more often than once per sec
+# Position sending will be canceled and skipped if wait time is exceeded this value.
+QUEUE_WAIT_TIME_MAX = 0.03
+# True: enable queue messages sending performance tracking and writing to log at cur target point arrival;
+# False: disable performance tracking and writing to log
+QUEUE_TRACK_PERFORMANCE = False
 
-
-ROBOT_SN = "SN012"
-
+MAX_LENGHT_POINT_HISTORY = 100
+ROBOT_SYNTHESIS_HOST = "127.0.0.1"
+ROBOT_SYNTHESIS_PORT = 2006
+DATAGATHERING_HOST = "172.16.3.5"
+DATAGATHERING_PORT = 8080
 
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
-UI_LANGUAGE = "nl" 
+UI_LANGUAGE = "fr" 
 
 SLIDER_CREATE_FIELD_MIN = 15 #minimum of the slider allowing to configure the second segment of the terrain on the ui.
 SLIDER_CREATE_FIELD_MAX = 150 #maximum of the slider allowing to configure the second segment of the terrain on the ui
@@ -439,19 +480,19 @@ CONTROL_POINTS_CSV_PATH = "control_points_v2.csv"
 # NTRIP CLIENT SETTINGS
 # ======================================================================================================================
 NTRIP = True 
-FIND_MOUNTPOINT = False #FOR CENTIPEDE: Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum.
-SEND_LOCATION_TO_NTRIP = True #FOR MOVERTK: Allows us to send our coordinates to the rtk caster
+FIND_MOUNTPOINT = True #FOR CENTIPEDE: Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum.
+SEND_LOCATION_TO_NTRIP = False #FOR MOVERTK: Allows us to send our coordinates to the rtk caster
 
-NTRIP_USER = "mrnatuition02" 
-NTRIP_PASSWORD = "9252" 
-NTRIP_CASTER = "ntrip.movertk.nl" 
+NTRIP_USER = "centipede" 
+NTRIP_PASSWORD = "centipede" 
+NTRIP_CASTER = "caster.centipede.fr" 
 NTRIP_PORT = 2101
-NTRIP_MOUNTPOINT = "VRS_GG_RTCM3.2" #Mountpoint of the caster, if SEND_LOCATION_TO_NTRIP=true the program will take the closest.
+NTRIP_MOUNTPOINT = "LIENNS" #Mountpoint of the caster, if SEND_LOCATION_TO_NTRIP=true the program will take the closest.
 
 NTRIP_OUTPUT_PORT = "/dev/ttyACM1"
 NTRIP_OUTPUT_BAUDRATE = 115200
 
-NTRIP_RESTART_TIMEOUT = 60
+NTRIP_RESTART_TIMEOUT = 10
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
 RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
 
@@ -466,7 +507,8 @@ SEEDER_EXT_OFFSET_X = 0  # mm; if not 0 - will move cork for this value on X axi
 SEEDER_EXT_OFFSET_X_F = 20000  # offset force for X axis
 SEEDER_EXT_OFFSET_Y = 25  # mm; if not 0 - will move cork for this value on Y axis before using seeder (extraction mode)
 SEEDER_EXT_OFFSET_Y_F = 20000  # offset force for Y axis
-
+SEEDER_CLOSE_COMMAND = 2 # Command send to close exit of robot's seeder (M280 S[SEEDER_CLOSE_COMMAND])
+SEEDER_OPEN_COMMAND = 5.5 # Command send to open exit of robot's seeder (M280 S[SEEDER_OPEN_COMMAND])
 
 # ======================================================================================================================
 # MILLING SETTINGS
@@ -505,7 +547,7 @@ PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 PERIPHERY_DNN_BACKEND = 5
 PERIPHERY_DNN_TARGET = 6
 PERIPHERY_WRAPPER = 1
-PERIPHERY_MODEL_PATH = "yolo/Y0016.trt"  # for TRT wrapper
+PERIPHERY_MODEL_PATH = "yolo/Y0016_416.trt"  # for TRT wrapper
 
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
@@ -521,7 +563,7 @@ PRECISE_DATA_FILE = "yolo/Y0016.data"
 PRECISE_DNN_BACKEND = 5
 PRECISE_DNN_TARGET = 6
 PRECISE_WRAPPER = 1
-PRECISE_MODEL_PATH = "yolo/Y0016.trt"  # for TRT wrapper
+PRECISE_MODEL_PATH = "yolo/Y0016_832.trt"  # for TRT wrapper
 
 # ======================================================================================================================
 # CAMERA SETTINGS
@@ -569,8 +611,8 @@ DEPLOYMENT_CROP_GRAB_LEFT_PX = 1000
 # defines how much px must be grabbed from the right side of scene center during cropping
 DEPLOYMENT_CROP_GRAB_RIGHT_PX = 1000
 
-CORK_TO_CAMERA_DISTANCE_X = -4  # # distance between camera and cork on the robot, X axis, relative, mm
-CORK_TO_CAMERA_DISTANCE_Y = 25  # distance between camera and cork on the robot, Y axis, relative, mm
+CORK_TO_CAMERA_DISTANCE_X = 0  # # distance between camera and cork on the robot, X axis, relative, mm
+CORK_TO_CAMERA_DISTANCE_Y = 30  # distance between camera and cork on the robot, Y axis, relative, mm
 
 
 # ======================================================================================================================
@@ -599,7 +641,7 @@ ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
 
 # ======================================================================================================================
 # NAVIGATION TEST MODE SETTINGS
-# =====================================================================================================================
+# ======================================================================================================================
 NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
 #The robot will aim for the furthest point, 
 #when it reaches this point it will wait for a press on enter to go to the furthest point from it.
@@ -609,3 +651,22 @@ POINT_A = [[46.1579425, -1.1344245], -0.5] #Point coordinate for test navigation
 # the speed represents the speed the robot will apply to reach this point.
 POINT_B = [[46.1577957, -1.1347992], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
+
+
+# ======================================================================================================================
+# UNSORTED KEYS
+# ======================================================================================================================
+# wheels mechanics hotfix update
+# enables temp. hotfix: checking robot position and wheels turning to right WITHOUT adapter usage
+ENABLE_ADDITIONAL_WHEELS_TURN = False
+# this address of telnet smoothie is used when wheels turning hotfix is enabled (ENABLE_ADDITIONAL_WHEELS_TURN = True)
+SMOOTHIE_TELNET_HOST = "192.168.9.101"
+# mms; wheels will be turned if robot position perpendicular distance is bigger than this value and robot is on the
+# left side of last movement line
+ADDITIONAL_WHEELS_TURN_THRESHOLD = 1500
+# smoothie wheels key
+ADDITIONAL_WHEELS_KEY = "A"
+# smoothie value to turn
+ADDITIONAL_WHEELS_VALUE = -5
+# smoothie force to turn
+ADDITIONAL_WHEELS_FORCE = 2000

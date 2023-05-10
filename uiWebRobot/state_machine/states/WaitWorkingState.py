@@ -1,7 +1,6 @@
 import sys
 sys.path.append('../')
 import time
-
 from flask_socketio import SocketIO
 import threading
 
@@ -18,7 +17,9 @@ from config import config
 import adapters
 from application import UIWebRobot
 
+
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
+
 class WaitWorkingState(State.State):
 
     def __init__(self,
@@ -26,11 +27,17 @@ class WaitWorkingState(State.State):
                  logger: utility.Logger,
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
-                 vesc_engine: adapters.VescAdapterV3 = None):
+                 vesc_engine: adapters.VescAdapterV4 = None):
+
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
+
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Self initialization"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
 
         try:
             if self.vesc_engine is None:
@@ -38,21 +45,44 @@ class WaitWorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
                 self.vesc_engine = initVesc(self.logger)
-            self.vesc_engine.apply_rpm(0, self.vesc_engine.PROPULSION_KEY)
-            self.vesc_engine.start_moving(self.vesc_engine.PROPULSION_KEY)
+            else:
+                msg = f"[{self.__class__.__name__}] -> no need to initVesc"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
+            self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
+            self.vesc_engine.set_current_rpm(
+                0, self.vesc_engine.PROPULSION_KEY)
+            self.vesc_engine.start_moving(
+                self.vesc_engine.PROPULSION_KEY,
+                smooth_acceleration=True,
+                smooth_deceleration=True)
 
             if self.smoothie is None:
                 msg = f"[{self.__class__.__name__}] -> initSmoothie"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
-                self.smoothie = initSmoothie(self.logger)
+                try:
+                    self.smoothie = initSmoothie(self.logger)
+                except Exception as e:
+                    if "[Timeout sm]" in str(e):
+                        self.smoothie = initSmoothie(self.logger)
+                    else:
+                        raise e
+            else:
+                msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
         except KeyboardInterrupt:
             raise KeyboardInterrupt
-        except Exception as e:
-            raise e
 
         self.lastValueX = 0
         self.lastValueY = 0
+
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Setting FrontEndObjects..."
+            self.logger.write_and_flush(msg)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.ENABLE,
                                                 startButton=ButtonState.ENABLE,
@@ -63,7 +93,6 @@ class WaitWorkingState(State.State):
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
                                                 audit=AuditButtonState.EXTRACTION_ENABLE)
-
         if createField:
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
 
@@ -72,17 +101,37 @@ class WaitWorkingState(State.State):
         if config.LEARN_GO_STRAIGHT_UI:
             if os.path.isfile(f"../{config.LEARN_GO_STRAIGHT_FILE}"):
                 with open(f"../{config.LEARN_GO_STRAIGHT_FILE}", "r") as learn_go_straight_file:
-                    self.learn_go_straight_angle = float(learn_go_straight_file.read())
-                    self.logger.write_and_flush(f"LEARN_GO_STRAIGHT:{self.learn_go_straight_angle}\n")
-                    self.smoothie.custom_move_to(A_F=config.A_F_UI, A=self.learn_go_straight_angle)
+                    self.learn_go_straight_angle = float(
+                        learn_go_straight_file.read())
+                    self.logger.write_and_flush(
+                        f"LEARN_GO_STRAIGHT:{self.learn_go_straight_angle}\n")
+                    self.smoothie.custom_move_to(
+                        A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
-        self.socketio.emit('checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Go next page..."
+            self.logger.write_and_flush(msg)
+            print(msg)
+
+        self.socketio.emit(
+            'checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
 
         self.field = None
 
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Starting 'send_last_pos_thread_tf' thread..."
+            self.logger.write_and_flush(msg)
+            print(msg)
+
         self.send_last_pos_thread_alive = True
-        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio), daemon=True)
+        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(
+            lambda: self.send_last_pos_thread_alive, self.socketio), daemon=True)
         self._send_last_pos_thread.start()
+
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Starting 'voltage_thread_tf' thread..."
+            self.logger.write_and_flush(msg)
+            print(msg)
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
@@ -93,19 +142,32 @@ class WaitWorkingState(State.State):
                                                        self.input_voltage),
                                                  daemon=True)
         self.__voltage_thread.start()
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Starting '__check_joystick_info_tf' thread..."
+            self.logger.write_and_flush(msg)
+            print(msg)
 
         self.__last_joystick_info = time.time()
         self.__check_joystick_info_alive = True
         self.__joystick_info_thread = threading.Thread(target=self.__check_joystick_info_tf,
-                                                 daemon=True)
+                                                       daemon=True)
         self.__joystick_info_thread.start()
+        if config.UI_VERBOSE_LOGGING:
+            msg = " DONE"
+            self.logger.write_and_flush(msg + "\n")
 
         self.can_go_setting = True
+
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Self initialization DONE"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
 
     def __check_joystick_info_tf(self):
         while self.__check_joystick_info_alive:
             if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
-                self.vesc_engine.apply_rpm(0, self.vesc_engine.PROPULSION_KEY)
+                self.vesc_engine.set_target_rpm(
+                    0, self.vesc_engine.PROPULSION_KEY)
             time.sleep(0.5)
 
     def __stop_thread(self):
@@ -197,35 +259,39 @@ class WaitWorkingState(State.State):
                 x *= config.A_MAX / 100
             y = int(data["y"])
             if self.lastValueX != x:
-                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x + self.learn_go_straight_angle)
+                self.smoothie.custom_move_to(
+                    A_F=config.A_F_UI, A=x + self.learn_go_straight_angle)
                 self.lastValueX = x
             if self.lastValueY != y:
                 if y > 15 or y < -15:
                     y = (y / 100) * (config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM * 0.9) + (
-                                config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM / 10)
+                        config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM / 10)
                 else:
                     y = 0
-                self.vesc_engine.apply_rpm(y, self.vesc_engine.PROPULSION_KEY)
+                self.vesc_engine.set_target_rpm(
+                    y, self.vesc_engine.PROPULSION_KEY)
                 self.lastValueY = y
 
         elif data["type"] == 'getInputVoltage':
-            sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
+            sendInputVoltage(
+                self.socketio, self.input_voltage["input_voltage"])
 
         elif data["type"] == 'getField':
-
-            coords, other_fields, current_field_name = updateFields(data["field_name"])
+            coords, other_fields, current_field_name = updateFields(
+                data["field_name"])
             fields_list = UIWebRobot.load_field_list("../fields")
             self.socketio.emit('newField', json.dumps(
                 {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
                  "fields_list": fields_list}), namespace='/map')
 
         elif data["type"] == 'removeField':
-            os.remove("../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
+            os.remove(
+                "../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
             fields_list = UIWebRobot.load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/" + quote(fields_list[0], safe="", encoding='utf-8') + ".txt' ../field.txt")
-                coords, other_fields, current_field_name = updateFields(fields_list[0])
+                coords, other_fields, current_field_name = updateFields(
+                    fields_list[0])
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
 

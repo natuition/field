@@ -1,31 +1,104 @@
-"""Spiral movement, detection and extraction over given by ABCD points area"""
+"""Spiral movement, detection and extraction over given by ABCD points area
+
+BE SURE TO IMPORT ANY NATUITION MODULES AFTER AND ONLY AFTER(!) CONFIG.PY LOADING!
+This is required to prevent modules loading corrupted config before main resolves this problem.
+"""
+
 import threading
 import os
 import sys
 from turtle import speed
-import adapters
-import navigation
-from config import config
 import time
-import utility
 import traceback
-import detection
 from matplotlib.patches import Polygon
 import math
 import cv2 as cv
 import numpy as np
-import stubs
-import extraction
-import datacollection
 import pickle
-from notification import NotificationClient
-from notification import SyntheseRobot
 import posix_ipc
 import json
-from extraction import ExtractionManagerV3
 import glob
 import importlib
 import subprocess
+import datetime
+import shutil
+import pytz
+
+
+# load config, if failed - copy and load config backups until success or no more backups
+def is_config_empty(config_full_path: str):
+    with open(config_full_path, "r") as config_file:
+        for line in config_file:
+            if line not in ["", "\n"]:
+                return False
+    return True
+
+
+try:
+    if is_config_empty("config/config.py"):
+        raise Exception("config file is empty")
+
+    from config import config
+except KeyboardInterrupt:
+    raise KeyboardInterrupt
+except:
+    print("Failed to load current config.py!")
+
+    # load config backups
+    config_backups = [path for path in glob.glob(
+        "configBackup/*.py") if "config" in path]
+    for i in range(len(config_backups)):
+        ds = config_backups[i].split("_")[1:]  # date structure
+        ds.extend(ds.pop(-1).split(":"))
+        ds[-1] = ds[-1][:ds[-1].find(".")]
+        config_backups[i] = [
+            config_backups[i],
+            datetime.datetime(
+                day=int(ds[0]),
+                month=int(ds[1]),
+                year=int(ds[2]),
+                hour=int(ds[3]),
+                minute=int(ds[4]),
+                second=int(ds[5])
+            ).timestamp()
+        ]
+    # make last backups to be placed and used first
+    config_backups.sort(key=lambda item: item[1], reverse=True)
+
+    # try to find and set as current last valid config
+    for config_backup in config_backups:
+        try:
+            os.rename(
+                "config/config.py",
+                f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
+                f"_config.py")
+            shutil.copy(config_backup[0], "config/config.py")
+
+            if is_config_empty("config/config.py"):
+                raise Exception("config file is empty")
+
+            from config import config
+            print("Successfully loaded config:", config_backup[0])
+            break
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            pass
+    else:
+        print("Couldn't find proper 'config.py' file in 'config' and 'configBackup' directories!")
+        exit()
+
+import adapters
+import navigation
+import utility
+import detection
+import stubs
+import extraction
+import datacollection
+from extraction import ExtractionManagerV3
+from notification import RobotStates
+from notification import NotificationClient
+import connectors
 
 """
 import SensorProcessing
@@ -39,6 +112,7 @@ if config.RECEIVE_FIELD_FROM_RTK:
 """
 # TODO: temp debug counter
 IMAGES_COUNTER = 0
+
 
 def load_coordinates(file_path):
     positions_list = []
@@ -58,9 +132,10 @@ def save_gps_coordinates(points: list, file_name: str):
     """
 
     with open(file_name, "w") as file:
-        for point in points:            
-            if isinstance(point[0],list):
-                str_point = str(point[0][0]) + " " + str(point[0][1]) + " " + str(point[1]) + "\n"
+        for point in points:
+            if isinstance(point[0], list):
+                str_point = str(point[0][0]) + " " + \
+                    str(point[0][1]) + " " + str(point[1]) + "\n"
             else:
                 str_point = str(point[0]) + " " + str(point[1]) + "\n"
             file.write(str_point)
@@ -90,6 +165,7 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
     print("Point A saved.")
     return [point_a, point_b]
 
+
 def save_image(path_to_save, image, counter, session_label, date, sep="_"):
     """
     Assembles image file name and saves received image under this name to specified directory.
@@ -109,23 +185,27 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 
     # TODO: data gathering temporary hardcoded
     if config.ALLOW_GATHERING:
-        save_image(config.DATA_GATHERING_DIR, frame, IMAGES_COUNTER, label, utility.get_current_time())
+        save_image(config.DATA_GATHERING_DIR, frame, IMAGES_COUNTER,
+                   label, utility.get_current_time())
 
     # debug image saving
     if config.SAVE_DEBUG_IMAGES:
         # draw time on frame
         cur_time = utility.get_current_time()
         left, top = 30, 30
-        label_size, base_line = cv.getTextSize(cur_time + " No: " + str(IMAGES_COUNTER), cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+        label_size, base_line = cv.getTextSize(
+            cur_time + " No: " + str(IMAGES_COUNTER), cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         top = max(top, label_size[1])
         frame = cv.rectangle(frame, (left, top - round(1.5 * label_size[1])),
-                             (left + round(1.5 * label_size[0]), top + base_line),
+                             (left + round(1.5 *
+                              label_size[0]), top + base_line),
                              (0, 0, 255), cv.FILLED)
         frame = cv.putText(frame, cur_time + " No: " + str(IMAGES_COUNTER), (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75,
                            (0, 0, 0), 2)
 
         # draw data on frame
-        frame = utility.ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
+        frame = utility.ImageSaver.draw_zone_circle(
+            frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
         frame = utility.ImageSaver.draw_zone_poly(frame, poly_zone_points_cv)
         frame = detection.draw_boxes(frame, plants_boxes)
         save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
@@ -133,7 +213,7 @@ def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zon
 
 def move_to_point_and_extract(coords_from_to: list,
                               gps: adapters.GPSUbloxAdapter,
-                              vesc_engine: adapters.VescAdapterV3,
+                              vesc_engine: adapters.VescAdapterV4,
                               smoothie: adapters.SmoothieAdapter,
                               camera: adapters.CameraAdapterIMX219_170,
                               periphery_det: detection.YoloOpenCVDetection,
@@ -149,13 +229,14 @@ def move_to_point_and_extract(coords_from_to: list,
                               image_saver: utility.ImageSaver,
                               notification: NotificationClient,
                               extraction_manager_v3: ExtractionManagerV3,
-                              ui_msg_queue: posix_ipc.MessageQueue, 
-                              SI_speed: float, 
-                              wheels_straight: bool, 
+                              ui_msg_queue: posix_ipc.MessageQueue,
+                              SI_speed: float,
+                              wheels_straight: bool,
                               navigation_prediction: navigation.NavigationPrediction,
                               future_points: list,
                               allow_extractions: bool,
-                              x_scan_poly: list):
+                              x_scan_poly: list,
+                              cur_field):
     """
     Moves to the given target point and extracts all weeds on the way.
     :param coords_from_to:
@@ -176,8 +257,24 @@ def move_to_point_and_extract(coords_from_to: list,
     :param image_saver:
     :param notification:
     :param extraction_manager_v3:
+    :param cur_field: None or list of 4 ABCD points which are describing current field robot is working on.
     :return:
     """
+
+    if config.ALLOW_FIELD_LEAVING_PROTECTION and cur_field is not None and len(cur_field) > 2:
+        enable_field_leaving_protection = True
+    else:
+        enable_field_leaving_protection = False
+        if config.ALLOW_FIELD_LEAVING_PROTECTION:
+            if cur_field is None:
+                msg = f"WARNING: robot field leaving protection WILL NOT WORK as given field is None"
+                print(msg)
+                logger_full.write(msg)
+            elif len(cur_field) < 3:
+                msg = f"WARNING: robot field leaving protection WILL NOT WORK as given field contains " \
+                      f"{len(cur_field)} points (required ar least 3 points)"
+                print(msg)
+                logger_full.write(msg)
 
     extract = SI_speed > 0 and allow_extractions
 
@@ -187,16 +284,17 @@ def move_to_point_and_extract(coords_from_to: list,
     navigation_prediction.set_SI_speed(SI_speed)
 
     raw_angles_history = []
-    detections_period =[]
-    navigations_period =[]
-    stop_helping_point = nav.get_coordinate(coords_from_to[1], coords_from_to[0], 90, 1000)
+    detections_period = []
+    navigations_period = []
+    stop_helping_point = nav.get_coordinate(
+        coords_from_to[1], coords_from_to[0], 90, 1000)
     learn_go_straight_index = 0
     learn_go_straight_history = []
-    
+
     last_skipped_point = coords_from_to[0]
-    start_Nav_while =True
+    start_Nav_while = True
     last_correct_raw_angle = 0
-    point_status ="origin"
+    point_status = "origin"
     last_corridor_side = 0
     current_corridor_side = 1
     almost_start = 0
@@ -207,18 +305,29 @@ def move_to_point_and_extract(coords_from_to: list,
     working_mode_switching = 3
     current_working_mode = working_mode_slow
     last_working_mode = 0
-    close_to_end = config.USE_SPEED_LIMIT  # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
+    # True if robot is close to one of current movement vector points, False otherwise; False if speed limit near points is disabled
+    close_to_end = config.USE_SPEED_LIMIT
+    bumper_is_pressed = None
+
+    # message queue sending temporary performance tracker
+    if config.QUEUE_TRACK_PERFORMANCE:
+        ui_msg_queue_perf = {
+            "max_time": 0,
+            "min_time": float("inf"),
+            "total_time": 0,
+            "total_sends": 0,
+            "timeouts_exceeded": 0
+        }
 
     # x movements during periphery scans
     x_scan_cur_idx = 0
     x_scan_idx_increasing = True
 
-    lastNtripRestart = time.time()
-
     # set camera to the Y min
     res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                               Y_F=config.Y_F_MAX,
-                                              X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                                              X=smoothie.smoothie_to_mm(
+                                                  (config.X_MAX - config.X_MIN) / 2, "X"),
                                               Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
     if res != smoothie.RESPONSE_OK:
         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
@@ -228,18 +337,19 @@ def move_to_point_and_extract(coords_from_to: list,
     # TODO: maybe should add sleep time as camera currently has delay
 
     if config.AUDIT_MODE:
-        vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+        vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
     try:
-        notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION)
+        notificationQueue = posix_ipc.MessageQueue(
+            config.QUEUE_NAME_UI_NOTIFICATION)
     except KeyboardInterrupt:
         raise KeyboardInterrupt
     except:
         notificationQueue = None
 
     degraded_navigation_mode = False
-    
+
     number_navigation_cycle_without_gps = 0
 
     point_reading_t = time.time()
@@ -271,13 +381,14 @@ def move_to_point_and_extract(coords_from_to: list,
                 plants_boxes=plants_boxes)
         if config.ALLOW_GATHERING and current_working_mode == working_mode_slow and \
                 image_saver.get_counter("gathering") < config.DATA_GATHERING_MAX_IMAGES:
-            image_saver.save_image(frame, config.DATA_GATHERING_DIR, plants_boxes=plants_boxes, counter_key="gathering")
+            image_saver.save_image(frame, config.DATA_GATHERING_DIR,
+                                   plants_boxes=plants_boxes, counter_key="gathering")
 
         if extract:
             msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
                   str(per_det_end_t - per_det_start_t)
         else:
-            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. off time: " + \
+            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. (extractions are off) time: " + \
                   str(per_det_end_t - per_det_start_t)
         logger_full.write(msg + "\n")
 
@@ -301,7 +412,8 @@ def move_to_point_and_extract(coords_from_to: list,
 
             # flush updates into the audit output file and log measured time
             if len(plants_boxes) > 0:
-                data_collector.save_all_data(log_cur_dir + config.AUDIT_OUTPUT_FILE)
+                data_collector.save_all_data(
+                    log_cur_dir + config.AUDIT_OUTPUT_FILE)
 
             dc_t = time.time() - dc_start_t
             msg = "Last scan weeds detected: " + str(len(plants_boxes)) + \
@@ -326,7 +438,8 @@ def move_to_point_and_extract(coords_from_to: list,
                         msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
                         logger_full.write_and_flush(msg+"\n")
                     # TODO remove thread init from here!
-                    voltage_thread = threading.Thread(target=send_voltage_thread_tf, args=(vesc_engine, ui_msg_queue), daemon=True)
+                    voltage_thread = threading.Thread(
+                        target=send_voltage_thread_tf, args=(vesc_engine, ui_msg_queue), daemon=True)
                     voltage_thread.start()
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
@@ -359,9 +472,11 @@ def move_to_point_and_extract(coords_from_to: list,
                     logger_full.write(msg + "\n")
                     if config.VERBOSE:
                         print(msg)
-                    vesc_engine.set_time_to_move(config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.set_rpm(config.SI_SPEED_STEP_FORWARD*config.MULTIPLIER_SI_SPEED_TO_RPM,
-                                        vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_time_to_move(
+                        config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(
+                        config.SI_SPEED_STEP_FORWARD * config.MULTIPLIER_SI_SPEED_TO_RPM,
+                        vesc_engine.PROPULSION_KEY)
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
 
@@ -374,7 +489,8 @@ def move_to_point_and_extract(coords_from_to: list,
                     res = smoothie.custom_separate_xy_move_to(
                         X_F=config.X_F_MAX,
                         Y_F=config.Y_F_MAX,
-                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                        X=smoothie.smoothie_to_mm(
+                            (config.X_MAX - config.X_MIN) / 2, "X"),
                         Y=smoothie.smoothie_to_mm((config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR,
                                                   "Y"))
                     if res != smoothie.RESPONSE_OK:
@@ -390,8 +506,10 @@ def move_to_point_and_extract(coords_from_to: list,
 
                 # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
                 if not vesc_engine.is_moving(vesc_engine.PROPULSION_KEY):
-                    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_time_to_move(
+                        config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(
+                        vesc_speed, vesc_engine.PROPULSION_KEY)
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
             # switching (from slow to fast) mode
@@ -419,7 +537,8 @@ def move_to_point_and_extract(coords_from_to: list,
                     res = smoothie.custom_separate_xy_move_to(
                         X_F=config.X_F_MAX,
                         Y_F=config.Y_F_MAX,
-                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                        X=smoothie.smoothie_to_mm(
+                            (config.X_MAX - config.X_MIN) / 2, "X"),
                         Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
                     if res != smoothie.RESPONSE_OK:
                         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
@@ -428,10 +547,12 @@ def move_to_point_and_extract(coords_from_to: list,
 
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
-                    vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(
+                        vesc_speed, vesc_engine.PROPULSION_KEY)
                     continue
 
-                sm_cur_pos = smoothie.get_smoothie_current_coordinates(convert_to_mms=False)
+                sm_cur_pos = smoothie.get_smoothie_current_coordinates(
+                    convert_to_mms=False)
                 if abs(sm_cur_pos["X"] - (config.X_MAX - config.X_MIN) / 2) < 0.001 and \
                         abs(sm_cur_pos["Y"] - (config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR) < 0.001:
                     msg = "Switching from 'switching mode' to 'fast mode'"
@@ -466,7 +587,8 @@ def move_to_point_and_extract(coords_from_to: list,
                     res = smoothie.custom_separate_xy_move_to(
                         X_F=config.X_F_MAX,
                         Y_F=config.Y_F_MAX,
-                        X=smoothie.smoothie_to_mm((config.X_MAX - config.X_MIN) / 2, "X"),
+                        X=smoothie.smoothie_to_mm(
+                            (config.X_MAX - config.X_MIN) / 2, "X"),
                         Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
                     if res != smoothie.RESPONSE_OK:
                         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
@@ -484,79 +606,145 @@ def move_to_point_and_extract(coords_from_to: list,
                     # vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
                     continue
                 elif close_to_end:
-                    # TODO: won't execute (speed not applied bug) in case if rpm already was set by set_rpm() method (1)
-                    if vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY) != vesc_speed:
+                    cur_vesc_rpm = vesc_engine.get_current_rpm(
+                        vesc_engine.PROPULSION_KEY)
+                    if cur_vesc_rpm != vesc_speed:
                         msg = f"Applying slow speed {vesc_speed} at 'fast mode' " \
-                              f"(was {vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY)}) " \
+                              f"(was {cur_vesc_rpm}) " \
                               f"because of close_to_end flag trigger"
                         if config.LOG_SPEED_MODES:
                             logger_full.write(msg + "\n")
                         if config.PRINT_SPEED_MODES:
                             print(msg)
-                        vesc_engine.apply_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(
+                            vesc_speed, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_current_rpm(
+                            vesc_speed, vesc_engine.PROPULSION_KEY)
                 else:
-                    # TODO: won't execute (speed not applied bug) in case if rpm already was set by set_rpm() method (2)
-                    if vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY) != vesc_speed_fast:
-                        msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' " \
-                              f"(was {vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY)})"
+                    cur_vesc_rpm = vesc_engine.get_current_rpm(
+                        vesc_engine.PROPULSION_KEY)
+                    if cur_vesc_rpm != vesc_speed_fast:
+                        msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' (was {cur_vesc_rpm})"
                         if config.LOG_SPEED_MODES:
                             logger_full.write(msg + "\n")
                         if config.PRINT_SPEED_MODES:
                             print(msg)
-                        vesc_engine.apply_rpm(vesc_speed_fast, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(
+                            vesc_speed_fast, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_current_rpm(
+                            vesc_speed_fast, vesc_engine.PROPULSION_KEY)
 
         # NAVIGATION CONTROL
-        cur_pos = gps.get_last_position()
+        cur_pos_obj = gps.get_last_position_v2()
+        cur_pos = cur_pos_obj.as_old_list
 
         nav_start_t = time.time()
 
         if start_Nav_while:
-            navigation_period =1
+            navigation_period = 1
         else:
-            navigation_period = nav_start_t - prev_maneuver_time 
-        
-        navigations_period.append(navigation_period)  
-        prev_maneuver_time = nav_start_t #time reference to decide the number of detection before resuming gps.get
-        #print("tock")
+            navigation_period = nav_start_t - prev_maneuver_time
+
+        navigations_period.append(navigation_period)
+        # time reference to decide the number of detection before resuming gps.get
+        prev_maneuver_time = nav_start_t
+        # print("tock")
 
         if start_Nav_while:
-            prev_pos = cur_pos
-            start_Nav_while=False
+            prev_pos_obj = cur_pos_obj
+            prev_pos = prev_pos_obj.as_old_list
+            start_Nav_while = False
 
         # mu_navigations_period, sigma_navigations_period = utility.mu_sigma(navigations_period)
 
         navigation_prediction.set_current_lat_long(cur_pos)
 
-        if str(cur_pos) == str(prev_pos):
-            if time.time() - point_reading_t > config.GPS_POINT_WAIT_TIME_MAX:
+        # skip same points (non-blocking reading returns old point if new point isn't available yet)
+        if math.isclose(cur_pos_obj.creation_ts, prev_pos_obj.creation_ts):
+            # stop robot if there's no new points for a while
+            if time.time() - point_reading_t > config.GPS_POINT_TIME_BEFORE_STOP:
                 vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                msg = f"Stopping the robot due to exceeding time 'GPS_POINT_TIME_BEFORE_STOP=" \
+                      f"{config.GPS_POINT_TIME_BEFORE_STOP}' limit without new gps points from adapter"
+                logger_full.write_and_flush(msg + "\n")
                 data_collector.add_vesc_moving_time_data(
                     vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+
+                gps_reconnect_ts = time.time()
+
                 while True:
-                    cur_pos = gps.get_last_position()
-                    if str(cur_pos) != str(prev_pos):
+                    cur_pos_obj = gps.get_last_position_v2()
+                    cur_pos = cur_pos_obj.as_old_list
+
+                    if math.isclose(cur_pos_obj.creation_ts, prev_pos_obj.creation_ts):
+                        # reconnect gps adapter to ublox if there's no gps points for a while
+                        if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
+                            gps.reconnect()
+                            gps_reconnect_ts = time.time()
+                            msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new GPS " \
+                                  "point (new points filter)"
+                            if config.VERBOSE:
+                                print(msg)
+                            logger_full.write_and_flush(msg + "\n")
+                    else:
+                        msg = "New GPS point received, continuing movement"
+                        logger_full.write_and_flush(msg + "\n")
                         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                         break
             else:
                 continue
 
         # points filter by quality flag
-        if config.GPS_QUALITY_IGNORE and cur_pos[2] != "4":
-            vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-            logger_full.write_and_flush("Stopping the robot for lack of quality gps 4, waiting for it...\n")
-            data_collector.add_vesc_moving_time_data(
-                vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
-            navigation.NavigationV3.check_reboot_Ntrip("1", 0, logger_full)
-            while True:
-                cur_pos = gps.get_fresh_position()
-                if cur_pos[2] == "4":
-                    logger_full.write_and_flush("The gps has regained quality 4, relaunch of the robot.\n")
-                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
-                    break
+        if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
+            # restart ntrip if enough time passed since the last ntrip restart
+            navigation.NavigationV3.restart_ntrip_service(logger_full)
+
+            # stop robot due to bad point quality if allowed
+            if config.ALLOW_GPS_BAD_QUALITY_STOP:
+                vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                logger_full.write_and_flush(
+                    "Stopping the robot for lack of quality gps 4, waiting for it...\n")
+                data_collector.add_vesc_moving_time_data(
+                    vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+
+                prev_bad_quality_pos_obj = cur_pos_obj
+                gps_reconnect_ts = time.time()
+
+                while True:
+                    cur_pos_obj = gps.get_last_position_v2()
+                    cur_pos = cur_pos_obj.as_old_list
+
+                    # check if it's a new point
+                    if math.isclose(cur_pos_obj.creation_ts, prev_bad_quality_pos_obj.creation_ts):
+                        # reconnect gps adapter to ublox if there's no gps points for a while
+                        if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
+                            gps.reconnect()
+                            gps_reconnect_ts = time.time()
+                            msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new " \
+                                  "GPS point (quality filter)"
+                            if config.VERBOSE:
+                                print(msg)
+                            logger_full.write_and_flush(msg + "\n")
+                        continue
+                    else:
+                        prev_bad_quality_pos_obj = cur_pos_obj
+
+                    # check if it's a good quality point
+                    if cur_pos[2] != "4":
+                        # restart ntrip if enough time passed since the last ntrip restart
+                        navigation.NavigationV3.restart_ntrip_service(
+                            logger_full)
+                    else:
+                        msg = "The gps has regained quality 4, starting movement"
+                        if config.VERBOSE:
+                            print(msg)
+                        logger_full.write_and_flush(msg + "\n")
+                        vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                        break
 
         # points filter by distance
         prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
-        if config.ALLOW_GPS_PREV_CUR_DIST_FILTER and prev_cur_distance > config.PREV_CUR_POINT_MAX_DIST:
+        if config.ALLOW_GPS_PREV_CUR_DIST_STOP and prev_cur_distance > config.PREV_CUR_POINT_MAX_DIST:
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             msg = f"Stopping the robot due to GPS points filter by distance (assuming current position point " \
                   f"{str(cur_pos)} is wrong as distance between current position and prev. position {str(prev_pos)}" \
@@ -564,8 +752,45 @@ def move_to_point_and_extract(coords_from_to: list,
             logger_full.write_and_flush(msg + "\n")
             data_collector.add_vesc_moving_time_data(
                 vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+
+            prev_bad_quality_pos_obj = cur_pos_obj
+            gps_reconnect_ts = distance_wait_start_ts = time.time()
+
             while True:
-                cur_pos = gps.get_fresh_position()
+                if time.time() - distance_wait_start_ts > config.GPS_DIST_WAIT_TIME_MAX:
+                    msg = f"Stopping waiting for good prev-cur distance due to timeout, using current point " \
+                          f"{cur_pos} and starting moving again"
+                    if config.VERBOSE:
+                        print(msg)
+                    logger_full.write_and_flush(msg + "\n")
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                    break
+
+                cur_pos_obj = gps.get_last_position_v2()
+                cur_pos = cur_pos_obj.as_old_list
+
+                # check if it's a new point
+                if math.isclose(cur_pos_obj.creation_ts, prev_bad_quality_pos_obj.creation_ts):
+                    # reconnect gps adapter to ublox if there's no gps points for a while
+                    if time.time() - gps_reconnect_ts > config.GPS_POINT_TIME_BEFORE_RECONNECT:
+                        gps.reconnect()
+                        gps_reconnect_ts = time.time()
+                        msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new " \
+                              "GPS point (distance filter)"
+                        if config.VERBOSE:
+                            print(msg)
+                        logger_full.write_and_flush(msg + "\n")
+                    continue
+                else:
+                    prev_bad_quality_pos_obj = cur_pos_obj
+
+                # check if it's a good quality point or ignore point quality if bad quality stop is not allowed
+                if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
+                    # restart ntrip if enough time passed since the last ntrip restart
+                    navigation.NavigationV3.restart_ntrip_service(logger_full)
+                    continue
+
+                # check if distance became ok
                 prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
                 if prev_cur_distance <= config.PREV_CUR_POINT_MAX_DIST:
                     msg = f"Starting moving again after GPS points filter by distance as distance become OK " \
@@ -578,53 +803,100 @@ def move_to_point_and_extract(coords_from_to: list,
 
         trajectory_saver.save_point(cur_pos)
         if ui_msg_queue is not None and time.time()-last_send_gps_time >= 1:
-            ui_msg_queue.send(json.dumps({"last_gps": cur_pos}))
-            last_send_gps_time = time.time()
+            try:
+                ui_msg_queue_send_ts = time.time()
+                ui_msg_queue.send(json.dumps(
+                    {"last_gps": cur_pos}), timeout=config.QUEUE_WAIT_TIME_MAX)
+                last_send_gps_time = time.time()
+
+                if config.QUEUE_TRACK_PERFORMANCE:
+                    ui_msg_queue_send_et = last_send_gps_time - ui_msg_queue_send_ts
+                    if ui_msg_queue_send_et < ui_msg_queue_perf["min_time"]:
+                        ui_msg_queue_perf["min_time"] = ui_msg_queue_send_et
+                    if ui_msg_queue_send_et > ui_msg_queue_perf["max_time"]:
+                        ui_msg_queue_perf["max_time"] = ui_msg_queue_send_et
+                    ui_msg_queue_perf["total_time"] += ui_msg_queue_send_et
+                    ui_msg_queue_perf["total_sends"] += 1
+            except posix_ipc.BusyError:
+                msg = f"Current position wasn't sent to ui_msg_queue likely due to sending timeout " \
+                      f"(max wait time: config.QUEUE_WAIT_TIME_MAX={config.QUEUE_WAIT_TIME_MAX}"
+                logger_full.write(msg + "\n")
+
+                if config.QUEUE_TRACK_PERFORMANCE:
+                    ui_msg_queue_perf["timeouts_exceeded"] += 1
 
         if config.CONTINUOUS_INFORMATION_SENDING and not degraded_navigation_mode:
             notification.set_current_coordinate(cur_pos)
 
         distance = nav.get_distance(cur_pos, coords_from_to[1])
-        
+
         last_corridor_side = current_corridor_side
-        perpendicular, current_corridor_side = nav.get_deviation(coords_from_to[0],coords_from_to[1],cur_pos)
+        perpendicular, current_corridor_side = nav.get_deviation(
+            coords_from_to[0], coords_from_to[1], cur_pos)
+
+        # stop the robot if it has left the field
+        if enable_field_leaving_protection:
+            for pt_idx in range(len(cur_field)):
+                last_point = pt_idx + 1 == len(cur_field)
+
+                if last_point:
+                    deviation, side = nav.get_deviation(cur_field[pt_idx], cur_field[0], cur_pos)
+                else:
+                    deviation, side = nav.get_deviation(cur_field[pt_idx], cur_field[pt_idx + 1], cur_pos)
+
+                if side == -1 and deviation > config.LEAVING_PROTECTION_DISTANCE_MAX:
+                    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                    data_collector.add_vesc_moving_time_data(
+                        vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+                    msg = f"Robot is stopped due to leaving the field. Cur pos: '{str(cur_pos)}'; " \
+                          f"Field comparison vector - P1: '{str(cur_field[pt_idx])}', " \
+                          f"P2: '{str(cur_field[0] if last_point else cur_field[pt_idx + 1])}'"
+                    print(msg)
+                    logger_full.write_and_flush(msg + "\n")
+                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    exit()
 
         # check if arrived
-        _, side = nav.get_deviation(coords_from_to[1], stop_helping_point, cur_pos)
+        _, side = nav.get_deviation(
+            coords_from_to[1], stop_helping_point, cur_pos)
         # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
         if side != 1:  # TODO: maybe should use both side and distance checking methods at once
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             data_collector.add_vesc_moving_time_data(
                 vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
             # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
-            msg = "Arrived to " + str(coords_from_to[1])  # TODO: service will reload script even if it done his work?
+            # TODO: service will reload script even if it done his work?
+            msg = "Arrived to " + str(coords_from_to[1])
             # print(msg)
             logger_full.write(msg + "\n")
-            
+
             # put the wheel straight
             if wheels_straight:
                 response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
                 if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                    msg = "Couldn't turn wheels to center (0), smoothie response:\n" + response
+                    msg = "Couldn't turn wheels to center (0), smoothie response:\n" + \
+                        response
                     print(msg)
                     logger_full.write(msg + "\n")
                 else:
                     # save wheels angle
                     with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
-                        wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+                        wheels_angle_file.write(
+                            str(smoothie.get_adapter_current_coordinates()["A"]))
             break
 
         # TODO check for bug: arrival check applies single speed for all path (while multiple speeds are applied)
         # check if can arrived
-        if vesc_engine.get_adapter_rpm(vesc_engine.PROPULSION_KEY) / config.MULTIPLIER_SI_SPEED_TO_RPM * \
+        if vesc_engine.get_current_rpm(vesc_engine.PROPULSION_KEY) / config.MULTIPLIER_SI_SPEED_TO_RPM * \
                 config.MANEUVERS_FREQUENCY > nav.get_distance(cur_pos, coords_from_to[1]):
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             data_collector.add_vesc_moving_time_data(
                 vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
-            msg = "Will have arrived before the next point to " + str(coords_from_to[1])
+            msg = "Will have arrived before the next point to " + \
+                str(coords_from_to[1])
             # print(msg)
             logger_full.write(msg + "\n")
-            
+
             break
 
         # reduce speed if near the target point
@@ -647,12 +919,13 @@ def move_to_point_and_extract(coords_from_to: list,
         navigation_prediction.run_prediction(coords_from_to, cur_pos)
 
         # raw_angle_cruise = nav.get_angle(coords_from_to[0], cur_pos, cur_pos, coords_from_to[1])
-        #raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
-        raw_angle_centroid = nav.get_angle(prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
+        # raw_angle_legacy = nav.get_angle(prev_pos, cur_pos, cur_pos, coords_from_to[1])
+        raw_angle_centroid = nav.get_angle(
+            prev_pos, cur_pos, coords_from_to[0], coords_from_to[1])
         raw_angle_cruise = - current_corridor_side * math.log(1+perpendicular)
 
-        if nav.get_distance(coords_from_to[0],coords_from_to[1]) < config.CORNER_THRESHOLD and nav.get_distance(coords_from_to[1],future_points[0][0]) < config.CORNER_THRESHOLD:
-        #if abs(raw_angle_legacy)>config.LOST_THRESHOLD:
+        if nav.get_distance(coords_from_to[0], coords_from_to[1]) < config.CORNER_THRESHOLD and nav.get_distance(coords_from_to[1], future_points[0][0]) < config.CORNER_THRESHOLD:
+            # if abs(raw_angle_legacy)>config.LOST_THRESHOLD:
             centroid_factor = config.CENTROID_FACTOR_LOST
             cruise_factor = 1/centroid_factor
         else:
@@ -661,16 +934,18 @@ def move_to_point_and_extract(coords_from_to: list,
 
         raw_angle = raw_angle_centroid*centroid_factor + raw_angle_cruise*cruise_factor
 
-        #raw_angle = butter_lowpass_filter(raw_angle, 0.5, 4, 6)
+        # raw_angle = butter_lowpass_filter(raw_angle, 0.5, 4, 6)
 
         if config.LEARN_GO_STRAIGHT:
             if config.MIN_PERPENDICULAR_GO_STRAIGHT >= perpendicular:
                 learn_go_straight_index += 1
                 learn_go_straight_history.append(raw_angle)
                 if len(learn_go_straight_history) >= config.VALUES_LEARN_GO_STRAIGHT:
-                    learn_go_straight = sum(learn_go_straight_history)/len(learn_go_straight_history)
+                    learn_go_straight = sum(
+                        learn_go_straight_history)/len(learn_go_straight_history)
                     msg = f"Average angle applied to the wheel for the robot to have found : {learn_go_straight}."
                     logger_full.write_and_flush(msg + "\n")
+                    # TODO opening and closing file 4 times per second
                     with open(config.LEARN_GO_STRAIGHT_FILE, "w+") as learn_go_straight_file:
                         learn_go_straight_file.write(str(learn_go_straight))
             else:
@@ -679,15 +954,15 @@ def move_to_point_and_extract(coords_from_to: list,
         # NAVIGATION STATE MACHINE
         if prev_cur_distance < config.PREV_CUR_POINT_MIN_DIST:
             raw_angle = last_correct_raw_angle
-            #print("The distance covered is low")
+            # print("The distance covered is low")
             point_status = "skipped"
-            
-            # register the last position where the robot almost stop 
+
+            # register the last position where the robot almost stop
             # in order to disable the deviation servo for a config.POURSUIT_LIMIT length and then resume in cruise
             last_skipped_point = cur_pos
         else:
             last_correct_raw_angle = raw_angle
-            point_status ="correct"
+            point_status = "correct"
 
         almost_start = nav.get_distance(last_skipped_point, cur_pos)
 
@@ -695,35 +970,42 @@ def move_to_point_and_extract(coords_from_to: list,
         if len(raw_angles_history) >= config.WINDOW:
             raw_angles_history.pop(0)
         raw_angles_history.append(raw_angle)
-        #print("len(raw_angles_history):",len(raw_angles_history))
+        # print("len(raw_angles_history):",len(raw_angles_history))
         sum_angles = sum(raw_angles_history)
         if sum_angles > config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
-                str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(config.SUM_ANGLES_HISTORY_MAX)
+                str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + \
+                str(config.SUM_ANGLES_HISTORY_MAX)
             # print(msg)
             logger_full.write(msg + "\n")
-            #Get Ready to go down as soon as the angle get negatif
-            raw_angles_history[len(raw_angles_history)-1]-= sum_angles - config.SUM_ANGLES_HISTORY_MAX   
+            # Get Ready to go down as soon as the angle get negatif
+            raw_angles_history[len(raw_angles_history) -
+                               1] -= sum_angles - config.SUM_ANGLES_HISTORY_MAX
             sum_angles = config.SUM_ANGLES_HISTORY_MAX
         elif sum_angles < -config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is less than min allowed value " + \
-                str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + str(-config.SUM_ANGLES_HISTORY_MAX)
+                str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + \
+                str(-config.SUM_ANGLES_HISTORY_MAX)
             # print(msg)
             logger_full.write(msg + "\n")
-            #get Ready to go up as soon as the angle get positive:
-            raw_angles_history[len(raw_angles_history)-1]+=  -sum_angles - config.SUM_ANGLES_HISTORY_MAX
+            # get Ready to go up as soon as the angle get positive:
+            raw_angles_history[len(raw_angles_history)-1] += - \
+                sum_angles - config.SUM_ANGLES_HISTORY_MAX
             sum_angles = -config.SUM_ANGLES_HISTORY_MAX
 
         # KP = 0.2*0,55
         # KI = 0.0092*0,91
 
-        KP = getSpeedDependentConfigParam(config.KP, SI_speed, "KP", logger_full)
-        KI = getSpeedDependentConfigParam(config.KI, SI_speed, "KI", logger_full)
+        KP = getSpeedDependentConfigParam(
+            config.KP, SI_speed, "KP", logger_full)
+        KI = getSpeedDependentConfigParam(
+            config.KI, SI_speed, "KI", logger_full)
 
-        angle_kp_ki = raw_angle * KP + sum_angles * KI 
+        angle_kp_ki = raw_angle * KP + sum_angles * KI
 
-        target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE  # smoothie -Value == left, Value == right
-        #target_angle_sm = 0     #Debug COVID_PLACE
+        # smoothie -Value == left, Value == right
+        target_angle_sm = angle_kp_ki * -config.A_ONE_DEGREE_IN_SMOOTHIE
+        # target_angle_sm = 0     #Debug COVID_PLACE
         ad_wheels_pos = smoothie.get_adapter_current_coordinates()["A"]
         # sm_wheels_pos = smoothie.get_smoothie_current_coordinates()["A"]
         sm_wheels_pos = "off"
@@ -741,16 +1023,16 @@ def move_to_point_and_extract(coords_from_to: list,
             # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
-                            config.A_ONE_DEGREE_IN_SMOOTHIE
+                config.A_ONE_DEGREE_IN_SMOOTHIE
         elif order_angle_sm < -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
                                 config.A_ONE_DEGREE_IN_SMOOTHIE):
             msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(-(
-                    config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
-                    config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
+                config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
+                config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
             # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
-                            config.A_ONE_DEGREE_IN_SMOOTHIE)
+                               config.A_ONE_DEGREE_IN_SMOOTHIE)
 
         # convert to global smoothie coordinates
         order_angle_sm += ad_wheels_pos
@@ -758,13 +1040,15 @@ def move_to_point_and_extract(coords_from_to: list,
         # checking for out of smoothie supported range
         if order_angle_sm > config.A_MAX:
             msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MAX = " + \
-                    str(config.A_MAX) + " due to exceeding smoothie allowed values range."
+                str(config.A_MAX) + \
+                " due to exceeding smoothie allowed values range."
             # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = config.A_MAX
         elif order_angle_sm < config.A_MIN:
             msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MIN = " + \
-                    str(config.A_MIN) + " due to exceeding smoothie allowed values range."
+                str(config.A_MIN) + \
+                " due to exceeding smoothie allowed values range."
             # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = config.A_MIN
@@ -794,9 +1078,11 @@ def move_to_point_and_extract(coords_from_to: list,
             print(msg)
             logger_full.write(msg + "\n")
         else:
+            # TODO opening and closing file too often (likely 4 times per second)
             # save wheels angle
             with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
-                wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+                wheels_angle_file.write(
+                    str(smoothie.get_adapter_current_coordinates()["A"]))
 
         raw_angle = round(raw_angle, 2)
         angle_kp_ki = round(angle_kp_ki, 2)
@@ -808,52 +1094,76 @@ def move_to_point_and_extract(coords_from_to: list,
         # sm_wheels_pos = round(sm_wheels_pos, 2)
         gps_quality = cur_pos[2]
         corridor = ""
-        if current_corridor_side==-1:
+        if current_corridor_side == -1:
             corridor = "left"
-        elif current_corridor_side==1:
+        elif current_corridor_side == 1:
             corridor = "right"
-        
 
         raw_angle_cruise = round(raw_angle_cruise, 2)
 
-        lastNtripRestart = navigation.NavigationV3.check_reboot_Ntrip(gps_quality, lastNtripRestart, logger_full)
-
         msg = str(gps_quality).ljust(5) + \
-              str(raw_angle).ljust(8) + \
-              str(angle_kp_ki).ljust(8) + \
-              str(order_angle_sm).ljust(8) + \
-              str(sum_angles).ljust(8) + \
-              str(distance).ljust(13) + \
-              str(ad_wheels_pos).ljust(8) + \
-              str(sm_wheels_pos).ljust(9) + \
-              point_status.ljust(12) + \
-              str(perpendicular).ljust(10) + \
-              corridor.ljust(9) + \
-              str(centroid_factor).ljust(16) + \
-              str(cruise_factor).ljust(14)
+            str(raw_angle).ljust(8) + \
+            str(angle_kp_ki).ljust(8) + \
+            str(order_angle_sm).ljust(8) + \
+            str(sum_angles).ljust(8) + \
+            str(distance).ljust(13) + \
+            str(ad_wheels_pos).ljust(8) + \
+            str(sm_wheels_pos).ljust(9) + \
+            point_status.ljust(12) + \
+            str(perpendicular).ljust(10) + \
+            corridor.ljust(9) + \
+            str(centroid_factor).ljust(16) + \
+            str(cruise_factor).ljust(14)
         print(msg)
         logger_full.write(msg + "\n")
 
         # TODO vesc sensors are being asked 4 times per second
-        # send voltage
-        vesc_data = vesc_engine.get_sensors_data(report_field_names, vesc_engine.PROPULSION_KEY)
-        if config.CONTINUOUS_INFORMATION_SENDING and vesc_data is not None and "input_voltage" in vesc_data:
-            notification.set_input_voltage(vesc_data["input_voltage"])
+        # send voltage and track bumper state
+        vesc_data = vesc_engine.get_sensors_data(
+            report_field_names, vesc_engine.PROPULSION_KEY)
+        if vesc_data is not None and "input_voltage" in vesc_data:
+            if bumper_is_pressed is None:
+                bumper_is_pressed = not vesc_data["input_voltage"] > config.VESC_BUMBER_UNTRIGGER_VOLTAGE
+                if bumper_is_pressed:
+                    msg = f"Bumper is pressed initially before starting moving to point. " \
+                          f"({vesc_data['input_voltage']}V)"
+                    logger_full.write(msg + "\n")
+            elif not bumper_is_pressed and vesc_data["input_voltage"] < config.VESC_BUMBER_TRIGGER_VOLTAGE:
+                bumper_is_pressed = True
+                msg = f"Bumper was pressed. ({vesc_data['input_voltage']}V)"
+                logger_full.write(msg + "\n")
+            elif bumper_is_pressed and vesc_data["input_voltage"] > config.VESC_BUMBER_UNTRIGGER_VOLTAGE:
+                bumper_is_pressed = False
+                msg = f"Bumper was unpressed. ({vesc_data['input_voltage']}V)"
+                logger_full.write(msg + "\n")
 
-        prev_pos = cur_pos
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                notification.set_input_voltage(vesc_data["input_voltage"])
+
+        prev_pos_obj = cur_pos_obj
+        prev_pos = prev_pos_obj.as_old_list
 
         msg = "Nav calc time: " + str(time.time() - nav_start_t)
         logger_full.write(msg + "\n\n")
 
+    if config.QUEUE_TRACK_PERFORMANCE:
+        ui_msg_queue_perf["avg_time"] = ui_msg_queue_perf["total_time"] / \
+            ui_msg_queue_perf["total_sends"]
+        msg = f"Position sending performance report: {ui_msg_queue_perf}"
+        if config.VERBOSE:
+            print(msg)
+        logger_full.write(msg + "\n")
 
-def send_voltage_thread_tf(vesc_engine: adapters.VescAdapterV3, ui_msg_queue):
+
+def send_voltage_thread_tf(vesc_engine: adapters.VescAdapterV4, ui_msg_queue):
     vesc_data = None
     while vesc_data is None:
-        vesc_data = vesc_engine.get_sensors_data(['input_voltage'], vesc_engine.PROPULSION_KEY)
+        vesc_data = vesc_engine.get_sensors_data(
+            ['input_voltage'], vesc_engine.PROPULSION_KEY)
         if vesc_data is not None:
-                input_voltage = vesc_data["input_voltage"]
-                if ui_msg_queue is not None:
-                    ui_msg_queue.send(json.dumps({"input_voltage": input_voltage}))
+            input_voltage = vesc_data["input_voltage"]
+            if ui_msg_queue is not None:
+                ui_msg_queue.send(json.dumps({"input_voltage": input_voltage}))
         else:
             time.sleep(1)
 
@@ -866,7 +1176,7 @@ def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: 
         if config.VERBOSE:
             print(msg)
         logger_full.write(msg + "\n")
-        exit(1)
+        exit()
 
 
 def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):
@@ -892,8 +1202,10 @@ def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComput
         logger.write(msg + "\n")
         return None, None
 
-    point_x1 = nav.get_point_on_vector(point_a, point_b, config.MANEUVER_START_DISTANCE)
-    point_x2 = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.MANEUVER_START_DISTANCE)
+    point_x1 = nav.get_point_on_vector(
+        point_a, point_b, config.MANEUVER_START_DISTANCE)
+    point_x2 = nav.get_point_on_vector(
+        point_a, point_b, cur_vec_dist - config.MANEUVER_START_DISTANCE)
     return point_x1, point_x2
 
 
@@ -947,8 +1259,10 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
         logger.write(msg + "\n")
         return None, None
 
-    point_x1_int = nav.get_point_on_vector(point_a, point_b, config.SPIRAL_SIDES_INTERVAL)
-    point_x2_int = nav.get_point_on_vector(point_a, point_b, cur_vec_dist - config.SPIRAL_SIDES_INTERVAL)
+    point_x1_int = nav.get_point_on_vector(
+        point_a, point_b, config.SPIRAL_SIDES_INTERVAL)
+    point_x2_int = nav.get_point_on_vector(
+        point_a, point_b, cur_vec_dist - config.SPIRAL_SIDES_INTERVAL)
     return point_x1_int, point_x2_int
 
 
@@ -987,28 +1301,34 @@ def compute_bezier_points(point_0, point_1, point_2):
     t = np.linspace(0, 1, config.NUMBER_OF_BEZIER_POINT)
     coords = list()
     for i in t:
-        x = (point_0[0] - 2 * point_1[0] + point_2[0]) * (i ** 2) + (2 * point_1[0] - 2 * point_0[0]) * i + point_0[0]
-        y = (point_0[1] - 2 * point_1[1] + point_2[1]) * (i ** 2) + (2 * point_1[1] - 2 * point_0[1]) * i + point_0[1]
+        x = (point_0[0] - 2 * point_1[0] + point_2[0]) * (i ** 2) + \
+            (2 * point_1[0] - 2 * point_0[0]) * i + point_0[0]
+        y = (point_0[1] - 2 * point_1[1] + point_2[1]) * (i ** 2) + \
+            (2 * point_1[1] - 2 * point_0[1]) * i + point_0[1]
         coords.append([x, y])
     return coords
 
 
 def get_rectangle_isosceles_side(turning_radius):
-    return (0.5*(turning_radius*((2**0.5)-1))**2)**0.5 #Bezier refer \Nextcloud\3. Engineering\navigation
+    # Bezier refer \Nextcloud\3. Engineering\navigation
+    return (0.5*(turning_radius*((2**0.5)-1))**2)**0.5
 
 
-def corner_finish_rounds(turning_radius : float):
+def corner_finish_rounds(turning_radius: float):
     if config.VERBOSE:
-        print("black corridor width at full steering %2.0f"%get_rectangle_isosceles_side(turning_radius)," millimeters")
-    return int((get_rectangle_isosceles_side(turning_radius))/config.FIELD_REDUCE_SIZE)+1 #how many corner round due to robot working width
+        print("black corridor width at full steering %2.0f" %
+              get_rectangle_isosceles_side(turning_radius), " millimeters")
+    # how many corner round due to robot working width
+    return int((get_rectangle_isosceles_side(turning_radius))/config.FIELD_REDUCE_SIZE)+1
 
 
 def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float, currently_path: list):
-    raise NotImplementedError("an obsolete code, use build_forward_backward_path() instead")
+    raise NotImplementedError(
+        "an obsolete code, use build_forward_backward_path() instead")
 
     if not config.ADD_FORWARD_BACKWARD_TO_END_PATH and not config.FORWARD_BACKWARD_PATH:
         return currently_path
-    
+
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
     fwd = SI_speed_fwd
@@ -1016,21 +1336,21 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
 
     while nav.get_distance(b, c) > config.SPIRAL_SIDES_INTERVAL:
 
-        if not add_points_to_path(currently_path, [b,fwd]):
+        if not add_points_to_path(currently_path, [b, fwd]):
             return currently_path
 
-        if not add_points_to_path(currently_path, [a,rev]):
+        if not add_points_to_path(currently_path, [a, rev]):
             return currently_path
 
         a = compute_x1_x2(a, d, config.SPIRAL_SIDES_INTERVAL, nav)[0]
         b = compute_x1_x2(b, c, config.SPIRAL_SIDES_INTERVAL, nav)[0]
 
-    if not add_points_to_path(currently_path, [b,fwd]):
+    if not add_points_to_path(currently_path, [b, fwd]):
         return currently_path
 
-    if not add_points_to_path(currently_path, [a,rev]):
-            return currently_path
-    
+    if not add_points_to_path(currently_path, [a, rev]):
+        return currently_path
+
     return currently_path
 
 
@@ -1096,7 +1416,8 @@ def build_forward_backward_path(abcd_points: list,
 
 
 def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
-    raise NotImplementedError("an obsolete code, use build_bezier_path() instead")
+    raise NotImplementedError(
+        "an obsolete code, use build_bezier_path() instead")
 
     path = []
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
@@ -1112,80 +1433,80 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
     c1, c2 = compute_x1_x2_points(c, d, nav, logger)
     d1, d2 = compute_x1_x2_points(d, a, nav, logger)
     a1_spiral = nav.get_coordinate(a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
-    _ , a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL,nav)
+    _, a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL, nav)
 
     if not add_points_to_path(path, [a, fwd]):
         raise RuntimeError("Failed to add original point A into generated path. "
                            "This could happen if input field's point A is None.")
 
-    first_bezier_turn = compute_bezier_points(a2,b,b1)
-    second_bezier_turn = compute_bezier_points(b2,c,c1)
-    third_bezier_turn = compute_bezier_points(c2,d,d1)
-    fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
+    first_bezier_turn = compute_bezier_points(a2, b, b1)
+    second_bezier_turn = compute_bezier_points(b2, c, c1)
+    third_bezier_turn = compute_bezier_points(c2, d, d1)
+    fourth_bezier_turn = compute_bezier_points(d2, a_spiral, a1_spiral)
 
-    turning_radius = config.MANEUVER_START_DISTANCE   # minimum turning radius given in millimeter
+    # minimum turning radius given in millimeter
+    turning_radius = config.MANEUVER_START_DISTANCE
 
     if config.ADD_CORNER_TO_BEZIER_PATH:
         rnd = 0
         rnds = corner_finish_rounds(turning_radius)
 
-        for rnd in range(rnds+1):             # example a 3meter radius requires 4 corners finish
+        # example a 3meter radius requires 4 corners finish
+        for rnd in range(rnds+1):
             # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
             mxt = "corner rnd "+str(rnd)+"/"+str(rnds)
-                    
-            #the direction is given along with the point in meter per second, signed
-            #go to line forward, step back to the turning point "a1"
 
-            if not add_points_to_path(path,[b,fwd,"B "+mxt]):
-                return path                                            
-            for index in range(0,len(first_bezier_turn)):
+            # the direction is given along with the point in meter per second, signed
+            # go to line forward, step back to the turning point "a1"
+
+            if not add_points_to_path(path, [b, fwd, "B "+mxt]):
+                return path
+            for index in range(0, len(first_bezier_turn)):
                 if index == 0:
-                    if not add_points_to_path(path, [first_bezier_turn[index],rev]):
+                    if not add_points_to_path(path, [first_bezier_turn[index], rev]):
                         return path
                 else:
-                    if not add_points_to_path(path, [first_bezier_turn[index],fwd]):
+                    if not add_points_to_path(path, [first_bezier_turn[index], fwd]):
                         return path
-            if not add_points_to_path(path,[b,rev,mxt]):
-                return path 
+            if not add_points_to_path(path, [b, rev, mxt]):
+                return path
 
-
-            if not add_points_to_path(path,[c,fwd,"C "+mxt]):
-                return path                                            
-            for index in range(0,len(second_bezier_turn)):
+            if not add_points_to_path(path, [c, fwd, "C "+mxt]):
+                return path
+            for index in range(0, len(second_bezier_turn)):
                 if index == 0:
-                    if not add_points_to_path(path, [second_bezier_turn[index],rev]):
+                    if not add_points_to_path(path, [second_bezier_turn[index], rev]):
                         return path
                 else:
-                    if not add_points_to_path(path, [second_bezier_turn[index],fwd]):
+                    if not add_points_to_path(path, [second_bezier_turn[index], fwd]):
                         return path
-            if not add_points_to_path(path, [c,rev,mxt] ):
-                return path  
+            if not add_points_to_path(path, [c, rev, mxt]):
+                return path
 
-
-            if not add_points_to_path(path,[d,fwd,"D "+mxt]):
-                return path                                            
-            for index in range(0,len(third_bezier_turn)):
+            if not add_points_to_path(path, [d, fwd, "D "+mxt]):
+                return path
+            for index in range(0, len(third_bezier_turn)):
                 if index == 0:
-                    if not add_points_to_path(path, [third_bezier_turn[index],rev]):
+                    if not add_points_to_path(path, [third_bezier_turn[index], rev]):
                         return path
                 else:
-                    if not add_points_to_path(path, [third_bezier_turn[index],fwd]):
+                    if not add_points_to_path(path, [third_bezier_turn[index], fwd]):
                         return path
-            if not add_points_to_path(path, [d,rev,mxt] ):
-                return path 
+            if not add_points_to_path(path, [d, rev, mxt]):
+                return path
 
-            if not add_points_to_path(path, [a,fwd,"A "+mxt]):
-                return path                                            
-            for index in range(0,len(fourth_bezier_turn)):
+            if not add_points_to_path(path, [a, fwd, "A "+mxt]):
+                return path
+            for index in range(0, len(fourth_bezier_turn)):
                 if index == 0:
-                    if not add_points_to_path(path, [fourth_bezier_turn[index],rev]):
+                    if not add_points_to_path(path, [fourth_bezier_turn[index], rev]):
                         return path
                 else:
-                    if not add_points_to_path(path, [fourth_bezier_turn[index],fwd]):
+                    if not add_points_to_path(path, [fourth_bezier_turn[index], fwd]):
                         return path
-            #if not add_points_to_path(path, [a,rev,mxt] ):
-            if not add_points_to_path(path, [a_spiral,rev,mxt] ):
-                return path 
+            # if not add_points_to_path(path, [a,rev,mxt] ):
+            if not add_points_to_path(path, [a_spiral, rev, mxt]):
+                return path
 
             # get A'B'C'D' (prepare next ABCD points)
             b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
@@ -1194,13 +1515,15 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
                 return path
 
-            a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
-            c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
+            a_new, b_new = compute_x1_x2_int_points(
+                d2_int, b1_int, nav, logger)
+            c_new, d_new = compute_x1_x2_int_points(
+                b2_int, d1_int, nav, logger)
 
             if not check_points_for_nones(a_new, b_new, c_new, d_new):
                 return path
 
-            a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int 
+            a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
             # get moving points A1 - ... - D2 spiral
             a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
@@ -1208,25 +1531,27 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
             c1, c2 = compute_x1_x2_points(c, d, nav, logger)
             d1, d2 = compute_x1_x2_points(d, a, nav, logger)
 
-            for point in [a,b,c,d,a1,b1,c1,d1,a2,b2,c2,d2]:
+            for point in [a, b, c, d, a1, b1, c1, d1, a2, b2, c2, d2]:
                 if point is None:
                     return path
 
-            a1_spiral = nav.get_coordinate(a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
-            _, a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL,nav)
+            a1_spiral = nav.get_coordinate(
+                a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
+            _, a_spiral = compute_x1_x2(
+                d, a, config.SPIRAL_SIDES_INTERVAL, nav)
 
             for point in [a1_spiral, a_spiral]:
                 if point is None:
                     if not _break:
                         _break = True
                         break
-            if _break : 
+            if _break:
                 break
 
-            first_bezier_turn = compute_bezier_points(a2,b,b1)
-            second_bezier_turn = compute_bezier_points(b2,c,c1)
-            third_bezier_turn = compute_bezier_points(c2,d,d1)
-            fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
+            first_bezier_turn = compute_bezier_points(a2, b, b1)
+            second_bezier_turn = compute_bezier_points(b2, c, c1)
+            third_bezier_turn = compute_bezier_points(c2, d, d1)
+            fourth_bezier_turn = compute_bezier_points(d2, a_spiral, a1_spiral)
 
     while True:
         # get A'B'C'D' (prepare next ABCD points)
@@ -1253,7 +1578,7 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
         d1, d2 = compute_x1_x2_points(d, a, nav, logger)
 
         if None in [a, b, c, d, a1, b1, c1, d1, a2, b2, c2, d2]:
-            if nav.get_distance(a,b) >= nav.get_distance(b,c):
+            if nav.get_distance(a, b) >= nav.get_distance(b, c):
                 a = compute_x1_x2(a, d, config.SPIRAL_SIDES_INTERVAL, nav)[0]
                 b = compute_x1_x2(b, c, config.SPIRAL_SIDES_INTERVAL, nav)[0]
                 return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
@@ -1262,60 +1587,74 @@ def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputin
                                    "Old code, not sure why author raises an exception for such condition.")
 
         a1_spiral = nav.get_coordinate(a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
-        _ , a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL,nav)
+        _, a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL, nav)
 
         if None in [a1_spiral, a_spiral]:
-            raise RuntimeError("One of [A_spiral A1_spiral] points are None. This case actually should never happen.")
+            raise RuntimeError(
+                "One of [A_spiral A1_spiral] points are None. This case actually should never happen.")
 
-        first_bezier_turn = compute_bezier_points(a2,b,b1)
-        second_bezier_turn = compute_bezier_points(b2,c,c1)
-        third_bezier_turn = compute_bezier_points(c2,d,d1)
-        fourth_bezier_turn = compute_bezier_points(d2,a_spiral,a1_spiral)
+        first_bezier_turn = compute_bezier_points(a2, b, b1)
+        second_bezier_turn = compute_bezier_points(b2, c, c1)
+        third_bezier_turn = compute_bezier_points(c2, d, d1)
+        fourth_bezier_turn = compute_bezier_points(d2, a_spiral, a1_spiral)
 
-        if nav.get_distance(a,b) >= nav.get_distance(b,c):
-            
+        if nav.get_distance(a, b) >= nav.get_distance(b, c):
+
             if None in first_bezier_turn+second_bezier_turn:
-                return add_forward_backward_path([a,b,c,d], nav, logger, SI_speed_fwd, SI_speed_rev, path)     
+                return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
 
-            first_bezier_turn_with_speed = [[point,fwd] for point in first_bezier_turn]
-            second_bezier_turn_with_speed = [[point,fwd] for point in second_bezier_turn]
+            first_bezier_turn_with_speed = [[point, fwd]
+                                            for point in first_bezier_turn]
+            second_bezier_turn_with_speed = [
+                [point, fwd] for point in second_bezier_turn]
             # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
             if not add_points_to_path(path, *(first_bezier_turn_with_speed+second_bezier_turn_with_speed)):
-                raise Exception("Error during generate path (build_bezier_with_corner_path:01) !")
+                raise Exception(
+                    "Error during generate path (build_bezier_with_corner_path:01) !")
 
             if None in third_bezier_turn+fourth_bezier_turn:
-                return add_forward_backward_path([c,d,a,b], nav, logger, SI_speed_fwd, SI_speed_rev, path)     
+                return add_forward_backward_path([c, d, a, b], nav, logger, SI_speed_fwd, SI_speed_rev, path)
 
-            third_bezier_turn_with_speed = [[point,fwd] for point in third_bezier_turn]
-            fourth_bezier_turn_with_speed = [[point,fwd] for point in fourth_bezier_turn]
+            third_bezier_turn_with_speed = [[point, fwd]
+                                            for point in third_bezier_turn]
+            fourth_bezier_turn_with_speed = [
+                [point, fwd] for point in fourth_bezier_turn]
             # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
             if not add_points_to_path(path, *(third_bezier_turn_with_speed+fourth_bezier_turn_with_speed)):
-                raise Exception("Error during generate path (build_bezier_with_corner_path:02) !")
+                raise Exception(
+                    "Error during generate path (build_bezier_with_corner_path:02) !")
 
         else:
 
-            first_bezier_turn_with_speed = [[point,fwd] for point in first_bezier_turn]
+            first_bezier_turn_with_speed = [[point, fwd]
+                                            for point in first_bezier_turn]
             # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
             if not add_points_to_path(path, *(first_bezier_turn_with_speed)):
-                raise Exception("Error during generate path (build_bezier_with_corner_path:03) !")
+                raise Exception(
+                    "Error during generate path (build_bezier_with_corner_path:03) !")
 
             if None in second_bezier_turn+third_bezier_turn:
-                return add_forward_backward_path([b,c,d,a], nav, logger, SI_speed_fwd, SI_speed_rev, path)     
-            second_bezier_turn_with_speed = [[point,fwd] for point in second_bezier_turn]
-            third_bezier_turn_with_speed = [[point,fwd] for point in third_bezier_turn]
+                return add_forward_backward_path([b, c, d, a], nav, logger, SI_speed_fwd, SI_speed_rev, path)
+            second_bezier_turn_with_speed = [
+                [point, fwd] for point in second_bezier_turn]
+            third_bezier_turn_with_speed = [[point, fwd]
+                                            for point in third_bezier_turn]
             # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
             if not add_points_to_path(path, *(second_bezier_turn_with_speed+third_bezier_turn_with_speed)):
-                raise Exception("Error during generate path (build_bezier_with_corner_path:04) !")
+                raise Exception(
+                    "Error during generate path (build_bezier_with_corner_path:04) !")
 
             _, next_a2 = compute_x1_x2_points(d2_int, b_new, nav, logger)
             next_b1, _ = compute_x1_x2_points(b_new, c_new, nav, logger)
 
             if None in fourth_bezier_turn or None in [next_a2, b_new, next_b1]:
-                return add_forward_backward_path([d,a,b,c], nav, logger, SI_speed_fwd, SI_speed_rev, path)
+                return add_forward_backward_path([d, a, b, c], nav, logger, SI_speed_fwd, SI_speed_rev, path)
             # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            fourth_bezier_turn_with_speed = [[point,fwd] for point in fourth_bezier_turn]
+            fourth_bezier_turn_with_speed = [
+                [point, fwd] for point in fourth_bezier_turn]
             if not add_points_to_path(path, *(fourth_bezier_turn_with_speed)):
-                raise Exception("Error during generate path (build_bezier_with_corner_path:05 !")
+                raise Exception(
+                    "Error during generate path (build_bezier_with_corner_path:05 !")
 
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
@@ -1332,7 +1671,8 @@ def build_bezier_path(abcd_points: list,
     Returns python list of gps [[latitude, longitude], speed] points."""
 
     if config.ADD_CORNER_TO_BEZIER_PATH:
-        raise NotImplementedError("config.ADD_CORNER_TO_BEZIER_PATH feature is not ready in new path builder yet")
+        raise NotImplementedError(
+            "config.ADD_CORNER_TO_BEZIER_PATH feature is not ready in new path builder yet")
 
     if type(abcd_points) != list:
         msg = f"Given ABCD path must be a list, got {type(abcd_points).__name__} instead"
@@ -1355,7 +1695,8 @@ def build_bezier_path(abcd_points: list,
     center_fill_start_point = 0  # 0 is unidentified, 1 is A, 2 is D
 
     if not add_points_to_path(path, [a, SI_speed_fwd]):
-        raise RuntimeError("Failed to add point A (the once of input field description points) into generated path")
+        raise RuntimeError(
+            "Failed to add point A (the once of input field description points) into generated path")
 
     while True:
         # get moving points A1 - ... - D2 spiral
@@ -1369,15 +1710,18 @@ def build_bezier_path(abcd_points: list,
 
         b_corner_bezier = compute_bezier_points(a2, b, b1)
         if not add_points_to_path(path, *map(lambda gps_point: [gps_point, SI_speed_fwd], b_corner_bezier)):
-            raise RuntimeError("Failed to add B corner's bezier curve to path. This expected never to happen.")
+            raise RuntimeError(
+                "Failed to add B corner's bezier curve to path. This expected never to happen.")
 
         c_corner_bezier = compute_bezier_points(b2, c, c1)
         if not add_points_to_path(path, *map(lambda gps_point: [gps_point, SI_speed_fwd], c_corner_bezier)):
-            raise RuntimeError("Failed to add C corner's bezier curve to path. This expected never to happen.")
+            raise RuntimeError(
+                "Failed to add C corner's bezier curve to path. This expected never to happen.")
 
         d_corner_bezier = compute_bezier_points(c2, d, d1)
         if not add_points_to_path(path, *map(lambda gps_point: [gps_point, SI_speed_fwd], d_corner_bezier)):
-            raise RuntimeError("Failed to add D corner's bezier curve to path. This expected never to happen.")
+            raise RuntimeError(
+                "Failed to add D corner's bezier curve to path. This expected never to happen.")
 
         # check before computing d2 and A corner bezier curve (see d2 computing comments below for details)
         if nav.get_distance(d, a) <= config.MANEUVER_START_DISTANCE * 2 + config.SPIRAL_SIDES_INTERVAL \
@@ -1387,14 +1731,17 @@ def build_bezier_path(abcd_points: list,
 
         # d2 isn't as other x2 points as d2 distance from A is spiral_sides_interval + start_turn_distance
         # instead of just start_turn_distance, so DA acceptable length computing is different (+spiral side interval)
-        d2 = nav.get_point_on_vector(a, d, config.SPIRAL_SIDES_INTERVAL + config.MANEUVER_START_DISTANCE)
+        d2 = nav.get_point_on_vector(
+            a, d, config.SPIRAL_SIDES_INTERVAL + config.MANEUVER_START_DISTANCE)
         a_spiral = nav.get_point_on_vector(a, d, config.SPIRAL_SIDES_INTERVAL)
         # a1_spiral point is inside the initial field, corner of D-A_spiral-A1_spiral = 90 degrees
-        a1_spiral = nav.get_coordinate(a_spiral, d, 90, config.MANEUVER_START_DISTANCE)
+        a1_spiral = nav.get_coordinate(
+            a_spiral, d, 90, config.MANEUVER_START_DISTANCE)
 
         a_corner_bezier = compute_bezier_points(d2, a_spiral, a1_spiral)
         if not add_points_to_path(path, *map(lambda gps_point: [gps_point, SI_speed_fwd], a_corner_bezier)):
-            raise RuntimeError("Failed to add A corner's bezier curve to path. This expected never to happen.")
+            raise RuntimeError(
+                "Failed to add A corner's bezier curve to path. This expected never to happen.")
 
         # get A'B'C'D' (intermediate points used to compute new ABCD points for next iteration)
         # (int points are requiring given vector length >= spiral_sides_interval * 2
@@ -1447,7 +1794,8 @@ def build_bezier_path(abcd_points: list,
 
 
 def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
-    raise NotImplementedError("an obsolete code, use more advanced path builders like bezier or zigzag")
+    raise NotImplementedError(
+        "an obsolete code, use more advanced path builders like bezier or zigzag")
 
     path = []
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
@@ -1460,7 +1808,7 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
     d2_spiral = compute_x2_spiral(d, a, nav, logger)
 
     # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-    if not add_points_to_path(path, [a,SI_speed_fwd], [a1,SI_speed_fwd], [a2,SI_speed_fwd], [b1,SI_speed_fwd], [b2,SI_speed_fwd], [c1,SI_speed_fwd], [c2,SI_speed_fwd], [d1,SI_speed_fwd], [d2_spiral,SI_speed_fwd]):
+    if not add_points_to_path(path, [a, SI_speed_fwd], [a1, SI_speed_fwd], [a2, SI_speed_fwd], [b1, SI_speed_fwd], [b2, SI_speed_fwd], [c1, SI_speed_fwd], [c2, SI_speed_fwd], [d1, SI_speed_fwd], [d2_spiral, SI_speed_fwd]):
         return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
 
     # get A'B'C'D' (prepare next ABCD points)
@@ -1501,15 +1849,15 @@ def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.
         d2_spiral = compute_x2_spiral(d, a, nav, logger)
 
         # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-        if not add_points_to_path(path, [a1,SI_speed_fwd], [a2,SI_speed_fwd], [b1,SI_speed_fwd], [b2,SI_speed_fwd], [c1,SI_speed_fwd], [c2,SI_speed_fwd], [d1,SI_speed_fwd], [d2_spiral,SI_speed_fwd]):
+        if not add_points_to_path(path, [a1, SI_speed_fwd], [a2, SI_speed_fwd], [b1, SI_speed_fwd], [b2, SI_speed_fwd], [c1, SI_speed_fwd], [c2, SI_speed_fwd], [d1, SI_speed_fwd], [d2_spiral, SI_speed_fwd]):
             break
 
         a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
-    if nav.get_distance(a,b) >= nav.get_distance(b,c):
-        return add_forward_backward_path([a,b,c,d], nav, logger, SI_speed_fwd, SI_speed_rev, path)       
+    if nav.get_distance(a, b) >= nav.get_distance(b, c):
+        return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
     else:
-        return add_forward_backward_path([c,b,a,d], nav, logger, SI_speed_rev, SI_speed_fwd, path)
+        return add_forward_backward_path([c, b, a, d], nav, logger, SI_speed_rev, SI_speed_fwd, path)
 
 
 def compute_x1_x2(point_a, point_b, distance, nav: navigation.GPSComputing):
@@ -1550,7 +1898,7 @@ def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputi
     return [a_new, b_new, c_new, d_new]
 
 
-def emergency_field_defining(vesc_engine: adapters.VescAdapterV3, gps: adapters.GPSUbloxAdapter,
+def emergency_field_defining(vesc_engine: adapters.VescAdapterV4, gps: adapters.GPSUbloxAdapter,
                              nav: navigation.GPSComputing, cur_log_dir, logger_full: utility.Logger):
     msg = "Using emergency field creation..."
     logger_full.write(msg + "\n")
@@ -1561,6 +1909,7 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapterV3, gps: adapters.
     msg = "Moving forward..."
     logger_full.write(msg + "\n")
     print(msg)
+    vesc_engine.set_time_to_move(float("inf"), vesc_engine.PROPULSION_KEY)
     vesc_engine.start_moving(engine_key=vesc_engine.PROPULSION_KEY)
     time.sleep(config.EMERGENCY_MOVING_TIME)
     vesc_engine.stop_moving(engine_key=vesc_engine.PROPULSION_KEY)
@@ -1583,7 +1932,8 @@ def emergency_field_defining(vesc_engine: adapters.VescAdapterV3, gps: adapters.
     print(msg)
     field = [A, B, C, D]
     save_gps_coordinates(field, "field.txt")
-    save_gps_coordinates_raw([starting_point, A, B, C, D], cur_log_dir + "emergency_raw_field.txt")
+    save_gps_coordinates_raw(
+        [starting_point, A, B, C, D], cur_log_dir + "emergency_raw_field.txt")
     return field
 
 
@@ -1595,12 +1945,46 @@ def send_name_of_file_of_gps_history(ui_msg_queue: posix_ipc.MessageQueue,
     """
 
     if os.path.isfile(gps_file_dir + gps_file_name):
-        ui_msg_queue.send(json.dumps({"last_gps_list_file": gps_file_dir + gps_file_name}))
+        ui_msg_queue.send(json.dumps(
+            {"last_gps_list_file": gps_file_dir + gps_file_name}))
     else:
         msg = f"Could not find {gps_file_dir}/used_gps_history.txt file to send previous points to the web UI"
         logger_full.write(msg + "\n")
         if config.VERBOSE:
             print(msg)
+
+
+def get_bezier_indexes(path_points: list):
+    """ONLY for bezier path with NO backward-forward at corners. Presence of zigzags at field center is ok.
+
+    Returns list of bezier points indexes."""
+
+    if len(path_points) < 2:
+        raise ValueError(f"path_points must contain at least 2 points, got {len(path_points)} instead")
+
+    last_non_zigzag_idx = 0
+    for i in range(len(path_points)):
+        if math.isclose(path_points[i][1], 0):
+            raise ValueError(f"POINT {i} HAS 0 SPEED!")
+        elif path_points[i][1] > 0:
+            last_non_zigzag_idx = i
+        else:
+            break
+
+    a_non_bezier_indexes = [0]  # A points
+    b_non_bezier_indexes = [1]  # B points
+    while last_non_zigzag_idx > b_non_bezier_indexes[-1]:
+        a_non_bezier_indexes.append(a_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
+        b_non_bezier_indexes.append(b_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
+
+    non_bezier_indexes = a_non_bezier_indexes + b_non_bezier_indexes
+    bezier_indexes = []
+    for i in range(last_non_zigzag_idx + 1):
+        if i not in non_bezier_indexes:
+            bezier_indexes.append(i)
+
+    return bezier_indexes
+
 
 def main():
     time_start = utility.get_current_time()
@@ -1616,10 +2000,15 @@ def main():
     else:
         log_cur_dir = config.LOG_ROOT_DIR + time_start + "/"
 
-    utility.create_directories(log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
+    utility.create_directories(
+        log_cur_dir, config.DEBUG_IMAGES_PATH, config.DATA_GATHERING_DIR)
 
     try:
-        ui_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+        if config.QUEUE_MESSAGES_MAX is not None:
+            ui_msg_queue = posix_ipc.MessageQueue(
+                config.QUEUE_NAME_UI_MAIN, max_messages=config.QUEUE_MESSAGES_MAX)
+        else:
+            ui_msg_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
     except KeyboardInterrupt:
         raise KeyboardInterrupt
     except:
@@ -1627,9 +2016,11 @@ def main():
 
     image_saver = utility.ImageSaver()
     if config.ALLOW_GATHERING:
-        image_saver.set_counter(len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
+        image_saver.set_counter(
+            len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
 
     notification = NotificationClient(time_start)
+    notification.set_robot_state(RobotStates.WORKING)
     data_collector = datacollection.DataCollector(
         log_cur_dir + config.STATISTICS_DB_FILE_NAME,
         notification,
@@ -1639,7 +2030,8 @@ def main():
         dump_at_receiving=True)
     working_zone_polygon = Polygon(config.WORKING_ZONE_POLY_POINTS)
     nav = navigation.GPSComputing()
-    logger_full = utility.Logger(log_cur_dir + "log full.txt", append_file=config.CONTINUE_PREVIOUS_PATH)
+    logger_full = utility.Logger(
+        log_cur_dir + "log full.txt", append_file=config.CONTINUE_PREVIOUS_PATH)
 
     # X axis movement during periphery scans config settings validation
     if config.ALLOW_X_MOVEMENT_DURING_SCANS:
@@ -1651,7 +2043,8 @@ def main():
             print(msg)
             config.ALLOW_X_MOVEMENT_DURING_SCANS = False
     if config.ALLOW_X_MOVEMENT_DURING_SCANS:
-        x_scan_poly = ExtractionManagerV3.pdz_dist_to_poly(config.X_MOVEMENT_IMAGE_ZONES)
+        x_scan_poly = ExtractionManagerV3.pdz_dist_to_poly(
+            config.X_MOVEMENT_IMAGE_ZONES)
     else:
         x_scan_poly = []
 
@@ -1663,8 +2056,8 @@ def main():
         msg = "Couldn't get vesc's USB address!"
         print(msg)
         logger_full.write(msg + "\n")
-        notification.setStatus(SyntheseRobot.HS)
-        exit(1)
+        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+        exit()
     if config.SMOOTHIE_BACKEND == 1:
         smoothie_address = config.SMOOTHIE_HOST
     else:
@@ -1674,8 +2067,8 @@ def main():
             msg = "Couldn't get smoothie's USB address!"
             print(msg)
             logger_full.write(msg + "\n")
-            notification.setStatus(SyntheseRobot.HS)
-            exit(1)
+            notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+            exit()
 
     # load yolo networks
     if config.NN_MODELS_COUNT < 1:
@@ -1706,10 +2099,11 @@ def main():
             config.PERIPHERY_DNN_BACKEND,
             config.PERIPHERY_DNN_TARGET)
     else:
-        msg = "Wrong config.PERIPHERY_WRAPPER = " + str(config.PERIPHERY_WRAPPER) + " code. Exiting."
+        msg = "Wrong config.PERIPHERY_WRAPPER = " + \
+            str(config.PERIPHERY_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
-        notification.setStatus(SyntheseRobot.HS)
-        exit(1)
+        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+        exit()
 
     # load precise NN
     if config.NN_MODELS_COUNT > 1:
@@ -1723,8 +2117,6 @@ def main():
                 config.PRECISE_CONFIDENCE_THRESHOLD,
                 config.PRECISE_NMS_THRESHOLD,
                 config.PRECISE_INPUT_SIZE)
-            if config.CONTINUOUS_INFORMATION_SENDING:
-                notification.set_treated_plant(precise_detector.get_classes_names())
         elif config.PRECISE_WRAPPER == 2:
             precise_detector = detection.YoloOpenCVDetection(
                 config.PRECISE_CLASSES_FILE,
@@ -1735,23 +2127,29 @@ def main():
                 config.PRECISE_NMS_THRESHOLD,
                 config.PRECISE_DNN_BACKEND,
                 config.PRECISE_DNN_TARGET)
-            if config.CONTINUOUS_INFORMATION_SENDING:
-                notification.set_treated_plant(detection.classes)
         else:
-            msg = "Wrong config.PRECISE_WRAPPER = " + str(config.PRECISE_WRAPPER) + " code. Exiting."
+            msg = "Wrong config.PRECISE_WRAPPER = " + \
+                str(config.PRECISE_WRAPPER) + " code. Exiting."
             logger_full.write(msg + "\n")
-            notification.setStatus(SyntheseRobot.HS)
-            exit(1)
+            notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+            exit()
     else:
         msg = "Using periphery detector as precise."
         print(msg)
         logger_full.write(msg + "\n")
         precise_detector = periphery_detector
 
+    if config.CONTINUOUS_INFORMATION_SENDING:
+        treated_plants = set()
+        treated_plants.update(periphery_detector.get_classes_names())
+        treated_plants.update(precise_detector.get_classes_names())
+        notification.set_treated_weed_types(treated_plants)
+
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
         if ui_msg_queue is not None:
-            send_name_of_file_of_gps_history(ui_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
+            send_name_of_file_of_gps_history(
+                ui_msg_queue, log_cur_dir, "used_gps_history.txt", logger_full)
         else:
             msg = "GPS message queue connection is not established (None), canceling gps sending to UI"
             logger_full.write(msg + "\n")
@@ -1774,7 +2172,7 @@ def main():
         with \
             utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt",
                                     config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
-            adapters.VescAdapterV3(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
+            adapters.VescAdapterV4(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
                                    config.VESC_STOPPER_CHECK_FREQ) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
@@ -1790,65 +2188,137 @@ def main():
             ExtractionManagerV3(smoothie, camera, logger_full, data_collector, image_saver,
                                 log_cur_dir, periphery_detector, precise_detector,
                                 config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \
-            navigation.NavigationPrediction(logger_full=logger_full, nav=nav, log_cur_dir=log_cur_dir) as navigation_prediction :            
+            navigation.NavigationPrediction(
+                logger_full=logger_full,
+                nav=nav,
+                log_cur_dir=log_cur_dir) as navigation_prediction:
 
-            # load previous path
+            # try to load field ABCD points
+            field_gps_coords = None
+            field_name = None
+            if config.USE_EMERGENCY_FIELD_GENERATION and not config.CONTINUE_PREVIOUS_PATH:
+                field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
+            else:
+                # check if shortcut exists
+                if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
+                    # check if shortcut target file exists
+                    # old way: shortcut_target_path = subprocess.check_output(['readlink', '-f', config.INPUT_GPS_FIELD_FILE]).decode("utf-8").strip()
+                    shortcut_target_path = os.path.realpath(config.INPUT_GPS_FIELD_FILE)
+                    field_name = (shortcut_target_path.split("/")[-1]).split(".")[0]
+                    if os.path.isfile(shortcut_target_path):
+                        msg = f"Loading '{config.INPUT_GPS_FIELD_FILE}' field file"
+                        logger_full.write(msg + "\n")
+
+                        try:
+                            field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                        except ValueError:
+                            msg = f"Failed to load field '{shortcut_target_path}' due " \
+                                  f"to ValueError (file is likely corrupted)"
+                            print(msg)
+                            logger_full.write(msg + "\n")
+
+                        msg = f"Loaded field: {str(field_gps_coords)}"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                    else:
+                        msg = f"Couldn't find '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' target file with" \
+                              f"field points"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                else:
+                    msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' shortcut file with field points"
+                    print(msg)
+                    logger_full.write(msg + "\n")
+
+            # set field to notification
+            if config.CONTINUOUS_INFORMATION_SENDING:
+                if field_gps_coords is None:
+                    msg = f"Sending field to notification is aborted as field is None"
+                    print(msg)
+                    logger_full.write(msg)
+                elif field_name is None:
+                    msg = f"Sending field to notification is aborted as field name is None"
+                    print(msg)
+                    logger_full.write(msg)
+                elif len(field_gps_coords) < 1:
+                    msg = f"Loaded '{shortcut_target_path}' field contains 0" \
+                          f"points. Sending to notification is aborted."
+                    print(msg)
+                    logger_full.write(msg + "\n")
+                else:
+                    notification.set_field(field_gps_coords.copy(), field_name)
+
+            # continue previous path case
+            loading_previous_path_failed = False
+            loading_previous_index_failed = False
             if config.CONTINUE_PREVIOUS_PATH:
-                # TODO: create path manager
+                # TODO: maybe make a path manager and put field and path loading and checking etc there
 
                 msg = "Loading previous path points"
                 logger_full.write(msg + "\n")
 
-                if config.CONTINUOUS_INFORMATION_SENDING:
-                    link_path = subprocess.check_output(['readlink', '-f', 'field.txt']).decode("utf-8")
-                    field_name = (link_path.split("/")[-1]).split(".")[0]
-                    notification.set_field(load_coordinates(config.INPUT_GPS_FIELD_FILE), field_name)
+                if not os.path.isfile(config.PREVIOUS_PATH_POINTS_FILE):
+                    loading_previous_path_failed = True
+                    msg = f"Couldn't find '{config.PREVIOUS_PATH_POINTS_FILE}' file with previous path points. " \
+                          f"Trying to generate path points of current field from scratch."
+                    print(msg)
+                    logger_full.write(msg + "\n")
+                else:
+                    # data validation is done later as it needed both to loaded and new generated path
+                    with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
+                        path_points = pickle.load(path_points_file)
 
-                # TODO: check if files exist and handle damaged/incorrect data cases
-                with open(config.PREVIOUS_PATH_POINTS_FILE, "rb") as path_points_file:
-                    path_points = pickle.load(path_points_file)
-                with open(config.PREVIOUS_PATH_INDEX_FILE, "r") as path_index_file:
-                    str_index = path_index_file.readline()
-                    if str_index == "":
-                        msg = "Path start index file " + config.PREVIOUS_PATH_INDEX_FILE + " is empty!"
+                    if not os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE):
+                        loading_previous_index_failed = True
+                        msg = f"Couldn't find '{config.PREVIOUS_PATH_INDEX_FILE}' file with point index to continue."
                         print(msg)
                         logger_full.write(msg + "\n")
-                        notification.setStatus(SyntheseRobot.HS)
-                        exit(1)
-                    path_start_index = int(str_index)  # TODO check if possible to convert
+                    else:
+                        with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
+                            str_index = path_index_file.readline().strip()
+                        try:
+                            path_start_index = int(str_index)
+                        except ValueError:
+                            loading_previous_index_failed = True
+                            msg = f"Couldn't convert path point index '{str_index}' into int."
+                            print(msg)
+                            logger_full.write(msg + "\n")
 
-                # check if index is ok
-                if path_start_index == -1:
-                    msg = "Previous path is already passed"
+                    if path_start_index == -1:
+                        msg = "Previous path is already passed"
+                        print(msg)
+                        logger_full.write_and_flush(msg + "\n")
+                        notification.close()
+                        exit()
+                    elif path_start_index >= len(path_points) or path_start_index < 1:
+                        loading_previous_index_failed = True
+                        msg = f"Path start index {path_start_index} is out of path points list range (loaded " \
+                              f"{len(path_points)} points)"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+
+                    if loading_previous_index_failed:
+                        msg = "Creating new path index storage file, and going to start this field from 1rst point " \
+                              "due to index loading troubles (see log above for details)"
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        path_start_index = 1
+                        with open(config.PREVIOUS_PATH_INDEX_FILE, "w") as path_index_file:
+                            path_index_file.write(str(path_start_index))
+
+            # load field points and generate new path or continue previous path errors case
+            if not config.CONTINUE_PREVIOUS_PATH or loading_previous_path_failed:
+                if field_gps_coords is None:
+                    msg = f"Exiting main as building path without field points is impossible"
                     print(msg)
-                    logger_full.write(msg + "\n")
-                    notification.stop()
-                    exit(0)
-                elif path_start_index >= len(path_points) or path_start_index < 1:
-                    msg = "Path start index " + str(path_start_index) + " is out of path points list range (loaded " + \
-                        str(len(path_points)) + " points) (start index can't be zero as 1rst point is starting point)"
-                    print(msg)
-                    logger_full.write(msg + "\n")
-                    notification.setStatus(SyntheseRobot.HS)
-                    exit(1)
-
-            # load field points and generate new path
-            else:
-                if config.USE_EMERGENCY_FIELD_GENERATION:
-                    field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
-                else:
-                    msg = "Loading " + config.INPUT_GPS_FIELD_FILE
-                    logger_full.write(msg + "\n")
-
-                    field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
-
-                    msg = "Loaded field: " + str(field_gps_coords)
-                    print(msg)
-                    logger_full.write(msg + "\n")
+                    logger_full.write_and_flush(msg)
+                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    exit()
 
                 # check field corner points count
                 if len(field_gps_coords) == 4:
-                    field_gps_coords = reduce_field_size(field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
+                    field_gps_coords = reduce_field_size(
+                        field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
 
                     msg = "Reduced field: " + str(field_gps_coords)
                     print(msg)
@@ -1880,7 +2350,7 @@ def main():
 
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
-                elif len(field_gps_coords) == 2: 
+                elif len(field_gps_coords) == 2:
                     path_start_index = 1
                     path_points = field_gps_coords
                 else:
@@ -1888,13 +2358,8 @@ def main():
                         field_gps_coords)
                     print(msg)
                     logger_full.write(msg + "\n")
-                    notification.setStatus(SyntheseRobot.HS)
-                    exit(1)
-
-                if config.CONTINUOUS_INFORMATION_SENDING:
-                    link_path = subprocess.check_output(['readlink', '-f', 'field.txt']).decode("utf-8")
-                    field_name = (link_path.split("/")[-1]).split(".")[0]
-                    notification.set_field(field_gps_coords, field_name)
+                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    exit()
 
                 # save path points and point to start from index
                 with open(config.PREVIOUS_PATH_POINTS_FILE, "wb") as path_points_file:
@@ -1903,7 +2368,8 @@ def main():
                     path_index_file.write(str(path_start_index))
 
             if len(path_points) > 0:
-                save_gps_coordinates(path_points, log_cur_dir + "current_path_points.txt")
+                save_gps_coordinates(
+                    path_points, log_cur_dir + "current_path_points.txt")
                 msg = "Current path points are successfully saved."
                 print(msg)
                 logger_full.write(msg + "\n")
@@ -1917,8 +2383,8 @@ def main():
                       " instead (1st point is starting point)."
                 print(msg)
                 logger_full.write(msg + "\n")
-                notification.setStatus(SyntheseRobot.HS)
-                exit(1)
+                notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                exit()
 
             # set smoothie's A axis to 0 (nav turn wheels)
             response = smoothie.set_current_coordinates(A=0)
@@ -1934,26 +2400,76 @@ def main():
             logger_full.write(msg + "\n")
             """
 
-            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|centroid factor|cruise factor'
+            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
+                  'centroid factor|cruise factor'
             print(msg)
             logger_full.write(msg + "\n")
 
             # path points visiting loop
-            with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
+            with open(
+                    config.PREVIOUS_PATH_INDEX_FILE,
+                    "r+" if os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE) else "w") as path_index_file:
+                # TODO: temp. wheels mechanics hotfix. please don't repeat things I did here they are not good.
+                if config.ENABLE_ADDITIONAL_WHEELS_TURN:
+                    if config.TRADITIONAL_PATH:
+                        msg = f"wheels additional turn is enabled (cur. config.ENABLE_ADDITIONAL_WHEELS_TURN=True), " \
+                              f"and it's not compatible with traditional path (cur. config.TRADITIONAL_PATH=True)"
+                        raise RuntimeError(msg)
+                    if not config.BEZIER_PATH:
+                        msg = f"wheels additional turn is enabled, and it's compatible only with bezier path " \
+                              f"(cur. config.BEZIER_PATH=False)"
+                        raise RuntimeError(msg)
+                    if config.FORWARD_BACKWARD_PATH:
+                        msg = f"wheels additional turn is enabled, and it's not compatible with forward-backward " \
+                              f"path building option (cur. config.FORWARD_BACKWARD_PATH=True)"
+                        raise RuntimeError(msg)
+                    if config.ADD_CORNER_TO_BEZIER_PATH:
+                        msg = f"wheels additional turn is enabled, and it's not compatible with " \
+                              f"ADD_CORNER_TO_BEZIER_PATH building path option " \
+                              f"(cur. config.ADD_CORNER_TO_BEZIER_PATH=True)"
+                        raise RuntimeError(msg)
+
+                    smoothie_tel_conn = None
+                    try:
+                        bezier_points_indexes = get_bezier_indexes(path_points)
+                        smoothie_tel_conn = connectors.SmoothieV11TelnetConnector(config.SMOOTHIE_TELNET_HOST)
+                        smoothie_tel_conn.write("G91")
+                        res = smoothie_tel_conn.read_some()
+                        if res != smoothie.RESPONSE_OK:
+                            msg = f"Couldn't set smoothie telnet connection to relative mode:\n{res}\n" \
+                                  f"Telnet connection usage will be disabled."
+                            print(msg)
+                            logger_full.write(msg + "\n")
+                            smoothie_tel_conn = None
+                    except KeyboardInterrupt:
+                        raise KeyboardInterrupt
+                    except:
+                        msg = f"Wheels additional turn preparations are failed:\n" \
+                              f"{traceback.format_exc()}\n" \
+                              f"Telnet connection usage will be disabled."
+                        print(msg)
+                        logger_full.write(msg + "\n")
+                        smoothie_tel_conn = None
+
                 next_calibration_time = time.time() + config.CORK_CALIBRATION_MIN_TIME
-                
+
                 try:
-                    start_position = utility.average_point(gps,trajectory_saver,nav)
+                    start_position = utility.average_point(
+                        gps, trajectory_saver, nav)
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
                 except:
                     pass
 
                 if ui_msg_queue is not None:
                     try:
                         ui_msg_queue.send(json.dumps({"start": True}))
+                    except KeyboardInterrupt:
+                        raise KeyboardInterrupt
                     except:
                         pass
-                
-                last_direction_of_travel = None #1 -> moving forward #-1 -> moving backward
+
+                last_direction_of_travel = None  # 1 -> moving forward #-1 -> moving backward
 
                 if config.NAVIGATION_TEST_MODE:
                     path_end_index = sys.maxsize
@@ -2010,8 +2526,10 @@ def main():
                                 a_non_bezier_indexes = [0]  # A points
                                 b_non_bezier_indexes = [1]  # B points
                                 while traj_path_start_index > b_non_bezier_indexes[-1]:
-                                    a_non_bezier_indexes.append(a_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
-                                    b_non_bezier_indexes.append(b_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
+                                    a_non_bezier_indexes.append(
+                                        a_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
+                                    b_non_bezier_indexes.append(
+                                        b_non_bezier_indexes[-1] + config.NUMBER_OF_BEZIER_POINT)
 
                                 # look for index of point which will be used to get the robot to trajectory
                                 # ABAP correct angle: -180 to -90 or 170 to 180
@@ -2089,7 +2607,8 @@ def main():
                                 navigation_prediction,
                                 path_points[i_inf:i_sup],
                                 not config.FIRST_POINT_NO_EXTRACTIONS,
-                                x_scan_poly
+                                x_scan_poly,
+                                field_gps_coords
                             )
                             if traj_path_start_index >= path_start_index:
                                 path_start_index = traj_path_start_index + 1
@@ -2124,7 +2643,8 @@ def main():
                                         navigation_prediction,
                                         path_points[i_inf:i_sup],
                                         not config.FIRST_POINT_NO_EXTRACTIONS,
-                                        x_scan_poly
+                                        x_scan_poly,
+                                        field_gps_coords
                                     )
                     elif config.FORWARD_BACKWARD_PATH:
                         msg = "USING RUDE TRAJECTORY APPROACHING as forward-backward path is not supported yet by " \
@@ -2137,12 +2657,14 @@ def main():
 
                 # move through path points
                 for i in range(path_start_index, path_end_index):
-                    
-                    if config.NAVIGATION_TEST_MODE:
-                        dist_here_point_a = nav.get_distance(start_position, config.POINT_A[0])
-                        dist_here_point_b = nav.get_distance(start_position, config.POINT_B[0])
 
-                        if dist_here_point_a>dist_here_point_b:
+                    if config.NAVIGATION_TEST_MODE:
+                        dist_here_point_a = nav.get_distance(
+                            start_position, config.POINT_A[0])
+                        dist_here_point_b = nav.get_distance(
+                            start_position, config.POINT_B[0])
+
+                        if dist_here_point_a > dist_here_point_b:
                             from_to = [config.POINT_B[0], config.POINT_A[0]]
                             speed = config.POINT_A[1]
                         else:
@@ -2150,34 +2672,41 @@ def main():
                             speed = config.POINT_B[1]
 
                         display_instruction_path = from_to[0:2]
-                            
+
                     else:
-                        from_to = [path_points[i - 1][0], path_points[i][0]] 
+                        from_to = [path_points[i - 1][0], path_points[i][0]]
                         speed = path_points[i][1]
 
-                        i_inf = i-config.DELTA_DISPLAY_INSTRUCTION_PATH if i>=config.DELTA_DISPLAY_INSTRUCTION_PATH else 0
-                        i_sup = i+config.DELTA_DISPLAY_INSTRUCTION_PATH if i+config.DELTA_DISPLAY_INSTRUCTION_PATH<path_end_index else path_end_index-1
-                        display_instruction_path = [elem[0] for elem in path_points[i_inf:i_sup]]
+                        i_inf = i-config.DELTA_DISPLAY_INSTRUCTION_PATH if i >= config.DELTA_DISPLAY_INSTRUCTION_PATH else 0
+                        i_sup = i+config.DELTA_DISPLAY_INSTRUCTION_PATH if i + \
+                            config.DELTA_DISPLAY_INSTRUCTION_PATH < path_end_index else path_end_index-1
+                        display_instruction_path = [elem[0]
+                                                    for elem in path_points[i_inf:i_sup]]
 
                     if ui_msg_queue is not None and config.DISPLAY_INSTRUCTION_PATH:
-                        ui_msg_queue.send(json.dumps({"display_instruction_path": display_instruction_path}))
+                        ui_msg_queue.send(json.dumps(
+                            {"display_instruction_path": display_instruction_path}))
 
                     if last_direction_of_travel is None:
-                        last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
-                    
-                    direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
+                        # 1 -> moving forward #-1 -> moving backward
+                        last_direction_of_travel = (speed >= 0) if 1 else -1
+
+                    # 1 -> moving forward #-1 -> moving backward
+                    direction_of_travel = (speed >= 0) if 1 else -1
 
                     if direction_of_travel != last_direction_of_travel:
-                        vesc_engine.set_rpm(speed * config.MULTIPLIER_SI_SPEED_TO_RPM, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(
+                            speed * config.MULTIPLIER_SI_SPEED_TO_RPM, vesc_engine.PROPULSION_KEY)
 
                     if config.WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL and direction_of_travel != last_direction_of_travel:
-                            vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                            response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
-                            if response != smoothie.RESPONSE_OK: 
-                                msg = "Smoothie response is not ok: " + response
-                                print(msg)
-                                logger_full.write(msg + "\n")
-                            smoothie.wait_for_all_actions_done()
+                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                        response = smoothie.custom_move_to(
+                            A_F=config.A_F_MAX, A=0)
+                        if response != smoothie.RESPONSE_OK:
+                            msg = "Smoothie response is not ok: " + response
+                            print(msg)
+                            logger_full.write(msg + "\n")
+                        smoothie.wait_for_all_actions_done()
 
                     i_inf = i + 1 if i + 1 < path_end_index else path_end_index
                     i_sup = i + 1 + config.FUTURE_NUMBER_OF_POINTS \
@@ -2210,32 +2739,64 @@ def main():
                         not i == path_start_index
                         if config.FIRST_POINT_NO_EXTRACTIONS and config.CONTINUE_PREVIOUS_PATH and
                         not config.USE_SMOOTH_APPROACHING_TO_FIELD else True,
-                        x_scan_poly
+                        x_scan_poly,
+                        field_gps_coords
                     )
 
+                    if config.ENABLE_ADDITIONAL_WHEELS_TURN and \
+                            i - 1 in bezier_points_indexes and i in bezier_points_indexes:
+                        cur_pos = gps.get_last_position()
+                        if cur_pos[2] != "4":
+                            msg = f"Additional wheels turn got point {cur_pos} with non 4 quality - " \
+                                  f"skipping wheels turn actions"
+                            logger_full.write(msg + "\n")
+                        else:
+                            deviation, side = nav.get_deviation(path_points[i-1][0], path_points[i][0], cur_pos)
+                            if deviation > config.ADDITIONAL_WHEELS_TURN_THRESHOLD and side == -1:
+                                msg = f"Wheels turn deviation threshold hit, trying to turn wheels"
+                                logger_full.write(msg + "\n")
+
+                                if smoothie_tel_conn is not None:
+                                    smoothie_tel_conn.write(
+                                        f"G0 {config.ADDITIONAL_WHEELS_KEY}"
+                                        f"{config.ADDITIONAL_WHEELS_VALUE} "
+                                        f"F{config.ADDITIONAL_WHEELS_FORCE}")
+                                    res = smoothie_tel_conn.read_some()
+                                    if res != smoothie.RESPONSE_OK:
+                                        msg = f"Couldn't do additional wheels turn, smoothie response:\n{res}"
+                                        logger_full.write(msg + "\n")
+                                else:
+                                    msg = f"Couldn't turn wheels as smoothie telnet connector is None"
+                                    logger_full.write(msg + "\n")
+
                     if config.NAVIGATION_TEST_MODE:
-                        response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
+                        response = smoothie.custom_move_to(
+                            A_F=config.A_F_MAX, A=0)
                         if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                             msg = "Couldn't turn wheels before other navigation test, smoothie response:\n" + response
                             print(msg)
                             logger_full.write(msg + "\n")
                         else:
                             with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
-                                wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
-                        test_continue = input("Press enter to continue the test, type anything to exit.")
+                                wheels_angle_file.write(
+                                    str(smoothie.get_adapter_current_coordinates()["A"]))
+                        test_continue = input(
+                            "Press enter to continue the test, type anything to exit.")
                         if test_continue != "":
-                            notification.stop()
+                            notification.close()
                             break
                         try:
-                            start_position = utility.average_point(gps,trajectory_saver,nav)
+                            start_position = utility.average_point(
+                                gps, trajectory_saver, nav)
                         except:
                             pass
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"clear_path": True}))
-                        #reload config if kp or ki change
+                        # reload config if kp or ki change
                         importlib.reload(config)
-                    
-                    last_direction_of_travel = (speed>=0) if 1 else -1 #1 -> moving forward #-1 -> moving backward
+
+                    # 1 -> moving forward #-1 -> moving backward
+                    last_direction_of_travel = (speed >= 0) if 1 else -1
 
                     # save path progress (index of next point to move)
                     path_index_file.seek(0)
@@ -2269,19 +2830,21 @@ def main():
             msg = "Path is successfully passed."
             print(msg)
             logger_full.write(msg + "\n")
-            notification.stop()
+            notification.close()
     except KeyboardInterrupt:
-        msg = "Stopped by a keyboard interrupt (Ctrl + C)\n" + traceback.format_exc()
+        msg = "Stopped by a keyboard interrupt (Ctrl + C)\n" + \
+            traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.stop()
+        notification.set_robot_state(RobotStates.ENABLED)
+        notification.close()
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     except:
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.setStatus(SyntheseRobot.HS)
+        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:
@@ -2290,14 +2853,15 @@ def main():
         # (to prevent cork breaking when smoothie calibrates)
         smoothie_safe_calibration = True
         if config.EXTRACTION_CONTROLLER == 2:
-            with adapters.VescAdapterV3(
+            with adapters.VescAdapterV4(
                     vesc_address,
                     config.VESC_BAUDRATE,
                     config.VESC_ALIVE_FREQ,
                     config.VESC_CHECK_FREQ,
                     config.VESC_STOPPER_CHECK_FREQ) as vesc_engine:
                 # Z-5 fix (move cork little down to stop touching stopper)
-                vesc_engine.set_rpm(config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM, vesc_engine.EXTRACTION_KEY)
+                vesc_engine.set_target_rpm(
+                    config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM, vesc_engine.EXTRACTION_KEY)
                 vesc_engine.set_time_to_move(
                     config.VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME,
                     vesc_engine.EXTRACTION_KEY)
@@ -2305,7 +2869,8 @@ def main():
                 vesc_engine.wait_for_stop(vesc_engine.EXTRACTION_KEY)
 
                 # calibration
-                vesc_engine.set_rpm(config.VESC_EXTRACTION_CALIBRATION_RPM, vesc_engine.EXTRACTION_KEY)
+                vesc_engine.set_target_rpm(
+                    config.VESC_EXTRACTION_CALIBRATION_RPM, vesc_engine.EXTRACTION_KEY)
                 vesc_engine.set_time_to_move(
                     config.VESC_EXTRACTION_CALIBRATION_MAX_TIME,
                     vesc_engine.EXTRACTION_KEY)
@@ -2319,24 +2884,48 @@ def main():
                     print(
                         "Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received)\n",
                         "WHEELS POSITION WILL NOT BE SAVED PROPERLY!", sep="")
+
+        # put the robot's wheels straight
         if smoothie_safe_calibration:
-            with adapters.SmoothieAdapter(smoothie_address) as smoothie:
-                # put the wheel straight
-                msg = "Put the wheel straight"
+            msg = f"Trying to put wheels straight before shutdown"
+            logger_full.write(msg + "\n")
+
+            if os.path.isfile(config.LAST_ANGLE_WHEELS_FILE):
+                msg = f"Found '{config.LAST_ANGLE_WHEELS_FILE}' file, trying to read wheels smoothie position"
                 logger_full.write(msg + "\n")
-                if config.VERBOSE:
-                    print(msg)
+
                 with open(config.LAST_ANGLE_WHEELS_FILE, "r+") as wheels_angle_file:
-                    angle = float(wheels_angle_file.read())
-                    smoothie.set_current_coordinates(A=angle)
-                    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
-                    if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
-                        msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
+                    line = wheels_angle_file.read().strip()
+                    angle = None
+                    try:
+                        angle = float(line)
+                        msg = f"Successfully loaded wheels smoothie position: {angle}"
+                        logger_full.write(msg + "\n")
+                    except ValueError:
+                        msg = f"Couldn't convert '{line}' into float position, leaving wheels position as it is"
                         print(msg)
                         logger_full.write(msg + "\n")
-                    else:
-                        wheels_angle_file.seek(0)
-                        wheels_angle_file.write(str(smoothie.get_adapter_current_coordinates()["A"]))
+
+                    if angle is not None:
+                        with adapters.SmoothieAdapter(smoothie_address) as smoothie:
+                            smoothie.set_current_coordinates(A=angle)
+                            response = smoothie.custom_move_to(
+                                A_F=config.A_F_MAX, A=0)
+                            if response != smoothie.RESPONSE_OK:
+                                msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
+                                print(msg)
+                                logger_full.write(msg + "\n")
+                            else:
+                                wheels_angle_file.seek(0)
+                                wheels_angle_file.write(
+                                    str(smoothie.get_adapter_current_coordinates()["A"]))
+            else:
+                msg = f"Couldn't find '{config.LAST_ANGLE_WHEELS_FILE}' wheels smoothie position file.\n" \
+                      f"Creating new file with 0.0 position containing. Robot may navigate wrong of wheels are turned."
+                print(msg)
+                logger_full.write(msg + "\n")
+                with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
+                    wheels_angle_file.write("0.0")
 
         # save adapter points history
         try:
@@ -2344,7 +2933,8 @@ def main():
             # TODO: gps adapter is blocking now if has no points
             adapter_points_history = gps.get_last_positions_list()
             if len(adapter_points_history) > 0:
-                save_gps_coordinates(adapter_points_history, log_cur_dir + "adapter_gps_history.txt")
+                save_gps_coordinates(adapter_points_history,
+                                     log_cur_dir + "adapter_gps_history.txt")
             else:
                 msg = "adapter_gps_history list has 0 elements!"
                 print(msg)
@@ -2357,8 +2947,10 @@ def main():
         logger_full.write(msg + "\n")
         print(msg)
         try:
-            data_collector.save_all_data(log_cur_dir + config.STATISTICS_OUTPUT_FILE)
-            data_collector.dump_to_file(log_cur_dir + config.DATACOLLECTOR_SAVE_FILE)
+            data_collector.save_all_data(
+                log_cur_dir + config.STATISTICS_OUTPUT_FILE)
+            data_collector.dump_to_file(
+                log_cur_dir + config.DATACOLLECTOR_SAVE_FILE)
         except:
             msg = "Failed to save txt statistics:\n" + traceback.format_exc()
             logger_full.write(msg + "\n")
@@ -2372,7 +2964,7 @@ def main():
 
         # close log and hardware connections
         msg = "Closing loggers..."
-        logger_full.write(msg + "\n")
+        logger_full.write_and_flush(msg + "\n")
         print(msg)
         logger_full.close()
 

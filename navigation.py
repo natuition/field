@@ -3,13 +3,10 @@ from haversine import haversine
 import numpy as np
 from scipy.spatial import ConvexHull
 import utility
-import adapters
 import time
 from config import config
-from notification import NotificationClient
 import os
-import posix_ipc
-import json
+
 
 class GPSComputing:
     """
@@ -450,18 +447,36 @@ class AntiTheftZone:
     def coordianate_are_in_zone(self, coords: list):
         return self.nav.get_distance(self.center,coords) <= self.circumcircle_radius + config.ANTI_THEFT_ZONE_RADIUS
 
+
 class NavigationV3:
+    __ntrip_restart_ts = 0
 
     @staticmethod
-    def check_reboot_Ntrip(gps_quality: str, lastNtripRestart: float, logger_full: utility.Logger):
-        if str(gps_quality) not in ["4","5"] and time.time() - lastNtripRestart > config.NTRIP_RESTART_TIMEOUT and config.NTRIP:
-            msg="Restart Ntrip because 60 seconds without corrections"
+    def restart_ntrip_service(logger_full: utility.Logger):
+        """Will restart Ntrip service if time passed after last Ntrip restart is bigger than allowed in config
+
+        Returns True if did Ntrip restart, returns False otherwise.
+        """
+
+        if not config.NTRIP:
+            msg = f"Ntrip restart is aborted as Ntrip usage is disabled in config.NTRIP={config.NTRIP} key"
+            print(msg)
             logger_full.write(msg + "\n")
-            if config.VERBOSE: 
+            return False
+
+        if time.time() - NavigationV3.__ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT:
+            msg = "Restarting Ntrip service"
+            logger_full.write(msg + "\n")
+            if config.VERBOSE:
                 print(msg)
             os.system("sudo systemctl restart ntripClient.service")
-            return time.time()
-        return lastNtripRestart
+            NavigationV3.__ntrip_restart_ts = time.time()
+            return True
+
+    @staticmethod
+    def get_last_ntrip_restart_ts():
+        return NavigationV3.__ntrip_restart_ts
+
 
 class NavigationPrediction:
 
@@ -537,3 +552,78 @@ class NavigationPrediction:
 
         msg = f"[PREDICTOR] Error : {self.nav.get_distance(new_foreseen_point, cur_pos)}."
         self.logger_full.write(msg + "\n")
+
+
+class GPSPoint:
+    def __init__(self,
+                 latitude,
+                 longitude,
+                 quality=None,
+                 creation_ts=None,
+                 receiving_ts=None):
+
+        self.__latitude = latitude
+        self.__longitude = longitude
+        self.__quality = quality
+        self.__creation_ts = creation_ts
+        self.__receiving_ts = receiving_ts
+
+    @property
+    def latitude(self):
+        return self.__latitude
+
+    @latitude.setter
+    def latitude(self, value):
+        if not isinstance(value, (int, float)):
+            raise TypeError(f"latitude must be int or float type, got '{type(value).__name__}' instead")
+
+        if not (-90 <= value <= 90):
+            raise ValueError(f"latitude must be in range [-90 - 90], got {value} instead")
+
+        self.__latitude = value
+
+    @property
+    def longitude(self):
+        return self.__longitude
+
+    @longitude.setter
+    def longitude(self, value):
+        if not isinstance(value, (int, float)):
+            raise TypeError(f"longitude must be int or float type, got '{type(value).__name__}' instead")
+
+        if not (-180 <= value <= 180):
+            raise ValueError(f"longitude must be in range [-180 - 180], got {value} instead")
+
+        self.__longitude = value
+
+    @property
+    def quality(self):
+        return self.__quality
+
+    @quality.setter
+    def quality(self, value):
+        # no validation as currently it is unknown what flags will be used
+        self.__quality = value
+
+    @property
+    def creation_ts(self):
+        return self.__creation_ts
+
+    @property
+    def receiving_ts(self):
+        return self.__receiving_ts
+
+    @property
+    def as_old_list(self):
+        point = [self.__latitude, self.__longitude]
+        if self.__quality is not None:
+            point.append(self.__quality)
+        return point
+
+    @property
+    def as_json(self):
+        raise NotImplementedError("this method is not implemented yet")
+
+    @staticmethod
+    def from_json(point: dict):
+        raise NotImplementedError("this method is not implemented yet")

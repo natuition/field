@@ -24,7 +24,7 @@ class ExtractionManagerV3:
                  precise_det: detection.YoloOpenCVDetection,
                  camera_positions: list,
                  pdz_distances: list,
-                 vesc_engine: adapters.VescAdapterV3):
+                 vesc_engine: adapters.VescAdapterV4):
 
         self.__smoothie = smoothie
         self.__camera = camera
@@ -38,7 +38,11 @@ class ExtractionManagerV3:
         self.__pdz_polygons = self.pdz_dist_to_poly(pdz_distances)
         self.__pdz_cv_rects = self.pdz_dist_to_rect_cv(pdz_distances)
         self.__extraction_map = ExtractionMap(config.EXTRACTION_MAP_CELL_SIZE_MM)
-        self.__converter = PxToMMConverter()
+        # self.__converter = PxToMMConverter()
+        self.__converter = PxToMmPredictorCP(
+            config.SCENE_CENTER_X,
+            config.SCENE_CENTER_Y,
+            config.CONTROL_POINTS_CSV_PATH)
         self.__vesc_engine = vesc_engine
 
         # check if PDZ data is correct
@@ -136,7 +140,8 @@ class ExtractionManagerV3:
             # convert plants boxes px coordinates into absolute smoothie coordinates
             for plant_box in cur_pos_plant_boxes_pdz:
                 # calculate values to move camera over a plant from current position (coords are relative)
-                rel_sm_x, rel_sm_y = self.__converter.convert_px_to_mm(plant_box.center_x, plant_box.center_y)
+                # rel_sm_x, rel_sm_y = self.__converter.convert_px_to_mm(plant_box.center_x, plant_box.center_y)
+                rel_sm_x, rel_sm_y, cp_idx = self.__converter.predict(plant_box.center_x, plant_box.center_y)
 
                 # convert smoothie relative coordinates to absolute
                 cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()
@@ -844,7 +849,7 @@ class ExtractionManagerV3:
                         sm_milling_y_points.append(sm_top_y)
 
                     # put miller down and keep enabled
-                    self.__vesc_engine.set_rpm(config.MILLING_CORK_DOWN_RPM, self.__vesc_engine.EXTRACTION_KEY)
+                    self.__vesc_engine.set_target_rpm(config.MILLING_CORK_DOWN_RPM, self.__vesc_engine.EXTRACTION_KEY)
                     self.__vesc_engine.set_time_to_move(float("inf"), self.__vesc_engine.EXTRACTION_KEY)
                     self.__vesc_engine.start_moving(self.__vesc_engine.EXTRACTION_KEY)
                     time.sleep(config.MILLING_CORK_GROUND_REACHING_DELAY)
@@ -876,7 +881,7 @@ class ExtractionManagerV3:
 
                     # stop and pick up the cork after current plant milling is done
                     self.__vesc_engine.stop_moving(self.__vesc_engine.EXTRACTION_KEY)
-                    self.__vesc_engine.set_rpm(config.MILLING_CORK_UP_RPM, self.__vesc_engine.EXTRACTION_KEY)
+                    self.__vesc_engine.set_target_rpm(config.MILLING_CORK_UP_RPM, self.__vesc_engine.EXTRACTION_KEY)
                     self.__vesc_engine.set_time_to_move(
                         config.MILLING_CORK_STOPPER_REACHING_MAX_TIME,
                         self.__vesc_engine.EXTRACTION_KEY)  # stop by movement timeout if GPIO fails
@@ -1045,7 +1050,7 @@ class ExtractionMethods:
 
     @staticmethod
     def single_center_drop(smoothie: adapters.SmoothieAdapter,
-                           vesc_adapter: adapters.VescAdapterV3,
+                           vesc_adapter: adapters.VescAdapterV4,
                            extraction_map: ExtractionMap,
                            data_collector: datacollection.DataCollector):
         """Extract a plant with a single corkscrew drop to the center"""
@@ -1068,7 +1073,7 @@ class ExtractionMethods:
                     msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
                     return msg, False
             elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
-                vesc_adapter.set_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
+                vesc_adapter.set_target_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_DOWN_TIME, vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.wait_for_stop(vesc_adapter.EXTRACTION_KEY)
@@ -1090,7 +1095,7 @@ class ExtractionMethods:
                           "\nemergency exit as I don't want break the corkscrew."
                     return msg, True
             elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
-                vesc_adapter.set_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
+                vesc_adapter.set_target_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
                 vesc_adapter.set_time_to_move(
                     config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME,
                     vesc_adapter.EXTRACTION_KEY)
@@ -1144,6 +1149,8 @@ class ExtractionMethods:
             do_x_offset = config.SEEDER_EXT_OFFSET_X != 0
             do_y_offset = config.SEEDER_EXT_OFFSET_Y != 0
 
+            error_offset = False
+
             # do x offset if needed
             if do_x_offset:
                 res = smoothie.custom_move_for(X_F=config.SEEDER_EXT_OFFSET_X_F, X=config.SEEDER_EXT_OFFSET_X)
@@ -1152,6 +1159,7 @@ class ExtractionMethods:
                     msg = "Couldn't do seeder X axis offset, smoothie response:\n" + res
                     print(msg)
                     do_x_offset = False
+                    error_offset = True
 
             # do y offset if needed
             if do_y_offset:
@@ -1161,20 +1169,32 @@ class ExtractionMethods:
                     msg = "Couldn't do seeder Y axis offset, smoothie response:\n" + res
                     print(msg)
                     do_y_offset = False
+                    error_offset = True
 
-            # fill seeder
-            res = smoothie.seeder_fill()
-            if res != smoothie.RESPONSE_OK:
-                msg = "Error during filling seeder, smoothie's output:\n" + res
-                print(msg)  # TODO probably need to return later both answers to let outer methods log this error
-            time.sleep(config.SEEDER_FILL_DELAY)
+            if not error_offset:
+                # seeder open
+                res = smoothie.seeder_open()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Error during open seeder, smoothie's output:\n" + res
+                    print(msg)  # TODO probably need to return later both answers to let outer methods log this error
+                time.sleep(config.SEEDER_FILL_DELAY)
 
-            # plant seeds
-            res = smoothie.seeder_plant_seeds()
-            if res != smoothie.RESPONSE_OK:
-                msg = "Error during planting seeds, smoothie's output:\n" + res
-                return msg, False
-            time.sleep(config.SEEDER_PLANT_DELAY)
+                # seeder close
+                res = smoothie.seeder_close()
+                if res != smoothie.RESPONSE_OK:
+                    msg = "Error during close seeder, smoothie's output:\n" + res
+                    return msg, False
+                time.sleep(config.SEEDER_FILL_DELAY)
+
+                # shake seeder
+                for delta in [-1,2,-1]:
+                    res = smoothie.custom_move_for(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, Y=delta, X=delta)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder shake, smoothie response:\n" + res
+                        print(msg)
+            else:
+                print("Error_offset")
 
             # get back to init position if there was offset on X axis
             if do_x_offset:
@@ -1320,7 +1340,7 @@ class ExtractionMethods:
 
     @staticmethod
     def pattern_plus(smoothie: adapters.SmoothieAdapter,
-                     vesc_adapter: adapters.VescAdapterV3,
+                     vesc_adapter: adapters.VescAdapterV4,
                      extraction_map: ExtractionMap,
                      data_collector: datacollection.DataCollector):
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
@@ -1361,7 +1381,7 @@ class ExtractionMethods:
 
     @staticmethod
     def pattern_x(smoothie: adapters.SmoothieAdapter,
-                  vesc_adapter: adapters.VescAdapterV3,
+                  vesc_adapter: adapters.VescAdapterV4,
                   extraction_map: ExtractionMap,
                   data_collector: datacollection.DataCollector):
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
@@ -1441,3 +1461,96 @@ class PxToMMConverter:
 
         data = poly_features.fit_transform([values])  # charge the data into the matrix
         return self.__loaded_prediction_model[degree].predict(data)[0]  # model.predict() comes from scikit
+
+
+class PxToMmPredictorCP:
+    """Predicts distance in millimeters from scene center px to given point px
+
+    Uses raw control points for predictions"""
+
+    def __init__(self, scene_center_x: int, scene_center_y: int, cp_csv_path: str = None, control_points: list = None):
+        """Uses given control points list or loads it from given csv file path.
+
+        If there was given both control points list and path, given CP list will be used instead of loading from a file.
+        """
+
+        # get the list of control points
+        if control_points is not None:
+            self.__control_points = control_points
+        elif cp_csv_path is not None:
+            self.__control_points = self.load_control_points(cp_csv_path)
+        else:
+            msg = "can't load control points list as given cp_csv_path and control_points both are Nones"
+            raise RuntimeError(msg)
+
+        # validate control points
+        if not isinstance(self.__control_points, list):
+            msg = f"given control_points must be a list, got {type(self.__control_points).__name__} instead"
+            raise TypeError(msg)
+        for idx, item in enumerate(self.__control_points):
+            if not isinstance(item, (list, tuple)):
+                msg = f"control_points must contain lists or tuples, got {type(item).__name__} instead"
+                raise TypeError(msg)
+            if len(item) != 7:
+                msg = f"control_points[{str(idx)}] item length is {str(len(item))}, must be 7"
+                raise ValueError(msg)
+
+        self.__scene_center_x = scene_center_x
+        self.__scene_center_y = scene_center_y
+
+    @staticmethod
+    def load_control_points(cp_csv_path: str):
+        """Loads and parses control points from a given csv file path.
+
+        Returns list of control points, each CP is list of 7 elements with such a format:
+        [X_px: int, Y_px: int, X_diff_px: int, Y_diff_px: int, Distance_px: float, X_mm: float, Y_mm: float]
+        """
+
+        with open(cp_csv_path) as csv_file:
+            # format is: X_px, Y_px, X_diff_px, Y_diff_px, Distance_px, X_mm, Y_mm
+            # px data are ints, distance and mm data are floats
+            control_points = csv_file.readlines()[1:]  # cut header off
+
+        # convert each point to a list of numeric
+        for i in range(len(control_points)):
+            control_points[i] = control_points[i].strip().split(",")
+            for j in range(4):
+                control_points[i][j] = int(control_points[i][j].strip())
+            for j in range(4, 7):
+                control_points[i][j] = float(control_points[i][j].strip())
+
+        return control_points
+
+    def predict(self, point_x_px: int, point_y_px: int):
+        """Predict (x, y) mm distance from stored scene center for given px (x, y) point.
+
+        Return format is: (x_mm, y_mm, control_point_index)
+        """
+
+        # remember sign to apply it to mm values and mirror points coordinates into +x +y quarter
+        if point_x_px < self.__scene_center_x:
+            point_x_px = self.__scene_center_x + (self.__scene_center_x - point_x_px)
+            res_x_mm_sign = -1
+        else:
+            res_x_mm_sign = 1
+
+        if point_y_px > self.__scene_center_y:
+            point_y_px = self.__scene_center_y - (point_y_px - self.__scene_center_y)
+            res_y_mm_sign = -1
+        else:
+            res_y_mm_sign = 1
+
+        res_point_dist = float("inf")
+        res_point_idx = 0
+        for i in range(len(self.__control_points)):
+            cur_dist = math.sqrt(
+                (point_x_px - self.__control_points[i][0]) ** 2 + (point_y_px - self.__control_points[i][1]) ** 2
+            )
+            if cur_dist < res_point_dist:
+                res_point_dist = cur_dist
+                res_point_idx = i
+
+        # X_mm, Y_mm
+        return self.__control_points[res_point_idx][5] * res_x_mm_sign, \
+            self.__control_points[res_point_idx][6] * res_y_mm_sign, \
+            res_point_idx

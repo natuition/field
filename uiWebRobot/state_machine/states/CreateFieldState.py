@@ -5,6 +5,7 @@ from flask_socketio import SocketIO
 import navigation
 import posix_ipc
 import threading
+import os
 
 from state_machine import State
 from state_machine.states import WaitWorkingState
@@ -22,7 +23,7 @@ class CreateFieldState(State.State):
                  socketio: SocketIO,
                  logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
-                 vesc_engine: adapters.VescAdapterV3):
+                 vesc_engine: adapters.VescAdapterV4):
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
@@ -171,12 +172,13 @@ class CreateFieldState(State.State):
             self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
         elif data["type"] == "field_name":
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
+            #patch bug field
+            save_gps_coordinates(self.field, "../fields/tmp.txt")
             field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
 
             fields_list = UIWebRobot.load_field_list("../fields")
 
             if len(fields_list) > 0:
-                os.system("ln -sf 'fields/" + quote(fields_list[0], safe="", encoding='utf-8') + ".txt' ../field.txt")
                 coords, other_fields, current_field_name = updateFields(field_name)
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
@@ -199,7 +201,7 @@ class FieldCreator:
     def __init__(self,
                  logger: utility.Logger,
                  nav: navigation.GPSComputing,
-                 vesc_engine: adapters.VescAdapterV3,
+                 vesc_engine: adapters.VescAdapterV4,
                  smoothie: adapters.SmoothieAdapter,
                  socketio: SocketIO):
         self.A = [0, 0]
@@ -210,7 +212,7 @@ class FieldCreator:
         self.field = []
         self.logger = logger
         self.nav = nav
-        self.vesc_emergency = vesc_engine
+        self.vesc_emergency: adapters.VescAdapterV4 = vesc_engine
         self.smoothie = smoothie
         self.socketio = socketio
 
@@ -224,12 +226,13 @@ class FieldCreator:
         self.socketio.emit('newPos', json.dumps([self.A[1], self.A[0]]), namespace='/map')
 
         if self.vesc_emergency is None:
-            self.vesc_emergency = initVesc(self.logger)
+            self.vesc_emergency: adapters.VescAdapterV4 = initVesc(self.logger)
         msg = f"[{self.__class__.__name__}] -> Moving forward..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-                                      self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(
+            config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+            self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
 
     def setSecondPoint(self):
@@ -265,12 +268,13 @@ class FieldCreator:
             self.field = [self.B, self.A]
 
         other_fields = UIWebRobot.get_other_field()
-        current_field_name = subprocess.run(["readlink", "../field.txt"], stdout=subprocess.PIPE).stdout.decode(
-            'utf-8').replace("fields/", "")[:-5]
+
+        link_path = os.path.realpath("../field.txt")
+        current_field_name = (link_path.split("/")[-1]).split(".")[0]
 
         self.socketio.emit('newField', json.dumps(
             {"field": self.formattingFieldPointsForSend(), "other_fields": other_fields,
-             "current_field_name": unquote(current_field_name)}), namespace='/map')
+             "current_field_name": unquote(current_field_name, encoding='utf-8')}), namespace='/map')
 
         return self.field
 
@@ -297,25 +301,64 @@ class FieldCreator:
         self.logger.write_and_flush(msg + "\n")
         print(msg)
         save_gps_coordinates(self.field, path)
-        return unquote(fieldName[:-4])
+        return unquote(fieldName[:-4], encoding='utf-8')
 
     def manoeuvre(self):
-        self.vesc_emergency.apply_rpm(-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-                                      self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(
+            -config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+            self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_BACKWARD, self.vesc_emergency.PROPULSION_KEY)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: starting vesc movement of " \
+                  f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: stopped vesc movement of " \
+                  f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
 
+        self.vesc_emergency.set_target_rpm(
+            config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+            self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: starting vesc movement of " \
+                  f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
+        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
+
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: starting turning smoothie wheels to A={config.A_MIN}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
         self.smoothie.wait_for_all_actions_done()
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: stopped turning smoothie wheels to A={config.A_MIN}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
 
-        self.vesc_emergency.apply_rpm(config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-                                      self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: stopped vesc movement of " \
+                  f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
 
+        if config.UI_VERBOSE_LOGGING:
+            msg = "Field creation: starting turning smoothie wheels to A=0"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
         self.smoothie.custom_move_to(A_F=config.A_F_UI, A=0)
         self.smoothie.wait_for_all_actions_done()
+        if config.UI_VERBOSE_LOGGING:
+            msg = "Field creation: stopped turning smoothie wheels to A=0"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
 
         self.vesc_emergency.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_emergency.PROPULSION_KEY)

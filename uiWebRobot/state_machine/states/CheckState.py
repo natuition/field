@@ -1,19 +1,20 @@
 import sys
 sys.path.append('../')
-
-from flask_socketio import SocketIO
-import threading
-import signal
-import re
-
-from state_machine import State
-from state_machine.states import ErrorState
-from state_machine.states import WaitWorkingState
-from state_machine import Events
-from state_machine.utilsFunction import *
 from config import config
+from state_machine.utilsFunction import *
+from state_machine import Events
+from state_machine.states import WaitWorkingState
+from state_machine.states import ErrorState
+from state_machine import State
+from subprocess import TimeoutExpired
+import re
+import signal
+import threading
+from flask_socketio import SocketIO
+
 
 # This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
+
 class CheckState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger):
@@ -27,8 +28,6 @@ class CheckState(State.State):
             self.cam = startLiveCam()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
-        except Exception as e:
-            raise e
 
         self.statusOfUIObject = {}
 
@@ -52,44 +51,45 @@ class CheckState(State.State):
         if event == Events.Events.LIST_VALIDATION:
             self.__voltage_thread_alive = False
             if self.cam:
-                os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
-                self.cam.wait()
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> Sending kill signal to camera process..."
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
+                os.killpg(os.getpgid(self.cam.pid), signal.SIGKILL)
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> Restarting camera nvargus-daemon service..."
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                 os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> Restarting ntripClient.service..."
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                 os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
         else:
-            self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
-            """self.__voltage_thread_alive = False
-            try:
-                if self.cam:
-                    os.killpg(os.getpgid(self.cam.pid), signal.SIGINT)
-                    self.cam.wait()
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
-            except Exception as e:
-                self.logger.write_and_flush(str(e)+"\n")
-            return ErrorState.ErrorState(self.socketio, self.logger)"""
+            self.socketio.emit(
+                'reload', {}, namespace='/broadcast', broadcast=True)
             return self
 
     def on_socket_data(self, data):
         if data["type"] == 'allChecked':
             try:
                 with open("../yolo/" + data["strategy"] + ".conf") as file:
-                    for line in file.readlines():
-                        content = line.split("#")[0]
-                        content = re.sub('[^0-9a-zA-Z._="/]+', '', content)
-                        if content:
-                            changeConfigValue(content.split("=")[0], content.split("=")[1])
+                    for line in file:
+                        content = line.split("#")[0].strip()
+                        if content != "" and "=" in content:
+                            key, value = content.split("=")[:2]
+                            changeConfigValue(key.strip(), value.strip())
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-            except Exception as e:
-                self.logger.write_and_flush(e + "\n")
-                return ErrorState.ErrorState(self.socketio, self.logger)
         elif data["type"] == 'getInputVoltage':
-            sendInputVoltage(self.socketio, self.input_voltage["input_voltage"])
+            sendInputVoltage(
+                self.socketio, self.input_voltage["input_voltage"])
         else:
-            self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+            self.socketio.emit(
+                'reload', {}, namespace='/broadcast', broadcast=True)
         return self
 
     def getStatusOfControls(self):
