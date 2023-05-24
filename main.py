@@ -437,12 +437,19 @@ def move_to_point_and_extract(coords_from_to: list,
                     if config.VERBOSE_EXTRACT:
                         msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
                         logger_full.write_and_flush(msg+"\n")
-                    # TODO remove thread init from here!
-                    voltage_thread = threading.Thread(
-                        target=send_voltage_thread_tf, args=(vesc_engine, ui_msg_queue), daemon=True)
-                    voltage_thread.start()
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+                    # TODO this 0 rpm "movement" is to prevent robot movement during extractions, need to add this in future to rest speed modes too
+                    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_current_rpm(0, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+
+                    # TODO remove thread init from here!
+                    voltage_thread = threading.Thread(
+                        target=send_voltage_thread_tf,
+                        args=(vesc_engine, ui_msg_queue),
+                        daemon=True)
+                    voltage_thread.start()
 
                     # single precise center scan before calling for PDZ scanning and extractions
                     if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
@@ -468,12 +475,13 @@ def move_to_point_and_extract(coords_from_to: list,
                         msg = "[VERBOSE EXTRACT] Extract cycle are finish."
                         logger_full.write_and_flush(msg+"\n")
 
+                    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+
                     msg = "Applying force step forward after extractions cycle(s)"
                     logger_full.write(msg + "\n")
                     if config.VERBOSE:
                         print(msg)
-                    vesc_engine.set_time_to_move(
-                        config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_time_to_move(config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
                     vesc_engine.set_target_rpm(
                         config.SI_SPEED_STEP_FORWARD * config.MULTIPLIER_SI_SPEED_TO_RPM,
                         vesc_engine.PROPULSION_KEY)
@@ -506,10 +514,8 @@ def move_to_point_and_extract(coords_from_to: list,
 
                 # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
                 if not vesc_engine.is_moving(vesc_engine.PROPULSION_KEY):
-                    vesc_engine.set_time_to_move(
-                        config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.set_target_rpm(
-                        vesc_speed, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
             # switching (from slow to fast) mode
