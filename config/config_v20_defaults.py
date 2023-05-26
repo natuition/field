@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.6"
+CONFIG_VERSION = "0.20.7"
 
 
 # ======================================================================================================================
@@ -670,3 +670,17 @@ ADDITIONAL_WHEELS_KEY = "A"
 ADDITIONAL_WHEELS_VALUE = -5
 # smoothie force to turn
 ADDITIONAL_WHEELS_FORCE = 2000
+
+# gps point reading time predictor update
+# True: enable gps points reading time predictions and allow inference (and currently speed control too) skip if
+# inference will delay new gps point reading
+# False: older way without prediction of gps points reading time; do inference once, then try to read point, ...
+ALLOW_GPS_TIME_PREDICTIONS_LIMITING_INFERENCE = True
+# seconds; this time value is used to determine how much time inference could take and if there's enough time for
+# single inference, or need to start to skip inferences and read gps points (works only if gps points reading time
+# predictions and inference limiting are allowed)
+INFERENCE_MAX_TICK_TIME = 0.040
+# seconds; defines how often GPS points are expected to come. This value is used to predict GPS reading time and
+# limit inference if inference may delay new gps point reading (works only if gps points reading time
+# # predictions and inference limiting are allowed)
+GPS_POINT_WAIT_TIME_MAX = 0.25
