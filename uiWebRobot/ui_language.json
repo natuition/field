@@ -2,361 +2,433 @@
 	"Supported Language": [
 		"fr",
 		"en",
-		"nl"
+		"nl",
+		"de"
 	],
 	"Finish check": {
 		"fr": "Terminer le contrôle", 
 		"en": "Finish check",
-		"nl": "Voltooi de controle"
+		"nl": "Voltooi de controle",
+		"de": "Prüfung abschließen"
 	},
 	"Length": {
 		"fr": "Longueur", 
 		"en": "Length",
-		"nl": "Lengte"
+		"nl": "Lengte",
+		"de": "Länge"
 	}, 
 	"New zone": {
 		"fr": "Nouvelle\u00A0zone\u00A0+", 
 		"en": "New\u00A0zone\u00A0+",
-		"nl": "Nieuwe\u00A0zone\u00A0+"
+		"nl": "Nieuwe\u00A0zone\u00A0+",
+		"de": "Neue\u00A0Zone\u00A0+"
 	},  
 	"Validate zone": {
 		"fr": "Valider\u00A0la\u00A0zone\u00A0✔", 
 		"en": "Validate\u00A0zone\u00A0✔",
-		"nl": "Valideer\u00A0zone\u00A0✔"
+		"nl": "Valideer\u00A0zone\u00A0✔",
+		"de": "Zone\u00A0validieren\u00A0✔"
 	}, 
 	"Start": {
 		"fr": "Départ", 
 		"en": "Start",
-		"nl": "Begin"
+		"nl": "Begin",
+		"de": "Start"
 	}, 
 	"Continue": {
 		"fr": "Continuer", 
 		"en": "Continue",
-		"nl": "Doorgaan"
+		"nl": "Doorgaan",
+		"de": "Weiterarbeiten"
 	}, 
 	"Stop": {
 		"fr": "Arret", 
 		"en": "Stop",
-		"nl": "Stop"
+		"nl": "Stop",
+		"de": "Stoppen"
 	},
 	"Checklist before start": {
 		"fr": "Liste de vérifications avant démarrage", 
 		"en": "Checklist before start",
-		"nl": "Checklist voordat u begint"
+		"nl": "Checklist voordat u begint",
+		"de": "Checkliste vor dem Start"
 	},
 	"Please ensure all further steps before starting VIOLETTE": {
 		"fr": "Merci de vérifier les points suivants avant de démarrer VIOLETTE :", 
 		"en": "Please ensure all further steps before starting VIOLETTE :",
-		"nl": "Zorg ervoor dat u alle verdere stappen uitvoert voordat u VIOLETTE start :"
+		"nl": "Zorg ervoor dat u alle verdere stappen uitvoert voordat u VIOLETTE start :",
+		"de": "Bitte führe alle Schritte durch, bevor Sie VIOLETTE starten:"
 	},
 	"Open middle cover": {
 		"fr": "Ouvrez le capot du milieu.", 
 		"en": "Open middle cover.",
-		"nl": "Open de middelste klep."
+		"nl": "Open de middelste klep.",
+		"de": "Öffne die mittlere Abdeckung."
 	},
 	"Verify XY": {
 		"fr": "Vérifiez que les mouvements sur les axes X et Y soient réguliers sans heurt.", 
 		"en": "Verify that XY movement is clean and smooth.",
-		"nl": "Controleer of de XY-beweging schoon en soepel is."
+		"nl": "Controleer of de XY-beweging schoon en soepel is.",
+		"de": "Prüfe, ob die X und Y-Bewegung sauber ausgeführt werden."
 	},
 	"Verify corkscrew": {
 		"fr": "Vérifiez que l'extracteur est propre et sa rotation sans a-coup.", 
-		"en": "Verify that corkscrew is clean and rotation is smooth.",
-		"nl": "Controleer of de kurkentrekker schoon is en soepel draait."
+		"en": "Verify that extractor is clean and rotation is smooth.",
+		"nl": "Controleer of de kurkentrekker schoon is en soepel draait.",
+		"de": "Stelle sicher, dass das Werkzeug sauber ist und sich gut dreht."
 	},
 	"Verify camera": {
 		"fr": "Vérifiez que l'objectif de la caméra est propre et l'image nette.", 
 		"en": "Verify that camera is clean and image is net.",
-		"nl": "Controleer of de camera schoon is en dat het beeld net is."
+		"nl": "Controleer of de camera schoon is en dat het beeld net is.",
+		"de": "Stelle sicher, dass die Kamera sauber und das Bild klar ist."
 	},
 	"Close middle cove": {
 		"fr": "Refermez le capot du milieu et verrouillez-le.", 
 		"en": "Close and lock middle cover.",
-		"nl": "Sluit en vergrendel de middelste klep."
+		"nl": "Sluit en vergrendel de middelste klep.",
+		"de": "Schließe und verriegele die mittlere Abdeckung"
 	},
 	"Wheels straight": {
 		"fr": "Mettez les roues du robot droite.", 
 		"en": "Put the robot wheels straight.",
-		"nl": "Zet de robotwielen recht."
+		"nl": "Zet de robotwielen recht.",
+		"de": "Stelle die Vorderräder gerade."
 	},
 	"Waiting GPS": {
 		"fr": "En attente de gps...", 
 		"en": "Waiting for gps...",
-		"nl": "Wachten op gps..."
+		"nl": "Wachten op gps...",
+		"de": "Warten auf GPS..."
 	},
 	"GPS found": {
 		"fr": "GPS trouvé.", 
 		"en": "GPS found.",
-		"nl": "GPS gevonden."
+		"nl": "GPS gevonden.",
+		"de": "GPS gefunden."
 	},
 	"No_GPS_for_field": {
 		"fr": "Impossible de créer la nouvelle zone, VIOLETTE n'a pas de GPS !", 
 		"en": "Couldn't create new zone, VIOLETTE don't have GPS !",
-		"nl": "Kan geen nieuwe zone maken, VIOLETTE heeft geen GPS !"
+		"nl": "Kan geen nieuwe zone maken, VIOLETTE heeft geen GPS !",
+		"de": "Neue Zone konnte nicht erstellt werden, VIOLETTE hat kein GPS!"
 	},
 	"Degraded_navigation_mode_on": {
 		"fr": "Navigation en mode dégradée, VIOLETTE va avancer tout droit.", 
 		"en": "Navigation is in degraded mode, VIOLETTE goes straight.",
-		"nl": "Navigatie is in gedegradeerde modus, VIOLETTE gaat rechtdoor."
+		"nl": "Navigatie is in gedegradeerde modus, VIOLETTE gaat rechtdoor.",
+		"de": "Die Navigation befindet sich im eingeschränkten Modus, VIOLETTE fährt geradeaus."
 	},
 	"Degraded_navigation_mode_off": {
 		"fr": "Navigation en mode nominal.", 
 		"en": "Navigation is in nominal mode.",
-		"nl": "De navigatie is in de nominale modus."
+		"nl": "De navigatie is in de nominale modus.",
+		"de": "Die Navigation befindet sich im nominalen Modus."
 	},
 	"Audit ?": {
 		"fr": "Voulez-vous vraiment passer en mode audit ?", 
 		"en": "Are you sure you want to switch to audit mode ?",
-		"nl": "Weet u zeker dat u naar de auditmodus wilt overschakelen ?"
+		"nl": "Weet u zeker dat u naar de auditmodus wilt overschakelen ?",
+		"de":  "Möchten Sie wirklich in den Überwachungsmodus wechseln?"
 	},
 	"Audit on": {
 		"fr": "Mode audit activé", 
 		"en": "Audit mode enabled",
-		"nl": "Auditmodus ingeschakeld"
+		"nl": "Auditmodus ingeschakeld",
+		"de": "Überwachungsmodus aktiviert"
 	},
 	"Soil type": {
 		"fr": "Veuillez choisir le type de sol.", 
 		"en": "Please choose soil type",
-		"nl": "?"
+		"nl": "?",
+		"de": "Wähle die Bodenart."
 	},
 	"Weather type": {
 		"fr": "Veuillez choisir le type de temps.", 
 		"en": "Please choose weather type.",
-		"nl": "?"
+		"nl": "?",
+		"de": "Wähle den Wettertyp."
 	},
 	"Soil type 1": {
 		"fr": "Choix numéro 1 du type de sol.", 
 		"en": "Type 1 of soil type",
-		"nl": "?"
+		"nl": "?",
+		"de": "Typ 1 der Bodenart"
 	},
 	"Weather type 1": {
 		"fr": "Choix numéro 1 du type de temps.", 
 		"en": "Type 1 of weather type",
-		"nl": "?"
+		"nl": "?",
+		"de": "Typ 1 des Wettertyps"
 	},
 	"Plantain_great": {
 		"fr": "Plantain", 
 		"en": "Plantain great",
-		"nl": "Grote weegbree"
+		"nl": "Grote weegbree",
+		"de": "Breitwegerich"
 	},
 	"Daisy": {
 		"fr": "Paquerette", 
 		"en": "Daisy",
-		"nl": "Madeliefje"
+		"nl": "Madeliefje",
+		"de": "Gänseblümchen"
 	},
 	"Porcelle": {
 		"fr": "Porcelle", 
 		"en": "Catsear",
-		"nl": "Piglet her"
+		"nl": "Piglet her",
+		"de": "Ferkelkraut"
 	},
 	"Mallow": {
 		"fr": "Porcelle", 
 		"en": "Catsear",
-		"nl": "Piglet her"
+		"nl": "Piglet her",
+		"de": "Ferkelkraut"
 	},
 	"Dandellion": {
 		"fr": "Pissenlit", 
 		"en": "Dandellion",
-		"nl": "Paardebloem"
+		"nl": "Paardebloem",
+		"de": "Löwenzahn"
 	},
 	"Plantain_narrowleaf": {
 		"fr": "Plantain lancéolé", 
 		"en": "Plantain narrowleaf",
-		"nl": "Smalle weegbree"
+		"nl": "Smalle weegbree",
+		"de": "Spitzwegerich"
 	},
 	"Choose_field": {
 		"fr": "Choisissez la zone", 
 		"en": "Choose the zone",
-		"nl": "Kies de zone"
+		"nl": "Kies de zone",
+		"de": "Wähle die Zone"
 	},
 	"Choose_field_name": {
 		"fr": "Choisissez le nom de la zone :", 
 		"en": "Choose the name of zone :",
-		"nl": "Kies de naam van de zone :"
+		"nl": "Kies de naam van de zone :",
+		"de": "Wähle den Namen der Zone:"
 	},
 	"no_field": {
 		"fr": "Pas de zone existante", 
 		"en": "No existing zone",
-		"nl": "Geen bestaande zone:"
+		"nl": "Geen bestaande zone:",
+		"de": "Keine vorhandene Zone"
 	},
 	"Offline": {
 		"fr": "Vous n'êtes plus connecté au robot !", 
 		"en": "You are no longer connected to the robot !",
-		"nl": "Je bent niet meer verbonden met de robot !"
+		"nl": "Je bent niet meer verbonden met de robot !",
+		"de": "Keine Verbindung mit dem Roboter mehr !"
 	},
 	"Check_remove_zone": {
 		"fr": "Êtes vous sûr de vouloir supprimer la zone séléctionnée ?", 
 		"en": "Are you sure you want to delete the selected area ?",
-		"nl": "Weet u zeker dat u het geselecteerde gebied wilt verwijderen ?"
+		"nl": "Weet u zeker dat u het geselecteerde gebied wilt verwijderen ?",
+		"de": "Möchten Sie den ausgewählte Zone wirklich löschen?"
 	},
 	"Error_500": {
 		"fr": "Nous sommes désolés, une erreur s'est produite. Veuillez redémarrer VIOLETTE.", 
 		"en": "We are sorry, an error has occurred. Please reboot VIOLETTE.",
-		"nl": "Het spijt ons, er heeft zich een fout voorgedaan. Herstart VIOLETTE aub."
+		"nl": "Het spijt ons, er heeft zich een fout voorgedaan. Herstart VIOLETTE aub.",
+		"de": "Es tut uns leid, es ist ein Fehler aufgetreten. Bitte starten Sie VIOLETTE neu."
 	},
 	"AI_selector": {
 		"fr": "Sélection de l'intelligence artificielle :", 
 		"en": "Selection of artificial intelligence :",
-		"nl": "Selectie van kunstmatige intelligentie :"
+		"nl": "Selectie van kunstmatige intelligentie :",
+		"de": "Auswahl an künstlicher Intelligenz :"
 	},
 	"Choose_AI": {
 		"fr": "Veuillez choisir une intelligence artificielle", 
 		"en": "Please choose an artificial intelligence",
-		"nl": "Kies een kunstmatige intelligentie"
+		"nl": "Kies een kunstmatige intelligentie",
+		"de": "Wähle Sie eine künstliche Intelligenz aus"
 	},
 	"first_point_no_extractions": {
 		"fr": "Violette rejoint son point de départ sans extractions", 
 		"en": "Violette reaches her starting point without extractions",
-		"nl": "Violette bereikt haar startpunt zonder extracties"
+		"nl": "Violette bereikt haar startpunt zonder extracties",
+		"de": "Violette erreicht ihren Ausgangspunkt ohne Extraktionen"
 	},
 	"Navigation:": {
 		"fr": "Navigation :", 
 		"en": "Navigation:",
-		"nl": "Navigatie:"
+		"nl": "Navigatie:",
+		"de": "Navigation:"
 	},
 	"Zig zag": {
 		"fr": "Zig zag", 
 		"en": "Zig zag",
-		"nl": "Zig zag"
+		"nl": "Zig zag",
+		"de": "Zickzack"
 	},
 	"Spiral": {
 		"fr": "Spirale", 
 		"en": "Spiral",
-		"nl": "Spiraal"
+		"nl": "Spiraal",
+		"de": "Spiral"
 	},
 	"Sides interval": {
 		"fr": "Intervalle", 
 		"en": "Sides interval",
-		"nl": "Zijden interval"
+		"nl": "Zijden interval",
+		"de": "Seitenintervall"
 	},
 	"Choice of path:": {
 		"fr": "Choix du chemin :", 
 		"en": "Choice of path:",
-		"nl": "Keuze pad:"
+		"nl": "Keuze pad:",
+		"de": "Wahl des Weges:"
 	},
 	"Stop if bad GPS": {
 		"fr": "Arrêt si mauvais GPS", 
 		"en": "Stop if bad GPS",
-		"nl": "Stop bij slechte GPS"
+		"nl": "Stop bij slechte GPS",
+		"de": "Stoppen Sie, wenn GPS schlecht ist"
 	},
 	"Detection:": {
 		"fr": "Détection :", 
 		"en": "Detection:",
-		"nl": "Detectie:"
+		"nl": "Detectie:",
+		"de": "Erkennung"
 	},
 	"Periphery mod:": {
 		"fr": "Module périphérique :", 
 		"en": "Periphery mod:",
-		"nl": "Periferie mod:"
+		"nl": "Periferie mod:",
+		"de": "Erkennungs-Modus:"
 	},
 	"Precise mod:": {
 		"fr": "Mode précis :", 
 		"en": "Precise mod:",
-		"nl": "Nauwkeurige modus:"
+		"nl": "Nauwkeurige modus:",
+		"de": "Präziser Modus:"
 	},
 	"Please choose artificial intelligence": {
 		"fr": "Veuillez choisir l'intelligence artificielle", 
 		"en": "Please choose artificial intelligence",
-		"nl": "Kies kunstmatige intelligentie"
+		"nl": "Kies kunstmatige intelligentie",
+		"de": "Wähle Sie künstliche Intelligenz"
 	},
 	"Threshold": {
 		"fr": "Seuil", 
 		"en": "Threshold",
-		"nl": "Drempel"
+		"nl": "Drempel",
+		"de": "Schwelle"
 	},
 	"Mono": {
 		"fr": "Mono", 
 		"en": "Mono",
-		"nl": "Mono"
+		"nl": "Mono",
+		"de": "Mono"
 	},
 	"Stereo": {
 		"fr": "Stéréo", 
 		"en": "Stereo",
-		"nl": "Stereo"
+		"nl": "Stereo",
+		"de": "Stereo"
 	},
 	"Choice of picture shoot:": {
 		"fr": "Choix de la technique de prise de photo :", 
 		"en": "Choice of picture shoot:",
-		"nl": "Keuze van fotoshoot:"
+		"nl": "Keuze van fotoshoot:",
+		"de": "Wahl des Kameramodus:"
 	},
 	"Weeding technique parameter:": {
 		"fr": "Paramètre technique de désherbage :", 
 		"en": "Weeding technique parameter:",
-		"nl": "Het wieden van techniekparameter:"
+		"nl": "Het wieden van techniekparameter:",
+		"de": "Parameter der Jättechnik:"
 	},
 	"Drilling": {
 		"fr": "Extraction", 
 		"en": "Drilling",
-		"nl": "Boren"
+		"nl": "Boren",
+		"de": "Bohren"
 	},
 	"Milling": {
 		"fr": "Fraisage", 
 		"en": "Milling",
-		"nl": "Frezen"
+		"nl": "Frezen",
+		"de": "Fräsen"
 	},
 	"Choice of weeding technique:": {
 		"fr": "Choix de la technique de désherbage :", 
 		"en": "Choice of weeding technique:",
-		"nl": "Keuze onkruidtechniek:"
+		"nl": "Keuze onkruidtechniek:",
+		"de": "Wahl der Jättechnik:"
 	},
 	"Cycle": {
 		"fr": "Cycle", 
 		"en": "Cycle",
-		"nl": "Fiets"
+		"nl": "Fiets",
+		"de": "Zyklus"
 	},
 	"Other": {
 		"fr": "Autre", 
 		"en": "Other",
-		"nl": "Ander"
+		"nl": "Ander",
+		"de": "Andere"
 	},
 	"Language:": {
 		"fr": "Langue", 
 		"en": "Language:",
-		"nl": "Taal"
+		"nl": "Taal",
+		"de": "Sprache"
 	},
 	"Please choose language": {
 		"fr": "Veuillez choisir la langue", 
 		"en": "Please choose language",
-		"nl": "Kies a.u.b. taal"
+		"nl": "Kies a.u.b. taal",
+		"de": "Bitte Sprache auswählen"
 	},
 	"Restart application": {
 		"fr": "Redémarrer l'application", 
 		"en": "Restart application",
-		"nl": "App opnieuw starten"
-	},
+		"nl": "App opnieuw starten",
+		"de": "Applikation neu starten"
+	}, 
 	"Restart robot": {
 		"fr": "Redémarrer le robot", 
 		"en": "Restart robot",
-		"nl": "Robot opnieuw opstarten"
+		"nl": "Robot opnieuw opstarten",
+		"de": "Roboter neu starten"
 	},
 	"Save": {
 		"fr": "Sauvegarder", 
 		"en": "Save",
-		"nl": "Opslaan"
+		"nl": "Opslaan",
+		"de": "Speichern"
 	},
 	"Cancel": {
 		"fr": "Annuler", 
 		"en": "Cancel",
-		"nl": "Annuleren"
+		"nl": "Annuleren",
+		"de": "Stornieren"
    },
 	"no_landscape": {
 		"fr": "L'application web ne peut pas être utilisée en paysage !",
 		"en": "The web application cannot be used in landscape !",
-		"nl": "De webapplicatie kan niet in landscape gebruikt worden!"
+		"nl": "De webapplicatie kan niet in landscape gebruikt worden!",
+		"de": "Die Webanwendung kann nicht im Querformat verwendet werden!"
 	},
 	"Settings": {
 		"fr": "Paramètres",
 		"en": "Settings",
-		"nl": "Instellingen"
+		"nl": "Instellingen",
+		"de": "Einstellungen"
 	},
 	"Waiting camera": {
 		"fr": "En attente de la caméra...", 
 		"en": "Waiting camera...",
-		"nl": "Wachten camera..."
+		"nl": "Wachten camera...",
+		"de": "Wartende Kamera..."
 	},
 	"Restart UI": {
-		"fr": "Une erreur c'est produite, nous avons relancé le robot pour vous.", 
-		"en": "Something went wrong, we restart robot for you.",
-		"nl": "Er ging iets mis, we herstarten de robot voor je."
+		"fr": "Une erreur c'est produite, nous avons relancé le robot pour vous", 
+		"en": "Something went wrong, we restart robot for you",
+		"nl": "Er ging iets mis, we herstarten de robot voor je",
+		"de": "Etwas ist schief gelaufen, wir starten den Roboter für Sie neu"
 	}
 }
