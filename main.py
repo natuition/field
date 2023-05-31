@@ -446,6 +446,7 @@ def move_to_point_and_extract(coords_from_to: list,
                             vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
                         # TODO this 0 rpm "movement" is to prevent robot movement during extractions, need to add this in future to rest speed modes too
                         vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
                         vesc_engine.set_current_rpm(0, vesc_engine.PROPULSION_KEY)
                         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
