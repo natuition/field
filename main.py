@@ -35,14 +35,17 @@ def is_config_empty(config_full_path: str):
 
 
 try:
+    if not os.path.isfile("config/config.py"):
+        raise Exception("config file is not exist")
+
     if is_config_empty("config/config.py"):
         raise Exception("config file is empty")
 
     from config import config
 except KeyboardInterrupt:
     raise KeyboardInterrupt
-except:
-    print("Failed to load current config.py!")
+except Exception as exc:
+    print(f"Failed to load current config.py! ({str(exc)})")
 
     # load config backups
     config_backups = [path for path in glob.glob(
