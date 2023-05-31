@@ -15,6 +15,8 @@ from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from state_machine.utilsFunction import *
 from config import config
 from application import UIWebRobot
+import time
+
 
 # This state corresponds when the robot is generating the work area.
 class CreateFieldState(State.State):
@@ -321,6 +323,9 @@ class FieldCreator:
                   f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
             print(msg)
             self.logger.write_and_flush(msg + "\n")
+
+        # vesc can't stop robot instantly, so we wait for 1 sec before turn wheels right
+        time.sleep(1)
 
         # turn wheels to right
         if config.UI_VERBOSE_LOGGING:
