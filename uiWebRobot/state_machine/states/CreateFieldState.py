@@ -15,6 +15,8 @@ from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from state_machine.utilsFunction import *
 from config import config
 from application import UIWebRobot
+import time
+
 
 # This state corresponds when the robot is generating the work area.
 class CreateFieldState(State.State):
@@ -304,15 +306,16 @@ class FieldCreator:
         return unquote(fieldName[:-4], encoding='utf-8')
 
     def manoeuvre(self):
-        self.vesc_emergency.set_target_rpm(
-            -config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-            self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_BACKWARD, self.vesc_emergency.PROPULSION_KEY)
+        # move backward and stop
         if config.UI_VERBOSE_LOGGING:
             msg = f"Field creation: starting vesc movement of " \
                   f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
             print(msg)
             self.logger.write_and_flush(msg + "\n")
+        self.vesc_emergency.set_target_rpm(
+            -config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+            self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_BACKWARD, self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
         if config.UI_VERBOSE_LOGGING:
@@ -321,17 +324,10 @@ class FieldCreator:
             print(msg)
             self.logger.write_and_flush(msg + "\n")
 
-        self.vesc_emergency.set_target_rpm(
-            config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-            self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"Field creation: starting vesc movement of " \
-                  f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
-        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
+        # vesc can't stop robot instantly, so we wait for 1 sec before turn wheels right
+        time.sleep(1)
 
+        # turn wheels to right
         if config.UI_VERBOSE_LOGGING:
             msg = f"Field creation: starting turning smoothie wheels to A={config.A_MIN}"
             print(msg)
@@ -343,6 +339,17 @@ class FieldCreator:
             print(msg)
             self.logger.write_and_flush(msg + "\n")
 
+        # move forward (wheels are turned to right) and stop
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"Field creation: starting vesc movement of " \
+                  f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+            print(msg)
+            self.logger.write_and_flush(msg + "\n")
+        self.vesc_emergency.set_target_rpm(
+            config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+            self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
         if config.UI_VERBOSE_LOGGING:
             msg = f"Field creation: stopped vesc movement of " \
@@ -350,6 +357,7 @@ class FieldCreator:
             print(msg)
             self.logger.write_and_flush(msg + "\n")
 
+        # align wheels to center
         if config.UI_VERBOSE_LOGGING:
             msg = "Field creation: starting turning smoothie wheels to A=0"
             print(msg)

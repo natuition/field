@@ -1420,6 +1420,59 @@ class ExtractionMethods:
 
         return smoothie.RESPONSE_OK, False
 
+    @staticmethod
+    def pattern_3x3(smoothie: adapters.SmoothieAdapter,
+                    vesc_adapter: adapters.VescAdapterV4,
+                    extraction_map: ExtractionMap,
+                    data_collector: datacollection.DataCollector):
+        """
+        Sequence of extraction positions:
+        3--4--5
+        2--1--6
+        9--8--7
+        """
+
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            print("EXT. PAUSE: Starting pattern 3x3.")
+
+        sm_cur = smoothie.get_adapter_current_coordinates()
+        positions = [
+            [sm_cur["X"], sm_cur["Y"]],  # 1
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"]],  # 2
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM],  # 3
+            [sm_cur["X"], sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM],  # 4
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM],  # 5
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"]],  # 6
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM],  # 7
+            [sm_cur["X"], sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM],  # 8
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM],  # 9
+        ]
+
+        for sm_x, sm_y in positions:
+            # skip this move if it is out of working range
+            if sm_x <= config.X_MIN or sm_x >= config.X_MAX or sm_y <= config.Y_MIN or sm_y >= config.Y_MAX:
+                continue
+
+            # move to position
+            all_ext_xy_start_t = time.time()
+            res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
+            smoothie.wait_for_all_actions_done()
+            data_collector.add_all_ext_xy_t(time.time() - all_ext_xy_start_t)
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res
+                return msg, False
+
+            # do extraction
+            res, cork_is_stuck = ExtractionMethods.single_center_drop(
+                smoothie,
+                vesc_adapter,
+                extraction_map,
+                data_collector)
+            if res != smoothie.RESPONSE_OK:
+                return res, cork_is_stuck
+
+        return smoothie.RESPONSE_OK, False
+
 
 class PxToMMConverter:
     # TODO: old unoptimized code. It is loading data from disk during conversion calls - need to change this.

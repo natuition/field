@@ -35,14 +35,17 @@ def is_config_empty(config_full_path: str):
 
 
 try:
+    if not os.path.isfile("config/config.py"):
+        raise Exception("config file is not exist")
+
     if is_config_empty("config/config.py"):
         raise Exception("config file is empty")
 
     from config import config
 except KeyboardInterrupt:
     raise KeyboardInterrupt
-except:
-    print("Failed to load current config.py!")
+except Exception as exc:
+    print(f"Failed to load current config.py! ({str(exc)})")
 
     # load config backups
     config_backups = [path for path in glob.glob(
@@ -352,287 +355,299 @@ def move_to_point_and_extract(coords_from_to: list,
 
     number_navigation_cycle_without_gps = 0
 
-    point_reading_t = time.time()
+    point_reading_t = last_send_gps_time = slow_mode_time = time.time()
 
-    slow_mode_time = time.time()
-
-    last_send_gps_time = time.time()
+    have_time_for_inference = True
+    predictor_next_gps_expected_ts = float("inf")
 
     # main navigation control loop
     while True:
-        # EXTRACTION CONTROL
-        start_t = time.time()
-        frame = camera.get_image()
-        frame_t = time.time()
+        # gps point reading time predictor
+        if have_time_for_inference and config.ALLOW_GPS_TIME_PREDICTIONS_LIMITING_INFERENCE:
+            if time.time() + config.INFERENCE_MAX_TICK_TIME > predictor_next_gps_expected_ts:
+                have_time_for_inference = False
 
-        per_det_start_t = time.time()
-        if extract:
-            plants_boxes = periphery_det.detect(frame)
-        else:
-            plants_boxes = list()
-        per_det_end_t = time.time()
-        detections_period.append(per_det_end_t - start_t)
+        if have_time_for_inference:
+            # EXTRACTION CONTROL
+            start_t = time.time()
+            frame = camera.get_image()
+            frame_t = time.time()
 
-        if config.SAVE_DEBUG_IMAGES:
-            image_saver.save_image(
-                frame,
-                img_output_dir,
-                label="PE_view_M=" + str(current_working_mode),
-                plants_boxes=plants_boxes)
-        if config.ALLOW_GATHERING and current_working_mode == working_mode_slow and \
-                image_saver.get_counter("gathering") < config.DATA_GATHERING_MAX_IMAGES:
-            image_saver.save_image(frame, config.DATA_GATHERING_DIR,
-                                   plants_boxes=plants_boxes, counter_key="gathering")
+            per_det_start_t = time.time()
+            if extract:
+                plants_boxes = periphery_det.detect(frame)
+            else:
+                plants_boxes = list()
+            per_det_end_t = time.time()
+            detections_period.append(per_det_end_t - start_t)
 
-        if extract:
-            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
-                  str(per_det_end_t - per_det_start_t)
-        else:
-            msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. (extractions are off) time: " + \
-                  str(per_det_end_t - per_det_start_t)
-        logger_full.write(msg + "\n")
+            if config.SAVE_DEBUG_IMAGES:
+                image_saver.save_image(
+                    frame,
+                    img_output_dir,
+                    label="PE_view_M=" + str(current_working_mode),
+                    plants_boxes=plants_boxes)
+            if config.ALLOW_GATHERING and current_working_mode == working_mode_slow and \
+                    image_saver.get_counter("gathering") < config.DATA_GATHERING_MAX_IMAGES:
+                image_saver.save_image(frame, config.DATA_GATHERING_DIR,
+                                       plants_boxes=plants_boxes, counter_key="gathering")
 
-        # MOVEMENT AND ACTIONS MODES
-        if config.AUDIT_MODE:
-            dc_start_t = time.time()
-
-            # count detected plant boxes for each type
-            plants_count = dict()
-            for plant_box in plants_boxes:
-                plant_box_name = plant_box.get_name()
-                if plant_box_name in plants_count:
-                    plants_count[plant_box_name] += 1
-                else:
-                    plants_count[plant_box_name] = 1
-
-            # save info into data collector
-            for plant_label in plants_count:
-                data_collector.add_detections_data(plant_label,
-                                                   math.ceil((plants_count[plant_label]) / config.AUDIT_DIVIDER))
-
-            # flush updates into the audit output file and log measured time
-            if len(plants_boxes) > 0:
-                data_collector.save_all_data(
-                    log_cur_dir + config.AUDIT_OUTPUT_FILE)
-
-            dc_t = time.time() - dc_start_t
-            msg = "Last scan weeds detected: " + str(len(plants_boxes)) + \
-                  ", audit processing tick time: " + str(dc_t)
+            if extract:
+                msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
+                      str(per_det_end_t - per_det_start_t)
+            else:
+                msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. (extractions are off) time: " + \
+                      str(per_det_end_t - per_det_start_t)
             logger_full.write(msg + "\n")
-        else:
-            # slow mode
-            if current_working_mode == working_mode_slow:
-                if last_working_mode != current_working_mode:
-                    last_working_mode = current_working_mode
-                    msg = "[Working mode] : slow"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
 
-                if ExtractionManagerV3.any_plant_in_zone(
-                        plants_boxes,
-                        x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
-                    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                    if config.VERBOSE_EXTRACT:
-                        msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
-                        logger_full.write_and_flush(msg+"\n")
-                    # TODO remove thread init from here!
-                    voltage_thread = threading.Thread(
-                        target=send_voltage_thread_tf, args=(vesc_engine, ui_msg_queue), daemon=True)
-                    voltage_thread.start()
-                    data_collector.add_vesc_moving_time_data(
-                        vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+            # MOVEMENT AND ACTIONS MODES
+            if config.AUDIT_MODE:
+                dc_start_t = time.time()
 
-                    # single precise center scan before calling for PDZ scanning and extractions
-                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
-                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                        frame = camera.get_image()
-                        plants_boxes = precise_det.detect(frame)
+                # count detected plant boxes for each type
+                plants_count = dict()
+                for plant_box in plants_boxes:
+                    plant_box_name = plant_box.get_name()
+                    if plant_box_name in plants_count:
+                        plants_count[plant_box_name] += 1
+                    else:
+                        plants_count[plant_box_name] = 1
 
-                        # do PDZ scan and extract all plants if single precise scan got plants in working area
-                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                # save info into data collector
+                for plant_label in plants_count:
+                    data_collector.add_detections_data(plant_label,
+                                                       math.ceil((plants_count[plant_label]) / config.AUDIT_DIVIDER))
+
+                # flush updates into the audit output file and log measured time
+                if len(plants_boxes) > 0:
+                    data_collector.save_all_data(
+                        log_cur_dir + config.AUDIT_OUTPUT_FILE)
+
+                dc_t = time.time() - dc_start_t
+                msg = "Last scan weeds detected: " + str(len(plants_boxes)) + \
+                      ", audit processing tick time: " + str(dc_t)
+                logger_full.write(msg + "\n")
+            else:
+                # slow mode
+                if current_working_mode == working_mode_slow:
+                    if last_working_mode != current_working_mode:
+                        last_working_mode = current_working_mode
+                        msg = "[Working mode] : slow"
+                        if config.LOG_SPEED_MODES:
+                            logger_full.write(msg + "\n")
+                        if config.PRINT_SPEED_MODES:
+                            print(msg)
+
+                    if ExtractionManagerV3.any_plant_in_zone(
+                            plants_boxes,
+                            x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
+                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                        if config.VERBOSE_EXTRACT:
+                            msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
+                            logger_full.write_and_flush(msg+"\n")
+                        data_collector.add_vesc_moving_time_data(
+                            vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+                        # TODO this 0 rpm "movement" is to prevent robot movement during extractions, need to add this in future to rest speed modes too
+                        vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_current_rpm(0, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+
+                        # TODO remove thread init from here!
+                        voltage_thread = threading.Thread(
+                            target=send_voltage_thread_tf,
+                            args=(vesc_engine, ui_msg_queue),
+                            daemon=True)
+                        voltage_thread.start()
+
+                        # single precise center scan before calling for PDZ scanning and extractions
+                        if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
+                            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                            frame = camera.get_image()
+                            plants_boxes = precise_det.detect(frame)
+
+                            # do PDZ scan and extract all plants if single precise scan got plants in working area
+                            if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                                if config.EXTRACTION_MODE == 1:
+                                    extraction_manager_v3.extract_all_plants()
+                                elif config.EXTRACTION_MODE == 2:
+                                    extraction_manager_v3.mill_all_plants()
+                                slow_mode_time = time.time()
+                        else:
                             if config.EXTRACTION_MODE == 1:
                                 extraction_manager_v3.extract_all_plants()
                             elif config.EXTRACTION_MODE == 2:
                                 extraction_manager_v3.mill_all_plants()
                             slow_mode_time = time.time()
-                    else:
-                        if config.EXTRACTION_MODE == 1:
-                            extraction_manager_v3.extract_all_plants()
-                        elif config.EXTRACTION_MODE == 2:
-                            extraction_manager_v3.mill_all_plants()
+
+                        if config.VERBOSE_EXTRACT:
+                            msg = "[VERBOSE EXTRACT] Extract cycle are finish."
+                            logger_full.write_and_flush(msg+"\n")
+
+                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+
+                        msg = "Applying force step forward after extractions cycle(s)"
+                        logger_full.write(msg + "\n")
+                        if config.VERBOSE:
+                            print(msg)
+                        vesc_engine.set_time_to_move(config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(
+                            config.SI_SPEED_STEP_FORWARD * config.MULTIPLIER_SI_SPEED_TO_RPM,
+                            vesc_engine.PROPULSION_KEY)
+                        vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                        vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
+
+                    elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
+                        # move cork to fast mode scan position
+                        if config.VERBOSE:
+                            msg = "SLOW MODE: moving cork to fast mode position\n"
+                            logger_full.write(msg)
+
+                        res = smoothie.custom_separate_xy_move_to(
+                            X_F=config.X_F_MAX,
+                            Y_F=config.Y_F_MAX,
+                            X=smoothie.smoothie_to_mm(
+                                (config.X_MAX - config.X_MIN) / 2, "X"),
+                            Y=smoothie.smoothie_to_mm((config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR,
+                                                      "Y"))
+                        if res != smoothie.RESPONSE_OK:
+                            msg = "INIT: Keeping in slow mode as failed to move camera to fast mode scan position, smoothie's response:\n" + res
+                            logger_full.write(msg + "\n")
+                        else:
+                            msg = "Switching from 'slow mode' to 'switching mode'"
+                            if config.LOG_SPEED_MODES:
+                                logger_full.write(msg + "\n")
+                            if config.PRINT_SPEED_MODES:
+                                print(msg)
+                            current_working_mode = working_mode_switching
+
+                    # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
+                    if not vesc_engine.is_moving(vesc_engine.PROPULSION_KEY):
+                        vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+
+                # switching (from slow to fast) mode
+                elif current_working_mode == working_mode_switching:
+                    if last_working_mode != current_working_mode:
+                        last_working_mode = current_working_mode
+                        msg = "[Working mode] : switching to fast"
+                        if config.LOG_SPEED_MODES:
+                            logger_full.write(msg + "\n")
+                        if config.PRINT_SPEED_MODES:
+                            print(msg)
+
+                    if ExtractionManagerV3.any_plant_in_zone(
+                            plants_boxes,
+                            x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
+                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                        data_collector.add_vesc_moving_time_data(
+                            vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+
+                        if config.VERBOSE:
+                            msg = "Moving cork to slow mode scan position\n"
+                            logger_full.write(msg)
+
+                        # smoothie.wait_for_all_actions_done()
+                        res = smoothie.custom_separate_xy_move_to(
+                            X_F=config.X_F_MAX,
+                            Y_F=config.Y_F_MAX,
+                            X=smoothie.smoothie_to_mm(
+                                (config.X_MAX - config.X_MIN) / 2, "X"),
+                            Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
+                        if res != smoothie.RESPONSE_OK:
+                            msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
+                            logger_full.write(msg + "\n")
+                        smoothie.wait_for_all_actions_done()
+
+                        current_working_mode = working_mode_slow
                         slow_mode_time = time.time()
+                        vesc_engine.set_target_rpm(
+                            vesc_speed, vesc_engine.PROPULSION_KEY)
+                        continue
 
-                    if config.VERBOSE_EXTRACT:
-                        msg = "[VERBOSE EXTRACT] Extract cycle are finish."
-                        logger_full.write_and_flush(msg+"\n")
+                    sm_cur_pos = smoothie.get_smoothie_current_coordinates(
+                        convert_to_mms=False)
+                    if abs(sm_cur_pos["X"] - (config.X_MAX - config.X_MIN) / 2) < 0.001 and \
+                            abs(sm_cur_pos["Y"] - (config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR) < 0.001:
+                        msg = "Switching from 'switching mode' to 'fast mode'"
+                        if config.LOG_SPEED_MODES:
+                            logger_full.write(msg + "\n")
+                        if config.PRINT_SPEED_MODES:
+                            print(msg)
+                        current_working_mode = working_mode_fast
 
-                    msg = "Applying force step forward after extractions cycle(s)"
-                    logger_full.write(msg + "\n")
-                    if config.VERBOSE:
-                        print(msg)
-                    vesc_engine.set_time_to_move(
-                        config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.set_target_rpm(
-                        config.SI_SPEED_STEP_FORWARD * config.MULTIPLIER_SI_SPEED_TO_RPM,
-                        vesc_engine.PROPULSION_KEY)
-                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
-                    vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
+                # fast mode
+                elif current_working_mode == working_mode_fast:
+                    if last_working_mode != current_working_mode:
+                        last_working_mode = current_working_mode
+                        msg = "[Working mode] : fast"
+                        if config.LOG_SPEED_MODES:
+                            logger_full.write_and_flush(msg + "\n")
+                        if config.PRINT_SPEED_MODES:
+                            print(msg)
 
-                elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
-                    # move cork to fast mode scan position
-                    if config.VERBOSE:
-                        msg = "SLOW MODE: moving cork to fast mode position\n"
-                        logger_full.write(msg)
+                    if ExtractionManagerV3.any_plant_in_zone(
+                            plants_boxes,
+                            x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
+                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                        data_collector.add_vesc_moving_time_data(
+                            vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
 
-                    res = smoothie.custom_separate_xy_move_to(
-                        X_F=config.X_F_MAX,
-                        Y_F=config.Y_F_MAX,
-                        X=smoothie.smoothie_to_mm(
-                            (config.X_MAX - config.X_MIN) / 2, "X"),
-                        Y=smoothie.smoothie_to_mm((config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR,
-                                                  "Y"))
-                    if res != smoothie.RESPONSE_OK:
-                        msg = "INIT: Keeping in slow mode as failed to move camera to fast mode scan position, smoothie's response:\n" + res
-                        logger_full.write(msg + "\n")
+                        if config.VERBOSE:
+                            msg = "Moving cork to slow mode scan position\n"
+                            logger_full.write(msg)
+
+                        # smoothie.wait_for_all_actions_done()
+                        res = smoothie.custom_separate_xy_move_to(
+                            X_F=config.X_F_MAX,
+                            Y_F=config.Y_F_MAX,
+                            X=smoothie.smoothie_to_mm(
+                                (config.X_MAX - config.X_MIN) / 2, "X"),
+                            Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
+                        if res != smoothie.RESPONSE_OK:
+                            msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
+                            logger_full.write(msg + "\n")
+                        smoothie.wait_for_all_actions_done()
+
+                        msg = "Switching from 'fast mode' to 'slow mode'"
+                        if config.LOG_SPEED_MODES:
+                            logger_full.write(msg + "\n")
+                        if config.PRINT_SPEED_MODES:
+                            print(msg)
+                        current_working_mode = working_mode_slow
+                        slow_mode_time = time.time()
+                        # TODO dont need anymore? as rpm is set at the end of slow mode
+                        # vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                        continue
+                    elif close_to_end:
+                        cur_vesc_rpm = vesc_engine.get_current_rpm(
+                            vesc_engine.PROPULSION_KEY)
+                        if cur_vesc_rpm != vesc_speed:
+                            msg = f"Applying slow speed {vesc_speed} at 'fast mode' " \
+                                  f"(was {cur_vesc_rpm}) " \
+                                  f"because of close_to_end flag trigger"
+                            if config.LOG_SPEED_MODES:
+                                logger_full.write(msg + "\n")
+                            if config.PRINT_SPEED_MODES:
+                                print(msg)
+                            vesc_engine.set_target_rpm(
+                                vesc_speed, vesc_engine.PROPULSION_KEY)
+                            vesc_engine.set_current_rpm(
+                                vesc_speed, vesc_engine.PROPULSION_KEY)
                     else:
-                        msg = "Switching from 'slow mode' to 'switching mode'"
-                        if config.LOG_SPEED_MODES:
-                            logger_full.write(msg + "\n")
-                        if config.PRINT_SPEED_MODES:
-                            print(msg)
-                        current_working_mode = working_mode_switching
-
-                # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
-                if not vesc_engine.is_moving(vesc_engine.PROPULSION_KEY):
-                    vesc_engine.set_time_to_move(
-                        config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.set_target_rpm(
-                        vesc_speed, vesc_engine.PROPULSION_KEY)
-                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
-
-            # switching (from slow to fast) mode
-            elif current_working_mode == working_mode_switching:
-                if last_working_mode != current_working_mode:
-                    last_working_mode = current_working_mode
-                    msg = "[Working mode] : switching to fast"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
-
-                if ExtractionManagerV3.any_plant_in_zone(
-                        plants_boxes,
-                        x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
-                    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                    data_collector.add_vesc_moving_time_data(
-                        vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
-
-                    if config.VERBOSE:
-                        msg = "Moving cork to slow mode scan position\n"
-                        logger_full.write(msg)
-
-                    # smoothie.wait_for_all_actions_done()
-                    res = smoothie.custom_separate_xy_move_to(
-                        X_F=config.X_F_MAX,
-                        Y_F=config.Y_F_MAX,
-                        X=smoothie.smoothie_to_mm(
-                            (config.X_MAX - config.X_MIN) / 2, "X"),
-                        Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
-                    if res != smoothie.RESPONSE_OK:
-                        msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
-                        logger_full.write(msg + "\n")
-                    smoothie.wait_for_all_actions_done()
-
-                    current_working_mode = working_mode_slow
-                    slow_mode_time = time.time()
-                    vesc_engine.set_target_rpm(
-                        vesc_speed, vesc_engine.PROPULSION_KEY)
-                    continue
-
-                sm_cur_pos = smoothie.get_smoothie_current_coordinates(
-                    convert_to_mms=False)
-                if abs(sm_cur_pos["X"] - (config.X_MAX - config.X_MIN) / 2) < 0.001 and \
-                        abs(sm_cur_pos["Y"] - (config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR) < 0.001:
-                    msg = "Switching from 'switching mode' to 'fast mode'"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
-                    current_working_mode = working_mode_fast
-
-            # fast mode
-            elif current_working_mode == working_mode_fast:
-                if last_working_mode != current_working_mode:
-                    last_working_mode = current_working_mode
-                    msg = "[Working mode] : fast"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write_and_flush(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
-
-                if ExtractionManagerV3.any_plant_in_zone(
-                        plants_boxes,
-                        x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
-                    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                    data_collector.add_vesc_moving_time_data(
-                        vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
-
-                    if config.VERBOSE:
-                        msg = "Moving cork to slow mode scan position\n"
-                        logger_full.write(msg)
-
-                    # smoothie.wait_for_all_actions_done()
-                    res = smoothie.custom_separate_xy_move_to(
-                        X_F=config.X_F_MAX,
-                        Y_F=config.Y_F_MAX,
-                        X=smoothie.smoothie_to_mm(
-                            (config.X_MAX - config.X_MIN) / 2, "X"),
-                        Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
-                    if res != smoothie.RESPONSE_OK:
-                        msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
-                        logger_full.write(msg + "\n")
-                    smoothie.wait_for_all_actions_done()
-
-                    msg = "Switching from 'fast mode' to 'slow mode'"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
-                    current_working_mode = working_mode_slow
-                    slow_mode_time = time.time()
-                    # TODO dont need anymore? as rpm is set at the end of slow mode
-                    # vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
-                    continue
-                elif close_to_end:
-                    cur_vesc_rpm = vesc_engine.get_current_rpm(
-                        vesc_engine.PROPULSION_KEY)
-                    if cur_vesc_rpm != vesc_speed:
-                        msg = f"Applying slow speed {vesc_speed} at 'fast mode' " \
-                              f"(was {cur_vesc_rpm}) " \
-                              f"because of close_to_end flag trigger"
-                        if config.LOG_SPEED_MODES:
-                            logger_full.write(msg + "\n")
-                        if config.PRINT_SPEED_MODES:
-                            print(msg)
-                        vesc_engine.set_target_rpm(
-                            vesc_speed, vesc_engine.PROPULSION_KEY)
-                        vesc_engine.set_current_rpm(
-                            vesc_speed, vesc_engine.PROPULSION_KEY)
-                else:
-                    cur_vesc_rpm = vesc_engine.get_current_rpm(
-                        vesc_engine.PROPULSION_KEY)
-                    if cur_vesc_rpm != vesc_speed_fast:
-                        msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' (was {cur_vesc_rpm})"
-                        if config.LOG_SPEED_MODES:
-                            logger_full.write(msg + "\n")
-                        if config.PRINT_SPEED_MODES:
-                            print(msg)
-                        vesc_engine.set_target_rpm(
-                            vesc_speed_fast, vesc_engine.PROPULSION_KEY)
-                        vesc_engine.set_current_rpm(
-                            vesc_speed_fast, vesc_engine.PROPULSION_KEY)
+                        cur_vesc_rpm = vesc_engine.get_current_rpm(
+                            vesc_engine.PROPULSION_KEY)
+                        if cur_vesc_rpm != vesc_speed_fast:
+                            msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' (was {cur_vesc_rpm})"
+                            if config.LOG_SPEED_MODES:
+                                logger_full.write(msg + "\n")
+                            if config.PRINT_SPEED_MODES:
+                                print(msg)
+                            vesc_engine.set_target_rpm(
+                                vesc_speed_fast, vesc_engine.PROPULSION_KEY)
+                            vesc_engine.set_current_rpm(
+                                vesc_speed_fast, vesc_engine.PROPULSION_KEY)
 
         # NAVIGATION CONTROL
         cur_pos_obj = gps.get_last_position_v2()
@@ -693,6 +708,10 @@ def move_to_point_and_extract(coords_from_to: list,
                         break
             else:
                 continue
+
+        # gps points reading time predictor
+        predictor_next_gps_expected_ts = cur_pos_obj.receiving_ts + config.GPS_POINT_WAIT_TIME_MAX
+        have_time_for_inference = True
 
         # points filter by quality flag
         if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
