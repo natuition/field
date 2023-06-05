@@ -105,7 +105,8 @@ class UIWebRobot:
         field_list = []
         for file in os.listdir(dir_path):
             if file.endswith(".txt"):
-                field_list.append(unquote(file.split(".txt")[0], encoding='utf-8'))
+                if file != "tmp.txt":
+                    field_list.append(unquote(file.split(".txt")[0], encoding='utf-8'))
         return field_list
 
     @staticmethod
@@ -116,7 +117,7 @@ class UIWebRobot:
         if len(field_list)>=2:
             coords_other = []
             for field_name in field_list:
-                if field_name != unquote(current_field, encoding='utf-8'):
+                if field_name != unquote(current_field, encoding='utf-8') and field_name != "tmp.txt":
                     with open("../fields/"+quote(field_name,safe="", encoding='utf-8')+".txt", encoding='utf-8') as file:
                         points = file.readlines()
                     
