@@ -55,11 +55,7 @@ socketSaveSetting.on('save_finish', function (dataServ) {
 function go_to_page(path, background = false) {
     //console.log(path)
     if (background) {
-        $.ajax({
-            type: "GET",
-            url: 'http://' + document.domain + '/' + path,
-            asynch: true
-        });
+        restart_ui();
     } else {
         location.href = path;
     }

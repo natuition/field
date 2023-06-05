@@ -1,32 +1,38 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <title>Error</title>
-        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
-        <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
-    </head>
-    <body>
-        <header class="header header__begin header__color--checklist">
-            <div class="header__info">
-                <div class="header__info--logo">
-                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
-                </div>
-                <div class="header__info--model--voltage">
-                    <div class="header__info--model">
-                        <p>{{ sn }}</p>
-                    </div>
-                    </div>
-                    </div>
-            <div class="header__title">
-                {{ error_message }}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Error</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+    <script src="{{ url_for('static', filename='js/restart_ui.js') }}"></script>
+</head>
+
+<body>
+    <header class="header header__begin header__color--checklist">
+        <div class="header__info">
+            <div class="header__info--logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
             </div>
-            </header>
-        <section class="checklist">
-            <p class="checkbox__item--title" style="color:rgb(156, 156, 156); font-style: italic;">{{ reason }}</p>
-        </section>
-    </body>
+            <div class="header__info--model--voltage">
+                <div class="header__info--model" onclick="restart_ui()">
+                    <p>{{ sn }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="header__title">
+            {{ error_message }}
+        </div>
+    </header>
+    <section class="checklist">
+        <p class="checkbox__item--title" style="color:rgb(156, 156, 156); font-style: italic;">{{ reason }}</p>
+    </section>
+</body>
+
 </html>
