@@ -266,6 +266,7 @@ class UIWebRobot:
             return render_template('UISetting.html',sn=sn, ui_languages=self.__ui_languages , ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())    
         except Exception as e:
             print(f"Error : {e}")
+            traceback.print_exc()
             return redirect('/')
 
     def maps(self):

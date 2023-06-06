@@ -129,7 +129,7 @@ class Slider(ItemInterface):
         self._default: float = default
 
     def generate_html(self, ui_languages: dict, ui_language: str)-> str :
-        return  f"""<div class="ruler__main--assets">
+        return  f"""<div class="ruler__main--assets" style="margin-top:10px;">
                         <div class="ruler__assets--title">
                             <p>{ui_languages[self._label][ui_language]}</p>
                             <span style="text-align: center; width: auto !important;" class="no_format new_value slider" id="{self.__span_id}">{self._default}</span>
@@ -379,9 +379,9 @@ class SettingPageManager:
         checkbox_leaving_protection.set_checked(self.__config.ALLOW_FIELD_LEAVING_PROTECTION)
 
         slider_leaving_protection_distance = Slider("leaving_protection_distance", "Max distance before stop", lambda new_value : self.__changeConfigValue("LEAVING_PROTECTION_DISTANCE_MAX", new_value))
-        slider_leaving_protection_distance.set_number_parameters(1000,500,10000,self.__config.LEAVING_PROTECTION_DISTANCE_MAX)
+        slider_leaving_protection_distance.set_number_parameters(1000,10000,500,self.__config.LEAVING_PROTECTION_DISTANCE_MAX)
 
-        checkbox_instruction_path = Checkbox("instruction_path", "Display instruction path:", lambda new_value: self.__changeConfigValue("DISPLAY_INSTRUCTION_PATH", new_value))
+        checkbox_instruction_path = Checkbox("instruction_path", "Display instruction path", lambda new_value: self.__changeConfigValue("DISPLAY_INSTRUCTION_PATH", new_value))
         checkbox_instruction_path.set_checked(self.__config.DISPLAY_INSTRUCTION_PATH)
 
         category_nav.add_items([radio_btn_group_path_choice,slider_sides_interval,checkbox_bad_gps,checkbox_leaving_protection,slider_leaving_protection_distance,checkbox_instruction_path])
@@ -429,7 +429,7 @@ class SettingPageManager:
         radio_btn_group_weeding_technique.set_radio_button_list([radio_btn_drilling,radio_btn_milling])"""
 
         slider_extraction_z = Slider("extraction_z", "Extraction depth", lambda new_value : self.__changeConfigValue("EXTRACTION_Z", new_value))
-        slider_extraction_z.set_number_parameters(10,1,50,self.__config.EXTRACTION_Z)
+        slider_extraction_z.set_number_parameters(10,50,1,self.__config.EXTRACTION_Z)
 
         slider_cycle = Slider("cycle", "Cycle", lambda new_value : self.__changeConfigValue("EXTRACTIONS_FULL_CYCLES", new_value))
         slider_cycle.set_number_parameters(1,5,1,self.__config.EXTRACTIONS_FULL_CYCLES)
@@ -440,10 +440,10 @@ class SettingPageManager:
         category_weed_seeding = Category("seeding_technique", "Seeding parameter:")
 
         slider_seeder_quantity = Slider("seeder_quantity", "Number of seeding doses", lambda new_value : self.__changeConfigValue("SEEDER_QUANTITY", new_value))
-        slider_seeder_quantity.set_number_parameters(0,1,2,self.__config.SEEDER_QUANTITY)
+        slider_seeder_quantity.set_number_parameters(0,2,1,self.__config.SEEDER_QUANTITY)
 
         slider_seeder_ext_offset_y = Slider("seeder_ext_offset_y", "Seeder y offset", lambda new_value : self.__changeConfigValue("SEEDER_EXT_OFFSET_Y", new_value))
-        slider_seeder_ext_offset_y.set_number_parameters(0,5,70,self.__config.SEEDER_EXT_OFFSET_Y)
+        slider_seeder_ext_offset_y.set_number_parameters(0,70,5,self.__config.SEEDER_EXT_OFFSET_Y)
 
         category_weed_seeding.add_items([slider_seeder_quantity,slider_seeder_ext_offset_y])
 

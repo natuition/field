@@ -430,5 +430,50 @@
 		"en": "Something went wrong, we restart robot for you",
 		"nl": "Er ging iets mis, we herstarten de robot voor je",
 		"de": "Etwas ist schief gelaufen, wir starten den Roboter für Sie neu"
+	},
+	"Stop if out of zone": {
+		"fr": "Arrêt si en dehors de la zone", 
+		"en": "Stop if out of zone",
+		"nl": "Stop als je buiten de zone bent",
+		"de": "Anhalten, wenn außerhalb der Zone"
+	}
+	,
+	"Max distance before stop": {
+		"fr": "Distance maximum avant arrêt", 
+		"en": "Max distance before stop",
+		"nl": "Maximale afstand tot stop",
+		"de": "Maximale Entfernung vor dem Anhalten"
+	}
+	,
+	"Display instruction path": {
+		"fr": "Afficher le chemin d'instruction", 
+		"en": "Display instruction path",
+		"nl": "Instructiepad weergeven",
+		"de": "Befehlspfad anzeigen"
+	}
+	,
+	"Extraction depth": {
+		"fr": "Profondeur d'extraction", 
+		"en": "Extraction depth",
+		"nl": "Extractie diepte",
+		"de": "Tiefe der Extraktion"
+	},
+	"Number of seeding doses": {
+		"fr": "Nombres de doses semmées", 
+		"en": "Number of seeding doses",
+		"nl": "Aantal zaaidoses",
+		"de": "Anzahl der Aussaatdosen"
+	},
+	"Seeder y offset": {
+		"fr": "Seeder y offset", 
+		"en": "Seeder y offset",
+		"nl": "Zaaimachine offset",
+		"de": "Seeder y offset"
+	},
+	"Seeding parameter:": {
+		"fr": "Paramètres d'ensemencement : ", 
+		"en": "Seeding parameter: ",
+		"nl": "Zaaiparameter: ",
+		"de": "Parameter für die Aussaat: "
 	}
 }

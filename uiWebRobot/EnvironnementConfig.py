@@ -10,7 +10,7 @@ class EnvironnementConfig:
         if value is not None:
             set_key(dotenv_path=cls.env_file_path, key_to_set="NATUITION_CHECKLIST", value_to_set=str(value))
         else:
-            return get_key(dotenv_path=cls.env_file_path, key_to_get="NATUITION_CHECKLIST")
+            return eval(get_key(dotenv_path=cls.env_file_path, key_to_get="NATUITION_CHECKLIST"))
 
 def test_environnement_config():
     print(EnvironnementConfig.NATUITION_CHECKLIST())

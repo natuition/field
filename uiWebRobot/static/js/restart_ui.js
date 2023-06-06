@@ -4,7 +4,8 @@ function restart_ui() {
         $.ajax({
             type: "GET",
             url: 'http://' + document.domain + '/restart_ui',
-            asynch: true
+            asynch: false,
+            complete: () => { setTimeout(() => { location.reload(); 5000 }); }
         });
     }
 }
