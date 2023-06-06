@@ -451,6 +451,16 @@
         <!-- <script src="{{ url_for('static', filename='js/checkList.js') }}" defer></script>-->
         <script src="/static/{{ now }}/js/checkList.js" defer></script>
 
+        {% if statusOfUIObject['checkbox'] %}
+
+        <script>
+            document.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
+                checkbox.checked = true;
+            });
+        </script>
+
+        {% endif %}
+
         {% endif %}
 
         <div class="landscape">
