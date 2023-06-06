@@ -295,11 +295,7 @@ function createMap(coords_field, coords_other) {
         }
 
         socketMap.on('updateLastPath', function (dataServ) {
-            dataServ = JSON.parse(dataServ)
-            var coords = dataServ[0]
-            if (coords.length > 1) {
-                lastPathCoords = coords;
-            }
+            lastPathCoords = JSON.parse(dataServ);
         });
 
         socketMap.on('updatePath', function (dataServ) {
@@ -309,15 +305,17 @@ function createMap(coords_field, coords_other) {
             var quality = dataServ[1]
 
             if (coords.length > 1) {
-
+                coordinates = [];
+                lastPathCoords.forEach(path => {
+                    coordinates.push(path);
+                });
+                coordinates.push(coords);
+                console.log(coordinates);
                 map.getSource('pathRobot').setData({
                     'type': 'Feature',
                     'geometry': {
                         'type': 'MultiLineString',
-                        'coordinates': [
-                            lastPathCoords,
-                            coords
-                        ]
+                        'coordinates': coordinates
                     }
                 });
             }
