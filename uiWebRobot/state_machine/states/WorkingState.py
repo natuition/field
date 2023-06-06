@@ -165,7 +165,7 @@ class WorkingState(State.State):
                     if all_points:
                         self.allPath = self.allPath + all_points
                         self.lastGpsQuality = last_gps_quality
-                self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map',
+                self.socketio.emit('updateLastPath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map',
                                    broadcast=True)
             elif "display_instruction_path" in data:
                 data = data["display_instruction_path"]

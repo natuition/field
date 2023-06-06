@@ -6,6 +6,8 @@ socketMap.on("reconnect_attempt", (attempt) => {
 
 var map;
 
+var lastPathCoords = [];
+
 var firstFocus = false
 
 window.onload = () => {
@@ -55,6 +57,7 @@ function createMap(coords_field, coords_other) {
     map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/satellite-v9',
+        projection: 'globe',
         center: [x_center, y_center],
         zoom: zoom
     });
@@ -243,7 +246,7 @@ function createMap(coords_field, coords_other) {
                 'data': {
                     'type': 'Feature',
                     'geometry': {
-                        'type': 'LineString',
+                        'type': 'MultiLineString',
                         'coordinates': []
                     }
                 }
@@ -291,6 +294,14 @@ function createMap(coords_field, coords_other) {
             });
         }
 
+        socketMap.on('updateLastPath', function (dataServ) {
+            dataServ = JSON.parse(dataServ)
+            var coords = dataServ[0]
+            if (coords.length > 1) {
+                lastPathCoords = coords;
+            }
+        });
+
         socketMap.on('updatePath', function (dataServ) {
             dataServ = JSON.parse(dataServ)
             var coords = dataServ[0]
@@ -302,8 +313,11 @@ function createMap(coords_field, coords_other) {
                 map.getSource('pathRobot').setData({
                     'type': 'Feature',
                     'geometry': {
-                        'type': 'LineString',
-                        'coordinates': coords
+                        'type': 'MultiLineString',
+                        'coordinates': [
+                            lastPathCoords,
+                            coords
+                        ]
                     }
                 });
             }
