@@ -157,14 +157,14 @@ class WorkingState(State.State):
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
                     all_points = list()
                     index = 0
-                    all_points[index] = list()
+                    all_points.append(list())
                     for line in gps_his_file.readlines():
                         if line.startswith("[") and line.endswith("]\n"):
                             parsed_point = line[1:-1].split(", ")
                             all_points[index].append([float(parsed_point[1]), float(parsed_point[0])])
                         else:
                             index += 1
-                            all_points[index] = list()
+                            all_points.append(list())
                 self.socketio.emit('updateLastPath', 
                                    json.dumps(all_points), 
                                    namespace='/map',
