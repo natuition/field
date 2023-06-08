@@ -23,7 +23,8 @@ import subprocess
 import datetime
 import shutil
 import pytz
-
+import multiprocessing
+from multiprocessing_communication import MessageType, Message
 
 # load config, if failed - copy and load config backups until success or no more backups
 def is_config_empty(config_full_path: str):
@@ -2005,7 +2006,20 @@ def get_bezier_indexes(path_points: list):
     return bezier_indexes
 
 
-def main():
+def main(multiprocessing_queue=None):
+
+    if multiprocessing_queue:
+        ui_queue: multiprocessing.JoinableQueue = multiprocessing_queue
+
+    if ui_queue:
+        time.sleep(2)
+        ui_queue.put_nowait(Message(MessageType.TOO_SMALL_AREA))
+        ui_queue.join()
+        print("Message receved !")
+        time.sleep(1)
+        print("Go exit")
+        exit(0)
+
     time_start = utility.get_current_time()
     utility.create_directories(config.LOG_ROOT_DIR)
 
