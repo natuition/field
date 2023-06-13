@@ -1,6 +1,6 @@
 const socketSaveSetting = io.connect('http://' + document.domain + ':' + location.port + '/save_setting');
 socketSaveSetting.on("reconnect_attempt", (attempt) => {
-    if(attempt > 2) location.reload();
+    if (attempt > 2) location.reload();
 });
 
 function save_setting() {
@@ -8,15 +8,15 @@ function save_setting() {
     for (let element of document.querySelectorAll('.new_value')) {
         switch (element.tagName.toLowerCase()) {
             case "input":
-                new_setting[element.id]=element.checked;
+                new_setting[element.id] = element.checked;
                 break;
             case "span":
-                if(element.classList.contains("slider")){
-                    new_setting[element.id]=parseFloat(element.textContent);
+                if (element.classList.contains("slider")) {
+                    new_setting[element.id] = parseFloat(element.textContent);
                 }
                 break;
             case "select":
-                new_setting[element.id]=element.value;
+                new_setting[element.id] = element.value;
                 break;
             default:
                 console.log("Node '" + element.tagName.toLowerCase() + "' are not implement !!!");
@@ -35,9 +35,9 @@ function save_setting() {
     $('#Button-reboot_robot').attr('disabled', '');
 }
 
-socketSaveSetting.on('save_finish', function(dataServ) {
+socketSaveSetting.on('save_finish', function (dataServ) {
     $(document.getElementsByClassName('active')[0]).addClass('finished');
-    setTimeout(() => { 
+    setTimeout(() => {
         $('#Button-save').removeClass('finished');
         $('#Button-save').removeClass('active');
         $('#Button-save').removeAttr('disabled');
@@ -52,7 +52,11 @@ socketSaveSetting.on('save_finish', function(dataServ) {
     }, 2000);
 });
 
-function go_to_page(path){
+function go_to_page(path, background = false) {
     //console.log(path)
-    location.href=path;
+    if (background) {
+        restart_ui();
+    } else {
+        location.href = path;
+    }
 }

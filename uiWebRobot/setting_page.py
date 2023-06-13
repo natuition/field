@@ -129,7 +129,7 @@ class Slider(ItemInterface):
         self._default: float = default
 
     def generate_html(self, ui_languages: dict, ui_language: str)-> str :
-        return  f"""<div class="ruler__main--assets">
+        return  f"""<div class="ruler__main--assets" style="margin-top:10px;">
                         <div class="ruler__assets--title">
                             <p>{ui_languages[self._label][ui_language]}</p>
                             <span style="text-align: center; width: auto !important;" class="no_format new_value slider" id="{self.__span_id}">{self._default}</span>
@@ -375,7 +375,16 @@ class SettingPageManager:
         checkbox_bad_gps = Checkbox("bad_gps", "Stop if bad GPS", lambda new_value: self.__changeConfigValue("ALLOW_GPS_BAD_QUALITY_STOP", new_value))
         checkbox_bad_gps.set_checked(self.__config.ALLOW_GPS_BAD_QUALITY_STOP)
 
-        category_nav.add_items([radio_btn_group_path_choice,slider_sides_interval,checkbox_bad_gps])
+        checkbox_leaving_protection = Checkbox("leaving_protection", "Stop if out of zone", lambda new_value: self.__changeConfigValue("ALLOW_FIELD_LEAVING_PROTECTION", new_value))
+        checkbox_leaving_protection.set_checked(self.__config.ALLOW_FIELD_LEAVING_PROTECTION)
+
+        slider_leaving_protection_distance = Slider("leaving_protection_distance", "Max distance before stop", lambda new_value : self.__changeConfigValue("LEAVING_PROTECTION_DISTANCE_MAX", new_value))
+        slider_leaving_protection_distance.set_number_parameters(1000,10000,500,self.__config.LEAVING_PROTECTION_DISTANCE_MAX)
+
+        checkbox_instruction_path = Checkbox("instruction_path", "Display instruction path", lambda new_value: self.__changeConfigValue("DISPLAY_INSTRUCTION_PATH", new_value))
+        checkbox_instruction_path.set_checked(self.__config.DISPLAY_INSTRUCTION_PATH)
+
+        category_nav.add_items([radio_btn_group_path_choice,slider_sides_interval,checkbox_bad_gps,checkbox_leaving_protection,slider_leaving_protection_distance,checkbox_instruction_path])
 
         #Detection category
         category_detection = Category("detec", "Detection:")
@@ -394,7 +403,7 @@ class SettingPageManager:
         slider_precise = Slider("precise", "Threshold", lambda new_value : self.__changeConfigValue("PRECISE_CONFIDENCE_THRESHOLD", new_value))
         slider_precise.set_number_parameters(0.1,0.8,0.1,self.__config.PRECISE_CONFIDENCE_THRESHOLD)
 
-        radio_btn_mono = RadioButton("mono", "Mono", lambda new_value : self.__changeConfigValue("CAMERA_POSITIONS", "[(X_MAX/2,0)]") if new_value else "")
+        """radio_btn_mono = RadioButton("mono", "Mono", lambda new_value : self.__changeConfigValue("CAMERA_POSITIONS", "[(X_MAX/2,0)]") if new_value else "")
         radio_btn_mono.set_checked(len(self.__config.CAMERA_POSITIONS)==1)
 
         radio_btn_stereo = RadioButton("stereo", "Stereo", lambda new_value : self.__changeConfigValue("CAMERA_POSITIONS", "[(X_MAX/3,0),(2*X_MAX/3,0)]") if new_value else "")
@@ -402,14 +411,14 @@ class SettingPageManager:
 
         radio_btn_group_shooting = RadioButtonGroup("shooting", "Choice of picture shoot:")
         radio_btn_group_shooting.set_column_number(2)
-        radio_btn_group_shooting.set_radio_button_list([radio_btn_mono,radio_btn_stereo])
+        radio_btn_group_shooting.set_radio_button_list([radio_btn_mono,radio_btn_stereo])"""
 
-        category_detection.add_items([selector_periph,slider_periph,selector_precise,slider_precise,radio_btn_group_shooting])
+        category_detection.add_items([selector_periph,slider_periph,selector_precise,slider_precise])#,radio_btn_group_shooting
 
         #Weeding technique category
         category_weed_removal = Category("weeding_technique", "Weeding technique parameter:")
 
-        radio_btn_drilling = RadioButton("drilling", "Drilling", lambda new_value : self.__changeConfigValue("EXTRACTION_MODE", 1) if new_value else "")
+        """radio_btn_drilling = RadioButton("drilling", "Drilling", lambda new_value : self.__changeConfigValue("EXTRACTION_MODE", 1) if new_value else "")
         radio_btn_drilling.set_checked(self.__config.EXTRACTION_MODE==1)
 
         radio_btn_milling = RadioButton("milling", "Milling", lambda new_value : self.__changeConfigValue("EXTRACTION_MODE", 2) if new_value else "")
@@ -417,12 +426,26 @@ class SettingPageManager:
 
         radio_btn_group_weeding_technique = RadioButtonGroup("shooting", "Choice of weeding technique:")
         radio_btn_group_weeding_technique.set_column_number(2)
-        radio_btn_group_weeding_technique.set_radio_button_list([radio_btn_drilling,radio_btn_milling])
+        radio_btn_group_weeding_technique.set_radio_button_list([radio_btn_drilling,radio_btn_milling])"""
+
+        slider_extraction_z = Slider("extraction_z", "Extraction depth", lambda new_value : self.__changeConfigValue("EXTRACTION_Z", new_value))
+        slider_extraction_z.set_number_parameters(10,50,1,self.__config.EXTRACTION_Z)
 
         slider_cycle = Slider("cycle", "Cycle", lambda new_value : self.__changeConfigValue("EXTRACTIONS_FULL_CYCLES", new_value))
         slider_cycle.set_number_parameters(1,5,1,self.__config.EXTRACTIONS_FULL_CYCLES)
 
-        category_weed_removal.add_items([radio_btn_group_weeding_technique,slider_cycle])
+        category_weed_removal.add_items([slider_extraction_z, slider_cycle])#radio_btn_group_weeding_technique
+
+        #Seeding technique category
+        category_weed_seeding = Category("seeding_technique", "Seeding parameter:")
+
+        slider_seeder_quantity = Slider("seeder_quantity", "Number of seeding doses", lambda new_value : self.__changeConfigValue("SEEDER_QUANTITY", new_value))
+        slider_seeder_quantity.set_number_parameters(0,2,1,self.__config.SEEDER_QUANTITY)
+
+        slider_seeder_ext_offset_y = Slider("seeder_ext_offset_y", "Seeder y offset", lambda new_value : self.__changeConfigValue("SEEDER_EXT_OFFSET_Y", new_value))
+        slider_seeder_ext_offset_y.set_number_parameters(0,70,5,self.__config.SEEDER_EXT_OFFSET_Y)
+
+        category_weed_seeding.add_items([slider_seeder_quantity,slider_seeder_ext_offset_y])
 
         #Other category
         category_other = Category("other", "Other")
@@ -432,11 +455,11 @@ class SettingPageManager:
         selector_language.set_choose_description("Please choose language")
 
         btn_restart_app = Button("reboot_app", "Restart application")
-        btn_restart_app.set_on_click_fct_name("go_to_page('restart_ui')")
+        btn_restart_app.set_on_click_fct_name("go_to_page('restart_ui', true)")
         btn_restart_app.set_color(Button.GREEN)
 
         btn_restart_robot = Button("reboot_robot", "Restart robot")
-        btn_restart_robot.set_on_click_fct_name("go_to_page('reboot')")
+        btn_restart_robot.set_on_click_fct_name("go_to_page('reboot', true)")
         btn_restart_robot.set_color(Button.GREEN)
 
         btn_group_restart = ButtonGroup("btn_restart", "Restart button", [btn_restart_app,btn_restart_robot])
@@ -445,6 +468,6 @@ class SettingPageManager:
 
         #Setting page
         
-        self.__setting_generator.add_items([category_nav,category_detection,category_weed_removal,category_other])
+        self.__setting_generator.add_items([category_nav,category_detection,category_weed_removal,category_weed_seeding,category_other])
 
         return self.__setting_generator.generate_html(self.__ui_languages, self.__config.UI_LANGUAGE)

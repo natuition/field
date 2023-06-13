@@ -4,13 +4,11 @@ from config import config
 from state_machine.utilsFunction import *
 from state_machine import Events
 from state_machine.states import WaitWorkingState
-from state_machine.states import ErrorState
 from state_machine import State
-from subprocess import TimeoutExpired
-import re
 import signal
 import threading
 from flask_socketio import SocketIO
+from EnvironnementConfig import EnvironnementConfig
 
 
 # This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
@@ -47,8 +45,14 @@ class CheckState(State.State):
                                                  daemon=True)
         self.__voltage_thread.start()
 
+        if EnvironnementConfig.NATUITION_CHECKLIST():
+            self.statusOfUIObject["checkbox"] = True
+        else:
+            self.statusOfUIObject["checkbox"] = False
+
     def on_event(self, event):
         if event == Events.Events.LIST_VALIDATION:
+            EnvironnementConfig.NATUITION_CHECKLIST(True)
             self.__voltage_thread_alive = False
             if self.cam:
                 if config.UI_VERBOSE_LOGGING:

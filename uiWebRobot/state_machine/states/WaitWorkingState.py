@@ -17,6 +17,8 @@ from config import config
 import adapters
 from application import UIWebRobot
 
+from EnvironnementConfig import EnvironnementConfig
+
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
 
@@ -157,6 +159,8 @@ class WaitWorkingState(State.State):
             self.logger.write_and_flush(msg + "\n")
 
         self.can_go_setting = True
+
+        EnvironnementConfig.NATUITION_CHECKLIST(False)
 
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Self initialization DONE"

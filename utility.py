@@ -113,6 +113,8 @@ class TrajectorySaver:
         self.__full_path = full_path
         self.__last_received_point = None
         self.__output_file = open(full_path, "a" if append_file else "w")
+        if append_file:
+            self.__output_file.write("\n")
 
     def __enter__(self):
         return self
