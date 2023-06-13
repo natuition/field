@@ -13,7 +13,9 @@ class EnvironnementConfig:
             value = get_key(dotenv_path=cls.env_file_path, key_to_get="NATUITION_CHECKLIST")
             if value is None:
                 return None
-            return eval(value)
+            else:
+                value = eval(value)
+            return value
 
 def test_environnement_config():
     print(EnvironnementConfig.NATUITION_CHECKLIST())

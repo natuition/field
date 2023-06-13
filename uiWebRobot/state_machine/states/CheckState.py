@@ -47,6 +47,8 @@ class CheckState(State.State):
 
         if EnvironnementConfig.NATUITION_CHECKLIST():
             self.statusOfUIObject["checkbox"] = True
+        else:
+            self.statusOfUIObject["checkbox"] = False
 
     def on_event(self, event):
         if event == Events.Events.LIST_VALIDATION:
