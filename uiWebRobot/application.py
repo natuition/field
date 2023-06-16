@@ -21,6 +21,8 @@ import posix_ipc
 from threading import Thread
 from datetime import datetime
 from uiWebRobot.setting_page import SettingPageManager
+import utility
+from config import config
 
 __author__ = 'Vincent LAMBERT'
          
@@ -34,6 +36,7 @@ class UIWebRobot:
         self.__init_socketio() #SOCKET IO
         self.__reload_config()
         self.init_params()
+        self.demo_pause_client = utility.DemoPauseClient(config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
 
     def __init_socketio(self):
         self.__socketio.on_event('data', self.on_socket_broadcast, namespace='/broadcast')
@@ -204,6 +207,8 @@ class UIWebRobot:
             elif data["type"] == "removeField":
                 if str(self.__stateMachine.currentState) == "WaitWorkingState":
                     self.__stateMachine.on_socket_data(data)
+            elif data["type"] == "demo_resume_cmd":
+                self.demo_pause_client.send_resume_cmd()
 
     def on_socket_broadcast(self, data):
         if data["type"] == "audit":

@@ -12,6 +12,7 @@ import math
 from config import config
 import time
 from pytz import timezone
+import socket
 
 
 class ImageSaver:
@@ -253,6 +254,268 @@ class Logger:
 
     def close(self):
         self._file.close()
+
+
+class DemoPauseServer:
+    """Instance of this class is accepting incoming connection. When called to block from code, will block until
+    resume command is read from any client.
+
+    Initially created to resume robot during demo.
+    Implementation and purpose of this class may be changed in the future.
+    """
+
+    def __init__(self, host, port, tick_delay=0.005, buffer_size=1024):
+        self.__clients_conn_listener = socket.socket()
+        self.__clients_conn_listener.bind((host, port))
+        self.__clients_conn_listener.listen(5)
+        self.__keep_clients_conn_listener_alive = True
+        self.__current_clients = []
+        self.__current_clients_locker = threading.Lock()
+        # new clients connections accept thread
+        self.__new_clients_conn_listener_th = threading.Thread(
+            target=self.__new_clients_conn_listener_tf,
+            name="__new_clients_conn_listener_th",
+            daemon=True
+        )
+
+        # clients commands reader
+        self.__keep_clients_cmd_reader_alive = True
+        self.__clients_cmd_reader_th = threading.Thread(
+            target=self.__clients_cmd_reader_tf,
+            name="__clients_cmd_reader_tf",
+            daemon=True
+        )
+
+        self.__is_paused = False
+        self.__is_paused_locker = threading.Lock()
+        self.__tick_delay = tick_delay
+        self.__buffer_size = buffer_size
+
+        self.__new_clients_conn_listener_th.start()
+        self.__clients_cmd_reader_th.start()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        self.__keep_clients_conn_listener_alive = False
+        self.__keep_clients_cmd_reader_alive = False
+
+        try:
+            self.__clients_conn_listener.close()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            pass
+
+        with self.__current_clients_locker:
+            for client in self.__current_clients:
+                try:
+                    client.shutdown(socket.SHUT_RDWR)
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
+                except:
+                    pass
+
+                try:
+                    client.close()
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
+                except:
+                    pass
+
+    def __new_clients_conn_listener_tf(self):
+        while self.__keep_clients_conn_listener_alive:
+            try:
+                client, address = self.__clients_conn_listener.accept()
+                with self.__current_clients_locker:
+                    self.__current_clients.append(client)
+            except KeyboardInterrupt:
+                print("__new_clients_conn_listener_th for some reason got KeyboardInterrupt!")
+                raise KeyboardInterrupt
+            except Exception as ex:
+                if self.__keep_clients_conn_listener_alive:
+                    print("__new_clients_conn_listener_th error when accepting new client:", ex)
+
+    def __clients_cmd_reader_tf(self):
+        connections_to_close = []
+
+        while self.__keep_clients_cmd_reader_alive:
+            time.sleep(self.__tick_delay)
+
+            with self.__current_clients_locker:
+                # read from each client, allow robot to resume is resume cmd is receiced
+                for idx, current_client in enumerate(self.__current_clients):
+                    current_client: socket.socket
+
+                    if not self.__keep_clients_cmd_reader_alive:
+                        break
+
+                    try:
+                        data = current_client.recv(self.__buffer_size, socket.MSG_DONTWAIT)
+                        if len(data) != 0:
+                            if data == b"resume":
+                                with self.__is_paused_locker:
+                                    self.__is_paused = False
+                        else:
+                            if idx not in connections_to_close:
+                                connections_to_close.append(idx)
+                    except BlockingIOError:
+                        pass
+                    except (ConnectionResetError, socket.error, socket.herror, socket.gaierror):
+                        if idx not in connections_to_close:
+                            connections_to_close.append(idx)
+                    except KeyboardInterrupt:
+                        print("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        raise KeyboardInterrupt
+                    except Exception as ex:
+                        if self.__keep_clients_cmd_reader_alive:
+                            # print("__clients_cmd_reader_th error when reading from client:", ex)
+                            pass
+
+                # try to close, and remove client objects which likely loss a connection
+                for idx in reversed(connections_to_close):
+                    if not self.__keep_clients_cmd_reader_alive:
+                        break
+
+                    try:
+                        self.__current_clients[idx].shutdown(socket.SHUT_RDWR)
+                    except KeyboardInterrupt:
+                        print("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        raise KeyboardInterrupt
+                    except Exception as ex:
+                        if self.__keep_clients_cmd_reader_alive:
+                            # print("__clients_cmd_reader_th error when shutting down connection:", ex)
+                            pass
+
+                    try:
+                        self.__current_clients[idx].close()
+                    except KeyboardInterrupt:
+                        print("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        raise KeyboardInterrupt
+                    except Exception as ex:
+                        if self.__keep_clients_cmd_reader_alive:
+                            # print("__clients_cmd_reader_th error when closing connection:", ex)
+                            pass
+
+                    del self.__current_clients[idx]
+
+                if len(connections_to_close) > 0:
+                    connections_to_close.clear()
+
+    def wait_for_resume_cmd(self):
+        with self.__is_paused_locker:
+            self.__is_paused = True
+
+        while True:
+            with self.__is_paused_locker:
+                if not self.__is_paused:
+                    return
+            time.sleep(self.__tick_delay)
+
+
+class DemoPauseClient:
+    """Sends resume requests to DemoPauseServer"""
+
+    def __init__(self, host, port, tick_delay=0.005):
+        self.__tick_delay = tick_delay
+
+        self.__host = host
+        self.__port = port
+        self.__server_conn = None
+
+        self.__keep_sender_alive = True
+        self.__sender_th = threading.Thread(
+            target=self.__sender_tf,
+            name="__sender_th",
+            daemon=True
+        )
+
+        self.__resume_request = False
+        self.__resume_request_locker = threading.Lock()
+
+        self.__sender_th.start()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        self.__keep_sender_alive = False
+
+        try:
+            self.__server_conn.close()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            pass
+
+    def send_resume_cmd(self):
+        with self.__resume_request_locker:
+            self.__resume_request = True
+
+    def __reconnect(self):
+        if self.__server_conn is not None:
+            try:
+                self.__server_conn.close()
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except:
+                pass
+
+        while self.__keep_sender_alive:
+            try:
+                self.__server_conn = socket.socket()
+                error_indicator = self.__server_conn.connect_ex((self.__host, self.__port))
+                if error_indicator == 0:
+                    break
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except:
+                pass
+
+    def __sender_tf(self):
+        self.__reconnect()
+        need_to_reconnect = False
+
+        while self.__keep_sender_alive:
+            time.sleep(self.__tick_delay)
+
+            with self.__resume_request_locker:
+                if self.__resume_request:
+                    self.__resume_request = False
+                else:
+                    continue
+
+            while self.__keep_sender_alive:
+                if need_to_reconnect:
+                    self.__reconnect()
+                    need_to_reconnect = False
+
+                try:
+                    self.__server_conn.send(b"resume")
+                    break
+                except KeyboardInterrupt:
+                    print("__sender_tf for some reason got KeyboardInterrupt!")
+                    raise KeyboardInterrupt
+                except (socket.error, socket.herror, socket.gaierror):
+                    need_to_reconnect = True
+                    continue
+                except Exception as ex:
+                    if self.__keep_sender_alive:
+                        # print("__sender_tf error when sending resume cmd:", ex)
+                        pass
 
 
 def get_current_time():

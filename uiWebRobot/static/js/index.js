@@ -62,6 +62,8 @@ function clickHandler() {
         if (confirm((ui_languages["Check_remove_zone"])[ui_language])) {
             socketio.emit('data', { type: "removeField", field_name: choose_field_selector.value });
         }
+    } else if (this.id == "DemoResume") {
+        socketio.emit('data', { type: "demo_resume_cmd" });
     }
 }
 

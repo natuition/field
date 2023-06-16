@@ -52,6 +52,12 @@ class ExtractionManagerV3:
                   f"and pdz cv polygons ({len(self.__pdz_cv_rects)} items) lists are not the same length"
             raise ValueError(msg)
 
+        # demo pauses
+        if config.ALLOW_DEMO_PAUSES:
+            self.__demo_server = utility.DemoPauseServer(config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
+        else:
+            self.__demo_server: utility.DemoPauseServer = None
+
     def __enter__(self):
         return self
 
@@ -188,6 +194,9 @@ class ExtractionManagerV3:
             msg = f"EXT. PAUSE: Found {str(len(smoothie_positions))} plants after PDZ scan; press enter:"
             self.__logger_full.write(msg + "\n")
             input(msg)
+        # demo pause
+        if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
+            self.__demo_server.wait_for_resume_cmd()
 
         plant_index = 0
         # loop over plants that were detected during PDZ sectored scans and extract them (main ext loop)
@@ -205,6 +214,9 @@ class ExtractionManagerV3:
                 msg = f"EXT. PAUSE: Target is X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
                 self.__logger_full.write(msg + "\n")
                 input(msg)
+            # demo pause
+            if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
+                self.__demo_server.wait_for_resume_cmd()
 
             # modify coordinates to try to avoid corkscrew tube view obscuring
             if config.AVOID_CORK_VIEW_OBSCURING:
@@ -312,6 +324,9 @@ class ExtractionManagerV3:
                           f" allowed); press enter:"
                     self.__logger_full.write(msg + "\n")
                     input(msg)
+                # demo pause
+                if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
+                    self.__demo_server.wait_for_resume_cmd()
 
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
                 if len(cur_pos_plant_boxes_undist) == 0:
@@ -346,6 +361,9 @@ class ExtractionManagerV3:
                                           f"scan (will be skipped if out of working range); press enter:"
                                     self.__logger_full.write(msg + "\n")
                                     input(msg)
+                                # demo pause
+                                if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
+                                    self.__demo_server.wait_for_resume_cmd()
 
                                 # check if coordinates are in working range
                                 if not (config.X_MIN < delta_sm_x < config.X_MAX and
@@ -405,6 +423,9 @@ class ExtractionManagerV3:
                                               f"Y={str(cur_pos_sm_y)}; press enter:"
                                         self.__logger_full.write(msg + "\n")
                                         input(msg)
+                                    # demo pause
+                                    if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
+                                        self.__demo_server.wait_for_resume_cmd()
 
                                     break
                                 else:
@@ -485,6 +506,9 @@ class ExtractionManagerV3:
                         msg = f"EXT. PAUSE: Going to plant AbsX={str(ext_sm_x)}, AbsY={str(ext_sm_y)}; press enter:"
                         self.__logger_full.write(msg + "\n")
                         input(msg)
+                    # demo pause
+                    if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
+                        self.__demo_server.wait_for_resume_cmd()
 
                     if extraction_pattern:
                         # go to position
@@ -506,7 +530,8 @@ class ExtractionManagerV3:
                         res, cork_is_stuck = extraction_pattern(self.__smoothie,
                                                                 self.__vesc_engine,
                                                                 self.__extraction_map,
-                                                                self.__data_collector)
+                                                                self.__data_collector,
+                                                                self.__demo_server)
                         if res != self.__smoothie.RESPONSE_OK:
                             msg = "Something gone wrong during extractions, smoothie's response:\n" + res
                             self.__logger_full.write(msg + "\n")
@@ -1052,12 +1077,16 @@ class ExtractionMethods:
     def single_center_drop(smoothie: adapters.SmoothieAdapter,
                            vesc_adapter: adapters.VescAdapterV4,
                            extraction_map: ExtractionMap,
-                           data_collector: datacollection.DataCollector):
+                           data_collector: datacollection.DataCollector,
+                           demo_server: utility.DemoPauseServer):
         """Extract a plant with a single corkscrew drop to the center"""
 
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
             msg = f"EXP. PAUSE: Ready to put cork down; press enter:"
             print(msg)
+        # demo pause
+        if config.ALLOW_DEMO_PAUSES and demo_server is not None:
+            demo_server.wait_for_resume_cmd()
 
         res = smoothie.RESPONSE_OK
         all_ext_z_start_t = start_t = time.time()
@@ -1084,6 +1113,9 @@ class ExtractionMethods:
             if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                 msg = f"EXT. PAUSE: Cork is down, going to pick it up; press enter:"
                 input(msg)
+            # demo pause
+            if config.ALLOW_DEMO_PAUSES and demo_server is not None:
+                demo_server.wait_for_resume_cmd()
 
             # extraction, cork up
             if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
@@ -1342,7 +1374,8 @@ class ExtractionMethods:
     def pattern_plus(smoothie: adapters.SmoothieAdapter,
                      vesc_adapter: adapters.VescAdapterV4,
                      extraction_map: ExtractionMap,
-                     data_collector: datacollection.DataCollector):
+                     data_collector: datacollection.DataCollector,
+                     demo_server: utility.DemoPauseServer):
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
             print("EXT. PAUSE: Starting pattern plus.")
 
@@ -1373,7 +1406,8 @@ class ExtractionMethods:
                 smoothie,
                 vesc_adapter,
                 extraction_map,
-                data_collector)
+                data_collector,
+                demo_server)
             if res != smoothie.RESPONSE_OK:
                 return res, cork_is_stuck
 
@@ -1383,7 +1417,8 @@ class ExtractionMethods:
     def pattern_x(smoothie: adapters.SmoothieAdapter,
                   vesc_adapter: adapters.VescAdapterV4,
                   extraction_map: ExtractionMap,
-                  data_collector: datacollection.DataCollector):
+                  data_collector: datacollection.DataCollector,
+                  demo_server: utility.DemoPauseServer):
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
             print("EXT. PAUSE: Starting pattern X.")
 
@@ -1414,7 +1449,8 @@ class ExtractionMethods:
                 smoothie,
                 vesc_adapter,
                 extraction_map,
-                data_collector)
+                data_collector,
+                demo_server)
             if res != smoothie.RESPONSE_OK:
                 return res, cork_is_stuck
 
@@ -1424,7 +1460,8 @@ class ExtractionMethods:
     def pattern_3x3(smoothie: adapters.SmoothieAdapter,
                     vesc_adapter: adapters.VescAdapterV4,
                     extraction_map: ExtractionMap,
-                    data_collector: datacollection.DataCollector):
+                    data_collector: datacollection.DataCollector,
+                    demo_server: utility.DemoPauseServer):
         """
         Sequence of extraction positions:
         3--4--5
@@ -1467,7 +1504,8 @@ class ExtractionMethods:
                 smoothie,
                 vesc_adapter,
                 extraction_map,
-                data_collector)
+                data_collector,
+                demo_server)
             if res != smoothie.RESPONSE_OK:
                 return res, cork_is_stuck
 
