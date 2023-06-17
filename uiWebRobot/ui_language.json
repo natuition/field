@@ -41,6 +41,12 @@
 		"nl": "Doorgaan",
 		"de": "Weiterarbeiten"
 	}, 
+	"Step": {
+		"fr": "Step", 
+		"en": "Step",
+		"nl": "Step",
+		"de": "Step"
+	}, 
 	"Stop": {
 		"fr": "Arret", 
 		"en": "Stop",
