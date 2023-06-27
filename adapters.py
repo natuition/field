@@ -53,6 +53,7 @@ class SmoothieAdapter:
             raise Exception(msg)
 
         if config.SEEDER_QUANTITY > 0:
+            self.seeder_close()
             res = self.seeder_close()
             if res != self.RESPONSE_OK:
                 msg = "Couldn't lock seeder during smoothie adapter initialization! Smoothie response:\n" + res
