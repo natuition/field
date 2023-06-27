@@ -310,7 +310,7 @@ function createMap(coords_field, coords_other) {
                     coordinates.push(path);
                 });
                 coordinates.push(coords);
-                console.log(coordinates);
+                //console.log(coordinates);
                 map.getSource('pathRobot').setData({
                     'type': 'Feature',
                     'geometry': {
