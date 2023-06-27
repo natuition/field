@@ -28,6 +28,7 @@ class WorkingState(State.State):
         self.isResume = isResume
         self.detected_plants = dict()
         self.extracted_plants = dict()
+        self.last_path_all_points = list()
         self.previous_sessions_working_time = None
 
         msg = f"Audit mode enable : {isAudit}"
@@ -105,6 +106,12 @@ class WorkingState(State.State):
             return self
         elif data["type"] == 'getInputVoltage':
             return self
+        elif data["type"] == 'getLastPath':
+            if len(self.last_path_all_points) > 0:
+                self.socketio.emit('updateLastPath', 
+                                   json.dumps(self.last_path_all_points), 
+                                   namespace='/map')
+            return self
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
@@ -155,16 +162,15 @@ class WorkingState(State.State):
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
-                    all_points = list()
-                    all_points.append(list())
+                    self.last_path_all_points.append(list())
                     for line in gps_his_file.readlines():
                         if line.startswith("[") and line.endswith("]\n"):
                             parsed_point = line[1:-1].split(", ")
-                            all_points[-1].append([float(parsed_point[1]), float(parsed_point[0])])
+                            self.last_path_all_points[-1].append([float(parsed_point[1]), float(parsed_point[0])])
                         else:
-                            all_points.append(list())
+                            self.last_path_all_points.append(list())
                 self.socketio.emit('updateLastPath', 
-                                   json.dumps(all_points), 
+                                   json.dumps(self.last_path_all_points), 
                                    namespace='/map',
                                    broadcast=True)
             elif "display_instruction_path" in data:

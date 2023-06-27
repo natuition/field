@@ -201,6 +201,8 @@ class UIWebRobot:
                 self.__stateMachine.on_socket_data(data)
             elif data["type"] == "getStats":
                 self.__stateMachine.on_socket_data(data)
+            elif data["type"] == "getLastPath":
+                self.__stateMachine.on_socket_data(data)
             elif data["type"] == "removeField":
                 if str(self.__stateMachine.currentState) == "WaitWorkingState":
                     self.__stateMachine.on_socket_data(data)

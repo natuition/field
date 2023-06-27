@@ -1,4 +1,5 @@
 const socketMap = io.connect('http://' + document.domain + ':' + location.port + '/map');
+const socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
 const socketBroadcast = io.connect('http://' + document.domain + ':' + location.port + '/broadcast');
 socketMap.on("reconnect_attempt", (attempt) => {
     if (attempt > 2) location.reload();
@@ -337,6 +338,7 @@ function createMap(coords_field, coords_other) {
             }
         });
 
+        socketio.emit('data', { type: "getLastPath" });
     });
 
 }
