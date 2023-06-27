@@ -144,3 +144,15 @@ fields/test_generate_field/*
 
 tools/*
 config/*
+uiWebRobot/ui_language-old.json
+wz_json_to_rel_v2.py
+sn021_cp.json
+sn021_wz.json
+wz_json_to_rel.py
+yolo/Y0016.conf
+control_points_v2.csv
+cpm_dataset_preprocessor_v2.py
+cpm_dataset_preprocessor.py
+last_angle_wheels.txt
+nn_comparison.py
+yolo/Y0016.conf
