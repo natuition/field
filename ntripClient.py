@@ -148,7 +148,7 @@ class NtripClient(object):
                 self.socket = None
                 casterResponse = ''
             if sys.version_info.major >= 3:
-                casterResponse = str(casterResponse, 'ascii')
+                casterResponse = str(casterResponse, config.CASTER_RESPONSE_DECODE)
             header_lines = casterResponse.split("\r\n")
             for line in header_lines:
                 if line == "":

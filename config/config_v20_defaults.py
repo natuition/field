@@ -496,6 +496,7 @@ NTRIP_RESTART_TIMEOUT = 10
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
 RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
 
+CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 
 # ======================================================================================================================
 # SEEDER SETTINGS
