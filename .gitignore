@@ -146,8 +146,8 @@ tools/*
 config/*
 uiWebRobot/ui_language-old.json
 wz_json_to_rel_v2.py
-sn021_cp.json
-sn021_wz.json
+sn***_cp.json
+sn***_wz.json
 wz_json_to_rel.py
 yolo/Y0016.conf
 control_points_v2.csv
