@@ -47,6 +47,8 @@ function clickHandler() {
     if (this.id == "Newfield") {
         sliderValue = document.getElementById("r1").value
         socketio.emit('data', { type: "field", value: sliderValue });
+    } else if (this.id == "DemoResume") {
+        socketio.emit('data', { type: "demo_resume_cmd" });
     } else if (this.id == "ValidateZone") {
         sliderValue = document.getElementById("r1").value
         socketio.emit('data', { type: "validerZone", value: sliderValue });
@@ -62,8 +64,6 @@ function clickHandler() {
         if (confirm((ui_languages["Check_remove_zone"])[ui_language])) {
             socketio.emit('data', { type: "removeField", field_name: choose_field_selector.value });
         }
-    } else if (this.id == "DemoResume") {
-        socketio.emit('data', { type: "demo_resume_cmd" });
     }
 }
 

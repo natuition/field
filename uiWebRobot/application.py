@@ -169,6 +169,8 @@ class UIWebRobot:
         if "type" in data: 
             if data["type"] == "joystick" and str(self.__stateMachine.currentState) in ["WaitWorkingState","CreateFieldState"]:
                 self.__stateMachine.on_socket_data(data)
+            elif data["type"] == "demo_resume_cmd":
+                self.demo_pause_client.send_resume_cmd()
             elif data["type"] == "field":
                 self.__stateMachine.on_event(Events.CREATE_FIELD)
                 self.__stateMachine.on_socket_data(data)
@@ -207,8 +209,6 @@ class UIWebRobot:
             elif data["type"] == "removeField":
                 if str(self.__stateMachine.currentState) == "WaitWorkingState":
                     self.__stateMachine.on_socket_data(data)
-            elif data["type"] == "demo_resume_cmd":
-                self.demo_pause_client.send_resume_cmd()
 
     def on_socket_broadcast(self, data):
         if data["type"] == "audit":
