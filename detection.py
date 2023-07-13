@@ -17,6 +17,7 @@ from liveMain import webstreaming
 from flask import Flask
 import logging
 from flask_cors import CORS
+import json
 
 
 class YoloOpenCVDetection:
@@ -473,6 +474,7 @@ class YoloTRTDetector:
 
         return np.array(keep)
 
+
 class DetectedPlantBox:
 
     def __init__(self, left, top, right, bottom, name, name_id, confidence, img_w, img_h, center_x=None, center_y=None):
@@ -570,6 +572,44 @@ class DetectedPlantBox:
 
         return \
             DetectedPlantBox(left, top, right, bottom, name, yolo_name_id, confidence, img_w, img_h, center_x, center_y)
+
+    def get_as_dict(self):
+        return {
+            "left": self.__left,
+            "top": self.__top,
+            "right": self.__right,
+            "bottom": self.__bottom,
+            "name": self.__name,
+            "name_id": self.__name_id,
+            "confidence": self.__confidence,
+            "center_x": self.__center_x,
+            "center_y": self.__center_y,
+            "image_width": self.__image_width,
+            "image_height": self.__image_height
+        }
+
+    def get_as_json(self):
+        return json.dumps(self.get_as_dict())
+
+    @staticmethod
+    def make_from_dict(plant_box: dict):
+        return DetectedPlantBox(
+            plant_box["left"],
+            plant_box["top"],
+            plant_box["right"],
+            plant_box["bottom"],
+            plant_box["name"],
+            plant_box["name_id"],
+            plant_box["confidence"],
+            plant_box["image_width"],
+            plant_box["image_height"],
+            plant_box["center_x"],
+            plant_box["center_y"]
+        )
+
+    @staticmethod
+    def make_from_json(json_box: str):
+        return DetectedPlantBox.make_from_dict(json.loads(json_box))
 
 
 # Draw the predicted bounding box
