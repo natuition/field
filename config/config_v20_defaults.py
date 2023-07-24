@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.7"
+CONFIG_VERSION = "0.20.8"
 
 
 # ======================================================================================================================
@@ -685,3 +685,11 @@ INFERENCE_MAX_TICK_TIME = 0.040
 # limit inference if inference may delay new gps point reading (works only if gps points reading time
 # # predictions and inference limiting are allowed)
 GPS_POINT_WAIT_TIME_MAX = 0.25
+
+# CNN filter update
+# ignore inference results if amount of detected objects is bigger than this value.
+# Set to float("inf") to allow any amount of boxes
+CNN_FILTER_BOXES_MAX = 150
+# max amount of tries to get good inference results before clearing them;
+# must be >= 1, otherwise frames and inference won't work
+CNN_FILTER_RESCANS_MAX = 3

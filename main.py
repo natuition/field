@@ -373,12 +373,21 @@ def move_to_point_and_extract(coords_from_to: list,
             frame = camera.get_image()
             frame_t = time.time()
 
-            per_det_start_t = time.time()
             if extract:
+                per_det_start_t = time.time()
                 plants_boxes = periphery_det.detect(frame)
+                per_det_end_t = time.time()
+                if len(plants_boxes) > config.CNN_FILTER_BOXES_MAX:
+                    msg = f"{len(plants_boxes)} inference boxes is above config.INFERENCE_BOXES_MAX=" \
+                          f"{config.CNN_FILTER_BOXES_MAX} limit, ignoring all periphery scan results."
+                    print(msg)
+                    logger_full.write(msg + "\n")
+                    plants_boxes.clear()
             else:
+                per_det_start_t = time.time()
                 plants_boxes = list()
-            per_det_end_t = time.time()
+                per_det_end_t = time.time()
+
             detections_period.append(per_det_end_t - start_t)
 
             if config.SAVE_DEBUG_IMAGES:
@@ -463,8 +472,25 @@ def move_to_point_and_extract(coords_from_to: list,
                         # single precise center scan before calling for PDZ scanning and extractions
                         if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
                             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                            frame = camera.get_image()
-                            plants_boxes = precise_det.detect(frame)
+                            for rescan_idx in range(config.CNN_FILTER_RESCANS_MAX):
+                                frame = camera.get_image()
+                                plants_boxes = precise_det.detect(frame)
+
+                                if len(plants_boxes) <= config.CNN_FILTER_BOXES_MAX:
+                                    break
+                                else:
+                                    msg = f"{len(plants_boxes)} inference boxes is above " \
+                                          f"config.CNN_FILTER_BOXES_MAX={config.CNN_FILTER_BOXES_MAX} " \
+                                          f"limit, re-doing precise single scan before PDZ (attempt {rescan_idx + 1})"
+                                    print(msg)
+                                    logger_full.write(msg + "\n")
+                            else:
+                                msg = f"Couldn't get good inference results in precise single scan after " \
+                                      f"{config.CNN_FILTER_RESCANS_MAX} attempts due to boxes max amount exceeding " \
+                                      f"(CNN filter). Inference results are cleared and ignored."
+                                print(msg)
+                                logger_full.write(msg + "\n")
+                                plants_boxes = []
 
                             # do PDZ scan and extract all plants if single precise scan got plants in working area
                             if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):

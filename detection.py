@@ -624,3 +624,19 @@ def load_class_names(labels_file_path):
 
     with open(labels_file_path, 'rt') as f:
         return f.read().rstrip('\n').split('\n')
+
+
+def filter_dense_boxes(plants_boxes: list, max_dist: int) -> list:
+    """Will remove from input list plants boxes which are too close to each other"""
+
+    filtered_plants_boxes = []
+
+    for i in range(len(plants_boxes) - 1):
+        for j in range(i + 1, len(plants_boxes)):
+            # max_dist = config.ONE_MM_IN_PX * config.EXTRACTION_MAP_CELL_SIZE_MM
+            if plants_boxes[i].get_distance_from(plants_boxes[j].center_x, plants_boxes[j].center_y) > max_dist:
+                break
+        else:
+            filtered_plants_boxes.append(plants_boxes[i])
+
+    return filtered_plants_boxes

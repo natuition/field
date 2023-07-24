@@ -115,8 +115,32 @@ class ExtractionManagerV3:
 
             # take a photo and look for a plants
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-            frame = self.__camera.get_image()
-            plants_boxes = self.__precise_det.detect(frame)
+            # CNN filter large amount of boxes
+            for rescan_idx in range(config.CNN_FILTER_RESCANS_MAX):
+                frame = self.__camera.get_image()
+                plants_boxes = self.__precise_det.detect(frame)
+
+                if len(plants_boxes) <= config.CNN_FILTER_BOXES_MAX:
+                    break
+                else:
+                    msg = f"{len(plants_boxes)} inference boxes is above " \
+                          f"config.CNN_FILTER_BOXES_MAX={config.CNN_FILTER_BOXES_MAX} " \
+                          f"limit, re-doing current position PDZ scan (attempt {rescan_idx + 1})"
+                    print(msg)
+                    self.__logger_full.write(msg + "\n")
+            else:
+                msg = f"Couldn't get good inference results in current PDZ position 'i={i}' after " \
+                      f"{config.CNN_FILTER_RESCANS_MAX} attempts due to boxes max amount exceeding " \
+                      f"(CNN filter). Inference results are cleared and ignored."
+                print(msg)
+                self.__logger_full.write(msg + "\n")
+                plants_boxes = []
+
+            # CNN filter dense boxes
+            plants_boxes = detection.filter_dense_boxes(
+                plants_boxes,
+                config.ONE_MM_IN_PX * config.EXTRACTION_MAP_CELL_SIZE_MM)
+
             # get plants boxes and keep only that are in PDZ
             cur_pos_plant_boxes_pdz = list(filter(
                 lambda box: self.is_point_in_poly(
@@ -271,9 +295,34 @@ class ExtractionManagerV3:
                 # TODO: possibly here will be multiple scans with average coordinates
                 ext_img_start_t = time.time()
                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                frame = self.__camera.get_image()
-                plants_boxes = self.__precise_det.detect(frame)
+                # CNN filter large amount of boxes
+                for rescan_idx in range(config.CNN_FILTER_RESCANS_MAX):
+                    frame = self.__camera.get_image()
+                    plants_boxes = self.__precise_det.detect(frame)
+
+                    if len(plants_boxes) <= config.CNN_FILTER_BOXES_MAX:
+                        break
+                    else:
+                        msg = f"{len(plants_boxes)} inference boxes is above " \
+                              f"config.CNN_FILTER_BOXES_MAX={config.CNN_FILTER_BOXES_MAX} " \
+                              f"limit, re-doing current position extraction specify scan (attempt {rescan_idx + 1})"
+                        print(msg)
+                        self.__logger_full.write(msg + "\n")
+                else:
+                    msg = f"Couldn't get good inference results in current position extraction specify scan after " \
+                          f"{config.CNN_FILTER_RESCANS_MAX} attempts due to boxes max amount exceeding " \
+                          f"(CNN filter). Inference results are cleared and ignored."
+                    print(msg)
+                    self.__logger_full.write(msg + "\n")
+                    plants_boxes = []
+
                 self.__data_collector.add_all_ext_img_t(time.time() - ext_img_start_t)
+
+                # CNN filter dense boxes
+                plants_boxes = detection.filter_dense_boxes(
+                    plants_boxes,
+                    config.ONE_MM_IN_PX * config.EXTRACTION_MAP_CELL_SIZE_MM)
+
                 cur_pos_plant_boxes_undist = list(filter(
                     lambda plant_box_1: self.is_point_in_circle(
                         plant_box_1.center_x,
@@ -371,7 +420,34 @@ class ExtractionManagerV3:
                                 # make a scan, keep only plants that are in undistorted zone
                                 # TODO data collection image analysis time in case if delta's should be included into it
                                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                                frame = self.__camera.get_image()
+                                # CNN filter large amount of boxes
+                                for rescan_idx in range(config.CNN_FILTER_RESCANS_MAX):
+                                    frame = self.__camera.get_image()
+                                    plants_boxes = self.__precise_det.detect(frame)
+
+                                    if len(plants_boxes) <= config.CNN_FILTER_BOXES_MAX:
+                                        break
+                                    else:
+                                        msg = f"{len(plants_boxes)} inference boxes is above " \
+                                              f"config.CNN_FILTER_BOXES_MAX={config.CNN_FILTER_BOXES_MAX} " \
+                                              f"limit, re-doing current position delta scan (attempt {rescan_idx + 1})"
+                                        print(msg)
+                                        self.__logger_full.write(msg + "\n")
+                                else:
+                                    msg = f"Couldn't get good inference results in current delta position after " \
+                                          f"{config.CNN_FILTER_RESCANS_MAX} attempts due to boxes max amount " \
+                                          f"exceeding (CNN filter). Inference results are cleared and ignored."
+                                    print(msg)
+                                    self.__logger_full.write(msg + "\n")
+                                    plants_boxes = []
+
+                                self.__data_collector.add_all_ext_img_t(time.time() - ext_img_start_t)
+
+                                # CNN filter dense boxes
+                                plants_boxes = detection.filter_dense_boxes(
+                                    plants_boxes,
+                                    config.ONE_MM_IN_PX * config.EXTRACTION_MAP_CELL_SIZE_MM)
+
                                 cur_pos_plant_boxes_undist = list(filter(
                                     lambda plant_box_1: self.is_point_in_circle(
                                         plant_box_1.center_x,
@@ -379,7 +455,7 @@ class ExtractionManagerV3:
                                         config.SCENE_CENTER_X,
                                         config.SCENE_CENTER_Y,
                                         config.UNDISTORTED_ZONE_RADIUS),
-                                    self.__precise_det.detect(frame)
+                                    plants_boxes
                                 ))
 
                                 # stop seeking and save current position as new current position. This position is also
@@ -615,8 +691,32 @@ class ExtractionManagerV3:
                 # make a scan, keep only plants that are in undistorted zone
                 # TODO: possibly here will be multiple scans with average coordinates
                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                frame = self.__camera.get_image()
-                plants_boxes = self.__precise_det.detect(frame)
+                # CNN filter large amount of boxes
+                for rescan_idx in range(config.CNN_FILTER_RESCANS_MAX):
+                    frame = self.__camera.get_image()
+                    plants_boxes = self.__precise_det.detect(frame)
+
+                    if len(plants_boxes) <= config.CNN_FILTER_BOXES_MAX:
+                        break
+                    else:
+                        msg = f"{len(plants_boxes)} inference boxes is above " \
+                              f"config.CNN_FILTER_BOXES_MAX={config.CNN_FILTER_BOXES_MAX} " \
+                              f"limit, re-doing current position extraction specify scan (attempt {rescan_idx + 1})"
+                        print(msg)
+                        self.__logger_full.write(msg + "\n")
+                else:
+                    msg = f"Couldn't get good inference results in current position extraction specify scan after " \
+                          f"{config.CNN_FILTER_RESCANS_MAX} attempts due to boxes max amount exceeding " \
+                          f"(CNN filter). Inference results are cleared and ignored."
+                    print(msg)
+                    self.__logger_full.write(msg + "\n")
+                    plants_boxes = []
+
+                # CNN filter dense boxes
+                plants_boxes = detection.filter_dense_boxes(
+                    plants_boxes,
+                    config.ONE_MM_IN_PX * config.EXTRACTION_MAP_CELL_SIZE_MM)
+
                 cur_pos_plant_boxes_undist = list(filter(
                     lambda plant_box_1: self.is_point_in_circle(
                         plant_box_1.center_x,
@@ -695,7 +795,32 @@ class ExtractionManagerV3:
 
                                 # make a scan, keep only plants that are in undistorted zone
                                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                                frame = self.__camera.get_image()
+                                # CNN filter large amount of boxes
+                                for rescan_idx in range(config.CNN_FILTER_RESCANS_MAX):
+                                    frame = self.__camera.get_image()
+                                    plants_boxes = self.__precise_det.detect(frame)
+
+                                    if len(plants_boxes) <= config.CNN_FILTER_BOXES_MAX:
+                                        break
+                                    else:
+                                        msg = f"{len(plants_boxes)} inference boxes is above " \
+                                              f"config.CNN_FILTER_BOXES_MAX={config.CNN_FILTER_BOXES_MAX} " \
+                                              f"limit, re-doing current position delta scan (attempt {rescan_idx + 1})"
+                                        print(msg)
+                                        self.__logger_full.write(msg + "\n")
+                                else:
+                                    msg = f"Couldn't get good inference results in current delta position after " \
+                                          f"{config.CNN_FILTER_RESCANS_MAX} attempts due to boxes max amount " \
+                                          f"exceeding (CNN filter). Inference results are cleared and ignored."
+                                    print(msg)
+                                    self.__logger_full.write(msg + "\n")
+                                    plants_boxes = []
+
+                                # CNN filter dense boxes
+                                plants_boxes = detection.filter_dense_boxes(
+                                    plants_boxes,
+                                    config.ONE_MM_IN_PX * config.EXTRACTION_MAP_CELL_SIZE_MM)
+
                                 cur_pos_plant_boxes_undist = list(filter(
                                     lambda plant_box_1: self.is_point_in_circle(
                                         plant_box_1.center_x,
@@ -703,7 +828,7 @@ class ExtractionManagerV3:
                                         config.SCENE_CENTER_X,
                                         config.SCENE_CENTER_Y,
                                         config.UNDISTORTED_ZONE_RADIUS),
-                                    self.__precise_det.detect(frame)
+                                    plants_boxes
                                 ))
 
                                 # stop seeking and save current position as new current position. This position is also
