@@ -14,6 +14,7 @@ socketBroadcast.on("reconnect_attempt", (attempt) => {
 var newFieldButton = document.querySelector('#Newfield');
 var startButton = document.querySelector('#Start');
 var continueButton = document.querySelector('#Continue');
+var demoResumeButton = document.querySelector('#DemoResume');
 var stopButton = document.querySelector('#Stop');
 var wheelButton = document.querySelector('#Wheel');
 //var auditButton = document.querySelector('#Audit');
@@ -28,6 +29,7 @@ else {
 }
 if (startButton != null) startButton.addEventListener('click', clickHandler);
 if (continueButton != null) continueButton.addEventListener('click', clickHandler);
+if (demoResumeButton != null) demoResumeButton.addEventListener('click', clickHandler);
 if (stopButton != null) stopButton.addEventListener('click', clickHandler);
 if (wheelButton != null) wheelButton.addEventListener('click', clickHandler);
 if (removeFieldButton != null) removeFieldButton.addEventListener('click', clickHandler);
@@ -48,6 +50,7 @@ function clickHandler() {
         sliderValue = document.getElementById("r1").value
         socketio.emit('data', { type: "field", value: sliderValue });
     } else if (this.id == "DemoResume") {
+        console.log("demo_resume_cmd")
         socketio.emit('data', { type: "demo_resume_cmd" });
     } else if (this.id == "ValidateZone") {
         sliderValue = document.getElementById("r1").value
