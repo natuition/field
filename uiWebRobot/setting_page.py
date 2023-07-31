@@ -379,6 +379,10 @@ class SettingPageManager:
     # Define the setting page
     def generate_html(self):
 
+        checkbox_demo_mode = Checkbox("demo_mode", "Activate demo mode", lambda new_value: self.__changeConfigValue(
+            "ALLOW_DEMO_PAUSES", new_value))
+        checkbox_demo_mode.set_checked(self.__config.ALLOW_DEMO_PAUSES)
+
         # Navigation category
         category_nav = Category("nav", "Navigation:")
 
@@ -539,6 +543,6 @@ class SettingPageManager:
         # Setting page
 
         self.__setting_generator.add_items(
-            [category_nav, category_detection, category_weed_removal, category_weed_seeding, category_other])
+            [checkbox_demo_mode, category_nav, category_detection, category_weed_removal, category_weed_seeding, category_other])
 
         return self.__setting_generator.generate_html(self.__ui_languages, self.__config.UI_LANGUAGE)
