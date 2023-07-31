@@ -676,12 +676,13 @@ body {
     color: #5d61646b !important;
 }
 
-
-
-
-
-
-
+.begin__button--demo{
+    font-size: 2em;
+    border: none !important;
+    background-color: white !important;
+    box-shadow: none !important;
+    color: rgb(71, 168, 87);
+}
 
 /*Button animation part*/
 

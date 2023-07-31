@@ -140,6 +140,10 @@ socketButton.on('startMain', function (dataServ) {
                 statusTitle.classList.add('display-none')
                 statusTitle.classList.remove('display-block')
             }*/
+
+            $('#DemoResume').removeAttr('disabled');
+            $('#DemoResume').removeClass('disabled');
+
             socketio.emit('data', { type: "getStats" });
             if (dataServ["first_point_no_extractions"]) {
                 sendAlert("first_point_no_extractions", (ui_languages["first_point_no_extractions"])[ui_language], false)
@@ -151,8 +155,12 @@ socketButton.on('startMain', function (dataServ) {
 socketButton.on('stop', function (dataServ) {
     if (dataServ["status"] == "pushed") {
         $('#Stop').addClass('active');
+        $('#DemoResume').addClass('disabled');
+        $('#DemoResume').attr('disabled', '');
     } else if (dataServ["status"] == "finish") {
         $(document.getElementsByClassName('active')[0]).addClass('finished');
+        $('#DemoResume').addClass('disabled');
+        $('#DemoResume').attr('disabled', '');
         setTimeout(() => {
             button = document.getElementsByClassName('active')[0];
             button.id = button.name;
@@ -181,6 +189,9 @@ socketButton.on('stop', function (dataServ) {
 
             $('.begin__button--' + otherButton).removeClass('disabled');
             $('.begin__button--' + otherButton).removeAttr('disabled', '');
+
+            $('#DemoResume').addClass('disabled');
+            $('#DemoResume').attr('disabled', '');
 
             /*auditButton.classList.remove('fix');
             auditButton.setAttribute('src', '/static/extraction.png');
