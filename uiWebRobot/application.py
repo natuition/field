@@ -332,9 +332,11 @@ class UIWebRobot:
 
     def reboot(self):
         os.system('sudo reboot')
+        return None
 
     def restart_ui(self):
         os.system('sudo systemctl restart UI')
+        return None
 
     def handle_exception(self, e):
         # pass through HTTP errors
