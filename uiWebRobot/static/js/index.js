@@ -50,7 +50,6 @@ function clickHandler() {
         sliderValue = document.getElementById("r1").value
         socketio.emit('data', { type: "field", value: sliderValue });
     } else if (this.id == "DemoResume") {
-        console.log("demo_resume_cmd")
         socketio.emit('data', { type: "demo_resume_cmd" });
     } else if (this.id == "ValidateZone") {
         sliderValue = document.getElementById("r1").value
