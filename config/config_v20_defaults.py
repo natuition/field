@@ -349,9 +349,9 @@ A_ONE_DEGREE_IN_SMOOTHIE = 2  # A axis
 A_DEGREES_PER_SECOND = 5  # A axis
 NAV_TURN_WHEELS_CENTER = 0
 
-RETRY_CORK_UP_MIN = 10
-RETRY_CORK_UP_MAX = 30
-RETRY_CORK_UP_STEP = 10
+RETRY_CORK_UP_MIN = 1
+RETRY_CORK_UP_MAX = 5
+RETRY_CORK_UP_STEP = 1
 
 
 # ======================================================================================================================

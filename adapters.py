@@ -19,7 +19,8 @@ class SmoothieAdapter:
     RESPONSE_ALARM_LOCK = "error:Alarm lock\n"
     RESPONSE_HALT = "!!\r\n"
     RESPONSE_IGNORED = "ok - ignored\n"
-    RESPONSE_HOMING_FAILED = "ERROR: Homing cycle failed - check the max_travel settings\n"
+    RESPONSE_HOMING_FAILED = "ERROR: Homing cycle failed - check the max_travel settings"
+    RESPONSE_AFTER_M999 = "WARNING: After HALT you should HOME as position is currently unknown"
 
     def __init__(self, smoothie_host, calibration_at_init=True):
         if type(smoothie_host) is not str:
@@ -681,20 +682,26 @@ class SmoothieAdapter:
                                              config.Z_MAX,
                                              config.Z_AXIS_CALIBRATION_TO_MAX)
 
-            if response == self.RESPONSE_HOMING_FAILED:
+            if self.RESPONSE_HOMING_FAILED in response:
                 for i in range(config.RETRY_CORK_UP_MIN, config.RETRY_CORK_UP_MAX+config.RETRY_CORK_UP_STEP, config.RETRY_CORK_UP_STEP):
+                    response = self.__smc.read_some()
                     msg = f"Homing failed during cork up, retry with Z{i} down before up."
                     print(msg)
-                    self.reset_halted_state()
-                    response = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=i)
-                    if response != self.RESPONSE_OK:
+                    response = self.reset_halted_state()
+                    if self.RESPONSE_AFTER_M999 in response:
+                        response = self.__smc.read_some()
+                        if not self.RESPONSE_OK[:2] in response:
+                            return response
+                    elif not self.RESPONSE_OK in response:
                         return response
+
+                    response = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=i)
                     response = self.__calibrate_axis(self.__z_cur,
                                          "Z",
                                          config.Z_MIN,
                                          config.Z_MAX,
                                          config.Z_AXIS_CALIBRATION_TO_MAX)
-                    if response == self.RESPONSE_HOMING_FAILED:
+                    if self.RESPONSE_HOMING_FAILED in response:
                         continue
                     else:
                         break
