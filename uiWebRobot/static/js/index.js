@@ -14,6 +14,7 @@ socketBroadcast.on("reconnect_attempt", (attempt) => {
 var newFieldButton = document.querySelector('#Newfield');
 var startButton = document.querySelector('#Start');
 var continueButton = document.querySelector('#Continue');
+var demoResumeButton = document.querySelector('#DemoResume');
 var stopButton = document.querySelector('#Stop');
 var wheelButton = document.querySelector('#Wheel');
 //var auditButton = document.querySelector('#Audit');
@@ -28,6 +29,7 @@ else {
 }
 if (startButton != null) startButton.addEventListener('click', clickHandler);
 if (continueButton != null) continueButton.addEventListener('click', clickHandler);
+if (demoResumeButton != null) demoResumeButton.addEventListener('click', clickHandler);
 if (stopButton != null) stopButton.addEventListener('click', clickHandler);
 if (wheelButton != null) wheelButton.addEventListener('click', clickHandler);
 if (removeFieldButton != null) removeFieldButton.addEventListener('click', clickHandler);
@@ -47,6 +49,9 @@ function clickHandler() {
     if (this.id == "Newfield") {
         sliderValue = document.getElementById("r1").value
         socketio.emit('data', { type: "field", value: sliderValue });
+    } else if (this.id == "DemoResume") {
+        console.log("demo_resume_cmd")
+        socketio.emit('data', { type: "demo_resume_cmd" });
     } else if (this.id == "ValidateZone") {
         sliderValue = document.getElementById("r1").value
         socketio.emit('data', { type: "validerZone", value: sliderValue });
@@ -135,6 +140,10 @@ socketButton.on('startMain', function (dataServ) {
                 statusTitle.classList.add('display-none')
                 statusTitle.classList.remove('display-block')
             }*/
+
+            $('#DemoResume').removeAttr('disabled');
+            $('#DemoResume').removeClass('disabled');
+
             socketio.emit('data', { type: "getStats" });
             if (dataServ["first_point_no_extractions"]) {
                 sendAlert("first_point_no_extractions", (ui_languages["first_point_no_extractions"])[ui_language], false)
@@ -146,8 +155,12 @@ socketButton.on('startMain', function (dataServ) {
 socketButton.on('stop', function (dataServ) {
     if (dataServ["status"] == "pushed") {
         $('#Stop').addClass('active');
+        $('#DemoResume').addClass('disabled');
+        $('#DemoResume').attr('disabled', '');
     } else if (dataServ["status"] == "finish") {
         $(document.getElementsByClassName('active')[0]).addClass('finished');
+        $('#DemoResume').addClass('disabled');
+        $('#DemoResume').attr('disabled', '');
         setTimeout(() => {
             button = document.getElementsByClassName('active')[0];
             button.id = button.name;
@@ -176,6 +189,9 @@ socketButton.on('stop', function (dataServ) {
 
             $('.begin__button--' + otherButton).removeClass('disabled');
             $('.begin__button--' + otherButton).removeAttr('disabled', '');
+
+            $('#DemoResume').addClass('disabled');
+            $('#DemoResume').attr('disabled', '');
 
             /*auditButton.classList.remove('fix');
             auditButton.setAttribute('src', '/static/extraction.png');

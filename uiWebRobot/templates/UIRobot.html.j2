@@ -189,77 +189,115 @@
 
             <div class="begin__button">
 
+                <!--Start button -->
                 {% if Field_list is none %}
                 <button name="Start" id="Start" class="begin__button--start unselectable disabled" disabled>
                     <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
-                    {% else %}
-                    {% if statusOfUIObject['startButton'] == None %}
-                    {% if statusOfUIObject['stopButton'] == 'charging' %}
-                    <button name="Start" id="Stop" class="begin__button--stop unselectable active">
-                        <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                        {% elif statusOfUIObject['stopButton'] %}
-                        <button name="Start" id="Stop" class="begin__button--stop unselectable">
-                            <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                            {% else %}
-                            <button name="Start" id="Stop" class="begin__button--stop unselectable disabled" disabled>
-                                <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                                {% endif %}
-                                {% elif statusOfUIObject['startButton'] == 'charging' %}
-                                <button name="Start" id="Start" class="begin__button--start unselectable active"
-                                    disabled>
-                                    <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
-                                    {% elif not statusOfUIObject['startButton'] %}
-                                    <button name="Start" id="Start" class="begin__button--start unselectable disabled"
-                                        disabled>
-                                        <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
-                                        {% else %}
-                                        <button name="Start" id="Start" class="begin__button--start unselectable">
-                                            <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
-                                            {% endif %}
-                                            {% endif %}
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% else %}
+                {% if statusOfUIObject['startButton'] == None %}
+                {% if statusOfUIObject['stopButton'] == 'charging' %}
+                <button name="Start" id="Stop" class="begin__button--stop unselectable active">
+                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% elif statusOfUIObject['stopButton'] %}
+                <button name="Start" id="Stop" class="begin__button--stop unselectable">
+                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% else %}
+                <button name="Start" id="Stop" class="begin__button--stop unselectable disabled" disabled>
+                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% endif %}
+                {% elif statusOfUIObject['startButton'] == 'charging' %}
+                <button name="Start" id="Start" class="begin__button--start unselectable active" disabled>
+                    <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% elif not statusOfUIObject['startButton'] %}
+                <button name="Start" id="Start" class="begin__button--start unselectable disabled" disabled>
+                    <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% else %}
+                <button name="Start" id="Start" class="begin__button--start unselectable">
+                    <span class="submit">{{(ui_languages["Start"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% endif %}
+                {% endif %}
 
-                                            <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
-                                            <span class="check"><i class="fas fa-check scale"></i></span>
-                                        </button>
+                <!--Next button -->
+                {% if demo_mode %}
+                {% if statusOfUIObject['stopButton'] == 'charging' %}
+                <button name="DemoResume" id="DemoResume" class="begin__button--demo unselectable disabled" disabled>
+                    <span class="submit">➲</span>
+                </button>
+                {% elif statusOfUIObject['stopButton'] %}
+                <button name="DemoResume" id="DemoResume" class="begin__button--demo unselectable">
+                    <span class="submit">➲</span>
+                </button>
+                {% else %}
+                <button name="DemoResume" id="DemoResume" class="begin__button--demo unselectable disabled" disabled>
+                    <span class="submit">➲</span>
+                </button>
+                {% endif %}
+                {% endif %}
 
-                                        {% if Field_list is none %}
-                                        <button name="Continue" id="Continue"
-                                            class="begin__button--continue unselectable disabled" disabled>
-                                            <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
-                                            {% else %}
-                                            {% if statusOfUIObject['continueButton'] == None %}
-                                            {% if statusOfUIObject['stopButton'] == 'charging' %}
-                                            <button name="Continue" id="Stop"
-                                                class="begin__button--stop unselectable active">
-                                                <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                                                {% else %}
-                                                <button name="Continue" id="Stop"
-                                                    class="begin__button--stop unselectable">
-                                                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                                                    {% endif %}
-                                                    {% elif statusOfUIObject['continueButton'] == 'charging' %}
-                                                    <button name="Continue" id="Continue"
-                                                        class="begin__button--continue unselectable active" disabled>
-                                                        <span
-                                                            class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
-                                                        {% elif not statusOfUIObject['continueButton'] %}
-                                                        <button name="Continue" id="Continue"
-                                                            class="begin__button--continue unselectable disabled"
-                                                            disabled>
-                                                            <span
-                                                                class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
-                                                            {% else %}
-                                                            <button name="Continue" id="Continue"
-                                                                class="begin__button--continue unselectable">
-                                                                <span
-                                                                    class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
-                                                                {% endif %}
-                                                                {% endif %}
-                                                                <span class="loading"><i
-                                                                        class="fas fa-sync-alt fa-spin"></i></span>
-                                                                <span class="check"><i
-                                                                        class="fas fa-check scale"></i></span>
-                                                            </button>
+                <!--Continue button -->
+                {% if Field_list is none %}
+                <button name="Continue" id="Continue" class="begin__button--continue unselectable disabled" disabled>
+                    <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% else %}
+                {% if statusOfUIObject['continueButton'] == None %}
+                {% if statusOfUIObject['stopButton'] == 'charging' %}
+                <button name="Continue" id="Stop" class="begin__button--stop unselectable active">
+                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% else %}
+                <button name="Continue" id="Stop" class="begin__button--stop unselectable">
+                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% endif %}
+                {% elif statusOfUIObject['continueButton'] == 'charging' %}
+                <button name="Continue" id="Continue" class="begin__button--continue unselectable active" disabled>
+                    <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% elif not statusOfUIObject['continueButton'] %}
+                <button name="Continue" id="Continue" class="begin__button--continue unselectable disabled" disabled>
+                    <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% else %}
+                <button name="Continue" id="Continue" class="begin__button--continue unselectable">
+                    <span class="submit">{{(ui_languages["Continue"])[ui_language]}}</span>
+                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                    <span class="check"><i class="fas fa-check scale"></i></span>
+                </button>
+                {% endif %}
+                {% endif %}
+
             </div>
         </div>
 

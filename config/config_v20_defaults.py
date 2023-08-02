@@ -695,3 +695,8 @@ INFERENCE_MAX_TICK_TIME = 0.040
 # limit inference if inference may delay new gps point reading (works only if gps points reading time
 # # predictions and inference limiting are allowed)
 GPS_POINT_WAIT_TIME_MAX = 0.25
+
+# demo pause update
+ALLOW_DEMO_PAUSES = False
+DEMO_PAUSES_HOST = "127.0.0.1"
+DEMO_PAUSES_PORT = 4546
