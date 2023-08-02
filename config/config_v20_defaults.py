@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.7"
+CONFIG_VERSION = "0.20.8"
 
 
 # ======================================================================================================================
@@ -348,6 +348,10 @@ C_COEFFICIENT_TO_MM = 1
 A_ONE_DEGREE_IN_SMOOTHIE = 2  # A axis
 A_DEGREES_PER_SECOND = 5  # A axis
 NAV_TURN_WHEELS_CENTER = 0
+
+RETRY_CORK_UP_MIN = 10
+RETRY_CORK_UP_MAX = 30
+RETRY_CORK_UP_STEP = 10
 
 
 # ======================================================================================================================
