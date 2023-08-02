@@ -683,6 +683,8 @@ class SmoothieAdapter:
 
             if response == self.RESPONSE_HOMING_FAILED:
                 for i in range(config.RETRY_CORK_UP_MIN, config.RETRY_CORK_UP_MAX+config.RETRY_CORK_UP_STEP, config.RETRY_CORK_UP_STEP):
+                    msg = f"Homing failed during cork up, retry with Z{i} down before up."
+                    print(msg)
                     self.reset_halted_state()
                     response = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=i)
                     if response != self.RESPONSE_OK:
@@ -696,7 +698,7 @@ class SmoothieAdapter:
                         continue
                     else:
                         break
-            else
+            else:
                 return response
 
         else:
