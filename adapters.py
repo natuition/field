@@ -2295,6 +2295,16 @@ class GPSUbloxAdapter:
         with self._sync_locker:
             return self._last_pos_container[-1].as_old_list
 
+    def get_last_position_non_blocking(self) -> list:
+        """Returns None if no positions are stored, returns last saved position copy at the moment of call
+        (reference type safe)
+
+        Returned position is in "old list" format.
+        """
+
+        with self._sync_locker:
+            return self._last_pos_container[-1].as_old_list if len(self._last_pos_container) > 0 else None
+
     def get_last_position_v2(self) -> navigation.GPSPoint:
         """Waits until at least one position is stored, returns last saved position copy at the moment of call
         (reference type safe)
@@ -2307,6 +2317,17 @@ class GPSUbloxAdapter:
         with self._sync_locker:
             # TODO currently it's not a deep copy
             return self._last_pos_container[-1]
+
+    def get_last_position_v2_non_blocking(self) -> navigation.GPSPoint:
+        """Returns None if no positions are stored, returns last saved position copy at the moment of call
+        (reference type safe)
+
+        Returned position is an instance of navigation.GPSPoint class.
+        """
+
+        with self._sync_locker:
+            # TODO currently it's not a deep copy
+            return self._last_pos_container[-1] if len(self._last_pos_container) > 0 else None
 
     def get_last_positions_list(self):
         """Waits until at least one position is stored, returns list of last saved positions copies at the moment of
