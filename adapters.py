@@ -38,6 +38,14 @@ class SmoothieAdapter:
         self.__a_cur = multiprocessing.Value("d", 0)
         self.__b_cur = multiprocessing.Value("d", 0)
         self.__c_cur = multiprocessing.Value("d", 0)
+        self.__axis_cur = {
+            "X": self.__x_cur,
+            "Y": self.__y_cur,
+            "Z": self.__z_cur,
+            "A": self.__a_cur,
+            "B": self.__b_cur,
+            "C": self.__c_cur,
+        }
 
         res = None
         for i in range(3):
@@ -634,7 +642,7 @@ class SmoothieAdapter:
                 
             if eval("config.USE_"+axis_label+"_AXIS_CALIBRATION"):
                 res = self.__calibrate_axis(
-                    eval("self.__"+axis_label.lower()+"_cur"),
+                    self.__axis_cur[axis_label],
                     axis_label,
                     eval("config."+axis_label+"_MIN"), 
                     eval("config."+axis_label+"_MAX"), 
