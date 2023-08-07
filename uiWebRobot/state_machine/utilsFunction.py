@@ -146,10 +146,9 @@ def startMain():
 
 
 def startLiveCam():
-    camSP = subprocess.Popen("python3 serveurCamLive.py", stderr=subprocess.DEVNULL, stdin=subprocess.PIPE,
-                             stdout=subprocess.DEVNULL, cwd=os.getcwd().split(
-                                 "/uiWebRobot")[0], shell=True,
-                             preexec_fn=os.setsid)
+    camSP = subprocess.Popen("python3 serveurCamLive.py", stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, cwd=os.getcwd().split(
+        "/uiWebRobot")[0], shell=True,
+        preexec_fn=os.setsid)
     return camSP
 
 

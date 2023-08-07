@@ -19,6 +19,8 @@ class SmoothieAdapter:
     RESPONSE_ALARM_LOCK = "error:Alarm lock\n"
     RESPONSE_HALT = "!!\r\n"
     RESPONSE_IGNORED = "ok - ignored\n"
+    RESPONSE_HOMING_FAILED = "ERROR: Homing cycle failed - check the max_travel settings"
+    RESPONSE_AFTER_M999 = "WARNING: After HALT you should HOME as position is currently unknown"
 
     def __init__(self, smoothie_host, calibration_at_init=True):
         if type(smoothie_host) is not str:
@@ -98,12 +100,18 @@ class SmoothieAdapter:
         return self.__smc
 
     def wait_for_all_actions_done(self):
+        """Wait for the queue to be empty and the motors to stop before the M400 answers ok
+
+        Sends 'M400' command to smoothie. Returns smoothie answer message."""
         with self.__sync_locker:
             self.__smc.write("M400")
             # "ok\r\n"
             return self.__smc.read_some()
 
     def halt(self):
+        """Halt all operations, turn off heaters, go into Halt state.
+
+        Sends 'M112' command to smoothie. Returns smoothie answer message."""
         with self.__sync_locker:
             self.__smc.write("M112")
             # "ok Emergency Stop Requested - reset or M999 required to exit HALT state\r\n"
@@ -115,8 +123,19 @@ class SmoothieAdapter:
             return self.__smc.read_some()
 
     def freewheels(self):
+        """Disable stepper motors.
+
+        Sends 'M18' command to smoothie. Returns smoothie answer message."""
         with self.__sync_locker:
             self.__smc.write("M18")
+            return self.__smc.read_some()
+
+    def reset_halted_state(self):
+        """Reset from a halted state caused by limit switch, M112 or kill switch
+
+        Sends 'M999' command to smoothie. Returns smoothie answer message."""
+        with self.__sync_locker:
+            self.__smc.write("M999")
             return self.__smc.read_some()
 
     def checkendstop(self, axe):
@@ -129,6 +148,9 @@ class SmoothieAdapter:
             return 1  # refaire demande
 
     def switch_to_relative(self):
+        """Relative mode (command is modal)
+
+        Sends 'G91' command to smoothie. Returns smoothie answer message."""
         with self.__sync_locker:
             self.__smc.write("G91")
             # "ok\r\n"
@@ -661,11 +683,38 @@ class SmoothieAdapter:
             if response != self.RESPONSE_OK:
                 return response
 
-            return self.__calibrate_axis(self.__z_cur,
+            response = self.__calibrate_axis(self.__z_cur,
+                                             "Z",
+                                             config.Z_MIN,
+                                             config.Z_MAX,
+                                             config.Z_AXIS_CALIBRATION_TO_MAX)
+
+            if self.RESPONSE_HOMING_FAILED in response:
+                for i in range(config.RETRY_CORK_UP_MIN, config.RETRY_CORK_UP_MAX+config.RETRY_CORK_UP_STEP, config.RETRY_CORK_UP_STEP):
+                    response = self.__smc.read_some()
+                    msg = f"Homing failed during cork up, retry with Z{i} down before up."
+                    print(msg)
+                    response = self.reset_halted_state()
+                    if self.RESPONSE_AFTER_M999 in response:
+                        response = self.__smc.read_some()
+                        if not self.RESPONSE_OK[:2] in response:
+                            return response
+                    elif not self.RESPONSE_OK in response:
+                        return response
+
+                    response = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=i)
+                    response = self.__calibrate_axis(self.__z_cur,
                                          "Z",
                                          config.Z_MIN,
                                          config.Z_MAX,
                                          config.Z_AXIS_CALIBRATION_TO_MAX)
+                    if self.RESPONSE_HOMING_FAILED in response:
+                        continue
+                    else:
+                        break
+            else:
+                return response
+
         else:
             raise RuntimeError(
                 "picking up corkscrew with stoppers usage requires Z axis calibration permission in config"
