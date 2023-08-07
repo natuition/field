@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.7"
+CONFIG_VERSION = "0.20.8"
 
 
 # ======================================================================================================================
@@ -322,6 +322,7 @@ C_AXIS_CALIBRATION_TO_MAX = None
 CALIBRATION_DISTANCE = 1000  # should be always positive, sign will be auto-defined using *_AXIS_CALIBRATION_TO_MAX flag key
 AFTER_CALIBRATION_AXIS_OFFSET = 0
 CORK_CALIBRATION_MIN_TIME = 3600 
+CALIBRATION_ORDER = ["Z", "X", "Y", "A", "B", "C"]
 
 # DIRECTION WHEELS
 A_MIN = -6 

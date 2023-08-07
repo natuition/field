@@ -626,23 +626,22 @@ class SmoothieAdapter:
             return self.set_current_coordinates(A=config.A_MIN)
 
     def ext_calibrate_cork(self):
-        # Z axis calibration
-        if config.USE_Z_AXIS_CALIBRATION:
-            res = self.__calibrate_axis(self.__z_cur, "Z", config.Z_MIN, config.Z_MAX, config.Z_AXIS_CALIBRATION_TO_MAX)
-            if res != self.RESPONSE_OK:
-                raise RuntimeError("Couldn't pick up corkscrew, smoothie response:\n" + res)
 
-        # X axis calibration
-        if config.USE_X_AXIS_CALIBRATION:
-            res = self.__calibrate_axis(self.__x_cur, "X", config.X_MIN, config.X_MAX, config.X_AXIS_CALIBRATION_TO_MAX)
-            if res != self.RESPONSE_OK:
-                raise RuntimeError("Couldn't calibrate X axis, smoothie response:\n" + res)
+        if not set(config.CALIBRATION_ORDER).issubset(set(["X", "Y", "Z", "A", "B", "C"])):
+            raise ValueError("unsupported axis label or wrong type")
 
-        # Y axis calibration
-        if config.USE_Y_AXIS_CALIBRATION:
-            res = self.__calibrate_axis(self.__y_cur, "Y", config.Y_MIN, config.Y_MAX, config.Y_AXIS_CALIBRATION_TO_MAX)
-            if res != self.RESPONSE_OK:
-                raise RuntimeError("Couldn't calibrate Y axis, smoothie response:\n" + res)
+        for axis_label in config.CALIBRATION_ORDER:
+                
+            if eval("config.USE_"+axis_label+"_AXIS_CALIBRATION"):
+                res = self.__calibrate_axis(
+                    eval("self.__"+axis_label.lower()+"_cur"),
+                    axis_label,
+                    eval("config."+axis_label+"_MIN"), 
+                    eval("config."+axis_label+"_MAX"), 
+                    eval("config."+axis_label+"_AXIS_CALIBRATION_TO_MAX")
+                )
+                if res != self.RESPONSE_OK:
+                    raise RuntimeError(f"Couldn't calibrate {axis_label} axis, smoothie response:\n" + res)
 
         return self.RESPONSE_OK
 
