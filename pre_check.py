@@ -29,6 +29,8 @@ VESC_CONN_TIMEOUT = 5
 VESC_CONN_TRIES_MAX = 2
 VESC_CONN_RETRIES_DELAY = 1
 
+# True: remake vesc adapter during re-tries
+VESC_ADAPTER_REMAKE = True
 VESC_ADAPTER_TRIES_MAX = 2
 VESC_ADAPTER_RETRIES_DELAY = 1
 
@@ -50,7 +52,8 @@ def restart_this_service():
 
 
 def restart_this_computer():
-    raise NotImplementedError("this function is not implemented yet")
+    # raise NotImplementedError("this function is not implemented yet")
+    pass
 
 
 def is_internet_conn_available():
@@ -135,7 +138,11 @@ def main():
                 ublox_ntrip_address = hardware_addresses["ublox"]
 
             if vesc_address is not None and smoothie_address is not None and ublox_ntrip_address is not None:
-                msg = f"Vesc address: OK\nSmoothie address: OK\nUblox Ntrip address: OK"
+                msg = f"Vesc address: OK"
+                logger.write(msg + "\n")
+                msg = "Smoothie address: OK"
+                logger.write(msg + "\n")
+                msg = "Ublox Ntrip address: OK"
                 logger.write_and_flush(msg + "\n")
                 break
 
@@ -153,7 +160,7 @@ def main():
                 logger.write_and_flush(msg + "\n")
             msg = f"Restarting pre_check.py service due to hardware addresses (see above) auto detection fail."
             logger.write_and_flush(msg + "\n")
-            restart_this_service()
+            restart_this_computer()
 
         # check smoothie low level connection
         smoothie_conn_try_count = 0
@@ -312,7 +319,38 @@ def main():
             'rpm',
             'input_voltage']
         vesc_adapter_try_count = 0
-        while vesc_adapter_try_count < VESC_ADAPTER_TRIES_MAX:
+        if VESC_ADAPTER_REMAKE:
+            while vesc_adapter_try_count < VESC_ADAPTER_TRIES_MAX:
+                try:
+                    with adapters.VescAdapterV4(
+                            vesc_address,
+                            config.VESC_BAUDRATE,
+                            config.VESC_ALIVE_FREQ,
+                            config.VESC_CHECK_FREQ,
+                            config.VESC_STOPPER_CHECK_FREQ) as vesc_engine:
+                        sensors_data = vesc_engine.get_sensors_data(report_field_names, vesc_engine.PROPULSION_KEY)
+                        time.sleep(0.5)
+                        if sensors_data is not None:
+                            msg = f"Vesc adapter: OK (got sensors data: {str(sensors_data)})"
+                            logger.write_and_flush(msg + "\n")
+                            break
+                        else:
+                            msg = f"At {vesc_adapter_try_count + 1} attempt got vesc sensors data: {str(sensors_data)}"
+                            logger.write_and_flush(msg + "\n")
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
+                except:
+                    msg = f"At {vesc_adapter_try_count + 1} attempt exception occurred during creation or using " \
+                          f"vesc adapter:\n{traceback.format_exc()}"
+                    logger.write_and_flush(msg + "\n")
+
+                vesc_adapter_try_count += 1
+                time.sleep(VESC_ADAPTER_RETRIES_DELAY)
+            else:
+                msg = f"Vesc adapter: FAIL\nRestarting service due to vesc adapter fail."
+                logger.write_and_flush(msg + "\n")
+                restart_this_service()
+        else:
             try:
                 with adapters.VescAdapterV4(
                         vesc_address,
@@ -320,28 +358,29 @@ def main():
                         config.VESC_ALIVE_FREQ,
                         config.VESC_CHECK_FREQ,
                         config.VESC_STOPPER_CHECK_FREQ) as vesc_engine:
-                    sensors_data = vesc_engine.get_sensors_data(report_field_names, vesc_engine.PROPULSION_KEY)
                     time.sleep(0.5)
-                    if sensors_data is not None:
-                        msg = f"Vesc adapter: OK (got sensors data: {str(sensors_data)})"
-                        logger.write_and_flush(msg + "\n")
-                        break
+                    while vesc_adapter_try_count < VESC_ADAPTER_TRIES_MAX:
+                        sensors_data = vesc_engine.get_sensors_data(report_field_names, vesc_engine.PROPULSION_KEY)
+                        if sensors_data is not None:
+                            msg = f"Vesc adapter: OK (got sensors data: {str(sensors_data)})"
+                            logger.write_and_flush(msg + "\n")
+                            break
+                        else:
+                            msg = f"At {vesc_adapter_try_count + 1} attempt got vesc sensors data: {str(sensors_data)}"
+                            logger.write_and_flush(msg + "\n")
+
+                        vesc_adapter_try_count += 1
+                        time.sleep(VESC_ADAPTER_RETRIES_DELAY)
                     else:
-                        msg = f"At {vesc_adapter_try_count + 1} attempt got vesc sensors data: {str(sensors_data)}"
+                        msg = f"Vesc adapter: FAIL\nRestarting service due to vesc adapter fail."
                         logger.write_and_flush(msg + "\n")
+                        restart_this_service()
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:
                 msg = f"At {vesc_adapter_try_count + 1} attempt exception occurred during creation or using " \
                       f"vesc adapter:\n{traceback.format_exc()}"
                 logger.write_and_flush(msg + "\n")
-
-            vesc_adapter_try_count += 1
-            time.sleep(VESC_ADAPTER_RETRIES_DELAY)
-        else:
-            msg = f"Vesc adapter: FAIL\nRestarting service due to vesc adapter fail."
-            logger.write_and_flush(msg + "\n")
-            restart_this_service()
 
         msg = f"All tests are OK"
         logger.write_and_flush(msg + "\n")
