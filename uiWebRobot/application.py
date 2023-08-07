@@ -52,7 +52,7 @@ class UIWebRobot:
         self.__app.add_url_rule("/", view_func=self.index)
         self.__app.add_url_rule("/setting", view_func=self.setting)
         self.__app.add_url_rule("/map", view_func=self.maps)
-        self.__app.add_url_rule("/offline.html.j2", view_func=self.offline)
+        self.__app.add_url_rule("/offline.html", view_func=self.offline)
         self.__app.add_url_rule("/styles.css", view_func=self.style)
         self.__app.add_url_rule("/sw.js", view_func=self.worker)
         self.__app.add_url_rule("/js/socket.io.min.js",
@@ -262,11 +262,11 @@ class UIWebRobot:
 
         if str(self.__stateMachine.currentState) == "ErrorState":
             if self.__stateMachine.currentState.getReason():
-                return render_template("Error.html.j2", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=self.__stateMachine.currentState.getReason()), 500
+                return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=self.__stateMachine.currentState.getReason()), 500
             else:
-                return render_template("Error.html.j2", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500
+                return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500
 
-        return render_template('UIRobot.html.j2', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
+        return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
 
     def setting(self):
         ui_language = self.__config.UI_LANGUAGE
@@ -284,7 +284,7 @@ class UIWebRobot:
         setting_page_manager = SettingPageManager(
             self.__socketio, self.__ui_languages, self.__config, self.__reload_config)
         try:
-            return render_template('UISetting.html.j2', sn=sn, ui_languages=self.__ui_languages, ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())
+            return render_template('UISetting.html', sn=sn, ui_languages=self.__ui_languages, ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())
         except Exception as e:
             print(f"Error : {e}")
             traceback.print_exc()
@@ -296,21 +296,21 @@ class UIWebRobot:
         if field is None:
             field = UIWebRobot.load_coordinates("../field.txt")
         if field is None:
-            return render_template('map.html.j2', myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
+            return render_template('map.html', myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
         else:
             coords_other = UIWebRobot.get_other_field()
             coords_field = UIWebRobot.formattingFieldPointsForSend(field)
             if coords_other:
-                return render_template('map.html.j2', coords_field=coords_field, myCoords=myCoords, coords_other=coords_other, now=datetime.now().strftime("%H_%M_%S__%f"))
+                return render_template('map.html', coords_field=coords_field, myCoords=myCoords, coords_other=coords_other, now=datetime.now().strftime("%H_%M_%S__%f"))
             else:
-                return render_template('map.html.j2', coords_field=coords_field, myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
+                return render_template('map.html', coords_field=coords_field, myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
 
     def offline(self):
         sn = self.__config.ROBOT_SN
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
-        return render_template('offline.html.j2', sn=sn, ui_languages=self.__ui_languages, ui_language=ui_language)
+        return render_template('offline.html', sn=sn, ui_languages=self.__ui_languages, ui_language=ui_language)
 
     def style(self):
         if self.__filename_for_send_from_directory:
@@ -379,7 +379,7 @@ class UIWebRobot:
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
-        return render_template("Error.html.j2", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500
+        return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500
 
     def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
         self.__app.run(host, port, debug, load_dotenv, **options)
