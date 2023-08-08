@@ -23,11 +23,21 @@ h1 {
 }
 
 .KO {
-    color: red !important;
+    color: rgba(0, 0, 0, 0) !important;
+}
+
+.KO::before {
+    content: "❌";
+    color: red;
 }
 
 .OK {
-    color: green !important;
+    color: rgba(0, 0, 0, 0) !important;
+}
+
+.OK::before {
+    content: "✅";
+    color: lightgreen;
 }
 
 @media print {
@@ -112,4 +122,17 @@ h1 {
     flex-direction: column;
     justify-content: space-around;
     height: 80vh;
+}
+
+#start_form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 80vh;
+    font-family: 'Merriweather Sans', arial, verdana;
+    font-size: large;
+}
+
+#start_form div {
+    margin-top: 10px;
 }
