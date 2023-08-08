@@ -5,9 +5,11 @@
 {% block content %}
 
 <form class="w-75 m-auto" action="/register" method="post">
-    <div class="text-end">
-        <button type="submit" class="btn btn-outline-success">Start</button>
+    <div class="text-start">
+        <button type="submit" class="btn btn-secondary">Start</button>
     </div>
 </form>
 
 {% endblock %}
+
+{% set active_step=1 %}

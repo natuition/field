@@ -20,33 +20,49 @@
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/layout.js') }}"></script>
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+    <script>
+        var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+    </script>
+    {% block head %}
+    {% endblock %}
 </head>
 
 <body>
-    <header>
-    <h1 style="text-align: center; padding: 10px 0;">{% block title %}{% endblock %}</h1>
+
+    <header class="header header__begin">
+        <div class="header__color">
+            <div class="header__info">
+                <div class="header__info--logo">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+                </div>
+                <div class="header__title">
+                    <h1>{% block title %}{% endblock %}</h1>
+                </div>
+                <div class="header__info--model--voltage">
+                    <div class="header__info--model">
+                        <p>{{ SN }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </header>
 
     {% block content %}
     {% endblock %}
 
+    {% set steps = ["🏠","Foc","Z PWM","Axis direction","Focus","Scene center","Target","Services","✅"] %}
+
     <footer>
-        <div class="breadcrumb flat">
-            <a href="#" class="active">Home</a>
-            <a href="#">Vesc foc</a>
-            <a href="#">Vesc Z</a>
-            <a href="#">Smoothie axis direction</a>
-            <a href="#">Smoothie endstops</a>
-            <a href="#">Smoothie mm config</a>
-            <a href="#">Camera focus</a>
-            <a href="#">Scene center</a>
-            <a href="#">Controle points</a>
-            <a href="#">Target</a>
-            <a href="#">Deploy services</a>
-            <a href="#">Resume</a>
+        <div id="breadcrumb" class="breadcrumb flat">
+            {% for index in range(steps | length) %}
+            <a {% if (active_step-1)==index %} class="active" {% endif %}>{{ steps[index] }}</a>
+            {% endfor %}
         </div>
     </footer>
+
+    <script>set_step_url_on_breadcrumb_trail()</script>
 
 </body>
 

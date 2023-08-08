@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import re
+import json
 
 import adapters
 import utility
@@ -41,11 +42,12 @@ class Deployement:
         self.__log = {
             'Date': None,
             'Vesc foc': 'KO',
+            'Vesc Z PWM': 'KO',
             'X Y DIR setup': 'KO',
             'Camera focus': 'KO',
             'Camera crop': 'KO',
             'Camera offset': 'KO',
-            'Client configuration apply': 'KO'
+            'Client configuration apply': 'KO',
         }
 
     def __setting_flask(self):
@@ -72,6 +74,8 @@ class Deployement:
         self.__app.add_url_rule(
             "/client_config", view_func=self.__client_config)
         self.__app.add_url_rule("/end", view_func=self.__end)
+        self.__app.add_url_rule("/show_pdf/<filename>",
+                                view_func=self.__show_pdf)
 
     def __init_socketio(self):
         self.__socketio.on_event(
@@ -94,7 +98,7 @@ class Deployement:
 
     """ ---------------------------- Flask ROUTE ---------------------------- """
 
-    def show_pdf(self, filename):
+    def __show_pdf(self, filename):
         if not "path" in send_from_directory.__code__.co_varnames:
             response = make_response(send_from_directory(
                 self.__app.static_folder, filename=f'pdf/{filename}.pdf'))
@@ -110,51 +114,51 @@ class Deployement:
         h = utility.get_current_time().split(" ")[1].split("-")
         self.__date = f"{d[0]}/{d[1]}/{d[2]} à {h[0]}h {h[1]}min"
         self.__log["Date"] = self.__date
-        return render_template('index.html')
+        return render_template('index.html', SN=self.__config.ROBOT_SN)
 
     def __register(self):
-        return redirect("/__vesc_foc")
+        return redirect("/vesc_foc")
 
     def __vesc_foc(self):
-        return render_template('vesc_foc.html')
+        return render_template('vesc_foc.html', SN=self.__config.ROBOT_SN)
 
     def __vesc_z(self):
-        return render_template('vesc_z.html')
+        return render_template('vesc_z.html', SN=self.__config.ROBOT_SN)
 
     def __x_y_dir(self):
-        return render_template('x_y_dir.html', A_MAX=self.__config.A_MAX, Y_MAX=self.__config.Y_MAX, X_MAX=self.__config.X_MAX, IN_RESET=json.dumps(in_reset))
+        return render_template('x_y_dir.html', A_MAX=self.__config.A_MAX, Y_MAX=self.__config.Y_MAX, X_MAX=self.__config.X_MAX, IN_RESET=json.dumps(False), SN=self.__config.ROBOT_SN)
 
     def __camera_focus(self):
         self.__cameraCalibration.focus_adjustment_step()
-        return render_template('camera_focus.html')
+        return render_template('camera_focus.html', SN=self.__config.ROBOT_SN)
 
     def __camera_crop_picture(self):
         try:
             self.__cameraCalibration.focus_adjustment_step_validate()
         except:
             pass
-        return render_template('camera_crop_picture.html')
+        return render_template('camera_crop_picture.html', SN=self.__config.ROBOT_SN)
 
     def __camera_target_detection(self):
         res = self.__smoothie.ext_calibrate_cork()
         if res != self.__smoothie.RESPONSE_OK:
             print("Initial cork calibration was failed, smoothie response:\n", res)
-        return render_template('camera_target_detection.html')
+        return render_template('camera_target_detection.html', SN=self.__config.ROBOT_SN)
 
     def __camera_target_move(self):
         if self.__cameraCalibration.target_x is None:
             return redirect("/camera_target_detection")
-        return render_template('camera_target_move.html')
+        return render_template('camera_target_move.html', SN=self.__config.ROBOT_SN)
 
     def __client_config(self):
         self.__changeConfigValue(
             "CORK_TO_CAMERA_DISTANCE_X", self.__config.CORK_TO_CAMERA_DISTANCE_X + self.__offset_x)
         self.__changeConfigValue(
             "CORK_TO_CAMERA_DISTANCE_Y", self.__config.CORK_TO_CAMERA_DISTANCE_Y + self.__offset_y)
-        return render_template('client_config.html')
+        return render_template('client_config.html', SN=self.__config.ROBOT_SN)
 
     def __end(self):
-        return render_template('end.html', answer=self.__log)
+        return render_template('end.html', answer=self.__log, SN=self.__config.ROBOT_SN)
 
     """ ---------------------------- Socketio ROUTE ---------------------------- """
 
