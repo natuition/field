@@ -109,28 +109,24 @@ class Deployement:
         return render_template('x_y_dir.html', A_MAX=self.__config.A_MAX, Y_MAX=self.__config.Y_MAX, X_MAX=self.__config.X_MAX, IN_RESET=json.dumps(in_reset))
 
     def __camera_focus(self):
-        global cameraCalibration
-        cameraCalibration.focus_adjustment_step()
+        self.__cameraCalibration.focus_adjustment_step()
         return render_template('camera_focus.html')
 
     def __camera_crop_picture(self):
-        global cameraCalibration
         try:
-            cameraCalibration.focus_adjustment_step_validate()
+            self.__cameraCalibration.focus_adjustment_step_validate()
         except:
             pass
         return render_template('camera_crop_picture.html')
 
     def __camera_target_detection(self):
-        global smoothie
-        res = smoothie.ext_calibrate_cork()
-        if res != smoothie.RESPONSE_OK:
+        res = self.__smoothie.ext_calibrate_cork()
+        if res != self.__smoothie.RESPONSE_OK:
             print("Initial cork calibration was failed, smoothie response:\n", res)
         return render_template('camera_target_detection.html')
 
     def __camera_target_move(self):
-        global cameraCalibration
-        if cameraCalibration.target_x is None:
+        if self.__cameraCalibration.target_x is None:
             return redirect("/camera_target_detection")
         return render_template('camera_target_move.html')
 
@@ -198,11 +194,11 @@ class Deployement:
 
     def on_x_y_dir(self, data):
         if "x" in data and self.__smoothie is not None:
-            smoothie.custom_move_for(X_F=self.__config.X_F_MAX, X=data["x"])
+            self.__smoothie.custom_move_for(X_F=self.__config.X_F_MAX, X=data["x"])
         if "y" in data and self.__smoothie is not None:
-            smoothie.custom_move_for( Y_F=self.__config.Y_F_MAX, Y=data["y"])
+            self.__smoothie.custom_move_for( Y_F=self.__config.Y_F_MAX, Y=data["y"])
         if "a" in data and self.__smoothie is not None:
-            smoothie.custom_move_for(A_F=self.__config.A_F_MAX, A=data["a"])
+            self.__smoothie.custom_move_for(A_F=self.__config.A_F_MAX, A=data["a"])
         if "inv" in data and self.__smoothie is not None:
             translate_axis_grec = {"x":"alpha_dir_pin","y":"beta_dir_pin","a":"delta_dir_pin"}
             for axis, invert in data["inv"].items():
