@@ -10,7 +10,7 @@ function enableNext() {
     }
 }
 $(document).ready(function () {
-    $('#next').prop('disabled', true);
+    enableNext();
     verif_iframe_start();
 });
 

@@ -45,8 +45,7 @@ function disableAfterApplyInvert() {
 }
 
 $(document).ready(function () {
-    $('#next').prop('disabled', true);
-    if (inreset) disableAfterApplyInvert();
+    enableNext();
 });
 
 socketio.on('reload', function (dataServ) {

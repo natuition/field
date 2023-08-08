@@ -120,35 +120,35 @@ class Deployement:
         return redirect("/vesc_foc")
 
     def __vesc_foc(self):
-        return render_template('vesc_foc.html', SN=self.__config.ROBOT_SN)
+        return render_template('vesc_foc.html', SN=self.__config.ROBOT_SN, log=self.__log)
 
     def __vesc_z(self):
-        return render_template('vesc_z.html', SN=self.__config.ROBOT_SN)
+        return render_template('vesc_z.html', SN=self.__config.ROBOT_SN, log=self.__log)
 
     def __x_y_dir(self):
-        return render_template('x_y_dir.html', A_MAX=self.__config.A_MAX, Y_MAX=self.__config.Y_MAX, X_MAX=self.__config.X_MAX, IN_RESET=json.dumps(False), SN=self.__config.ROBOT_SN)
+        return render_template('x_y_dir.html', A_MAX=self.__config.A_MAX, Y_MAX=self.__config.Y_MAX, X_MAX=self.__config.X_MAX, IN_RESET=json.dumps(False), SN=self.__config.ROBOT_SN, log=self.__log)
 
     def __camera_focus(self):
         self.__cameraCalibration.focus_adjustment_step()
-        return render_template('camera_focus.html', SN=self.__config.ROBOT_SN)
+        return render_template('camera_focus.html', SN=self.__config.ROBOT_SN, log=self.__log)
 
     def __camera_crop_picture(self):
         try:
             self.__cameraCalibration.focus_adjustment_step_validate()
         except:
             pass
-        return render_template('camera_crop_picture.html', SN=self.__config.ROBOT_SN)
+        return render_template('camera_crop_picture.html', SN=self.__config.ROBOT_SN, log=self.__log)
 
     def __camera_target_detection(self):
         res = self.__smoothie.ext_calibrate_cork()
         if res != self.__smoothie.RESPONSE_OK:
             print("Initial cork calibration was failed, smoothie response:\n", res)
-        return render_template('camera_target_detection.html', SN=self.__config.ROBOT_SN)
+        return render_template('camera_target_detection.html', SN=self.__config.ROBOT_SN, log=self.__log)
 
     def __camera_target_move(self):
         if self.__cameraCalibration.target_x is None:
             return redirect("/camera_target_detection")
-        return render_template('camera_target_move.html', SN=self.__config.ROBOT_SN)
+        return render_template('camera_target_move.html', SN=self.__config.ROBOT_SN, log=self.__log)
 
     def __client_config(self):
         self.__changeConfigValue(
@@ -158,7 +158,7 @@ class Deployement:
         return render_template('client_config.html', SN=self.__config.ROBOT_SN)
 
     def __end(self):
-        return render_template('end.html', answer=self.__log, SN=self.__config.ROBOT_SN)
+        return render_template('end.html', log=self.__log, SN=self.__config.ROBOT_SN)
 
     """ ---------------------------- Socketio ROUTE ---------------------------- """
 
@@ -191,7 +191,10 @@ class Deployement:
                 'apply_config', {'apply_done': True}, namespace='/server', broadcast=True)
 
     def __on_validate_log(self, data):
+        print(self.__log)
+        print(data)
         self.__log[data["key"]] = data["value"]
+        print(self.__log)
 
     def __on_run_round_detection(self, data):
         if data["run_detection"]:

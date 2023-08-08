@@ -8,7 +8,7 @@
 
 <form method="POST" action="/final">
     <table class="table table-hover table-striped">
-        {% for key, value in answer.items() %}
+        {% for key, value in log.items() %}
         <tr>
             <th> {{ key }} </th>
             <td class="{{ value }}"> {{ value }} </td>

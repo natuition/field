@@ -58,15 +58,18 @@
     </div>
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
         <div class="form-check form-check-inline">
-            <input class="form-check-input check" type="checkbox" id="xDone" onclick="enableNext()">
+            <input {% if log["X Y DIR setup"]=="OK" %} checked {% endif %} class="form-check-input check"
+                type="checkbox" id="xDone" onclick="enableNext()">
             <label class="form-check-label" for="xDone">X axis done</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input check" type="checkbox" id="yDone" onclick="enableNext()">
+            <input {% if log["X Y DIR setup"]=="OK" %} checked {% endif %} class="form-check-input check"
+                type="checkbox" id="yDone" onclick="enableNext()">
             <label class="form-check-label" for="yDone">Y axis done</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input check" type="checkbox" id="dirDone" onclick="enableNext()">
+            <input {% if log["X Y DIR setup"]=="OK" %} checked {% endif %} class="form-check-input check"
+                type="checkbox" id="dirDone" onclick="enableNext()">
             <label class="form-check-label" for="dirDone">Dir axis done</label>
         </div>
         <button type="button" id="next" class="btn btn-danger"
