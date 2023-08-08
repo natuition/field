@@ -1,6 +1,6 @@
 function enableNext() {
     if ($('#zDone').is(':checked')) {
-        $('#next').prop('class', "btn btn-success");
+        $('#next').prop('class', "btn btn-secondary");
         $('#next').prop('disabled', false);
     } else {
         $('#next').prop('disabled', true);

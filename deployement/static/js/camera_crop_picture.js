@@ -2,7 +2,7 @@ var url_cam = 'http://' + document.domain + ':8080/video';
 
 function enableNext() {
     if ($("#roundDetectionDone").is(':checked')) {
-        $('#next').prop('class', "btn btn-success");
+        $('#next').prop('class', "btn btn-secondary");
         $('#next').prop('disabled', false);
     } else {
         $('#next').prop('disabled', true);

@@ -6,7 +6,7 @@ function enableNext() {
     if ($("#xDone").is(':checked') && $('#yDone').is(':checked') && $('#dirDone').is(':checked')
         && !$('#invX').is(':checked') && !$('#invY').is(':checked') && !$('#invDir').is(':checked')) {
         $('#next').attr({
-            class: "btn btn-success",
+            class: "btn btn-secondary",
             disabled: false
         });
     } else {
