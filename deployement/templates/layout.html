@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Deployement server</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style_breadcrumb_trail.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global_style.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+</head>
+
+<body>
+    <header>
+    <h1 style="text-align: center; padding: 10px 0;">{% block title %}{% endblock %}</h1>
+    </header>
+
+    {% block content %}
+    {% endblock %}
+
+    <footer>
+        <div class="breadcrumb flat">
+            <a href="#" class="active">Home</a>
+            <a href="#">Vesc foc</a>
+            <a href="#">Vesc Z</a>
+            <a href="#">Smoothie axis direction</a>
+            <a href="#">Smoothie endstops</a>
+            <a href="#">Smoothie mm config</a>
+            <a href="#">Camera focus</a>
+            <a href="#">Scene center</a>
+            <a href="#">Controle points</a>
+            <a href="#">Target</a>
+            <a href="#">Deploy services</a>
+            <a href="#">Resume</a>
+        </div>
+    </footer>
+
+</body>
+
+</html>

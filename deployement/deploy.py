@@ -9,7 +9,6 @@ import grp
 import os
 import logging
 import time
-import serial
 import json
 from flask_cors import CORS
 import shutil
@@ -41,12 +40,10 @@ socketio = SocketIO(app, async_mode=None, logger=False, engineio_logger=False)
 smoothie: adapters.SmoothieAdapter = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
 cameraCalibration: CameraCalibration = CameraCalibration()
 offset_x, offset_y = 0,0
-technicien = None
 Date = None
 
 LOG = {
     'Date': Date, 
-    'Technicien': 'KO',
     'Vesc foc': 'KO',
     'X Y DIR setup': 'KO',
     'Camera focus': 'KO',
@@ -72,10 +69,6 @@ def home():
 
 @app.route('/register',methods = ['POST'])
 def register():
-    result = request.form
-    global technicien
-    technicien = result['technicien']
-    LOG["Technicien"] = technicien
     d = utility.get_current_time().split(" ")[0].split("-")
     h = utility.get_current_time().split(" ")[1].split("-")
     Date = f"{d[0]}/{d[1]}/{d[2]} à {h[0]}h {h[1]}min"
@@ -84,35 +77,24 @@ def register():
 
 @app.route("/vesc_foc")
 def vesc_foc():
-    global technicien
-    if technicien is None:
-        return redirect("/")
     return render_template('vesc_foc.html')
+
+@app.route("/vesc_z")
+def vesc_foc():
+    return render_template('vesc_z.html')
 
 @app.route("/x_y_dir")
 def x_y_dir():
-    global technicien
-    if technicien is None:
-        return redirect("/")
-    global smoothie
-    if smoothie is None and not in_reset:
-        smoothie = adapters.SmoothieAdapter(utility.get_smoothie_vesc_addresses()["smoothie"], calibration_at_init=False)
     return render_template('x_y_dir.html', A_MAX=config.A_MAX, Y_MAX=config.Y_MAX, X_MAX=config.X_MAX, IN_RESET=json.dumps(in_reset))
 
 @app.route("/camera_focus")
 def camera_focus():
-    global technicien
-    if technicien is None:
-        return redirect("/")
     global cameraCalibration
     cameraCalibration.focus_adjustment_step()
     return render_template('camera_focus.html')
 
 @app.route("/camera_crop_picture")
 def camera_crop_picture():
-    global technicien
-    if technicien is None:
-        return redirect("/")
     global cameraCalibration
     try:
         cameraCalibration.focus_adjustment_step_validate()
@@ -122,15 +104,7 @@ def camera_crop_picture():
 
 @app.route("/camera_target_detection")
 def camera_target_detection():
-    global technicien
-    if technicien is None:
-        return redirect("/")
     global smoothie
-    res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
-    smoothie.wait_for_all_actions_done()
-    if res != smoothie.RESPONSE_OK:
-        print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
-
     res = smoothie.ext_calibrate_cork()
     if res != smoothie.RESPONSE_OK:
         print("Initial cork calibration was failed, smoothie response:\n", res)
@@ -138,28 +112,19 @@ def camera_target_detection():
 
 @app.route("/camera_target_move")
 def camera_target_move():
-    global technicien
     global cameraCalibration
-    if technicien is None:
-        return redirect("/")
     if cameraCalibration.target_x is None:
         return redirect("/camera_target_detection")
     return render_template('camera_target_move.html')
 
 @app.route("/client_config")
 def client_config():
-    global technicien
-    if technicien is None:
-        return redirect("/")
     changeConfigValue("CORK_TO_CAMERA_DISTANCE_X",config.CORK_TO_CAMERA_DISTANCE_X+offset_x)
     changeConfigValue("CORK_TO_CAMERA_DISTANCE_Y",config.CORK_TO_CAMERA_DISTANCE_Y+offset_y)
     return render_template('client_config.html')
 
 @app.route("/end")
 def end():
-    global technicien
-    if technicien is None:
-        return redirect("/")
     return render_template('end.html', answer = LOG)
 
 @socketio.on('client_config', namespace='/server')
@@ -212,7 +177,7 @@ def on_run_target_detection(data):
         socketio.emit('image', {'image_data': image_data, "res": res}, namespace='/server', broadcast=True)
 
 @socketio.on('run_move_to_target', namespace='/server')
-def on_run_target_detection(data):
+def on_run_move_to_target(data):
     global cameraCalibration
     global smoothie
     if data["run_move_to_target"]:

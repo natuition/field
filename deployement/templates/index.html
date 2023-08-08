@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block title %} Start this deployment {% endblock %}
+
+{% block content %}
+
+<form class="w-75 m-auto" action="/register" method="post">
+    <div class="text-end">
+        <button type="submit" class="btn btn-outline-success">Start</button>
+    </div>
+</form>
+
+{% endblock %}
