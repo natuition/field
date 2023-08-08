@@ -263,9 +263,9 @@ class Deployement:
             # self.__smoothie.get_connector().write("reset")
             # response = self.__smoothie.get_connector().read_some()
 
-    """ ---------------------------- Utils function ---------------------------- """
+    """ ---------------------------- Utils methodes ---------------------------- """
 
-    def __changeConfigValue(path: str, value):
+    def __changeConfigValue(self, path: str, value):
         with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
             for line in file:
                 if path in line:
