@@ -336,24 +336,8 @@ class SettingPageManager:
 
     def __applyConfigValue(self):
         if self.__change_config_value:
-            with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
-                for line in file:
-                    find = False
-                    for path, value_is_str in self.__change_config_value.items():
-                        if path in line:
-                            if not line.split(path)[0]:
-                                if value_is_str[1]:
-                                    print(path + " = \"" +
-                                          str(value_is_str[0]), end='"\n')
-                                else:
-                                    print(path + " = " +
-                                          str(value_is_str[0]), end='\n')
-                                find = True
-                    if not find:
-                        print(line, end='')
-            uid = pwd.getpwnam("violette").pw_uid
-            gid = grp.getgrnam("violette").gr_gid
-            os.chown("../config/config.py", uid, gid)
+            for path, value_is_str in self.__change_config_value.items():
+                utility.change_config_value("../config/config.py", path, value_is_str[0], value_is_str[1])
 
     def __get_ia_list(self, dir_path) -> list:
         ia_list = []

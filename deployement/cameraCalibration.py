@@ -14,6 +14,7 @@ from extraction import ExtractionManagerV3
 import utility
 import adapters
 import importlib
+import re
 
 
 class CameraCalibration:
@@ -157,33 +158,6 @@ class CameraCalibration:
                 exit(1)
         return smoothie_address
 
-    @staticmethod
-    def __changeConfigValue(path: str, value):
-        with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
-            found_key = False
-
-            for line in file:
-                # skip comments
-                if line.startswith("#"):
-                    print(line, end='')
-                    continue
-
-                # if key name is strictly equal
-                elements = line.split("=")
-                if len(elements) > 0 and elements[0].strip() == path:
-                    print(path + " = " + str(value), end='\n')
-                    found_key = True
-                else:
-                    print(line, end='')
-
-            # if key is absent - add it to the end of the file
-            if not found_key:
-                print(path + " = " + str(value), end='\n')
-
-        uid = pwd.getpwnam("violette").pw_uid
-        gid = grp.getgrnam("violette").gr_gid
-        os.chown("../config/config.py", uid, gid)
-
     def set_crop_values(self):
         """Version with multiple resolutions support"""
 
@@ -247,13 +221,13 @@ class CameraCalibration:
                 self.scene_center_y + point[1]
             ])
 
-        CameraCalibration.__changeConfigValue("SCENE_CENTER_X", self.scene_center_x)
-        CameraCalibration.__changeConfigValue("SCENE_CENTER_Y", self.scene_center_y)
-        CameraCalibration.__changeConfigValue("WORKING_ZONE_POLY_POINTS", abs_poly_points)
-        CameraCalibration.__changeConfigValue("CROP_W_FROM", self.crop_w_from)
-        CameraCalibration.__changeConfigValue("CROP_W_TO", self.crop_w_to)
-        CameraCalibration.__changeConfigValue("CROP_H_FROM", self.crop_h_from)
-        CameraCalibration.__changeConfigValue("CROP_H_TO", self.crop_h_to)
+        utility.change_config_value("../config/config.py","SCENE_CENTER_X", self.scene_center_x)
+        utility.change_config_value("../config/config.py","SCENE_CENTER_Y", self.scene_center_y)
+        utility.change_config_value("../config/config.py","WORKING_ZONE_POLY_POINTS", abs_poly_points)
+        utility.change_config_value("../config/config.py","CROP_W_FROM", self.crop_w_from)
+        utility.change_config_value("../config/config.py","CROP_W_TO", self.crop_w_to)
+        utility.change_config_value("../config/config.py","CROP_H_FROM", self.crop_h_from)
+        utility.change_config_value("../config/config.py","CROP_H_TO", self.crop_h_to)
         importlib.reload(config)
 
 

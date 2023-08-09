@@ -151,9 +151,9 @@ class Deployement:
         return render_template('camera_target_move.html', SN=self.__config.ROBOT_SN, log=self.__log)
 
     def __client_config(self):
-        self.__changeConfigValue(
+        utility.change_config_value("../config/config.py",
             "CORK_TO_CAMERA_DISTANCE_X", self.__config.CORK_TO_CAMERA_DISTANCE_X + self.__offset_x)
-        self.__changeConfigValue(
+        utility.change_config_value("../config/config.py",
             "CORK_TO_CAMERA_DISTANCE_Y", self.__config.CORK_TO_CAMERA_DISTANCE_Y + self.__offset_y)
         return render_template('client_config.html', SN=self.__config.ROBOT_SN)
 
@@ -267,17 +267,6 @@ class Deployement:
             # response = self.__smoothie.get_connector().read_some()
 
     """ ---------------------------- Utils methodes ---------------------------- """
-
-    def __changeConfigValue(self, path: str, value):
-        with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
-            for line in file:
-                if path in line:
-                    print(path + " = " + str(value), end='\n')
-                else:
-                    print(line, end='')
-        uid = pwd.getpwnam("violette").pw_uid
-        gid = grp.getgrnam("violette").gr_gid
-        os.chown("../config/config.py", uid, gid)
 
     def __reload_config(self):
         print("Reload config in new_deploy.py...")
