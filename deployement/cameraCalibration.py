@@ -3,9 +3,6 @@ import subprocess
 import signal
 import cv2
 import numpy as np
-import fileinput
-import pwd
-import grp
 import time
 import sys
 sys.path.append('../')
@@ -38,7 +35,9 @@ class CameraCalibration:
     def focus_adjustment_step_validate(self):
         os.killpg(os.getpgid(self.__cam.pid), signal.SIGINT)
         self.__cam.wait()
+        time.sleep(1)
         os.system("sudo systemctl restart nvargus-daemon")
+        time.sleep(1)
 
     def step_crop_picture(self):
         image_saver = utility.ImageSaver()

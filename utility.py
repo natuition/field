@@ -13,7 +13,9 @@ from config import config
 import time
 from pytz import timezone
 import socket
-
+import fileinput
+import pwd
+import grp
 
 class ImageSaver:
     """Implements flexible ways to save images and detected objects on them
@@ -689,3 +691,40 @@ def get_last_dir_name(parent_dir_path: str):
                 last_dir = cur_obj_name
                 last_dir_creation_time = cur_dir_creation_time
     return last_dir
+
+
+def change_config_value(config_path: str, path: str, value, value_is_str=False):
+    with fileinput.FileInput(config_path, inplace=True, backup='.bak') as file:
+        found_key = False
+        next_line = False
+
+        for line in file:
+            # skip comments
+            if line.startswith("#"):
+                print(line, end='')
+                continue
+
+            # if key name is strictly equal
+            elements = line.split("=")
+            if len(elements) > 0 and elements[0].strip() == path:
+                if value_is_str:
+                    print(path + " = \"" + str(value), end='"\n')
+                else:
+                    print(path + " = " + str(value), end='\n')
+                found_key = True
+                next_line = True
+            else:
+                if not next_line:
+                    print(line, end='')
+                    continue
+                elif "=" in line or line.replace(" ","").startswith("\n"):
+                    print(line, end='')
+                    next_line = False
+
+        # if key is absent - add it to the end of the file
+        if not found_key:
+            print(path + " = " + str(value), end='\n')
+
+    uid = pwd.getpwnam("violette").pw_uid
+    gid = grp.getgrnam("violette").gr_gid
+    os.chown(config_path, uid, gid)
