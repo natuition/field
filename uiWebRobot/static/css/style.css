@@ -17,14 +17,14 @@ body {
 }
 
 
-#canvas_joystick:hover,
-#Wheel:hover,
-#choose_field_selector:hover {
+#canvas_joystick:hover:not(.disabled),
+#Wheel:hover:not(.disabled),
+#choose_field_selector:hover:not(.disabled) {
     cursor: pointer;
 }
 
-button:hover,
-.header__info--model:hover {
+button:hover:not(.disabled),
+.header__info--model:hover:not(.disabled) {
     cursor: pointer;
     box-shadow: 10px 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19) !important;
     z-index: 1;
