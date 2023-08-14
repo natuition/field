@@ -1034,24 +1034,14 @@ def move_to_point_and_extract(coords_from_to: list,
         order_angle_sm = target_angle_sm - ad_wheels_pos
 
         # check for out of update frequency and smoothie execution speed range (for nav wheels)
-        if order_angle_sm > config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
-                config.A_ONE_DEGREE_IN_SMOOTHIE:
-            msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(
-                config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND +
-                config.A_ONE_DEGREE_IN_SMOOTHIE) + " due to exceeding degrees per tick allowed range."
+        if abs(order_angle_sm) > config.A_DEGREES_PER_MANEUVERS_FREQUENCY * config.A_ONE_DEGREE_IN_SMOOTHIE:
+            new_order_angle_sm = (order_angle_sm/abs(order_angle_sm)) * config.A_DEGREES_PER_MANEUVERS_FREQUENCY * config.A_ONE_DEGREE_IN_SMOOTHIE
+            msg =   "Order angle changed from " + str(order_angle_sm) + \
+                    " to " + str(new_order_angle_sm) + \
+                    " due to exceeding degrees per tick allowed range."
             # print(msg)
             logger_full.write(msg + "\n")
-            order_angle_sm = config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
-                config.A_ONE_DEGREE_IN_SMOOTHIE
-        elif order_angle_sm < -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
-                                config.A_ONE_DEGREE_IN_SMOOTHIE):
-            msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(-(
-                config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
-                config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
-            # print(msg)
-            logger_full.write(msg + "\n")
-            order_angle_sm = -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
-                               config.A_ONE_DEGREE_IN_SMOOTHIE)
+            order_angle_sm = new_order_angle_sm
 
         # convert to global smoothie coordinates
         order_angle_sm += ad_wheels_pos
@@ -1385,6 +1375,8 @@ def build_forward_backward_path(abcd_points: list,
     Will append zigzag points into the existing path if it is not None, otherwise creates a path from scratch.
     Returns python list of gps [[latitude, longitude], speed] points."""
 
+    print("[Debug] build_forward_backward_path")
+
     if type(abcd_points) != list:
         msg = f"Given ABCD path must be a list, got {type(abcd_points).__name__} instead"
         raise TypeError(msg)
@@ -1409,6 +1401,12 @@ def build_forward_backward_path(abcd_points: list,
 
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
 
+    start_point = a
+
+    if nav.get_distance(a,b) < nav.get_distance(b,c):
+        a, b, c, d = abcd_points[1], abcd_points[2], abcd_points[3], abcd_points[0]
+        
+
     # separate stop-flags and BC & AD length control allows correct processing 4 corner non 90 degrees fields
     bc_dist_ok = ad_dist_ok = True
 
@@ -1416,10 +1414,7 @@ def build_forward_backward_path(abcd_points: list,
         if not add_points_to_path(path, [b, SI_speed_fwd]):
             msg = f"Failed to add point B={str(b)} to path. This expected never to happen."
             raise RuntimeError(msg)
-
-        if not add_points_to_path(path, [a, SI_speed_rev]):
-            msg = f"Failed to add point A={str(a)} to path. This expected never to happen."
-            raise RuntimeError(msg)
+        last_b = b
 
         if nav.get_distance(b, c) >= config.SPIRAL_SIDES_INTERVAL:
             b = nav.get_point_on_vector(b, c, config.SPIRAL_SIDES_INTERVAL)
@@ -1430,6 +1425,19 @@ def build_forward_backward_path(abcd_points: list,
             a = nav.get_point_on_vector(a, d, config.SPIRAL_SIDES_INTERVAL)
         else:
             ad_dist_ok = False
+
+        if nav.get_distance(last_b, a) > 5000:
+            segments = nav.get_vector(last_b, a, 500)
+            speed_list = [SI_speed_rev] * (len(segments))
+            segments_with_speed = list(map(list,zip(segments,speed_list)))
+            print(segments_with_speed.pop(0))
+            if not add_points_to_path(path, *segments_with_speed):
+                msg = f"Failed to add segments_with_speed={str(segments_with_speed)} to path. This expected never to happen."
+                raise RuntimeError(msg)
+        else:
+            if not add_points_to_path(path, [a, SI_speed_rev]):
+                msg = f"Failed to add point A={str(a)} to path. This expected never to happen."
+                raise RuntimeError(msg)
 
     return path
 
@@ -2346,6 +2354,7 @@ def main():
                     # generate path points
                     path_start_index = 1
                     if config.TRADITIONAL_PATH:
+                        print("[Debug] TRADITIONAL_PATH")
                         path_points = build_path(
                             field_gps_coords,
                             nav,
@@ -2353,6 +2362,7 @@ def main():
                             config.SI_SPEED_FWD,
                             config.SI_SPEED_REV)
                     elif config.BEZIER_PATH:
+                        print("[Debug] BEZIER_PATH")
                         path_points = build_bezier_path(
                             field_gps_coords,
                             nav,
@@ -2360,6 +2370,8 @@ def main():
                             config.SI_SPEED_FWD,
                             config.SI_SPEED_REV)
                     elif config.FORWARD_BACKWARD_PATH:
+                        print("[Debug] FORWARD_BACKWARD_PATH")
+                        path_start_index = 0
                         path_points = build_forward_backward_path(
                             field_gps_coords,
                             nav,
@@ -2404,6 +2416,8 @@ def main():
                 logger_full.write(msg + "\n")
                 notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
                 exit()
+
+            #raise Exception("Path generated !")
 
             # set smoothie's A axis to 0 (nav turn wheels)
             response = smoothie.set_current_coordinates(A=0)
@@ -2799,12 +2813,21 @@ def main():
                             with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
                                 wheels_angle_file.write(
                                     str(smoothie.get_adapter_current_coordinates()["A"]))
-                        test_continue = input(
-                            "Press enter to continue the test, type anything to exit.")
-                        if test_continue != "":
-                            notification.close()
-                            break
+                        #msg = "Press enter to continue the test, type anything to exit."
+                        #logger_full.write(msg + "\n")
+                        #test_continue = input(msg)
+                        #if test_continue != "":
+                        #    notification.close()
+                        #    break
+                        time_paused = 5
+                        msg = f"Continue the test in {time_paused} secondes."
+                        logger_full.write(msg + "\n")
+                        print(msg)
+                        time.sleep(time_paused)
                         try:
+                            msg = "Go continue."
+                            logger_full.write(msg + "\n")
+                            print(msg)
                             start_position = utility.average_point(
                                 gps, trajectory_saver, nav)
                         except:

@@ -37,24 +37,18 @@ KP = {
     0.175: 0.2,
     -0.175: 0.19,
 
-    0.7: 0.11000000000000001,
-    -0.7: 0.0360000000000001,
-
-    0.5: 0.293*0.277,
-    -0.5: 0.293*0.14,
+    0.5: 0.486966,#0.486966,
+    -0.5: 0.486966*0.9,#0.543515,
 
     0: 0.2
 } # SI_speed: value of KP at this speed (warning - is important for si_speed)
 
 KI = {
-    0.175: 0.0092, 
+    0.175: 0.0092,
     -0.175: 0.0092, 
-
-    0.7: 0.008372000000000001, 
-    -0.7: 0.000000001,
     
-    0.5: 0.00125,
-    -0.5: 0.00003,
+    0.5: 0.0036875,#0.0036875,
+    -0.5: 0.00036875*0.28,#*1.35,#0.00075,
 
     0: 0.092
 } # SI_speed: value of KP at this speed (warning - is important for si_speed)
@@ -347,7 +341,7 @@ C_F_MAX = 1000
 C_COEFFICIENT_TO_MM = 1
 
 A_ONE_DEGREE_IN_SMOOTHIE = 2  # A axis
-A_DEGREES_PER_SECOND = 5  # A axis
+A_DEGREES_PER_MANEUVERS_FREQUENCY = 0.95  # A axis
 NAV_TURN_WHEELS_CENTER = 0
 
 RETRY_CORK_UP_MIN = 1
