@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.8"
+CONFIG_VERSION = "0.20.9"
 
 
 # ======================================================================================================================
@@ -701,3 +701,24 @@ GPS_POINT_WAIT_TIME_MAX = 0.25
 ALLOW_DEMO_PAUSES = False
 DEMO_PAUSES_HOST = "127.0.0.1"
 DEMO_PAUSES_PORT = 4546
+
+# pattern 2x2 and 3x3 with partial cork picks update
+# these values are applied only in patterns with partial cork pickup during extractions (partial 2x2, 3x3, ...)
+Z_F_PARTIAL_FIRST_EXT_DOWN = 0
+Z_PARTIAL_FIRST_EXT_DOWN = 0
+Z_F_PARTIAL_FIRST_EXT_UP = 0
+Z_PARTIAL_FIRST_EXT_UP = 0
+Z_F_PARTIAL_SUBS_EXT_DOWN = 0
+Z_PARTIAL_SUBS_EXT_DOWN = 0
+Z_F_PARTIAL_SUBS_EXT_UP = 0
+Z_PARTIAL_SUBS_EXT_UP = 0
+
+# config custom extractions methods sequences update
+# ordered list of patterns to apply during extractions, first in list is applied first, last is applied last
+EXT_PATTERNS_SEQUENCE = [
+    "single_center_drop",
+    "pattern_plus",
+    "pattern_x"
+    # "pattern_3x3_partial",
+    # "pattern_2x2_partial"
+]

@@ -1031,12 +1031,13 @@ class ExtractionMap:
     def __init__(self, cell_size_mm):
         self.__cell_size_mm = cell_size_mm
         self.__matrix = dict()
-        # list items order is strategies order which defines what strategies should be used first
-        self.__strategies = [
-            ExtractionMethods.single_center_drop,
-            ExtractionMethods.pattern_plus,
-            ExtractionMethods.pattern_x
-        ]
+        self.__strategies = list()  # ordered list of strategies to use during extractions
+        for strategy_name in config.EXT_PATTERNS_SEQUENCE:
+            if hasattr(ExtractionMethods, strategy_name):
+                self.__strategies.append(getattr(ExtractionMethods, strategy_name))
+            else:
+                msg = f"Extraction strategy '{strategy_name}' was not found in ExtractionMethods"
+                raise ValueError(msg)
 
     def record_extraction(self, x: float, y: float):
         x, y = x // self.__cell_size_mm, y // self.__cell_size_mm
@@ -1508,6 +1509,464 @@ class ExtractionMethods:
                 demo_server)
             if res != smoothie.RESPONSE_OK:
                 return res, cork_is_stuck
+
+        return smoothie.RESPONSE_OK, False
+
+    @staticmethod
+    def pattern_3x3_partial(smoothie: adapters.SmoothieAdapter,
+                            vesc_adapter: adapters.VescAdapterV4,
+                            extraction_map: ExtractionMap,
+                            data_collector: datacollection.DataCollector,
+                            demo_server: utility.DemoPauseServer):
+        """
+        Square 9 cork hits (3x3) pattern with partial cork picking during the pattern (for tests).
+        Sequence of extraction positions:
+        3--4--5
+        2--1--6
+        9--8--7
+        """
+
+        # TODO: try to pick up cork before exit this function if there were any smoothie fails during extractions
+        # to prevent main.py break.
+
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            print("EXT. PAUSE: Starting pattern 3x3 partial cork pick.")
+
+        sm_cur = smoothie.get_adapter_current_coordinates()
+        positions = [
+            [sm_cur["X"], sm_cur["Y"]],  # 1
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"]],  # 2
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM],  # 3
+            [sm_cur["X"], sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM],  # 4
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM],  # 5
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"]],  # 6
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM],  # 7
+            [sm_cur["X"], sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM],  # 8
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM],  # 9
+        ]
+
+        for pos_idx, (sm_x, sm_y) in enumerate(positions):
+            # skip this move if it is out of working range
+            if sm_x <= config.X_MIN or sm_x >= config.X_MAX or sm_y <= config.Y_MIN or sm_y >= config.Y_MAX:
+                continue
+
+            # move to position
+            all_ext_xy_start_t = time.time()
+            res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
+            smoothie.wait_for_all_actions_done()
+            data_collector.add_all_ext_xy_t(time.time() - all_ext_xy_start_t)
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res
+                return msg, False if pos_idx == 0 else True
+
+            # do extraction
+            if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                msg = f"EXT. PAUSE: Ready to put cork down; press enter:"
+                print(msg)
+
+            res = smoothie.RESPONSE_OK
+            all_ext_z_start_t = start_t = time.time()
+
+            # this loop implements multiple tries of cork re-picking
+            for _ in range(config.VESC_CORK_PICKUP_MAX_TRIES):
+                # extraction, cork down
+                if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
+                    res = smoothie.custom_move_for(
+                        Z_F=config.Z_F_PARTIAL_FIRST_EXT_DOWN if pos_idx == 0 else config.Z_F_PARTIAL_SUBS_EXT_DOWN,
+                        Z=config.Z_PARTIAL_FIRST_EXT_DOWN if pos_idx == 0 else config.Z_PARTIAL_SUBS_EXT_DOWN)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:  # or smoothie.checkendstop("Z")==1
+                        data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                        msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
+                        return msg, False if pos_idx == 0 else True
+                    """
+                    # partial pick is not implemented for vesc!
+                    elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
+                        vesc_adapter.set_target_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
+                        vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_DOWN_TIME, vesc_adapter.EXTRACTION_KEY)
+                        vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
+                        vesc_adapter.wait_for_stop(vesc_adapter.EXTRACTION_KEY)
+                    """
+                else:
+                    msg = f"config.EXTRACTION_CONTROLLER={str(config.EXTRACTION_CONTROLLER)} is not implemented"
+                    raise NotImplementedError(msg)
+
+                if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                    msg = f"EXT. PAUSE: Cork is down, going to pick it up; press enter:"
+                    input(msg)
+
+                # extraction, cork up
+                if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
+                    res = smoothie.custom_move_for(
+                        Z_F=config.Z_F_PARTIAL_FIRST_EXT_UP if pos_idx == 0 else config.Z_F_PARTIAL_SUBS_EXT_UP,
+                        Z=config.Z_PARTIAL_FIRST_EXT_UP if pos_idx == 0 else config.Z_PARTIAL_SUBS_EXT_UP)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                        msg = "Couldn't move the extractor up, smoothie error occurred:\n" + res + \
+                              "\nemergency exit as I don't want break the corkscrew."
+                        return msg, True
+                    """
+                    elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
+                        vesc_adapter.set_target_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
+                        vesc_adapter.set_time_to_move(
+                            config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME,
+                            vesc_adapter.EXTRACTION_KEY)
+    
+                        cork_pick_start_t = time.time()
+    
+                        vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
+                        cork_is_stuck = not vesc_adapter.wait_for_stopper_hit(
+                            vesc_adapter.EXTRACTION_KEY,
+                            config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME)
+                        vesc_adapter.stop_moving(vesc_adapter.EXTRACTION_KEY)
+    
+                        cork_pick_end_t = time.time()
+    
+                        if config.ALLOW_VESC_CORK_PICKUP_MIN_TIME and \
+                                cork_pick_end_t - cork_pick_start_t < config.VESC_CORK_PICKUP_MIN_TIME:
+                            continue
+    
+                        if cork_is_stuck:
+                            data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                            msg = "Not sure that extractor was properly picked up as vesc stopper hit wasn't registered " \
+                                  "(cork picking up was stopped by security timeout). Emergency exit as I don't want break " \
+                                  "the corkscrew."
+                            return msg, True
+    
+                        # if execution came here - cork picking time is between min and max time so everything's ok - stop loop
+                        break
+                    """
+                else:
+                    msg = f"config.EXTRACTION_CONTROLLER={str(config.EXTRACTION_CONTROLLER)} is not implemented"
+                    raise NotImplementedError(msg)
+
+                # don't do cork pick re-tries if they are disabled or if Z axis controller is smoothie
+                if not config.ALLOW_VESC_CORK_PICKUP_MIN_TIME or config.EXTRACTION_CONTROLLER == 1:
+                    break
+            else:
+                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                msg = "Not sure that extractor was properly picked up as vesc stopper hit was registered too early " \
+                      "(cork pickup time is lesser than VESC_CORK_PICKUP_MIN_TIME). " \
+                      "Emergency exit as I don't want break the corkscrew."
+                return msg, True
+
+            data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+            data_collector.add_cork_moving_time_data(time.time() - start_t)
+
+            # add an extraction record to the extraction matrix and extraction time to the statistic collector
+            sm_cur_coords = smoothie.get_adapter_current_coordinates()
+            extraction_map.record_extraction(sm_cur_coords["X"], sm_cur_coords["Y"])
+
+            # seeder
+            for _ in range(config.SEEDER_QUANTITY):
+                do_x_offset = config.SEEDER_EXT_OFFSET_X != 0
+                do_y_offset = config.SEEDER_EXT_OFFSET_Y != 0
+
+                error_offset = False
+
+                # do x offset if needed
+                if do_x_offset:
+                    res = smoothie.custom_move_for(X_F=config.SEEDER_EXT_OFFSET_X_F, X=config.SEEDER_EXT_OFFSET_X)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder X axis offset, smoothie response:\n" + res
+                        print(msg)
+                        do_x_offset = False
+                        error_offset = True
+
+                # do y offset if needed
+                if do_y_offset:
+                    res = smoothie.custom_move_for(Y_F=config.SEEDER_EXT_OFFSET_Y_F, Y=config.SEEDER_EXT_OFFSET_Y)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder Y axis offset, smoothie response:\n" + res
+                        print(msg)
+                        do_y_offset = False
+                        error_offset = True
+
+                if not error_offset:
+                    # seeder open
+                    res = smoothie.seeder_open()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Error during open seeder, smoothie's output:\n" + res
+                        # TODO probably need to return later both answers to let outer methods log this error
+                        print(msg)
+                    time.sleep(config.SEEDER_FILL_DELAY)
+
+                    # seeder close
+                    res = smoothie.seeder_close()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Error during close seeder, smoothie's output:\n" + res
+                        return msg, False
+                    time.sleep(config.SEEDER_FILL_DELAY)
+
+                    # shake seeder
+                    for delta in [-1, 2, -1]:
+                        res = smoothie.custom_move_for(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, Y=delta, X=delta)
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            msg = "Couldn't do seeder shake, smoothie response:\n" + res
+                            print(msg)
+                else:
+                    print("Error_offset")
+
+                # get back to init position if there was offset on X axis
+                if do_x_offset:
+                    res = smoothie.custom_move_for(X_F=config.SEEDER_EXT_OFFSET_X_F, X=-config.SEEDER_EXT_OFFSET_X)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder X axis offset (back), smoothie response:\n" + res
+                        print(msg)
+
+                # get back to init position if there was offset on Y axis
+                if do_y_offset:
+                    res = smoothie.custom_move_for(Y_F=config.SEEDER_EXT_OFFSET_Y_F, Y=-config.SEEDER_EXT_OFFSET_Y)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder Y axis offset (back), smoothie response:\n" + res
+                        print(msg)
+
+            # save current matrix state to a file
+            if config.DEBUG_MATRIX_FILE:
+                extraction_map.save_to_file("last_extraction_map.txt")
+
+            if res != smoothie.RESPONSE_OK:
+                return res, True
+
+        # pick cork completely
+        res = smoothie.ext_cork_up()
+        smoothie.wait_for_all_actions_done()
+        if res != smoothie.RESPONSE_OK:
+            msg = f"Couldn't pick cork completely after 3x3 partial ext. pattern, smoothie response:\n{res}"
+            return msg, True
+
+        return smoothie.RESPONSE_OK, False
+
+    @staticmethod
+    def pattern_2x2_partial(smoothie: adapters.SmoothieAdapter,
+                            vesc_adapter: adapters.VescAdapterV4,
+                            extraction_map: ExtractionMap,
+                            data_collector: datacollection.DataCollector,
+                            demo_server: utility.DemoPauseServer):
+        """
+        Square 4 cork hits (2x2) pattern with partial cork picking during the pattern (for tests).
+        Sequence of extraction positions:
+        1-----2
+        ---S---
+        4-----3
+        where S is starting position
+        """
+
+        # TODO: try to pick up cork before exit this function if there were any smoothie fails during extractions
+        # to prevent main.py break.
+
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            print("EXT. PAUSE: Starting pattern 3x3 partial cork pick.")
+
+        sm_cur = smoothie.get_adapter_current_coordinates()
+        positions = [
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 1
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 2
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 3
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2]  # 4
+        ]
+
+        for pos_idx, (sm_x, sm_y) in enumerate(positions):
+            # skip this move if it is out of working range
+            if sm_x <= config.X_MIN or sm_x >= config.X_MAX or sm_y <= config.Y_MIN or sm_y >= config.Y_MAX:
+                continue
+
+            # move to position
+            all_ext_xy_start_t = time.time()
+            res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
+            smoothie.wait_for_all_actions_done()
+            data_collector.add_all_ext_xy_t(time.time() - all_ext_xy_start_t)
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res
+                return msg, False if pos_idx == 0 else True
+
+            # do extraction
+            if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                msg = f"EXT. PAUSE: Ready to put cork down; press enter:"
+                print(msg)
+
+            res = smoothie.RESPONSE_OK
+            all_ext_z_start_t = start_t = time.time()
+
+            # this loop implements multiple tries of cork re-picking
+            for _ in range(config.VESC_CORK_PICKUP_MAX_TRIES):
+                # extraction, cork down
+                if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
+                    res = smoothie.custom_move_for(
+                        Z_F=config.Z_F_PARTIAL_FIRST_EXT_DOWN if pos_idx == 0 else config.Z_F_PARTIAL_SUBS_EXT_DOWN,
+                        Z=config.Z_PARTIAL_FIRST_EXT_DOWN if pos_idx == 0 else config.Z_PARTIAL_SUBS_EXT_DOWN)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:  # or smoothie.checkendstop("Z")==1
+                        data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                        msg = "Couldn't move the extractor down, smoothie error occurred:\n" + res
+                        return msg, False if pos_idx == 0 else True
+                    """
+                    # partial pick is not implemented for vesc!
+                    elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
+                        vesc_adapter.set_target_rpm(config.EXTRACTION_CORK_DOWN_RPM, vesc_adapter.EXTRACTION_KEY)
+                        vesc_adapter.set_time_to_move(config.EXTRACTION_CORK_DOWN_TIME, vesc_adapter.EXTRACTION_KEY)
+                        vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
+                        vesc_adapter.wait_for_stop(vesc_adapter.EXTRACTION_KEY)
+                    """
+                else:
+                    msg = f"config.EXTRACTION_CONTROLLER={str(config.EXTRACTION_CONTROLLER)} is not implemented"
+                    raise NotImplementedError(msg)
+
+                if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+                    msg = f"EXT. PAUSE: Cork is down, going to pick it up; press enter:"
+                    input(msg)
+
+                # extraction, cork up
+                if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
+                    res = smoothie.custom_move_for(
+                        Z_F=config.Z_F_PARTIAL_FIRST_EXT_UP if pos_idx == 0 else config.Z_F_PARTIAL_SUBS_EXT_UP,
+                        Z=config.Z_PARTIAL_FIRST_EXT_UP if pos_idx == 0 else config.Z_PARTIAL_SUBS_EXT_UP)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                        msg = "Couldn't move the extractor up, smoothie error occurred:\n" + res + \
+                              "\nemergency exit as I don't want break the corkscrew."
+                        return msg, True
+                    """
+                    elif config.EXTRACTION_CONTROLLER == 2:  # if Z axis controller is vesc
+                        vesc_adapter.set_target_rpm(config.EXTRACTION_CORK_UP_RPM, vesc_adapter.EXTRACTION_KEY)
+                        vesc_adapter.set_time_to_move(
+                            config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME,
+                            vesc_adapter.EXTRACTION_KEY)
+
+                        cork_pick_start_t = time.time()
+
+                        vesc_adapter.start_moving(vesc_adapter.EXTRACTION_KEY)
+                        cork_is_stuck = not vesc_adapter.wait_for_stopper_hit(
+                            vesc_adapter.EXTRACTION_KEY,
+                            config.EXTRACTION_CORK_STOPPER_REACHING_MAX_TIME)
+                        vesc_adapter.stop_moving(vesc_adapter.EXTRACTION_KEY)
+
+                        cork_pick_end_t = time.time()
+
+                        if config.ALLOW_VESC_CORK_PICKUP_MIN_TIME and \
+                                cork_pick_end_t - cork_pick_start_t < config.VESC_CORK_PICKUP_MIN_TIME:
+                            continue
+
+                        if cork_is_stuck:
+                            data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                            msg = "Not sure that extractor was properly picked up as vesc stopper hit wasn't registered " \
+                                  "(cork picking up was stopped by security timeout). Emergency exit as I don't want break " \
+                                  "the corkscrew."
+                            return msg, True
+
+                        # if execution came here - cork picking time is between min and max time so everything's ok - stop loop
+                        break
+                    """
+                else:
+                    msg = f"config.EXTRACTION_CONTROLLER={str(config.EXTRACTION_CONTROLLER)} is not implemented"
+                    raise NotImplementedError(msg)
+
+                # don't do cork pick re-tries if they are disabled or if Z axis controller is smoothie
+                if not config.ALLOW_VESC_CORK_PICKUP_MIN_TIME or config.EXTRACTION_CONTROLLER == 1:
+                    break
+            else:
+                data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+                msg = "Not sure that extractor was properly picked up as vesc stopper hit was registered too early " \
+                      "(cork pickup time is lesser than VESC_CORK_PICKUP_MIN_TIME). " \
+                      "Emergency exit as I don't want break the corkscrew."
+                return msg, True
+
+            data_collector.add_all_ext_z_t(time.time() - all_ext_z_start_t)
+            data_collector.add_cork_moving_time_data(time.time() - start_t)
+
+            # add an extraction record to the extraction matrix and extraction time to the statistic collector
+            sm_cur_coords = smoothie.get_adapter_current_coordinates()
+            extraction_map.record_extraction(sm_cur_coords["X"], sm_cur_coords["Y"])
+
+            # seeder
+            for _ in range(config.SEEDER_QUANTITY):
+                do_x_offset = config.SEEDER_EXT_OFFSET_X != 0
+                do_y_offset = config.SEEDER_EXT_OFFSET_Y != 0
+
+                error_offset = False
+
+                # do x offset if needed
+                if do_x_offset:
+                    res = smoothie.custom_move_for(X_F=config.SEEDER_EXT_OFFSET_X_F, X=config.SEEDER_EXT_OFFSET_X)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder X axis offset, smoothie response:\n" + res
+                        print(msg)
+                        do_x_offset = False
+                        error_offset = True
+
+                # do y offset if needed
+                if do_y_offset:
+                    res = smoothie.custom_move_for(Y_F=config.SEEDER_EXT_OFFSET_Y_F, Y=config.SEEDER_EXT_OFFSET_Y)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder Y axis offset, smoothie response:\n" + res
+                        print(msg)
+                        do_y_offset = False
+                        error_offset = True
+
+                if not error_offset:
+                    # seeder open
+                    res = smoothie.seeder_open()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Error during open seeder, smoothie's output:\n" + res
+                        # TODO probably need to return later both answers to let outer methods log this error
+                        print(msg)
+                    time.sleep(config.SEEDER_FILL_DELAY)
+
+                    # seeder close
+                    res = smoothie.seeder_close()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Error during close seeder, smoothie's output:\n" + res
+                        return msg, False
+                    time.sleep(config.SEEDER_FILL_DELAY)
+
+                    # shake seeder
+                    for delta in [-1, 2, -1]:
+                        res = smoothie.custom_move_for(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, Y=delta, X=delta)
+                        smoothie.wait_for_all_actions_done()
+                        if res != smoothie.RESPONSE_OK:
+                            msg = "Couldn't do seeder shake, smoothie response:\n" + res
+                            print(msg)
+                else:
+                    print("Error_offset")
+
+                # get back to init position if there was offset on X axis
+                if do_x_offset:
+                    res = smoothie.custom_move_for(X_F=config.SEEDER_EXT_OFFSET_X_F, X=-config.SEEDER_EXT_OFFSET_X)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder X axis offset (back), smoothie response:\n" + res
+                        print(msg)
+
+                # get back to init position if there was offset on Y axis
+                if do_y_offset:
+                    res = smoothie.custom_move_for(Y_F=config.SEEDER_EXT_OFFSET_Y_F, Y=-config.SEEDER_EXT_OFFSET_Y)
+                    smoothie.wait_for_all_actions_done()
+                    if res != smoothie.RESPONSE_OK:
+                        msg = "Couldn't do seeder Y axis offset (back), smoothie response:\n" + res
+                        print(msg)
+
+            # save current matrix state to a file
+            if config.DEBUG_MATRIX_FILE:
+                extraction_map.save_to_file("last_extraction_map.txt")
+
+            if res != smoothie.RESPONSE_OK:
+                return res, True
+
+        # pick cork completely
+        res = smoothie.ext_cork_up()
+        smoothie.wait_for_all_actions_done()
+        if res != smoothie.RESPONSE_OK:
+            msg = f"Couldn't pick cork completely after 3x3 partial ext. pattern, smoothie response:\n{res}"
+            return msg, True
 
         return smoothie.RESPONSE_OK, False
 
