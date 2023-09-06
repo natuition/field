@@ -1373,6 +1373,72 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
     return currently_path
 
 
+def build_forward_path(abcd_points: list,
+                                nav: navigation.GPSComputing,
+                                logger: utility.Logger,
+                                SI_speed_fwd: float,
+                                path: list = None):
+    """Builds forward path to fill given ABCD field.
+    Can process 4 non 90 degrees corners fields.
+
+    Will append points into the existing path if it is not None, otherwise creates a path from scratch.
+    Returns python list of gps [[latitude, longitude], speed] points."""
+
+    if type(abcd_points) != list:
+        msg = f"Given ABCD path must be a list, got {type(abcd_points).__name__} instead"
+        raise TypeError(msg)
+
+    if len(abcd_points) != 4:
+        msg = f"Expected 4 ABCD points as input field, got {str(len(abcd_points))} points instead"
+        raise ValueError(msg)
+
+    for point_name, point in zip("ABCD", abcd_points):
+        if type(point) != list:
+            msg = f"Point {point_name} of given ABCD field must be a list, got {type(point).__name__} instead"
+            raise TypeError(msg)
+        if len(point) < 2:
+            msg = f"Point {point_name} of given ABCD field must contain >=2 items, found {str(len(point))} instead"
+            raise ValueError(msg)
+
+    if path is None:
+        path = []
+    elif type(path) != list:
+        msg = f"Given ABCD path must be a list type, got {type(path).__name__} instead"
+        raise TypeError(msg)
+
+    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
+
+    if nav.get_distance(a,b) < nav.get_distance(b,c):
+        a, b, c, d = abcd_points[1], abcd_points[2], abcd_points[3], abcd_points[0]
+
+    # separate stop-flags and BC & AD length control allows correct processing 4 corner non 90 degrees fields
+    bc_dist_ok = ad_dist_ok = True
+
+    a_start_point = True
+
+    while bc_dist_ok or ad_dist_ok:
+        if not add_points_to_path(path, [a if a_start_point else b, 0]):
+            msg = f"Failed to add point A={str(a)} to path. This expected never to happen."
+            raise RuntimeError(msg)
+
+        if not add_points_to_path(path, [b if a_start_point else a, SI_speed_fwd]):
+            msg = f"Failed to add point B={str(b)} to path. This expected never to happen."
+            raise RuntimeError(msg)
+
+        if nav.get_distance(b, c) >= config.SPIRAL_SIDES_INTERVAL:
+            b = nav.get_point_on_vector(b, c, config.SPIRAL_SIDES_INTERVAL)
+        else:
+            bc_dist_ok = False
+
+        if nav.get_distance(a, d) >= config.SPIRAL_SIDES_INTERVAL:
+            a = nav.get_point_on_vector(a, d, config.SPIRAL_SIDES_INTERVAL)
+        else:
+            ad_dist_ok = False
+
+        a_start_point = not a_start_point
+
+    return path
+
 def build_forward_backward_path(abcd_points: list,
                                 nav: navigation.GPSComputing,
                                 logger: utility.Logger,
@@ -2004,6 +2070,148 @@ def get_bezier_indexes(path_points: list):
 
     return bezier_indexes
 
+def maneuver(   smoothie: adapters.SmoothieAdapter, 
+                vesc_engine: adapters.VescAdapterV4,
+                gps: adapters.GPSUbloxAdapter,
+                nav: navigation.GPSComputing, 
+                logger_full: utility.Logger,
+                from_to_finished: list(),
+                field_gps_coords: list()):
+
+    a, b, c, d = field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]
+
+    if nav.get_distance(a,b) < nav.get_distance(b,c):
+        a, b, c, d = field_gps_coords[1], field_gps_coords[2], field_gps_coords[3], field_gps_coords[0]
+
+    middle_point_a_d = nav.get_point_on_vector(a, d, nav.get_distance(a, d)/2)
+    middle_point_b_c = nav.get_point_on_vector(b, c, nav.get_distance(b, c)/2)
+    
+    middle_vector = [middle_point_a_d, middle_point_b_c]
+    if nav.get_distance(a, from_to_finished[1]) < nav.get_distance(b, from_to_finished[1]):
+        middle_vector = [middle_point_b_c, middle_point_a_d]
+
+    _, side  = nav.get_deviation(middle_vector[0] ,middle_vector[1], from_to_finished[1])
+
+    maneuver_side = "right"
+
+    if side == 1:
+        maneuver_side = "left"
+
+    cur_pos_obj = gps.get_last_position_v2()
+    last_cur_pos = cur_pos_obj.as_old_list
+    
+    #Roue fond à droite
+    a = config.A_MIN if maneuver_side=="right" else config.A_MAX
+    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=a)
+    if response != smoothie.RESPONSE_OK:
+        msg = "Couldn't put straight wheels before maneuver, smoothie response:\n" + response
+        print(msg)
+        logger_full.write(msg + "\n")
+    smoothie.wait_for_all_actions_done()
+
+    #arrière jusqu'à perpendiculaire
+    vesc_engine.set_target_rpm(-0.5 * config.MULTIPLIER_SI_SPEED_TO_RPM, vesc_engine.PROPULSION_KEY)
+    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+
+    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+
+    time.sleep(1)
+
+    while True:
+        cur_pos_obj = gps.get_last_position_v2()
+        cur_pos = cur_pos_obj.as_old_list
+        if cur_pos == last_cur_pos:
+            continue
+
+        angle = abs(nav.get_angle(from_to_finished[1], from_to_finished[0], last_cur_pos, cur_pos))
+        print(f"Angle n°1 : {angle}")
+
+        if angle > 85 and angle < 95 :
+            break
+
+        time.sleep(config.MANEUVERS_FREQUENCY)
+
+        last_cur_pos = cur_pos
+
+    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+
+    time.sleep(0.5)
+
+    #Roue droite
+    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
+    if response != smoothie.RESPONSE_OK:
+        msg = "Couldn't put straight wheels before maneuver, smoothie response:\n" + response
+        print(msg)
+        logger_full.write(msg + "\n")
+    smoothie.wait_for_all_actions_done()
+
+    #arrière jusqu'à avoir reculer de spiral_side_interval
+    vesc_engine.set_target_rpm(-0.1 * config.MULTIPLIER_SI_SPEED_TO_RPM , vesc_engine.PROPULSION_KEY)
+    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+
+    cur_pos_obj = gps.get_last_position_v2()
+    start_point = cur_pos_obj.as_old_list
+    distance = 0
+
+    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+
+    while distance<(config.SPIRAL_SIDES_INTERVAL/2):
+        time.sleep(config.MANEUVERS_FREQUENCY)
+        cur_pos_obj = gps.get_last_position_v2()
+        cur_pos = cur_pos_obj.as_old_list
+        distance = nav.get_distance(start_point, cur_pos)
+        print(f"Distance n°1 : {distance}")
+        
+    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+    
+    time.sleep(0.5)
+
+    #Roue fond à gauche
+    a = config.A_MAX if maneuver_side=="right" else config.A_MIN
+    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=a)
+    if response != smoothie.RESPONSE_OK:
+        msg = "Couldn't put straight wheels before maneuver, smoothie response:\n" + response
+        print(msg)
+        logger_full.write(msg + "\n")
+    smoothie.wait_for_all_actions_done()
+
+    #Avant jusqu'à parallèle consigne
+    vesc_engine.set_target_rpm(0.5 * config.MULTIPLIER_SI_SPEED_TO_RPM, vesc_engine.PROPULSION_KEY)
+    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+    
+    cur_pos_obj = gps.get_last_position_v2()
+    last_cur_pos = cur_pos_obj.as_old_list
+
+    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+
+    time.sleep(1)
+
+    while True:
+        cur_pos_obj = gps.get_last_position_v2()
+        cur_pos = cur_pos_obj.as_old_list
+        if cur_pos == last_cur_pos:
+            continue
+
+        angle = nav.get_angle(from_to_finished[1], from_to_finished[0], last_cur_pos, cur_pos)
+        print(f"Angle n°2 : {angle}")
+
+        if angle > -5 and angle < 5 :
+            break
+
+        time.sleep(config.MANEUVERS_FREQUENCY)
+
+        last_cur_pos = cur_pos
+        
+    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+
+    #Roue droite
+    response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
+    if response != smoothie.RESPONSE_OK:
+        msg = "Couldn't put straight wheels before maneuver, smoothie response:\n" + response
+        print(msg)
+        logger_full.write(msg + "\n")
+    smoothie.wait_for_all_actions_done()
+
 
 def main():
     time_start = utility.get_current_time()
@@ -2366,6 +2574,12 @@ def main():
                             logger_full,
                             config.SI_SPEED_FWD,
                             config.SI_SPEED_REV)
+                    elif config.FORWARD_PATH_WITH_MANEUVER:
+                        path_points = build_forward_path(
+                            field_gps_coords,
+                            nav,
+                            logger_full,
+                            config.SI_SPEED_FWD)
 
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
@@ -2691,6 +2905,15 @@ def main():
                             speed = config.POINT_B[1]
 
                         display_instruction_path = from_to[0:2]
+
+                    elif path_points[i][1] == 0 and config.FORWARD_PATH_WITH_MANEUVER:
+                        #TODO: Make manoeuvre
+
+                        from_to = [path_points[i - 2][0], path_points[i - 1][0]]
+
+                        maneuver(smoothie, vesc_engine, gps, nav, logger_full, from_to, field_gps_coords)
+
+                        continue
 
                     else:
                         from_to = [path_points[i - 1][0], path_points[i][0]]
