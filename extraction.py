@@ -2199,6 +2199,108 @@ class ExtractionMethods:
 
         return smoothie.RESPONSE_OK, False
 
+    @staticmethod
+    def pattern_x_half_dist(smoothie: adapters.SmoothieAdapter,
+                            vesc_adapter: adapters.VescAdapterV4,
+                            extraction_map: ExtractionMap,
+                            data_collector: datacollection.DataCollector,
+                            demo_server: utility.DemoPauseServer):
+        """4 square cork hits (2x2) pattern. Offsets are half of config's distance.
+        Sequence of extraction positions:
+        1-----2
+        ---S---
+        4-----3
+        where S is starting position"""
+
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            print("EXT. PAUSE: Starting pattern X.")
+
+        sm_cur = smoothie.get_adapter_current_coordinates()
+        positions = [
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 1
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 2
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 3
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2]  # 4
+        ]
+
+        for sm_x, sm_y in positions:
+            # skip this move if it is out of working range
+            if sm_x <= config.X_MIN or sm_x >= config.X_MAX or sm_y <= config.Y_MIN or sm_y >= config.Y_MAX:
+                continue
+
+            # move to position
+            all_ext_xy_start_t = time.time()
+            res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
+            smoothie.wait_for_all_actions_done()
+            data_collector.add_all_ext_xy_t(time.time() - all_ext_xy_start_t)
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res
+                return msg, False
+
+            # do extraction
+            res, cork_is_stuck = ExtractionMethods.single_center_drop(
+                smoothie,
+                vesc_adapter,
+                extraction_map,
+                data_collector,
+                demo_server)
+            if res != smoothie.RESPONSE_OK:
+                return res, cork_is_stuck
+
+        return smoothie.RESPONSE_OK, False
+
+    @staticmethod
+    def pattern_center_x_half_dist(smoothie: adapters.SmoothieAdapter,
+                                   vesc_adapter: adapters.VescAdapterV4,
+                                   extraction_map: ExtractionMap,
+                                   data_collector: datacollection.DataCollector,
+                                   demo_server: utility.DemoPauseServer):
+        """1 center and 4 square cork hits (2x2) pattern. Hit center (starting position) first, then hit corners.
+        Offsets are half of config's distance.
+        Sequence of extraction positions:
+        2-----3
+        ---1---
+        5-----4
+        where 1 is starting position"""
+
+        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
+            print("EXT. PAUSE: Starting pattern X.")
+
+        sm_cur = smoothie.get_adapter_current_coordinates()
+        positions = [
+            [sm_cur["X"], sm_cur["Y"]],  # 1
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 2
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 3
+            [sm_cur["X"] + config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2],  # 4
+            [sm_cur["X"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2, sm_cur["Y"] - config.EXTRACTION_PATTERNS_OFFSET_MM / 2]  # 5
+        ]
+
+        for sm_x, sm_y in positions:
+            # skip this move if it is out of working range
+            if sm_x <= config.X_MIN or sm_x >= config.X_MAX or sm_y <= config.Y_MIN or sm_y >= config.Y_MAX:
+                continue
+
+            # move to position
+            all_ext_xy_start_t = time.time()
+            res = smoothie.custom_move_to(X_F=config.X_F_MAX, Y_F=config.Y_F_MAX, X=sm_x, Y=sm_y)
+            smoothie.wait_for_all_actions_done()
+            data_collector.add_all_ext_xy_t(time.time() - all_ext_xy_start_t)
+            if res != smoothie.RESPONSE_OK:
+                msg = "Couldn't move corkscrew to the one of plant sides, smoothie error occurred:\n" + res
+                return msg, False
+
+            # do extraction
+            res, cork_is_stuck = ExtractionMethods.single_center_drop(
+                smoothie,
+                vesc_adapter,
+                extraction_map,
+                data_collector,
+                demo_server)
+            if res != smoothie.RESPONSE_OK:
+                return res, cork_is_stuck
+
+        return smoothie.RESPONSE_OK, False
+
 
 class PxToMMConverter:
     # TODO: old unoptimized code. It is loading data from disk during conversion calls - need to change this.

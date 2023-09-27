@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.10"
+CONFIG_VERSION = "0.20.11"
 
 
 # ======================================================================================================================
@@ -721,5 +721,7 @@ EXT_PATTERNS_SEQUENCE = [
     "pattern_x"
     # "pattern_3x3_partial",
     # "pattern_2x2_partial",
-    # "pattern_2x2_partial_with_center"
+    # "pattern_2x2_partial_with_center",
+    # pattern_x_half_dist,
+    # pattern_center_x_half_dist
 ]
