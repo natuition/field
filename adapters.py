@@ -679,42 +679,59 @@ class SmoothieAdapter:
         # cork up is done by Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
             # TODO: stub (G28 isn't reading F value from smoothie config, it uses last received F)
-            response = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_UP, Z=-0.1)
-            if response != self.RESPONSE_OK:
-                return response
+            # set F for G28
+            res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_UP, Z=-0.1)
+            if res != self.RESPONSE_OK:
+                return res
 
-            response = self.__calibrate_axis(self.__z_cur,
-                                             "Z",
-                                             config.Z_MIN,
-                                             config.Z_MAX,
-                                             config.Z_AXIS_CALIBRATION_TO_MAX)
-
-            if self.RESPONSE_HOMING_FAILED in response:
-                for i in range(config.RETRY_CORK_UP_MIN, config.RETRY_CORK_UP_MAX+config.RETRY_CORK_UP_STEP, config.RETRY_CORK_UP_STEP):
-                    response = self.__smc.read_some()
+            # pick cork up
+            res = self.__calibrate_axis(
+                self.__z_cur,
+                "Z",
+                config.Z_MIN,
+                config.Z_MAX,
+                config.Z_AXIS_CALIBRATION_TO_MAX)
+            if self.RESPONSE_HOMING_FAILED in res:
+                for i in range(
+                        config.RETRY_CORK_UP_MIN,
+                        config.RETRY_CORK_UP_MAX + config.RETRY_CORK_UP_STEP,
+                        config.RETRY_CORK_UP_STEP):
+                    self.__smc.read_some()  # read 2nd part of message
                     msg = f"Homing failed during cork up, retry with Z{i} down before up."
                     print(msg)
-                    response = self.reset_halted_state()
-                    if self.RESPONSE_AFTER_M999 in response:
-                        response = self.__smc.read_some()
-                        if not self.RESPONSE_OK[:2] in response:
-                            return response
-                    elif not self.RESPONSE_OK in response:
-                        return response
 
-                    response = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=i)
-                    response = self.__calibrate_axis(self.__z_cur,
-                                         "Z",
-                                         config.Z_MIN,
-                                         config.Z_MAX,
-                                         config.Z_AXIS_CALIBRATION_TO_MAX)
-                    if self.RESPONSE_HOMING_FAILED in response:
+                    res = self.reset_halted_state()
+                    if self.RESPONSE_AFTER_M999 in res:
+                        res += self.__smc.read_some()
+                        if not self.RESPONSE_OK[:2] in res:
+                            return res
+                    elif self.RESPONSE_OK not in res:
+                        return res
+
+                    # slight move down (to release stopper or unjam cork)
+                    res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=i)
+                    if res != self.RESPONSE_OK:
+                        return res
+
+                    # set F for G28
+                    res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_UP, Z=-0.1)
+                    if res != self.RESPONSE_OK:
+                        return res
+
+                    # pick cork up
+                    res = self.__calibrate_axis(
+                        self.__z_cur,
+                        "Z",
+                        config.Z_MIN,
+                        config.Z_MAX,
+                        config.Z_AXIS_CALIBRATION_TO_MAX)
+                    if self.RESPONSE_HOMING_FAILED in res:
                         continue
                     else:
-                        break
+                        return res
+                return res
             else:
-                return response
-
+                return res
         else:
             raise RuntimeError(
                 "picking up corkscrew with stoppers usage requires Z axis calibration permission in config"
