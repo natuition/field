@@ -1,6 +1,6 @@
 [Unit]
 Description=stream
-After=network.target
+After=launcher.service
 
 [Service]
 Type=simple
