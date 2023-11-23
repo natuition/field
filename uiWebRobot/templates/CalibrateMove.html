@@ -31,51 +31,77 @@
 </head>
 
 <body>
-    <h1 style="text-align: center; padding: 10px 0;">Move to target</h1>
+    <h1 style="text-align: center; padding: 10px 0;">{{(ui_languages["Move to target title"])[ui_language]}}</h1>
 
     <div id="alert" class="alert alert-success d-none" role="alert">
-        <h4 class="alert-heading">Configuration enregistré</h4>
-        <p>Votre paramètrage a été validé vous pouvez le vérifier en appuyant sur Run.</p>
+        <h4 class="alert-heading">{{(ui_languages["Calibration configuration saved title"])[ui_language]}}</h4>
+        <p>{{(ui_languages["Calibration configuration saved msg"])[ui_language]}}</p>
         <hr>
-        <p class="mb-0">Si votre paramètrage vous convient vous pouvez quitter la page, sinon
-            veuillez refaire le réglage puis sauvegarderr..</p>
+        <p class="mb-0">{{(ui_languages["Calibration configuration saved tips"])[ui_language]}}</p>
     </div>
 
     <div id="run_move_div" class="d-flex justify-content-center align-items-center"
         style="margin: 0 auto; padding: 10px 0;">
-        <label class="form-check-label">Déplacement vers la cible :</label>
+        <label class="form-check-label">{{(ui_languages["Move to target label"])[ui_language]}} :</label>
         <div class="btn-group-vertical m-1">
-            <button type="button" id="run_move" class="btn btn-outline-secondary" onclick="runMoveToTarget();"> Lancer
+            <button type="button" id="run_move" class="btn btn-outline-secondary"
+                onclick="runMoveToTarget();">{{(ui_languages["Run"])[ui_language]}}
             </button>
         </div>
     </div>
 
     <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
-        <label class="form-check-label" for="xDone">Déplacement de l'axe X pour l'aliger à la cible :</label>
-        <div class="btn-group m-1">
-            <button type="button" id="x_remove" class="btn btn-outline-secondary m-1 rounded"
-                onclick="moveAxisXY('x',-1)" disabled>Gauche</button>
-            <button type="button" id="x_add" class="btn btn-outline-secondary m-1 rounded" onclick="moveAxisXY('x',1)"
-                disabled>Droite</button>
+        <label class="form-check-label" for="xDone">
+            {{(ui_languages["Move extraction tool to target"])[ui_language]}}:
+        </label>
+    </div>
+
+    <div class="d-flex flex-column justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+        <div class="d-flex justify-content-center align-items-center">
+            <button type="button" id="y_add" class="btn btn-outline-secondary rounded" onclick="moveAxisXY('y',1)"
+                disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-arrow-up" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd"
+                        d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5" />
+                </svg>
+            </button>
+        </div>
+        <div class="btn-group" role="group">
+            <button type="button" id="x_remove" class="btn btn-outline-secondary rounded" onclick="moveAxisXY('x',-1)"
+                disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-arrow-left" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd"
+                        d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8" />
+                </svg>
+            </button>
+            <button type="button" id="y_remove" class="btn btn-outline-secondary rounded" onclick="moveAxisXY('y',-1)"
+                disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-arrow-down" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd"
+                        d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1" />
+                </svg>
+            </button>
+            <button type="button" id="x_add" class="btn btn-outline-secondary rounded" onclick="moveAxisXY('x',1)"
+                disabled><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-arrow-right" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd"
+                        d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8" />
+                </svg></button>
         </div>
     </div>
 
-    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
-        <label class="form-check-label" for="xDone">Déplacement de l'axe Y pour l'aliger à la cible :</label>
+    <div id="button_div" class="d-flex justify-content-center align-items-center"
+        style="margin: 0 auto; padding: 10px 0;">
         <div class="btn-group-vertical m-1">
-            <button type="button" id="y_add" class="btn btn-outline-secondary m-1 rounded" onclick="moveAxisXY('y',1)"
-                disabled>Haut</button>
-            <button type="button" id="y_remove" class="btn btn-outline-secondary m-1 rounded"
-                onclick="moveAxisXY('y',-1)" disabled>Bas</button>
-        </div>
-    </div>
-
-    <div id="button_div" class="justify-content-center align-items-center">
-        <div class="btn-group-vertical m-1">
-            <button type="button" id="cancel" class="btn btn-outline-danger" onclick="cancel();">Quitter</button>
+            <button type="button" id="cancel" class="btn btn-outline-danger"
+                onclick="cancel();">{{(ui_languages["Quit"])[ui_language]}}</button>
         </div>
         <div class="btn-group-vertical m-1">
-            <button type="button" id="save" class="btn btn-outline-success" onclick="save();">Sauvegarder</button>
+            <button type="button" id="save" class="btn btn-outline-success"
+                onclick="save();">{{(ui_languages["Save"])[ui_language]}}</button>
         </div>
     </div>
 

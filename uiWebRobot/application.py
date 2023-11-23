@@ -194,10 +194,6 @@ class UIWebRobot:
     # ROUTE FLASK
 
     def index(self):
-        # ui_language = "fr"
-        ui_language = self.__config.UI_LANGUAGE
-        if ui_language not in self.__ui_languages["Supported Language"]:
-            ui_language = "en"
         sn = self.__config.ROBOT_SN
         # sn = "SNXXX"
         statusOfUIObject = self.get_state_machine().getStatusOfControls()
@@ -219,16 +215,13 @@ class UIWebRobot:
 
         if isinstance(self.get_state_machine().currentState, ErrorState):
             if self.get_state_machine().currentState.getReason():
-                return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=self.get_state_machine().currentState.getReason()), 500
+                return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()], reason=self.get_state_machine().currentState.getReason()), 500
             else:
-                return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500
+                return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()]), 500
 
-        return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=ui_language, Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
+        return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
 
     def setting(self):
-        ui_language = self.__config.UI_LANGUAGE
-        if ui_language not in self.__ui_languages["Supported Language"]:
-            ui_language = "en"
         sn = self.__config.ROBOT_SN
 
         if not isinstance(self.get_state_machine().currentState, WaitWorkingState):
@@ -240,7 +233,7 @@ class UIWebRobot:
         setting_page_manager = SettingPageManager(
             self.__socketio, self.__ui_languages, self.__config, self.__reload_config)
         try:
-            return render_template('UISetting.html', sn=sn, ui_languages=self.__ui_languages, ui_language=ui_language, now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())
+            return render_template('UISetting.html', sn=sn, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())
         except Exception as e:
             print(f"Error : {e}")
             traceback.print_exc()
@@ -270,14 +263,18 @@ class UIWebRobot:
         if isinstance(self.get_state_machine().currentState, (WaitWorkingState)):
             self.get_state_machine().on_event(Events.CALIBRATION)
 
-        print(self.get_state_machine().currentState.getStatusOfControls()["currentHTML"])
         if request.method == 'POST':
             if request.form['password'] != "12334":
-                return render_template(self.get_state_machine().currentState.getStatusOfControls()["currentHTML"], error="Invalid password, try again.")
+                return render_template(self.get_state_machine().getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), password_wrong=True)
             else:
-                self.get_state_machine().currentState.getStatusOfControls()["currentHTML"] = "CalibrateDetect.html"
-                print("set CalibrateDetect.html")
-        return render_template(self.get_state_machine().currentState.getStatusOfControls()["currentHTML"])
+                self.get_state_machine().getStatusOfControls()["currentHTML"] = "CalibrateDetect.html"
+        return render_template(self.get_state_machine().getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language())
+    
+    def __get_ui_language(self):
+        ui_language = self.__config.UI_LANGUAGE
+        if ui_language not in self.__ui_languages["Supported Language"]:
+            ui_language = "en"
+        return ui_language
         
 
     def offline(self):
