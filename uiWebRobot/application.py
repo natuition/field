@@ -2,7 +2,7 @@ import sys
 sys.path.append('../')
 
 from state_machine.Events import Events
-from uiWebRobot.state_machine.states import WaitWorkingState
+from state_machine.utilsFunction import *
 from state_machine.StateMachine import StateMachine
 
 import importlib.util
@@ -13,16 +13,17 @@ from flask import Flask, render_template, make_response, send_from_directory, re
 
 import logging
 import json
-import subprocess
 import os
 import traceback
-from urllib.parse import quote, unquote
+from urllib.parse import unquote
 import posix_ipc
 from threading import Thread
 from datetime import datetime
 from uiWebRobot.setting_page import SettingPageManager
 import utility
 from config import config
+from uiWebRobot.state_machine.states import *
+
 
 __author__ = 'Vincent LAMBERT'
 
@@ -61,6 +62,7 @@ class UIWebRobot:
             "/static/<random_time>/<file_path>/<file_name>", view_func=self.getJsFile)
         self.__app.add_url_rule("/reboot", view_func=self.reboot)
         self.__app.add_url_rule("/restart_ui", view_func=self.restart_ui)
+        self.__app.add_url_rule("/calibrate", view_func=self.calibrate, methods=['GET', 'POST'])
 
     def __setting_flask(self):
         self.__app.register_error_handler(Exception, self.handle_exception)
@@ -112,37 +114,6 @@ class UIWebRobot:
         return ia_list
 
     @staticmethod
-    def load_field_list(dir_path):
-        field_list = []
-        for file in os.listdir(dir_path):
-            if file.endswith(".txt"):
-                if file != "tmp.txt":
-                    field_list.append(
-                        unquote(file.split(".txt")[0], encoding='utf-8'))
-        return field_list
-
-    @staticmethod
-    def get_other_field():
-        link_path = os.path.realpath("../field.txt")
-        current_field = (link_path.split("/")[-1]).split(".")[0]
-        field_list = UIWebRobot.load_field_list("../fields")
-        if len(field_list) >= 2:
-            coords_other = []
-            for field_name in field_list:
-                if field_name != unquote(current_field, encoding='utf-8') and field_name != "tmp.txt":
-                    with open("../fields/" + quote(field_name, safe="", encoding='utf-8') + ".txt", encoding='utf-8') as file:
-                        points = file.readlines()
-
-                    coords = list()
-                    for coord in points:
-                        coord = coord.replace("\n", "").split(" ")
-                        coords.append([float(coord[1]), float(coord[0])])
-                    coords.append(coords[0])
-                    coords_other.append(coords)
-            return coords_other
-        return list()
-
-    @staticmethod
     def formattingFieldPointsForSend(corners):
         coords = list()
         for coord in corners:
@@ -176,65 +147,48 @@ class UIWebRobot:
                 continue
 
     # SOCKET IO
-
     def on_socket_data(self, data):
+        msg_socket_data_before_event = ["field_name", "allChecked"]
+        msg_socket_to_event = {
+            "stop": Events.STOP, 
+            "run_target_detection": Events.CALIBRATION_DETECT,
+            "run_target_move": Events.CALIBRATION_MOVE,
+            "wheel": Events.WHEEL,
+            "start": Events.START_MAIN,
+            "continue": Events.CONTINUE_MAIN,
+            "field": Events.CREATE_FIELD,
+            "field_name": Events.VALIDATE_FIELD_NAME,
+            "allChecked": Events.LIST_VALIDATION,
+            "calibration_validate": Events.CALIBRATION_VALIDATE,
+            "calibration_cancel": Events.CALIBRATION_CANCEL
+        }
+        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field"]
         if "type" in data:
-            if data["type"] == "joystick" and str(self.__stateMachine.currentState) in ["WaitWorkingState", "CreateFieldState"]:
-                self.__stateMachine.on_socket_data(data)
+            if data["type"] in msg_socket_data_before_event:
+                self.get_state_machine().on_socket_data(data)
+            if data["type"] in msg_socket_to_event.keys():
+                self.get_state_machine().on_event(msg_socket_to_event[data["type"]])
+            if data["type"] in msg_socket_data_after_event:
+                self.get_state_machine().on_socket_data(data)
+
+            if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
+                self.get_state_machine().on_socket_data(data)
             elif data["type"] == "demo_resume_cmd":
                 self.demo_pause_client.send_resume_cmd()
-            elif data["type"] == "field":
-                self.__stateMachine.on_event(Events.CREATE_FIELD)
-                self.__stateMachine.on_socket_data(data)
-            elif data["type"] == "field_name":
-                self.__stateMachine.on_socket_data(data)
-                self.__stateMachine.on_event(Events.VALIDATE_FIELD_NAME)
             elif data["type"] == "validerZone":
                 data["client_id"] = request.sid
-                self.__stateMachine.on_socket_data(data)
-                self.__stateMachine.on_event(Events.VALIDATE_FIELD)
-            elif data["type"] == "start":
-                if data["audit"]:
-                    self.__stateMachine.on_event(Events.START_AUDIT)
-                else:
-                    self.__stateMachine.on_event(Events.START_MAIN)
-            elif data["type"] == "continue":
-                if data["audit"]:
-                    self.__stateMachine.on_event(Events.CONTINUE_AUDIT)
-                else:
-                    self.__stateMachine.on_event(Events.CONTINUE_MAIN)
-            elif data["type"] == "stop":
-                self.__stateMachine.on_event(Events.STOP)
-            elif data["type"] == "getInputVoltage":
-                self.__stateMachine.on_socket_data(data)
-            elif data["type"] == "allChecked":
-                self.__stateMachine.on_socket_data(data)
-                self.__stateMachine.on_event(Events.LIST_VALIDATION)
-            elif data["type"] == "wheel":
-                self.__stateMachine.on_event(Events.WHEEL)
-            elif data["type"] == "modifyZone":
-                self.__stateMachine.on_socket_data(data)
-            elif data["type"] == "getField":
-                self.__stateMachine.on_socket_data(data)
-            elif data["type"] == "getStats":
-                self.__stateMachine.on_socket_data(data)
-            elif data["type"] == "getLastPath":
-                self.__stateMachine.on_socket_data(data)
+                self.get_state_machine().on_socket_data(data)
+                self.get_state_machine().on_event(Events.VALIDATE_FIELD)
             elif data["type"] == "removeField":
-                if str(self.__stateMachine.currentState) == "WaitWorkingState":
-                    self.__stateMachine.on_socket_data(data)
+                if isinstance(self.get_state_machine().currentState, WaitWorkingState):
+                    self.get_state_machine().on_socket_data(data)
 
     def on_socket_broadcast(self, data):
-        if data["type"] == "audit":
-            if data["audit"]:
-                self.__stateMachine.on_event(Events.AUDIT_ENABLE)
-            else:
-                self.__stateMachine.on_event(Events.AUDIT_DISABLE)
         emit(data["type"], data, broadcast=True)
 
     def on_disconnect(self):
-        if str(self.__stateMachine.currentState) in ["WaitWorkingState", "CreateFieldState"]:
-            self.__stateMachine.on_socket_data(
+        if isinstance(self.get_state_machine().currentState, (WaitWorkingState,CreateFieldState)):
+            self.get_state_machine().on_socket_data(
                 {"type": "joystick", "x": 0, "y": 0})
 
     # ROUTE FLASK
@@ -246,10 +200,10 @@ class UIWebRobot:
             ui_language = "en"
         sn = self.__config.ROBOT_SN
         # sn = "SNXXX"
-        statusOfUIObject = self.__stateMachine.getStatusOfControls()
+        statusOfUIObject = self.get_state_machine().getStatusOfControls()
 
         IA_list = UIWebRobot.load_ai_list("../yolo")
-        Field_list = UIWebRobot.load_field_list("../fields")
+        Field_list = load_field_list("../fields")
 
         if not Field_list:
             Field_list = None
@@ -260,9 +214,12 @@ class UIWebRobot:
             current_field = (link_path.split("/")[-1]).split(".")[0]
             current_field = unquote(current_field, encoding='utf-8')
 
-        if str(self.__stateMachine.currentState) == "ErrorState":
-            if self.__stateMachine.currentState.getReason():
-                return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=self.__stateMachine.currentState.getReason()), 500
+        if isinstance(self.get_state_machine().currentState, CalibrateState):
+            return redirect('/calibrate')
+
+        if isinstance(self.get_state_machine().currentState, ErrorState):
+            if self.get_state_machine().currentState.getReason():
+                return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=self.get_state_machine().currentState.getReason()), 500
             else:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500
 
@@ -274,13 +231,12 @@ class UIWebRobot:
             ui_language = "en"
         sn = self.__config.ROBOT_SN
 
-        if str(self.__stateMachine.currentState) != "WaitWorkingState":
+        if not isinstance(self.get_state_machine().currentState, WaitWorkingState):
             return redirect('/')
 
-        if not self.__stateMachine.currentState.can_go_setting:
+        if not self.get_state_machine().currentState.can_go_setting:
             return redirect('/')
 
-        IA_list = UIWebRobot.load_ai_list("../yolo")
         setting_page_manager = SettingPageManager(
             self.__socketio, self.__ui_languages, self.__config, self.__reload_config)
         try:
@@ -291,19 +247,38 @@ class UIWebRobot:
             return redirect('/')
 
     def maps(self):
+        if not isinstance(self.get_state_machine().currentState, (WorkingState, WaitWorkingState, CreateFieldState, ResumeState, StartingState)):
+            return redirect('/')
         myCoords = [0, 0]
-        field = self.__stateMachine.getField()
+        field = self.get_state_machine().getField()
         if field is None:
             field = UIWebRobot.load_coordinates("../field.txt")
         if field is None:
             return render_template('map.html', myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
         else:
-            coords_other = UIWebRobot.get_other_field()
+            coords_other = get_other_field()
             coords_field = UIWebRobot.formattingFieldPointsForSend(field)
             if coords_other:
                 return render_template('map.html', coords_field=coords_field, myCoords=myCoords, coords_other=coords_other, now=datetime.now().strftime("%H_%M_%S__%f"))
             else:
                 return render_template('map.html', coords_field=coords_field, myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
+
+    def calibrate(self):
+        if not isinstance(self.get_state_machine().currentState, (WaitWorkingState, CalibrateState)):
+            return redirect('/')
+        
+        if isinstance(self.get_state_machine().currentState, (WaitWorkingState)):
+            self.get_state_machine().on_event(Events.CALIBRATION)
+
+        print(self.get_state_machine().currentState.getStatusOfControls()["currentHTML"])
+        if request.method == 'POST':
+            if request.form['password'] != "12334":
+                return render_template(self.get_state_machine().currentState.getStatusOfControls()["currentHTML"], error="Invalid password, try again.")
+            else:
+                self.get_state_machine().currentState.getStatusOfControls()["currentHTML"] = "CalibrateDetect.html"
+                print("set CalibrateDetect.html")
+        return render_template(self.get_state_machine().currentState.getStatusOfControls()["currentHTML"])
+        
 
     def offline(self):
         sn = self.__config.ROBOT_SN
@@ -374,7 +349,7 @@ class UIWebRobot:
             return e
 
         # now you're handling non-HTTP exceptions only
-        self.__stateMachine.on_event(Events.ERROR)
+        self.get_state_machine().on_event(Events.ERROR)
         sn = self.__config.ROBOT_SN
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
@@ -391,7 +366,7 @@ def main():
         uiWebRobot.run(host="0.0.0.0", port="80",
                        debug=True, use_reloader=False)
     finally:
-        if str(uiWebRobot.get_state_machine().currentState) == "WaitWorkingState":
+        if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         print("Closing app...")
 

@@ -413,6 +413,12 @@
 		"nl": "Annuleren",
 		"de": "Stornieren"
 	},
+	"Calibrate": {
+		"fr": "Calibrate",
+		"en": "Calibrate",
+		"nl": "Calibrate",
+		"de": "Calibrate"
+	},
 	"no_landscape": {
 		"fr": "L'application web ne peut pas être utilisée en paysage !",
 		"en": "The web application cannot be used in landscape !",

@@ -4,18 +4,20 @@ sys.path.append('../')
 from flask_socketio import SocketIO
 import navigation
 import posix_ipc
-import threading
 import os
+import json
+from urllib.parse import quote, unquote
 
 from state_machine import State
 from state_machine.states import WaitWorkingState
 from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
-from state_machine.utilsFunction import *
+from state_machine import utilsFunction
 from config import config
-from application import UIWebRobot
 import time
+import utility
+import adapters
 
 
 # This state corresponds when the robot is generating the work area.
@@ -37,7 +39,7 @@ class CreateFieldState(State.State):
                 msg = f"[{self.__class__.__name__}] -> initSmoothie"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
-                self.smoothie = initSmoothie(self.logger)
+                self.smoothie = utilsFunction.initSmoothie(self.logger)
 
             msg = f"[{self.__class__.__name__}] -> initGPSComputing"
             self.logger.write_and_flush(msg + "\n")
@@ -175,13 +177,13 @@ class CreateFieldState(State.State):
         elif data["type"] == "field_name":
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             #patch bug field
-            save_gps_coordinates(self.field, "../fields/tmp.txt")
+            utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
             field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
 
-            fields_list = UIWebRobot.load_field_list("../fields")
+            fields_list = utilsFunction.load_field_list("../fields")
 
             if len(fields_list) > 0:
-                coords, other_fields, current_field_name = updateFields(field_name)
+                coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
             else:
                 coords, other_fields, current_field_name = list(), list(), ""
 
@@ -228,7 +230,7 @@ class FieldCreator:
         self.socketio.emit('newPos', json.dumps([self.A[1], self.A[0]]), namespace='/map')
 
         if self.vesc_emergency is None:
-            self.vesc_emergency: adapters.VescAdapterV4 = initVesc(self.logger)
+            self.vesc_emergency: adapters.VescAdapterV4 = utilsFunction.initVesc(self.logger)
         msg = f"[{self.__class__.__name__}] -> Moving forward..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
@@ -269,7 +271,7 @@ class FieldCreator:
         else:
             self.field = [self.B, self.A]
 
-        other_fields = UIWebRobot.get_other_field()
+        other_fields = utilsFunction.get_other_field()
 
         link_path = os.path.realpath("../field.txt")
         current_field_name = (link_path.split("/")[-1]).split(".")[0]
@@ -302,7 +304,7 @@ class FieldCreator:
         msg = f"[{self.__class__.__name__}] -> Save field in {path}..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        save_gps_coordinates(self.field, path)
+        utilsFunction.save_gps_coordinates(self.field, path)
         return unquote(fieldName[:-4], encoding='utf-8')
 
     def manoeuvre(self):

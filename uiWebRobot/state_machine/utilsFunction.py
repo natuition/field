@@ -171,3 +171,32 @@ def updateFields(field_name):
     other_fields = application.UIWebRobot.get_other_field()
 
     return coords, other_fields, field_name
+
+def load_field_list(dir_path):
+        field_list = []
+        for file in os.listdir(dir_path):
+            if file.endswith(".txt"):
+                if file != "tmp.txt":
+                    field_list.append(
+                        unquote(file.split(".txt")[0], encoding='utf-8'))
+        return field_list
+
+def get_other_field():
+        link_path = os.path.realpath("../field.txt")
+        current_field = (link_path.split("/")[-1]).split(".")[0]
+        field_list = load_field_list("../fields")
+        if len(field_list) >= 2:
+            coords_other = []
+            for field_name in field_list:
+                if field_name != unquote(current_field, encoding='utf-8') and field_name != "tmp.txt":
+                    with open("../fields/" + quote(field_name, safe="", encoding='utf-8') + ".txt", encoding='utf-8') as file:
+                        points = file.readlines()
+
+                    coords = list()
+                    for coord in points:
+                        coord = coord.replace("\n", "").split(" ")
+                        coords.append([float(coord[1]), float(coord[0])])
+                    coords.append(coords[0])
+                    coords_other.append(coords)
+            return coords_other
+        return list()

@@ -8,9 +8,9 @@ from state_machine.states import WorkingState
 from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from state_machine.utilsFunction import *
+from state_machine import utilsFunction
 from config import config
-
+import utility
 
 # This state corresponds when the robot configures it to continue the last job.
 class ResumeState(State.State):
@@ -24,8 +24,8 @@ class ResumeState(State.State):
         msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{True},AUDIT_MODE:{isAudit})"
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        changeConfigValue("CONTINUE_PREVIOUS_PATH", True)
-        changeConfigValue("AUDIT_MODE", isAudit)
+        utilsFunction.changeConfigValue("CONTINUE_PREVIOUS_PATH", True)
+        utilsFunction.changeConfigValue("AUDIT_MODE", isAudit)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
