@@ -414,10 +414,10 @@
 		"de": "Stornieren"
 	},
 	"Calibrate": {
-		"fr": "Calibrate",
-		"en": "Calibrate",
-		"nl": "Calibrate",
-		"de": "Calibrate"
+		"fr": "Calibration",
+		"en": "Calibration",
+		"nl": "",
+		"de": ""
 	},
 	"no_landscape": {
 		"fr": "L'application web ne peut pas être utilisée en paysage !",

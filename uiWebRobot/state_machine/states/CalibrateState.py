@@ -74,6 +74,9 @@ class CalibrateState(State.State):
             self.socketio.emit('save_applied', namespace='/server', broadcast=True)
             return self
         elif event == Events.CALIBRATION_CANCEL:
+            res = self.smoothie.ext_calibrate_cork()
+            if res != self.smoothie.RESPONSE_OK:
+                return ErrorState(self.socketio, self.logger, res)
             self.socketio.emit('href_to', {"href": "/", "delay": 1000}, namespace='/server', broadcast=True)
             return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
         else:
