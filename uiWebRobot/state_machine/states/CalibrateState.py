@@ -53,13 +53,18 @@ class CalibrateState(State.State):
 
     def on_event(self, event):
         if event == Events.CALIBRATION_DETECT:
+            print("1")
             res = self.cameraCalibration.offset_calibration_step_detect()
+            print(f"2 : x:{self.cameraCalibration.target_x}, y:{self.cameraCalibration.target_y}")
             label = "ok"
             if "isn't" in res:
                 label = "nok"
+            print("3")
             with open('./target_detection.jpg', 'rb') as f:
                 image_data = f.read()
+            print("4")
             self.socketio.emit('image', {'image_data': image_data, "label": label}, namespace='/server', broadcast=True)
+            print("5")
             return self
         elif event == Events.CALIBRATION_MOVE:
             self.statusOfUIObject["currentHTML"] = "CalibrateMove.html"
