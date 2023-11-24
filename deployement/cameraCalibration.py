@@ -111,7 +111,9 @@ class CameraCalibration:
             for i in all_circles_rounded[0, :]:
                 cv2.circle(img_origine, (i[0],i[1]),i[2],(102,0,204),3)
                 cv2.circle(img_origine, (i[0],i[1]),2,(102,0,204),3)
-                cv2.circle(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),config.UNDISTORTED_ZONE_RADIUS,(204,0,102),3)
+                cv2.ellipse(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),(config.UNDISTORTED_ZONE_RADIUS,config.UNDISTORTED_ZONE_RADIUS),0,270,360,(204,0,102),3)
+                cv2.line(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y), (config.SCENE_CENTER_X+config.UNDISTORTED_ZONE_RADIUS,config.SCENE_CENTER_Y), (204,0,102), 3) 
+                cv2.line(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y), (config.SCENE_CENTER_X,config.SCENE_CENTER_Y-config.UNDISTORTED_ZONE_RADIUS), (204,0,102), 3) 
                 cv2.circle(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),2,(204,0,102),3)
 
             if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
