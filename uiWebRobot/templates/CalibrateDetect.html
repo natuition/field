@@ -45,11 +45,26 @@
                 <button type="button" id="run_detection" class="btn btn-outline-secondary"
                     onclick="runDetect();">{{(ui_languages["Run"])[ui_language]}}</button>
             </div>
+            <div class="btn-group-vertical m-1">
+                <button type="button" id="run_detection_d_none" class="btn btn-outline-secondary disabled d-none"
+                    onclick="runDetect();" disabled>{{(ui_languages["Running"])[ui_language]}}</button>
+            </div>
         </div>
-        <img id="fig_image" class="d-none" style="width: 80%; aspect-ratio: 16/9; margin: 0 auto;">
+        <div id="img_detection_div" class="d-none justify-content-center align-items-center"
+            style="margin: 0 auto; padding: 10px 0;">
+            <img id="fig_image" class="d-none" style="width: 80%; aspect-ratio: 16/9; margin: 0 auto;">
+        </div>
+        <div id="label_detection_div" class="d-none justify-content-center align-items-center"
+            style="margin: 0 auto; padding: 10px 0;">
+            <label id="fig_image_txt_ok" class="d-none form-check-label">
+                {{(ui_languages["Is in undistorted zone"])[ui_language]}}
+            </label>
+            <label id="fig_image_txt_nok" class="d-none form-check-label">
+                {{(ui_languages["Is not in undistorted zone"])[ui_language]}}
+            </label>
+        </div>
         <div id="retry_detection_div" class="d-none justify-content-center align-items-center"
             style="margin: 0 auto; padding: 10px 0;">
-            <label id="fig_image_txt" class="form-check-label"></label>
             <div class="btn-group-vertical m-1">
                 <button type="button" id="retry_detection" class="btn btn-outline-secondary"
                     onclick="runDetect();">{{(ui_languages["Retry"])[ui_language]}}</button>
@@ -66,25 +81,33 @@
     </div>
     <script>
         function cancel() {
+            $(':button').prop('disabled', true);
             $('#cancel').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
             socketio.emit('data', { type: "calibration_cancel" })
         }
 
         function runDetect() {
             $('#run_detection').attr({ disabled: true });
-            $('#run_detection').text('Running...');
+            $('#run_detection').addClass('d-none');
+            $('#run_detection_d_none').removeClass('d-none');
             $('#spinner').attr({ class: "d-flex justify-content-center align-items-center mt-3" })
             $('#fig_image').attr({ class: "d-none" });
             $('#retry_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
+            $('#label_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
+            $('#img_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
             socketio.emit('data', { type: "run_target_detection" });
         }
 
         function validate() {
             $('#run_detection').attr({ disabled: true });
+            $('#run_detection_d_none').addClass('d-none');
+            $('#run_detection').removeClass('d-none');
             socketio.emit('data', { type: "run_target_move" });
         }
 
         socketio.on('image', function (data) {
+            $('#fig_image_txt_ok').addClass('d-none');
+            $('#fig_image_txt_nok').addClass('d-none');
             var arrayBufferView = new Uint8Array(data['image_data']);
             var blob = new Blob([arrayBufferView], { type: "image/jpeg" });
             var img_url = URL.createObjectURL(blob);
@@ -93,7 +116,9 @@
             $('#run_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
             $('#fig_image').removeAttr("class");
             $('#retry_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
-            $('#fig_image_txt').text(data['res']);
+            $('#label_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
+            $('#img_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
+            $('#fig_image_txt_' + data['label']).removeClass('d-none');
         });
 
         socketio.on('href_to', function (data) {

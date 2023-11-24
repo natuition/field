@@ -545,6 +545,12 @@
 		"nl": "",
 		"de": ""
 	},
+	"Running": {
+		"fr": "En cours...",
+		"en": "Running...",
+		"nl": "",
+		"de": ""
+	},
 	"Retry": {
 		"fr": "Réessayer",
 		"en": "Retry",
@@ -590,6 +596,18 @@
 	"Move extraction tool to target": {
 		"fr": "Veuillez corriger avec les flêches suivantes le déplacement automatique afin que l'outil d'extraction soit parfaitement au dessus de la cible ",
 		"en": "Please correct the automatic movement with the following arrows so that it is perfectly above the target",
+		"nl": "",
+		"de": ""
+	},
+	"Is not in undistorted zone": {
+		"fr": "La cible n'est pas dans la zone de détection souhaiter afin que la calibration fonctionne. Veuillez le placer dans la zone représenter en violet sur l'image ci-dessus.",
+		"en": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple in the image above.",
+		"nl": "",
+		"de": ""
+	},
+	"Is in undistorted zone": {
+		"fr": "La cible est dans la zone de détection souhaiter afin que la calibration fonctionne. Une fois validé merci de ne pas bouger la cible durant le processus.",
+		"en": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process.",
 		"nl": "",
 		"de": ""
 	}

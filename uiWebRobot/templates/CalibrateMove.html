@@ -107,6 +107,7 @@
 
     <script>
         function cancel() {
+            $(':button').prop('disabled', true);
             $('#cancel').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
             socketio.emit('data', { type: "calibration_cancel" })
         }

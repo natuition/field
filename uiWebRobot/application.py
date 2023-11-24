@@ -351,7 +351,9 @@ class UIWebRobot:
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
-        return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language]), 500
+        exc_type, value, traceback = sys.exc_info()
+        print(f"Error handled : {exc_type} : {value}.\n{traceback}.")
+        return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=f"{str(exc_type)} : {value}"), 500
 
     def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
         self.__app.run(host, port, debug, load_dotenv, **options)
