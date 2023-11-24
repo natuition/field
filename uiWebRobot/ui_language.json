@@ -491,124 +491,94 @@
 		"nl": "Activeer de demo-modus.",
 		"de": "Demomodus aktivieren."
 	},
-	"Calibration title": {
-		"fr": "Accès à la calibration de l'extraction",
-		"en": "Access to extraction calibration",
-		"nl": "",
-		"de": ""
-	},
 	"Error calibrate password": {
 		"fr": "Mauvais mot de passe, veuillez réessayer.",
-		"en": "Wrong password, please try again.",
-		"nl": "",
-		"de": ""
+		"en": "Incorrect password, please try again.",
+		"nl": "Incorrect password, please try again.",
+		"de": "Incorrect password, please try again."
 	},
 	"Login calibrate password": {
 		"fr": "Veuillez mettre le mot de passe permettant de lancer la calibration de l'extraction du robot.",
-		"en": "Please enter the password to launch the robot extraction calibration.",
-		"nl": "",
-		"de": ""
+		"en": "Please input the password to initiate the robot's extraction calibration.",
+		"nl": "Please input the password to initiate the robot's extraction calibration.",
+		"de": "Please input the password to initiate the robot's extraction calibration."
 	},
 	"Password": {
 		"fr": "Mot de passe",
 		"en": "Password",
-		"nl": "",
-		"de": ""
+		"nl": "Password",
+		"de": "Password"
 	},
 	"Quit": {
 		"fr": "Quitter",
-		"en": "Quit",
-		"nl": "",
-		"de": ""
+		"en": "Exit",
+		"nl": "Exit",
+		"de": "Exit"
 	},
 	"Submit": {
 		"fr": "Soumettre",
 		"en": "Submit",
-		"nl": "",
-		"de": ""
+		"nl": "Submit",
+		"de": "Submit"
 	},
 	"Target detection title": {
 		"fr": "Détection de la cible pour le réglage",
-		"en": "Target detection for adjustment",
-		"nl": "",
-		"de": ""
+		"en": "Target Detection for Adjustment",
+		"nl": "Target Detection for Adjustment",
+		"de": "Target Detection for Adjustment"
 	},
 	"Launching target detection": {
 		"fr": "Lancement de la détection de la cible pour le réglage de la visée du robot, une fois validé merci de ne pas bouger la cible durant le processus.",
-		"en": "Launch of target detection for adjusting the robot's aim, once validated, please do not move the target during the process.",
-		"nl": "",
-		"de": ""
+		"en": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process.",
+		"nl": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process.",
+		"de": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process."
 	},
 	"Run": {
 		"fr": "Lancer",
-		"en": "Run",
-		"nl": "",
-		"de": ""
+		"en": "Initiate",
+		"nl": "Initiate",
+		"de": "Initiate"
 	},
 	"Running": {
 		"fr": "En cours...",
-		"en": "Running...",
-		"nl": "",
-		"de": ""
+		"en": "In Progress...",
+		"nl": "In Progress...",
+		"de": "In Progress..."
 	},
 	"Retry": {
 		"fr": "Réessayer",
 		"en": "Retry",
-		"nl": "",
-		"de": ""
+		"nl": "Retry",
+		"de": "Retry"
 	},
 	"Validate": {
 		"fr": "Valider",
-		"en": "Validate",
-		"nl": "",
-		"de": ""
+		"en": "Confirm",
+		"nl": "Confirm",
+		"de": "Confirm"
 	},
 	"Move to target title": {
 		"fr": "Réglage de la visée du robot",
-		"en": "Adjusting the robot's aim",
-		"nl": "",
-		"de": ""
+		"en": "Adjustment of Robot's Aiming",
+		"nl": "Adjustment of Robot's Aiming",
+		"de": "Adjustment of Robot's Aiming"
 	},
 	"Calibration configuration saved title": {
 		"fr": "Configuration de la calibration enregistrée",
-		"en": "Calibration configuration saved",
-		"nl": "",
-		"de": ""
+		"en": "Calibration Configuration Recorded",
+		"nl": "Calibration Configuration Recorded",
+		"de": "Calibration Configuration Recorded"
 	},
 	"Calibration configuration saved msg": {
 		"fr": "Votre paramètrage a été validé; vous pouvez le vérifier en relançant le déplacement vers la cible.",
-		"en": "Your setting has been validated; you can check it by restarting the movement towards the target.",
-		"nl": "",
-		"de": ""
+		"en": "Your settings have been confirmed; verify them by reinitiating the movement towards the target.",
+		"nl": "Your settings have been confirmed; verify them by reinitiating the movement towards the target.",
+		"de": "Your settings have been confirmed; verify them by reinitiating the movement towards the target."
 	},
 	"Calibration configuration saved tips": {
 		"fr": "Si votre paramètrage vous convient vous pouvez quitter la page; sinon veuillez refaire le réglage puis sauvegarder.",
-		"en": "If your settings suit you, you can leave the page; otherwise please redo the settings then save.",
-		"nl": "",
-		"de": ""
-	},
-	"Move to target label": {
-		"fr": "Déplacement de l'outil d'extraction à l'aplomb de la cible détectée",
-		"en": "Movement of the extraction tool directly above the target detected",
-		"nl": "",
-		"de": ""
-	},
-	"Move extraction tool to target": {
-		"fr": "Veuillez corriger avec les flêches suivantes le déplacement automatique afin que l'outil d'extraction soit parfaitement au dessus de la cible ",
-		"en": "Please correct the automatic movement with the following arrows so that it is perfectly above the target",
-		"nl": "",
-		"de": ""
-	},
-	"Is not in undistorted zone": {
-		"fr": "La cible n'est pas dans la zone de détection souhaiter afin que la calibration fonctionne. Veuillez le placer dans la zone représenter en violet sur l'image ci-dessus.",
-		"en": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple in the image above.",
-		"nl": "",
-		"de": ""
-	},
-	"Is in undistorted zone": {
-		"fr": "La cible est dans la zone de détection souhaiter afin que la calibration fonctionne. Une fois validé merci de ne pas bouger la cible durant le processus.",
-		"en": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process.",
-		"nl": "",
-		"de": ""
+		"en": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save.",
+		"nl": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save.",
+		"de": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save."
 	}
 }
