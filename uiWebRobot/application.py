@@ -263,12 +263,14 @@ class UIWebRobot:
         if isinstance(self.get_state_machine().currentState, (WaitWorkingState)):
             self.get_state_machine().on_event(Events.CALIBRATION)
 
+        currentState: CalibrateState = self.get_state_machine().currentState
+
         if request.method == 'POST':
-            if not self.get_state_machine().checkPassword(request.form['password']):
-                return render_template(self.get_state_machine().getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), password_wrong=True)
+            if not currentState.checkPassword(request.form['password']):
+                return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), password_wrong=True)
             else:
-                self.get_state_machine().getStatusOfControls()["currentHTML"] = "CalibrateDetect.html"
-        return render_template(self.get_state_machine().getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language())
+                currentState.getStatusOfControls()["currentHTML"] = "CalibrateDetect.html"
+        return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language())
     
     def __get_ui_language(self):
         ui_language = self.__config.UI_LANGUAGE

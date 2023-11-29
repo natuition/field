@@ -63,10 +63,10 @@
                 {{(ui_languages["Is not in undistorted zone"])[ui_language]}}
             </label>
         </div>
-        <div id="retry_detection_div" class="d-none justify-content-center align-items-center"
+        <div id="retry_detection_div" class="justify-content-center align-items-center"
             style="margin: 0 auto; padding: 10px 0;">
             <div class="btn-group-vertical m-1">
-                <button type="button" id="retry_detection" class="btn btn-outline-secondary"
+                <button type="button" id="retry_detection" class="d-none btn btn-outline-secondary"
                     onclick="runDetect();">{{(ui_languages["Retry"])[ui_language]}}</button>
             </div>
             <div class="btn-group-vertical m-1">
@@ -75,7 +75,7 @@
             </div>
             <span id="pick_up_target" class="d-none">{{(ui_languages["Pick up target"])[ui_language]}}</span>
             <div class="btn-group-vertical m-1">
-                <button type="button" id="validate" class="btn btn-outline-success"
+                <button type="button" id="validate" class="d-none btn btn-outline-success"
                     onclick="validate();">{{(ui_languages["Validate"])[ui_language]}}</button>
             </div>
         </div>
@@ -94,7 +94,8 @@
             $('#run_detection_d_none').removeClass('d-none');
             $('#spinner').attr({ class: "d-flex justify-content-center align-items-center mt-3" })
             $('#fig_image').attr({ class: "d-none" });
-            $('#retry_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
+            $('#retry_detection').addClass('d-none');
+            $('#validate').addClass('d-none');
             $('#label_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
             $('#img_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
             socketio.emit('data', { type: "run_target_detection" });
@@ -117,7 +118,8 @@
             $('#spinner').attr({ class: "d-none justify-content-center align-items-center mt-3" });
             $('#run_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
             $('#fig_image').removeAttr("class");
-            $('#retry_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
+            $('#retry_detection').removeClass('d-none');
+            $('#validate').removeClass('d-none');
             $('#label_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
             $('#img_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
             $('#fig_image_txt_' + data['label']).removeClass('d-none');

@@ -12,6 +12,7 @@ from config import config
 from deployement.cameraCalibration import CameraCalibration
 import utility
 import adapters
+import hashlib
 
 
 # This state corresponds when the robot is calibrate of plant targeting precision.
@@ -27,7 +28,7 @@ class CalibrateState(State.State):
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
         self.__cork_to_camera_distance = {"X" : config.CORK_TO_CAMERA_DISTANCE_X, "Y": config.CORK_TO_CAMERA_DISTANCE_Y}
-        self.__password = "Calibtech"
+        self.__password = "02bbcaee0bf08f23f17bb1ea2bfd40f94d33a011f23db826ba7eaf5e8b1ec66aad9376f6d8512dadf2bc5ef54262ae02dfad12b56d2de9cb3ad77c4c55f90563"
         
         try:
             if self.smoothie is None:
@@ -112,4 +113,4 @@ class CalibrateState(State.State):
         return None
     
     def checkPassword(self, password: str) -> str:
-        return password == self.__password
+        return hashlib.sha512(bytes(password, 'utf-8')).hexdigest() == self.__password
