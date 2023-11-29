@@ -610,5 +610,11 @@
 		"en": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process.",
 		"nl": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process.",
 		"de": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process."
+	},
+	"Pick up target": {
+		"fr": "Merci de ne pas oublier de récupérer la cible placée en dessous du robot.",
+		"en": "Please remember to retrieve the target placed beneath the robot.",
+		"nl": "Please remember to retrieve the target placed beneath the robot.",
+		"de": "Please remember to retrieve the target placed beneath the robot."
 	}
 }
