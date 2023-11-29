@@ -264,7 +264,7 @@ class UIWebRobot:
             self.get_state_machine().on_event(Events.CALIBRATION)
 
         if request.method == 'POST':
-            if request.form['password'] != "12334":
+            if not self.get_state_machine().checkPassword(request.form['password']):
                 return render_template(self.get_state_machine().getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), password_wrong=True)
             else:
                 self.get_state_machine().getStatusOfControls()["currentHTML"] = "CalibrateDetect.html"

@@ -27,6 +27,7 @@ class CalibrateState(State.State):
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
         self.__cork_to_camera_distance = {"X" : config.CORK_TO_CAMERA_DISTANCE_X, "Y": config.CORK_TO_CAMERA_DISTANCE_Y}
+        self.__password = "Calibtech"
         
         try:
             if self.smoothie is None:
@@ -109,3 +110,6 @@ class CalibrateState(State.State):
 
     def getField(self):
         return None
+    
+    def checkPassword(self, password: str) -> str:
+        return password == self.__password
