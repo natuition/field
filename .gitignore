@@ -156,3 +156,6 @@ cpm_dataset_preprocessor.py
 last_angle_wheels.txt
 nn_comparison.py
 yolo/Y0016.conf
+deployement/target_coords.json
+deployement/target_detection.jpg
+uiWebRobot/target_detection.jpg
