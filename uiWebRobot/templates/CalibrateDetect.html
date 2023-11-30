@@ -119,10 +119,15 @@
             $('#run_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
             $('#fig_image').removeAttr("class");
             $('#retry_detection').removeClass('d-none');
-            $('#validate').removeClass('d-none');
+
             $('#label_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
             $('#img_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
             $('#fig_image_txt_' + data['label']).removeClass('d-none');
+            if (data['label'] == "ok") {
+                $('#validate').removeClass('d-none');
+            } else {
+                $('#validate').addClass('d-none');
+            }
         });
 
         socketio.on('href_to', function (data) {
