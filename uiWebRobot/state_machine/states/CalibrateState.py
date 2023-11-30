@@ -13,6 +13,8 @@ from deployement.cameraCalibration import CameraCalibration
 import utility
 import adapters
 import hashlib
+import subprocess
+import os
 
 
 # This state corresponds when the robot is calibrate of plant targeting precision.
@@ -55,15 +57,17 @@ class CalibrateState(State.State):
 
     def on_event(self, event):
         if event == Events.CALIBRATION_DETECT:
-            res = self.cameraCalibration.offset_calibration_step_detect()
-            label = "ok"
-            if "isn't" in res:
-                label = "nok"
-            with open('./target_detection.jpg', 'rb') as f:
+            restart = True
+            while restart:
+                res = subprocess.run("python3 cameraCalibration.py", stderr=subprocess.DEVNULL, shell=True, cwd=os.getcwd().split("/uiWebRobot")[0]+"/deployement")
+                if res.returncode in [0, 1]:
+                    restart = False
+            with open('../deployement/target_detection.jpg', 'rb') as f:
                 image_data = f.read()
-            self.socketio.emit('image', {'image_data': image_data, "label": label}, namespace='/server', broadcast=True)
+            self.socketio.emit('image', {'image_data': image_data, "label": "ok" if res.returncode==0 else "nok"}, namespace='/server', broadcast=True)
             return self
         elif event == Events.CALIBRATION_MOVE:
+            self.cameraCalibration.set_targets("../deployement/")
             self.statusOfUIObject["currentHTML"] = "CalibrateMove.html"
             self.socketio.emit('href_to', {"href": "/calibrate"}, namespace='/server', broadcast=True)
             return self
