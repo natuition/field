@@ -3,19 +3,23 @@ sys.path.append('../')
 import time
 from flask_socketio import SocketIO
 import threading
+import os
+import json
+from urllib.parse import quote
 
 from state_machine import State
 from state_machine.states import CreateFieldState
 from state_machine.states import StartingState
 from state_machine.states import ResumeState
 from state_machine.states import ErrorState
+from state_machine.states import CalibrateState
 from state_machine import Events
 
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from state_machine.utilsFunction import *
+from state_machine import utilsFunction
 from config import config
 import adapters
-from application import UIWebRobot
+import utility
 
 from EnvironnementConfig import EnvironnementConfig
 
@@ -46,7 +50,7 @@ class WaitWorkingState(State.State):
                 msg = f"[{self.__class__.__name__}] -> initVesc"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
-                self.vesc_engine = initVesc(self.logger)
+                self.vesc_engine = utilsFunction.initVesc(self.logger)
             else:
                 msg = f"[{self.__class__.__name__}] -> no need to initVesc"
                 self.logger.write_and_flush(msg + "\n")
@@ -65,10 +69,10 @@ class WaitWorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
                 try:
-                    self.smoothie = initSmoothie(self.logger)
+                    self.smoothie = utilsFunction.initSmoothie(self.logger)
                 except Exception as e:
                     if "[Timeout sm]" in str(e):
-                        self.smoothie = initSmoothie(self.logger)
+                        self.smoothie = utilsFunction.initSmoothie(self.logger)
                     else:
                         raise e
             else:
@@ -126,7 +130,7 @@ class WaitWorkingState(State.State):
             print(msg)
 
         self.send_last_pos_thread_alive = True
-        self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(
+        self._send_last_pos_thread = threading.Thread(target=utilsFunction.send_last_pos_thread_tf, args=(
             lambda: self.send_last_pos_thread_alive, self.socketio), daemon=True)
         self._send_last_pos_thread.start()
 
@@ -137,7 +141,7 @@ class WaitWorkingState(State.State):
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
-        self.__voltage_thread = threading.Thread(target=voltage_thread_tf,
+        self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
                                                  args=(lambda: self.__voltage_thread_alive,
                                                        self.vesc_engine,
                                                        self.socketio,
@@ -192,6 +196,9 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
             return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        elif event == Events.Events.CALIBRATION:
+            self.__stop_thread()
+            return CalibrateState.CalibrateState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.startButton = ButtonState.CHARGING
@@ -277,13 +284,13 @@ class WaitWorkingState(State.State):
                 self.lastValueY = y
 
         elif data["type"] == 'getInputVoltage':
-            sendInputVoltage(
+            utilsFunction.sendInputVoltage(
                 self.socketio, self.input_voltage["input_voltage"])
 
         elif data["type"] == 'getField':
-            coords, other_fields, current_field_name = updateFields(
+            coords, other_fields, current_field_name = utilsFunction.updateFields(
                 data["field_name"])
-            fields_list = UIWebRobot.load_field_list("../fields")
+            fields_list = utilsFunction.load_field_list("../fields")
             self.socketio.emit('newField', json.dumps(
                 {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
                  "fields_list": fields_list}), namespace='/map')
@@ -291,10 +298,10 @@ class WaitWorkingState(State.State):
         elif data["type"] == 'removeField':
             os.remove(
                 "../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
-            fields_list = UIWebRobot.load_field_list("../fields")
+            fields_list = utilsFunction.load_field_list("../fields")
 
             if len(fields_list) > 0:
-                coords, other_fields, current_field_name = updateFields(
+                coords, other_fields, current_field_name = utilsFunction.updateFields(
                     fields_list[0])
             else:
                 coords, other_fields, current_field_name = list(), list(), ""

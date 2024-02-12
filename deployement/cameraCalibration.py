@@ -14,6 +14,7 @@ from extraction import ExtractionManagerV3
 import utility
 import adapters
 import importlib
+import json
 
 
 class CameraCalibration:
@@ -80,7 +81,7 @@ class CameraCalibration:
 
             image_saver.save_image(img_origine, "./", specific_name="scene_center")
 
-    def offset_calibration_step_detect(self, smoothie):
+    def offset_calibration_step_detect(self):
         image_saver = utility.ImageSaver()
         with adapters.CameraAdapterIMX219_170(  self.crop_w_from ,self.crop_w_to, self.crop_h_from, 
                                                 self.crop_h_to, config.CV_ROTATE_CODE,
@@ -91,45 +92,67 @@ class CameraCalibration:
                                                 config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                                 config.CAMERA_H, config.CAMERA_FRAMERATE,
                                                 config.CAMERA_FLIP_METHOD) as camera:
-
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-            
             frame = camera.get_image()
-            img_origine = frame.copy()
-            frame = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
-            frame = cv2.GaussianBlur(frame, (21,21), cv2.BORDER_DEFAULT)
 
-            all_circles = cv2.HoughCircles(frame,cv2.HOUGH_GRADIENT,0.9, 2500, param1 = 30, param2 = 10, minRadius = 50, maxRadius = 70)
-            all_circles_rounded = np.uint16(np.around(all_circles))
-            print('I have found ' + str(all_circles_rounded.shape[1]) + ' circles')
-            if len(all_circles_rounded) == 1:
-                self.target_x = float(all_circles_rounded[0][0][0])
-                self.target_y = float(all_circles_rounded[0][0][1])
-                self.target_radius = all_circles_rounded[0][0][2]
-            else:
-                print("Warning we found multiple circles.")
-            for i in all_circles_rounded[0, :]:
-                cv2.circle(img_origine, (i[0],i[1]),i[2],(102,0,204),3)
-                cv2.circle(img_origine, (i[0],i[1]),2,(102,0,204),3)
-                cv2.circle(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),config.UNDISTORTED_ZONE_RADIUS,(204,0,102),3)
-                cv2.circle(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),2,(204,0,102),3)
+        img_origine = frame.copy()
+        frame = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+        frame = cv2.GaussianBlur(frame, (21,21), cv2.BORDER_DEFAULT)
 
-            if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
-                finalMsg = "Target is in undistorted zone :"
-            else:
-                finalMsg = "Target isn't in undistorted zone :"
+        all_circles = cv2.HoughCircles(frame,cv2.HOUGH_GRADIENT,0.9, 2500, param1 = 30, param2 = 10, minRadius = 30, maxRadius = 50)
+        all_circles_rounded = np.uint16(np.around(all_circles))
+        print('I have found ' + str(all_circles_rounded.shape[1]) + ' circles')
+        if len(all_circles_rounded) == 1:
+            self.target_x = float(all_circles_rounded[0][0][0])
+            self.target_y = float(all_circles_rounded[0][0][1])
+            self.target_radius = all_circles_rounded[0][0][2]
+        else:
+            print("Warning we found multiple circles.")
+        for i in all_circles_rounded[0, :]:
+            cv2.circle(img_origine, (i[0],i[1]),i[2],(102,0,204),3)
+            cv2.circle(img_origine, (i[0],i[1]),2,(102,0,204),3)
+            cv2.ellipse(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),(config.UNDISTORTED_ZONE_RADIUS,config.UNDISTORTED_ZONE_RADIUS),0,270,360,(204,0,102),3)
+            cv2.line(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y), (config.SCENE_CENTER_X+config.UNDISTORTED_ZONE_RADIUS,config.SCENE_CENTER_Y), (204,0,102), 3) 
+            cv2.line(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y), (config.SCENE_CENTER_X,config.SCENE_CENTER_Y-config.UNDISTORTED_ZONE_RADIUS), (204,0,102), 3) 
+            cv2.circle(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),2,(204,0,102),3)
 
-            image_saver.save_image(img_origine, "./", specific_name="target_detection")
+        if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS) and self.target_x>=config.SCENE_CENTER_X and self.target_y<=config.SCENE_CENTER_Y:
+            finalMsg = "Target is in undistorted zone :"
+        else:
+            finalMsg = "Target isn't in undistorted zone :"
 
-            print(self.target_x, self.target_y)
+        image_saver.save_image(img_origine, os.getcwd()+"/", specific_name="target_detection")
 
-            return finalMsg
+        print(f"Save here : {os.getcwd()}")
+
+        return finalMsg
     
+    def set_targets(self, dir):
+        with open(dir+"/target_coords.json") as f:
+            targets = json.load(f)
+        self.target_x = targets["x"]
+        self.target_y = targets["y"]
+        
     def offset_calibration_step_move(self, smoothie):
         if self.target_x and self.target_y:
             if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
                 x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
                 y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
+                res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
+                                                            Y_F=config.Y_F_MAX,
+                                                            X=smoothie.smoothie_to_mm(x, "X"),
+                                                            Y=smoothie.smoothie_to_mm(y, "Y"))
+                if res != smoothie.RESPONSE_OK:
+                    msg = "INIT: Failed to move camera, smoothie response:\n" + res
+                    print(msg)
+                    exit(1)
+                smoothie.wait_for_all_actions_done()
+
+    def offset_calibration_step_move_with_distance(self, smoothie, cork_to_camera_distance_x, cork_to_camera_distance_y):
+        if self.target_x and self.target_y:
+            if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
+                x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + cork_to_camera_distance_x
+                y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + cork_to_camera_distance_y
                 res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
                                                             Y_F=config.Y_F_MAX,
                                                             X=smoothie.smoothie_to_mm(x, "X"),
@@ -258,13 +281,15 @@ class CameraCalibration:
 
 
 def main():
+    os.system("sudo systemctl restart nvargus-daemon")
     cameraCalibration: CameraCalibration = CameraCalibration()
-    with adapters.SmoothieAdapter(self.__get_smoothie_vesc_addresses()) as smoothie:
-        cameraCalibration.offset_calibration_step_detect(smoothie)
-        test_continue = input("Press enter to continue to the next step, type anything to exit.")
-        if test_continue != "":
-            return
-        cameraCalibration.offset_calibration_step_move(smoothie)
+    res = cameraCalibration.offset_calibration_step_detect()
+    with open(os.getcwd()+"/target_coords.json", 'w') as f:
+        json.dump({"x": cameraCalibration.target_x, "y":cameraCalibration.target_y}, f)
+    if "isn't" in res:
+        exit(1)
+    else:
+        exit(0)
 
 
 if __name__ == "__main__":

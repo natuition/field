@@ -8,8 +8,7 @@ from state_machine import State
 from config import config
 
 #This state corresponds when the robot has an error.
-from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
-
+from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 
 class ErrorState(State.State):
 

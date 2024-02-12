@@ -153,20 +153,24 @@ class Button(ItemInterface):
 
     GREEN = ["71", "168", "87"]
     RED = ["234", "40", "40"]
+    WHITE = ["255", "255", "255"]
 
     def __init__(self, id: str, label: str):
         super().__init__(id, label)
-        self._color_rgb: list[int] = None
+        self._color_rgb: list[str] = None
+        self.border = ""
         self._on_click_fct_name = ""
 
-    def set_color(self, color_rgb: 'list[int]'):
-        self._color_rgb: list[int] = color_rgb
+    def set_color(self, color_rgb: 'list[str]'):
+        self._color_rgb: list[str] = color_rgb
+        if color_rgb == self.WHITE:
+            self.border = "border-color: rgb(71, 168, 87); border-width: 1px; border-style: solid; color: #778493;"
 
     def set_on_click_fct_name(self, fct_name):
         self._on_click_fct_name = fct_name
 
     def generate_html(self, ui_languages: dict, ui_language: str) -> str:
-        return f""" <button name="{self._html_id}" id="{self._html_id}" onclick="{self._on_click_fct_name}" class="setting_btn unselectable" style="background-color: rgb({", ".join(self._color_rgb)})!important; box-shadow: 0px 4px 14px 0px rgba({", ".join(self._color_rgb)}, 0.6)!important;">
+        return f""" <button name="{self._html_id}" id="{self._html_id}" onclick="{self._on_click_fct_name}" class="setting_btn unselectable" style="{self.border} background-color: rgb({", ".join(self._color_rgb)})!important; box-shadow: 0px 4px 14px 0px rgba({", ".join(self._color_rgb)}, 0.6)!important;">
                         <span class="submit">{ui_languages[self._label][ui_language]}</span>
                         <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
                         <span class="check"><i class="fas fa-check scale"></i></span>
@@ -460,16 +464,6 @@ class SettingPageManager:
         slider_precise.set_number_parameters(
             0.1, 0.8, 0.1, self.__config.PRECISE_CONFIDENCE_THRESHOLD)
 
-        """radio_btn_mono = RadioButton("mono", "Mono", lambda new_value : self.__changeConfigValue("CAMERA_POSITIONS", "[(X_MAX/2,0)]") if new_value else "")
-        radio_btn_mono.set_checked(len(self.__config.CAMERA_POSITIONS)==1)
-
-        radio_btn_stereo = RadioButton("stereo", "Stereo", lambda new_value : self.__changeConfigValue("CAMERA_POSITIONS", "[(X_MAX/3,0),(2*X_MAX/3,0)]") if new_value else "")
-        radio_btn_stereo.set_checked(len(self.__config.CAMERA_POSITIONS)==2)
-
-        radio_btn_group_shooting = RadioButtonGroup("shooting", "Choice of picture shoot:")
-        radio_btn_group_shooting.set_column_number(2)
-        radio_btn_group_shooting.set_radio_button_list([radio_btn_mono,radio_btn_stereo])"""
-
         # ,radio_btn_group_shooting
         category_detection.add_items(
             [selector_periph, slider_periph, selector_precise, slider_precise])
@@ -477,16 +471,6 @@ class SettingPageManager:
         # Weeding technique category
         category_weed_removal = Category(
             "weeding_technique", "Weeding technique parameter:")
-
-        """radio_btn_drilling = RadioButton("drilling", "Drilling", lambda new_value : self.__changeConfigValue("EXTRACTION_MODE", 1) if new_value else "")
-        radio_btn_drilling.set_checked(self.__config.EXTRACTION_MODE==1)
-
-        radio_btn_milling = RadioButton("milling", "Milling", lambda new_value : self.__changeConfigValue("EXTRACTION_MODE", 2) if new_value else "")
-        radio_btn_milling.set_checked(self.__config.EXTRACTION_MODE==2)
-
-        radio_btn_group_weeding_technique = RadioButtonGroup("shooting", "Choice of weeding technique:")
-        radio_btn_group_weeding_technique.set_column_number(2)
-        radio_btn_group_weeding_technique.set_radio_button_list([radio_btn_drilling,radio_btn_milling])"""
 
         slider_extraction_z = Slider("extraction_z", "Extraction depth",
                                      lambda new_value: self.__changeConfigValue("EXTRACTION_Z", new_value))
@@ -527,18 +511,22 @@ class SettingPageManager:
             self.__ui_languages["Supported Language"], self.__config.UI_LANGUAGE)
         selector_language.set_choose_description("Please choose language")
 
+        btn_calibrate = Button("calibrate", "Calibrate")
+        btn_calibrate.set_on_click_fct_name("go_to_page('calibrate')")
+        btn_calibrate.set_color(Button.WHITE)
+
         btn_restart_app = Button("reboot_app", "Restart application")
         btn_restart_app.set_on_click_fct_name("go_to_page('restart_ui', true)")
-        btn_restart_app.set_color(Button.GREEN)
+        btn_restart_app.set_color(Button.WHITE)
 
         btn_restart_robot = Button("reboot_robot", "Restart robot")
         btn_restart_robot.set_on_click_fct_name("go_to_page('reboot', true)")
-        btn_restart_robot.set_color(Button.GREEN)
+        btn_restart_robot.set_color(Button.WHITE)
 
         btn_group_restart = ButtonGroup("btn_restart", "Restart button", [
                                         btn_restart_app, btn_restart_robot])
 
-        category_other.add_items([selector_language, btn_group_restart])
+        category_other.add_items([selector_language, btn_calibrate, btn_group_restart])
 
         # Setting page
 

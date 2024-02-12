@@ -1,0 +1,12 @@
+[Unit]
+Description=stream
+After=network.target
+
+[Service]
+Type=simple
+User=violette
+WorkingDirectory=/home/violette/field/
+ExecStart=/usr/bin/sudo /usr/bin/python3.6 /home/violette/field/pre_check.py
+
+[Install]
+WantedBy=multi-user.target

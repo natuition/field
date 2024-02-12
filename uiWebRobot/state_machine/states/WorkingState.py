@@ -6,6 +6,8 @@ import signal
 import posix_ipc
 import threading
 from datetime import datetime, timezone
+import os
+import json
 
 from state_machine import State
 from state_machine.states import WaitWorkingState
@@ -13,9 +15,9 @@ from state_machine.states import ErrorState
 from state_machine import Events
 
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects
-from uiWebRobot.state_machine.utilsFunction import *
+from uiWebRobot.state_machine import utilsFunction
 from config import config
-
+import utility
 
 # This state corresponds when the robot is working.
 class WorkingState(State.State):
@@ -75,7 +77,7 @@ class WorkingState(State.State):
         msg = f"[{self.__class__.__name__}] -> Lancement main"
         self.logger.write_and_flush(msg + "\n")
         print(msg)
-        self.main = startMain()
+        self.main = utilsFunction.startMain()
         self.timeStartMain = datetime.now(timezone.utc)
 
     def on_event(self, event):
@@ -180,7 +182,7 @@ class WorkingState(State.State):
             elif "clear_path" in data:
                 self.allPath.clear()
             elif "input_voltage" in data:
-                sendInputVoltage(self.socketio, data["input_voltage"])
+                utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
         msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)

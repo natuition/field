@@ -413,6 +413,12 @@
 		"nl": "Annuleren",
 		"de": "Stornieren"
 	},
+	"Calibrate": {
+		"fr": "Calibration",
+		"en": "Calibration",
+		"nl": "",
+		"de": ""
+	},
 	"no_landscape": {
 		"fr": "L'application web ne peut pas être utilisée en paysage !",
 		"en": "The web application cannot be used in landscape !",
@@ -484,5 +490,131 @@
 		"en": "Activate demo mode.",
 		"nl": "Activeer de demo-modus.",
 		"de": "Demomodus aktivieren."
+	},
+	"Calibration title": {
+		"fr": "Accès à la calibration de l'extraction",
+		"en": "Access to extraction calibration",
+		"nl": "Access to extraction calibration",
+		"de": "Access to extraction calibration"
+	},
+	"Error calibrate password": {
+		"fr": "Mauvais mot de passe, veuillez réessayer.",
+		"en": "Incorrect password, please try again.",
+		"nl": "Incorrect password, please try again.",
+		"de": "Incorrect password, please try again."
+	},
+	"Login calibrate password": {
+		"fr": "Veuillez mettre le mot de passe permettant de lancer la calibration de l'extraction du robot.",
+		"en": "Please input the password to initiate the robot's extraction calibration.",
+		"nl": "Please input the password to initiate the robot's extraction calibration.",
+		"de": "Please input the password to initiate the robot's extraction calibration."
+	},
+	"Password": {
+		"fr": "Mot de passe",
+		"en": "Password",
+		"nl": "Password",
+		"de": "Password"
+	},
+	"Quit": {
+		"fr": "Quitter",
+		"en": "Exit",
+		"nl": "Exit",
+		"de": "Exit"
+	},
+	"Submit": {
+		"fr": "Soumettre",
+		"en": "Submit",
+		"nl": "Submit",
+		"de": "Submit"
+	},
+	"Target detection title": {
+		"fr": "Détection de la cible pour le réglage",
+		"en": "Target Detection for Adjustment",
+		"nl": "Target Detection for Adjustment",
+		"de": "Target Detection for Adjustment"
+	},
+	"Launching target detection": {
+		"fr": "Lancement de la détection de la cible pour le réglage de la visée du robot, une fois validé merci de ne pas bouger la cible durant le processus.",
+		"en": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process.",
+		"nl": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process.",
+		"de": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process."
+	},
+	"Run": {
+		"fr": "Lancer",
+		"en": "Initiate",
+		"nl": "Initiate",
+		"de": "Initiate"
+	},
+	"Running": {
+		"fr": "En cours...",
+		"en": "In Progress...",
+		"nl": "In Progress...",
+		"de": "In Progress..."
+	},
+	"Retry": {
+		"fr": "Réessayer",
+		"en": "Retry",
+		"nl": "Retry",
+		"de": "Retry"
+	},
+	"Validate": {
+		"fr": "Valider",
+		"en": "Confirm",
+		"nl": "Confirm",
+		"de": "Confirm"
+	},
+	"Move to target title": {
+		"fr": "Réglage de la visée du robot",
+		"en": "Adjustment of Robot's Aiming",
+		"nl": "Adjustment of Robot's Aiming",
+		"de": "Adjustment of Robot's Aiming"
+	},
+	"Calibration configuration saved title": {
+		"fr": "Configuration de la calibration enregistrée",
+		"en": "Calibration Configuration Recorded",
+		"nl": "Calibration Configuration Recorded",
+		"de": "Calibration Configuration Recorded"
+	},
+	"Calibration configuration saved msg": {
+		"fr": "Votre paramètrage a été validé; vous pouvez le vérifier en relançant le déplacement vers la cible.",
+		"en": "Your settings have been confirmed; verify them by reinitiating the movement towards the target.",
+		"nl": "Your settings have been confirmed; verify them by reinitiating the movement towards the target.",
+		"de": "Your settings have been confirmed; verify them by reinitiating the movement towards the target."
+	},
+	"Calibration configuration saved tips": {
+		"fr": "Si votre paramètrage vous convient vous pouvez quitter la page; sinon veuillez refaire le réglage puis sauvegarder.",
+		"en": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save.",
+		"nl": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save.",
+		"de": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save."
+	},
+	"Move to target label": {
+		"fr": "Déplacement de l'outil d'extraction à l'aplomb de la cible détectée",
+		"en": "Movement of the extraction tool directly above the target detected",
+		"nl": "Movement of the extraction tool directly above the target detected",
+		"de": "Movement of the extraction tool directly above the target detected"
+	},
+	"Move extraction tool to target": {
+		"fr": "Veuillez corriger avec les flèches suivantes le déplacement automatique afin que l'outil d'extraction soit parfaitement au dessus de la cible ",
+		"en": "Please correct the automatic movement with the following arrows so that it is perfectly above the target",
+		"nl": "Please correct the automatic movement with the following arrows so that it is perfectly above the target",
+		"de": "Please correct the automatic movement with the following arrows so that it is perfectly above the target"
+	},
+	"Is not in undistorted zone": {
+		"fr": "La cible n'est pas dans la zone de détection souhaitée afin que la calibration fonctionne. Veuillez la placer dans la zone représentée en violet sur l'image ci-dessus.",
+		"en": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple in the image above.",
+		"nl": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple in the image above.",
+		"de": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple in the image above."
+	},
+	"Is in undistorted zone": {
+		"fr": "La cible est dans la zone de détection souhaitée afin que la calibration fonctionne. Une fois validé merci de ne pas bouger la cible durant le processus.",
+		"en": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process.",
+		"nl": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process.",
+		"de": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process."
+	},
+	"Pick up target": {
+		"fr": "Merci de ne pas oublier de récupérer la cible placée en dessous du robot.",
+		"en": "Please remember to retrieve the target placed beneath the robot.",
+		"nl": "Please remember to retrieve the target placed beneath the robot.",
+		"de": "Please remember to retrieve the target placed beneath the robot."
 	}
 }
