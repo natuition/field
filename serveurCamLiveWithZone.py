@@ -127,6 +127,7 @@ def encodeFrame():
             undistorted_zone_radius = config.UNDISTORTED_ZONE_RADIUS
             poly_zone_points_cv = np.array(config.WORKING_ZONE_POLY_POINTS, np.int32).reshape((-1, 1, 2))
             frameFinal = draw_zone_circle(frameFinal, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
+            frameFinal = draw_zone_circle(frameFinal, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, 2)
             frameFinal = draw_zone_poly(frameFinal, poly_zone_points_cv)
 
             frameFinal = rescale_frame(frameFinal, percent=50)
