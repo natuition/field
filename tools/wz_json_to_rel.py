@@ -2,14 +2,13 @@
 
 Saves converted to relative working zone as list of lists in txt file.
 """
-
+import sys
+sys.path.append('../')
 
 import json
-
-INPUT_JSON_PATH = "../1_working_zone.json"
-OUTOUT_TXT_PATH = "../1_working_zone.txt"
-SCENE_CENTER_X = 1000
-SCENE_CENTER_Y = 980
+from config import config
+INPUT_JSON_PATH = "./"+config.ROBOT_SN+"_wz.json"
+OUTOUT_TXT_PATH = "./"+config.ROBOT_SN+"_wz.txt"
 
 
 def process_working_zone(region: dict):
@@ -40,8 +39,8 @@ def main():
     rel_working_zone = []
     for point in abs_working_zone:
         rel_working_zone.append([
-            point[0] - SCENE_CENTER_X,
-            point[1] - SCENE_CENTER_Y
+            point[0] - config.SCENE_CENTER_X,
+            point[1] - config.SCENE_CENTER_Y
         ])
 
     with open(OUTOUT_TXT_PATH, "w") as out_txt_file:

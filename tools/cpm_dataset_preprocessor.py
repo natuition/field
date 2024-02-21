@@ -12,22 +12,24 @@ X from center to the right, Y from center to the top:
 
 OUTPUT: csv file, each row is a prepared control point
 """
+import sys
+sys.path.append('../')
 
 import json
 import math
 from config import config
 
 # PATHS
-INPUT_JSON_PATH = "../1_control_points_model_v2.json"
-OUTPUT_CSV_PATH = "../1_control_points_model_v2.csv"
+INPUT_JSON_PATH = "./"+config.ROBOT_SN+"_cp.json"
+OUTPUT_CSV_PATH = "../"+config.CONTROL_POINTS_CSV_PATH
 
 # SETTINGS
-ROW_PTS_CNT = 22  # how much points in a single X row
-SC_X_OFFSET_MM = -2.5  # static offset applied to each control point's mm value
-SC_Y_OFFSET_MM = 2  # static offset applied to each control point's mm value
-X_STEP_MM = 10  # control point mm step, this will be added to each next CP during current row
-Y_STEP_MM = 10  # control point mm step, this will be added to each next CP during current row
-X_INIT_MM = 10  # control point mm initial value, this will set as CP's mm value for each CP in a new row
+ROW_PTS_CNT = 5  # how much points in a single X row
+SC_X_OFFSET_MM = 0  # static offset applied to each control point's mm value
+SC_Y_OFFSET_MM = 0  # static offset applied to each control point's mm value
+X_STEP_MM = 50  # control point mm step, this will be added to each next CP during current row
+Y_STEP_MM = 50  # control point mm step, this will be added to each next CP during current row
+X_INIT_MM = 0  # control point mm initial value, this will set as CP's mm value for each CP in a new row
 Y_INIT_MM = 0  # control point mm initial value, this will set as CP's mm value once at the start
 
 
