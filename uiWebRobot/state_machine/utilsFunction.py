@@ -168,7 +168,7 @@ def updateFields(field_name):
         coords.append([float(coord[1]), float(coord[0])])
     coords.append(coords[0])
 
-    other_fields = application.UIWebRobot.get_other_field()
+    other_fields = get_other_field()
 
     return coords, other_fields, field_name
 
