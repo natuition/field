@@ -1,6 +1,6 @@
 var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
 socketio.on("reconnect_attempt", (attempt) => {
-    if (attempt > 2) location.reload();
+    //if (attempt > 2) location.reload();
 });
 var isCheck = false
 
@@ -48,7 +48,7 @@ function canNext() {
         document.getElementById('Z').checked &&
         document.getElementById('camera').checked &&
         document.getElementById('wheelsStraight').checked &&
-        document.getElementById("voltage_indicator").getAttribute("bumper_disable") == "true" &&
+        //document.getElementById("voltage_indicator").getAttribute("bumper_disable") == "true" &&
         document.getElementById('no_cam') == null;
 }
 

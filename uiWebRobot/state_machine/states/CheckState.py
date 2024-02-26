@@ -37,14 +37,14 @@ class CheckState(State.State):
         print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
 
-        self.__voltage_thread_alive = True
-        self.input_voltage = {"input_voltage": "?"}
-        self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
-                                                 args=(lambda: self.__voltage_thread_alive,
-                                                       self.vesc_engine, self.socketio,
-                                                       self.input_voltage),
-                                                 daemon=True)
-        self.__voltage_thread.start()
+        #self.__voltage_thread_alive = True
+        #self.input_voltage = {"input_voltage": "?"}
+        #self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
+        #                                         args=(lambda: self.__voltage_thread_alive,
+        #                                               self.vesc_engine, self.socketio,
+        #                                               self.input_voltage),
+        #                                         daemon=True)
+        #self.__voltage_thread.start()
 
         if EnvironnementConfig.NATUITION_CHECKLIST():
             self.statusOfUIObject["checkbox"] = True
@@ -54,7 +54,7 @@ class CheckState(State.State):
     def on_event(self, event):
         if event == Events.Events.LIST_VALIDATION:
             EnvironnementConfig.NATUITION_CHECKLIST(True)
-            self.__voltage_thread_alive = False
+            #self.__voltage_thread_alive = False
             if self.cam:
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Sending kill signal to camera process..."
@@ -90,8 +90,9 @@ class CheckState(State.State):
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
         elif data["type"] == 'getInputVoltage':
-            utilsFunction.sendInputVoltage(
-                self.socketio, self.input_voltage["input_voltage"])
+            pass
+        #    utilsFunction.sendInputVoltage(
+        #        self.socketio, self.input_voltage["input_voltage"])
         else:
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)

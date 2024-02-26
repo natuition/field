@@ -139,15 +139,15 @@ class WaitWorkingState(State.State):
             self.logger.write_and_flush(msg)
             print(msg)
 
-        self.__voltage_thread_alive = True
-        self.input_voltage = {"input_voltage": "?"}
-        self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
-                                                 args=(lambda: self.__voltage_thread_alive,
-                                                       self.vesc_engine,
-                                                       self.socketio,
-                                                       self.input_voltage),
-                                                 daemon=True)
-        self.__voltage_thread.start()
+        #self.__voltage_thread_alive = True
+        #self.input_voltage = {"input_voltage": "?"}
+        #self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
+        #                                         args=(lambda: self.__voltage_thread_alive,
+        #                                               self.vesc_engine,
+        #                                               self.socketio,
+        #                                               self.input_voltage),
+        #                                         daemon=True)
+        #self.__voltage_thread.start()
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Starting '__check_joystick_info_tf' thread..."
             self.logger.write_and_flush(msg)
@@ -181,9 +181,9 @@ class WaitWorkingState(State.State):
     def __stop_thread(self):
         self.can_go_setting = False
         self.send_last_pos_thread_alive = False
-        self.__voltage_thread_alive = False
+        #self.__voltage_thread_alive = False
         self.__check_joystick_info_alive = False
-        self.__voltage_thread.join()
+        #self.__voltage_thread.join()
         self._send_last_pos_thread.join()
         self.__joystick_info_thread.join()
 
@@ -284,8 +284,9 @@ class WaitWorkingState(State.State):
                 self.lastValueY = y
 
         elif data["type"] == 'getInputVoltage':
-            utilsFunction.sendInputVoltage(
-                self.socketio, self.input_voltage["input_voltage"])
+            pass
+            #utilsFunction.sendInputVoltage(
+            #    self.socketio, self.input_voltage["input_voltage"])
 
         elif data["type"] == 'getField':
             coords, other_fields, current_field_name = utilsFunction.updateFields(
