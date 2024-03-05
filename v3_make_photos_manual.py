@@ -38,8 +38,9 @@ def manual_photos_making(camera):
 
         frame = camera.get_image()
 
-        if draw_markup == "y":
-            frame = markup_5_points(frame)
+        if draw_markup:
+            frame = cv.circle(frame, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), 2, (0, 0, 255), thickness=2)
+            # frame = markup_5_points(frame)
 
         cv.imwrite(path_piece + str(counter) + sep + utility.get_current_time() + ".jpg", frame)
         counter += 1
