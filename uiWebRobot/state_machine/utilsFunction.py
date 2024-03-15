@@ -54,14 +54,24 @@ def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio):
 
 
 def initVesc(logger: utility.Logger):
-    smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
-    if "vesc" in smoothie_vesc_addr:
-        vesc_address = smoothie_vesc_addr["vesc"]
-    else:
-        msg = "Couldn't get vesc's USB address!"
-        logger.write_and_flush(msg + "\n")
-        print(msg)
-        exit(1)
+    for i in range(3):
+        if i==2:
+            msg = "Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
+            logger.write_and_flush(msg + "\n")
+            raise Exception(msg)
+        smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
+        if "vesc" in smoothie_vesc_addr:
+            vesc_address = smoothie_vesc_addr["vesc"]
+            msg = f"Finding vesc's USB address at '{vesc_address}'."
+            logger.write_and_flush(msg + "\n")
+            print(msg)
+            break
+        else:
+            msg = "Couldn't get vesc's USB address, attempt to unlock with lifeline"
+            logger.write_and_flush(msg + "\n")
+            print(msg)
+            utility.life_line_reset()
+        
     vesc_engine = adapters.VescAdapterV4(vesc_address,
                                          config.VESC_BAUDRATE,
                                          config.VESC_ALIVE_FREQ,

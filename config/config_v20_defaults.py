@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.8"
+CONFIG_VERSION = "0.20.9"
 
 
 # ======================================================================================================================
@@ -409,7 +409,7 @@ LOG_SPEED_MODES = True
 PRINT_SPEED_MODES = True
 UI_VERBOSE_LOGGING = False
 
-LEARN_GO_STRAIGHT = True
+LEARN_GO_STRAIGHT = False
 LEARN_GO_STRAIGHT_UI = False
 MIN_PERPENDICULAR_GO_STRAIGHT = 100 # in mm
 VALUES_LEARN_GO_STRAIGHT = 40
@@ -435,6 +435,7 @@ ROBOT_SYNTHESIS_PORT = 2006
 DATAGATHERING_HOST = "172.16.3.5"
 DATAGATHERING_PORT = 8080
 
+LIFE_LINE_PIN = 77 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
