@@ -131,7 +131,7 @@ class WaitWorkingState(State.State):
 
         self.send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=utilsFunction.send_last_pos_thread_tf, args=(
-            lambda: self.send_last_pos_thread_alive, self.socketio), daemon=True)
+            lambda: self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
         self._send_last_pos_thread.start()
 
         if config.UI_VERBOSE_LOGGING:

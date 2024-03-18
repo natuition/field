@@ -18,6 +18,7 @@ from config import config
 import time
 import utility
 import adapters
+from navigation import NavigationV3
 
 
 # This state corresponds when the robot is generating the work area.
@@ -73,7 +74,7 @@ class CreateFieldState(State.State):
             self.notificationQueue = None
 
         #self.__send_last_pos_thread_alive = True
-        #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio), daemon=True)
+        #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
 
     def on_event(self, event):
         if event == Events.Events.STOP:
@@ -99,7 +100,7 @@ class CreateFieldState(State.State):
                 self.manoeuvre = False
 
             #self.__send_last_pos_thread_alive = True
-            #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio), daemon=True)
+            #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
             #self._send_last_pos_thread.start()
 
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
