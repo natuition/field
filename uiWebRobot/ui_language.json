@@ -416,8 +416,14 @@
 	"Calibrate": {
 		"fr": "Calibration",
 		"en": "Calibration",
-		"nl": "",
-		"de": ""
+		"nl": "Kalibratie",
+		"de": "Kalibrierung"
+	},
+	"Actuator screening": {
+		"fr": "Rodage actionneur",
+		"en": "Actuator screening",
+		"nl": "Screening van actuatoren",
+		"de": "Aktuator-Screening"
 	},
 	"no_landscape": {
 		"fr": "L'application web ne peut pas être utilisée en paysage !",
