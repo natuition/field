@@ -516,7 +516,7 @@ class SettingPageManager:
         btn_calibrate.set_color(Button.WHITE)
 
         btn_screening = Button("actuator_screening", "Actuator screening")
-        btn_screening.set_on_click_fct_name("console.log('action here')")
+        btn_screening.set_on_click_fct_name("go_to_page('actuator_screening')")
         btn_screening.set_color(Button.WHITE)
 
         btn_restart_app = Button("reboot_app", "Restart application")

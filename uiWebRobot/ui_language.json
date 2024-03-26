@@ -622,5 +622,29 @@
 		"en": "Please remember to retrieve the target placed beneath the robot.",
 		"nl": "Please remember to retrieve the target placed beneath the robot.",
 		"de": "Please remember to retrieve the target placed beneath the robot."
+	},
+	"Actuator screening title": {
+		"fr": "Rodage actionneur",
+		"en": "Actuator screening",
+		"nl": "Actuator screening",
+		"de": "Actuator screening"
+	},
+	"Actuator screening paragraph": {
+		"fr": "Text explique l'objectifg de la page",
+		"en": "Text explique l'objectifg de la page",
+		"nl": "Text explique l'objectifg de la page",
+		"de": "Text explique l'objectifg de la page"
+	},
+	"Actuation counter": {
+		"fr": "Compteur d'actionnement : ",
+		"en": "Actuation counter: ",
+		"nl": "Actuation counter: ",
+		"de": "Actuation counter: "
+	},
+	"Pause": {
+		"fr": "Pause",
+		"en": "Pause",
+		"nl": "Pause",
+		"de": "Pause"
 	}
 }

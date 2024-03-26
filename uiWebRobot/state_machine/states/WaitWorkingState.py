@@ -13,6 +13,7 @@ from state_machine.states import StartingState
 from state_machine.states import ResumeState
 from state_machine.states import ErrorState
 from state_machine.states import CalibrateState
+from state_machine.states import ActuatorScreeningState
 from state_machine import Events
 
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
@@ -198,7 +199,10 @@ class WaitWorkingState(State.State):
             return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         elif event == Events.Events.CALIBRATION:
             self.__stop_thread()
-            return CalibrateState.CalibrateState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+            return CalibrateState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        elif event == Events.Events.ACTUATOR_SCREENING:
+            self.__stop_thread()
+            return ActuatorScreeningState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.startButton = ButtonState.CHARGING

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Violette</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0 15px;
+            height: 100%;
+            touch-action: manipulation;
+        }
+
+        #fig_image:hover {
+            /*transform: scale(2);*/
+            object-fit: none;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+    <script>
+        var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+    </script>
+</head>
+
+<body>
+    <h1 style="text-align: center; padding: 10px 0;">{{(ui_languages["Actuator screening title"])[ui_language]}}</h1>
+
+    <div id="alert" class="alert alert-dark" role="alert">
+        <p>{{(ui_languages["Actuator screening paragraph"])[ui_language]}}</p>
+        <div class="btn-group-vertical m-1">
+            <button type="button" id="start_screening" class="btn btn-outline-success"
+                onclick="startScreening();">{{(ui_languages["Run"])[ui_language]}}</button>
+        </div>
+        <div class="btn-group-vertical m-1 d-none">
+            <button type="button" id="pause_screening" class="btn btn-outline-secondary" onclick="pauseScreening();"
+                disabled>{{(ui_languages["Pause"])[ui_language]}}</button>
+        </div>
+        <div class="btn-group-vertical m-1 d-none">
+            <button type="button" id="loading_screening" class="btn btn-outline-dark" disabled><span
+                    class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+        </div>
+        <hr>
+        <p class="mb-0" style="display:inline;">{{(ui_languages["Actuation counter"])[ui_language]}}</p>
+        <span id="counted_value" style="display:inline;">0</span>
+    </div>
+
+    <div class="text-center d-flex justify-content-start align-items-center flex-column"
+        style="height: 80%; margin: 0 auto;">
+        <div id="spinner" style="width: 80%; aspect-ratio: 16/9;"
+            class="d-none d-flex justify-content-center align-items-center">
+            <div class="spinner-border" style="width: 5rem; height: 5rem;" role="status"></div>
+        </div>
+        <div class="btn-group-vertical m-1">
+            <button type="button" class="cancel btn btn-outline-danger btn-lg"
+                onclick="quitScreening();">{{(ui_languages["Quit"])[ui_language]}}</button>
+        </div>
+    </div>
+    <script>
+        function quitScreening() {
+            $(':button').prop('disabled', true);
+            $('.cancel').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+            socketio.emit('data', { type: "screening_quit" })
+        }
+
+        function startScreening() {
+            $('#start_screening').attr({ disabled: true });
+            $('#start_screening').parent().addClass('d-none');
+            $('#loading_screening').parent().removeClass('d-none');
+            socketio.emit('data', { type: "screening_start" });
+        }
+
+        function pauseScreening() {
+            $('#pause_screening').attr({ disabled: true });
+            $('#pause_screening').parent().addClass('d-none');
+            $('#loading_screening').parent().removeClass('d-none');
+            socketio.emit('data', { type: "screening_pause" });
+        }
+
+        socketio.on('screening_status', function (data) {
+            $('#loading_screening').parent().addClass('d-none');
+            if (data == "started") {
+                $('#pause_screening').parent().removeClass('d-none');
+                $('#pause_screening').attr({ disabled: false });
+            } else if (data == "paused") {
+                $('#start_screening').parent().removeClass('d-none');
+                $('#start_screening').attr({ disabled: false });
+            } else if (data["counter"]) {
+                $('#counted_value').html(data["counter"]);
+            }
+        });
+
+
+        socketio.on('href_to', function (data) {
+            if (data["delay"] != undefined) {
+                var reloader = setTimeout(() => {
+                    window.location.href = 'http://' + document.domain + data["href"];
+                    reloader = undefined;
+                }, data["delay"]);
+            } else {
+                window.location.href = 'http://' + document.domain + data["href"];
+            }
+        });
+    </script>
+</body>
+
+</html>
