@@ -500,146 +500,152 @@
 	"Calibration title": {
 		"fr": "Accès à la calibration de l'extraction",
 		"en": "Access to extraction calibration",
-		"nl": "Access to extraction calibration",
-		"de": "Access to extraction calibration"
+		"nl": "Toegang tot kalibratie van extractie",
+		"de": "Zugang zur Extraktionskalibrierung"
 	},
 	"Error calibrate password": {
 		"fr": "Mauvais mot de passe, veuillez réessayer.",
 		"en": "Incorrect password, please try again.",
-		"nl": "Incorrect password, please try again.",
-		"de": "Incorrect password, please try again."
+		"nl": "Onjuist wachtwoord, probeer het opnieuw.",
+		"de": "Falsches Passwort, bitte versuchen Sie es erneut."
 	},
 	"Login calibrate password": {
 		"fr": "Veuillez mettre le mot de passe permettant de lancer la calibration de l'extraction du robot.",
 		"en": "Please input the password to initiate the robot's extraction calibration.",
-		"nl": "Please input the password to initiate the robot's extraction calibration.",
-		"de": "Please input the password to initiate the robot's extraction calibration."
+		"nl": "Voer alstublieft het wachtwoord in om de kalibratie van de extractie van de robot te starten.",
+		"de": "Bitte geben Sie das Passwort ein, um die Kalibrierung der Extraktion des Roboters zu starten."
 	},
 	"Password": {
 		"fr": "Mot de passe",
 		"en": "Password",
-		"nl": "Password",
-		"de": "Password"
+		"nl": "Wachtwoord",
+		"de": "Passwort"
 	},
 	"Quit": {
 		"fr": "Quitter",
 		"en": "Exit",
-		"nl": "Exit",
-		"de": "Exit"
+		"nl": "Afsluiten",
+		"de": "Beenden"
 	},
 	"Submit": {
 		"fr": "Soumettre",
 		"en": "Submit",
-		"nl": "Submit",
-		"de": "Submit"
+		"nl": "Indienen",
+		"de": "Einreichen"
 	},
 	"Target detection title": {
 		"fr": "Détection de la cible pour le réglage",
 		"en": "Target Detection for Adjustment",
-		"nl": "Target Detection for Adjustment",
-		"de": "Target Detection for Adjustment"
+		"nl": "Detectie van het doelwit voor afstelling",
+		"de": "Zieldetektion für die Einstellung"
 	},
 	"Launching target detection": {
 		"fr": "Lancement de la détection de la cible pour le réglage de la visée du robot, une fois validé merci de ne pas bouger la cible durant le processus.",
 		"en": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process.",
-		"nl": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process.",
-		"de": "Initiating target detection for the robot's aiming adjustment. Once confirmed, please refrain from moving the target during the process."
+		"nl": "Initiëren van doeldetectie voor de afstellingsaanpassing van de robot. Eenmaal bevestigd, gelieve het doelwit niet te verplaatsen tijdens het proces.",
+		"de": "Initiierung der Zieldetektion für die Zieljustierung des Roboters. Nach Bestätigung, bitte das Ziel während des Prozesses nicht bewegen."
 	},
 	"Run": {
 		"fr": "Lancer",
 		"en": "Initiate",
-		"nl": "Initiate",
-		"de": "Initiate"
+		"nl": "Starten",
+		"de": "Starten"
 	},
 	"Running": {
 		"fr": "En cours...",
 		"en": "In Progress...",
-		"nl": "In Progress...",
-		"de": "In Progress..."
+		"nl": "Bezig...",
+		"de": "In Bearbeitung..."
 	},
 	"Retry": {
 		"fr": "Réessayer",
 		"en": "Retry",
-		"nl": "Retry",
-		"de": "Retry"
+		"nl": "Opnieuw proberen",
+		"de": "Erneut versuchen"
 	},
 	"Validate": {
 		"fr": "Valider",
 		"en": "Confirm",
-		"nl": "Confirm",
-		"de": "Confirm"
+		"nl": "Bevestigen",
+		"de": "Bestätigen"
 	},
 	"Move to target title": {
 		"fr": "Réglage de la visée du robot",
 		"en": "Adjustment of Robot's Aiming",
-		"nl": "Adjustment of Robot's Aiming",
-		"de": "Adjustment of Robot's Aiming"
+		"nl": "Afstelling van de richting van de robot",
+		"de": "Justierung der Zielrichtung des Roboters"
 	},
 	"Calibration configuration saved title": {
 		"fr": "Configuration de la calibration enregistrée",
 		"en": "Calibration Configuration Recorded",
-		"nl": "Calibration Configuration Recorded",
-		"de": "Calibration Configuration Recorded"
+		"nl": "Kalibratieconfiguratie Opgeslagen",
+		"de": "Kalibrierungskonfiguration Gespeichert"
 	},
 	"Calibration configuration saved msg": {
 		"fr": "Votre paramètrage a été validé; vous pouvez le vérifier en relançant le déplacement vers la cible.",
 		"en": "Your settings have been confirmed; verify them by reinitiating the movement towards the target.",
-		"nl": "Your settings have been confirmed; verify them by reinitiating the movement towards the target.",
-		"de": "Your settings have been confirmed; verify them by reinitiating the movement towards the target."
+		"nl": "Uw instellingen zijn bevestigd; verifieer ze door de beweging naar het doelwit opnieuw te starten.",
+		"de": "Ihre Einstellungen wurden bestätigt; überprüfen Sie diese, indem Sie die Bewegung zum Ziel erneut starten."
 	},
 	"Calibration configuration saved tips": {
 		"fr": "Si votre paramètrage vous convient vous pouvez quitter la page; sinon veuillez refaire le réglage puis sauvegarder.",
 		"en": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save.",
-		"nl": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save.",
-		"de": "If your configuration is satisfactory, you may exit the page; if not, please readjust and save."
+		"nl": "Als uw configuratie naar wens is, kunt u de pagina verlaten; zo niet, stel dan opnieuw in en sla op.",
+		"de": "Wenn Ihre Konfiguration zufriedenstellend ist, können Sie die Seite verlassen; wenn nicht, bitte neu justieren und speichern."
 	},
 	"Move to target label": {
 		"fr": "Déplacement de l'outil d'extraction à l'aplomb de la cible détectée",
-		"en": "Movement of the extraction tool directly above the target detected",
-		"nl": "Movement of the extraction tool directly above the target detected",
-		"de": "Movement of the extraction tool directly above the target detected"
+		"en": "Movement of the extraction tool directly above the detected target",
+		"nl": "Verplaatsing van het extractiegereedschap direct boven het gedetecteerde doelwit",
+		"de": "Bewegung des Extraktionswerkzeugs direkt über dem erkannten Ziel"
 	},
 	"Move extraction tool to target": {
-		"fr": "Veuillez corriger avec les flèches suivantes le déplacement automatique afin que l'outil d'extraction soit parfaitement au dessus de la cible ",
-		"en": "Please correct the automatic movement with the following arrows so that it is perfectly above the target",
-		"nl": "Please correct the automatic movement with the following arrows so that it is perfectly above the target",
-		"de": "Please correct the automatic movement with the following arrows so that it is perfectly above the target"
+		"fr": "Veuillez corriger avec les flèches suivantes le déplacement automatique afin que l'outil d'extraction soit parfaitement au dessus de la cible",
+		"en": "Please correct the automatic movement with the following arrows so that the extraction tool is positioned perfectly above the target",
+		"nl": "Corrigeer de automatische beweging met de volgende pijlen, zodat het extractiegereedschap perfect boven het doelwit is gepositioneerd",
+		"de": "Bitte korrigieren Sie die automatische Bewegung mit den folgenden Pfeilen, damit das Extraktionswerkzeug perfekt über dem Ziel positioniert ist"
 	},
 	"Is not in undistorted zone": {
 		"fr": "La cible n'est pas dans la zone de détection souhaitée afin que la calibration fonctionne. Veuillez la placer dans la zone représentée en violet sur l'image ci-dessus.",
-		"en": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple in the image above.",
-		"nl": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple in the image above.",
-		"de": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple in the image above."
+		"en": "The target is not in the desired detection zone for the calibration to work. Please place it in the area shown in purple on the image above.",
+		"nl": "Het doelwit bevindt zich niet in de gewenste detectiezone voor de kalibratie om te werken. Plaats het alstublieft in het gebied dat in paars op de afbeelding hierboven wordt getoond.",
+		"de": "Das Ziel befindet sich nicht im gewünschten Erfassungsbereich für die Kalibrierung. Bitte platzieren Sie es im auf dem obigen Bild in Lila dargestellten Bereich."
 	},
 	"Is in undistorted zone": {
 		"fr": "La cible est dans la zone de détection souhaitée afin que la calibration fonctionne. Une fois validé merci de ne pas bouger la cible durant le processus.",
 		"en": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process.",
-		"nl": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process.",
-		"de": "The target is in the desired detection zone for the calibration to work. Once validated, please do not move the target during the process."
+		"nl": "Het doelwit bevindt zich in de gewenste detectiezone voor de kalibratie om te werken. Eenmaal gevalideerd, gelieve het doelwit niet te verplaatsen tijdens het proces.",
+		"de": "Das Ziel befindet sich im gewünschten Erfassungsbereich für die Kalibrierung. Nach der Validierung, bitte das Ziel während des Prozesses nicht bewegen."
 	},
 	"Pick up target": {
 		"fr": "Merci de ne pas oublier de récupérer la cible placée en dessous du robot.",
 		"en": "Please remember to retrieve the target placed beneath the robot.",
-		"nl": "Please remember to retrieve the target placed beneath the robot.",
-		"de": "Please remember to retrieve the target placed beneath the robot."
+		"nl": "Gelieve niet te vergeten het doel onder de robot op te halen.",
+		"de": "Bitte denken Sie daran, das unter dem Roboter platzierte Ziel zu bergen."
 	},
 	"Actuator screening title": {
 		"fr": "Rodage actionneur",
 		"en": "Actuator screening",
-		"nl": "Actuator screening",
-		"de": "Actuator screening"
+		"nl": "Inslijpen van actuator",
+		"de": "Einfahren des Aktuators"
 	},
 	"Actuator screening paragraph": {
-		"fr": "Text explique l'objectifg de la page",
-		"en": "Text explique l'objectifg de la page",
-		"nl": "Text explique l'objectifg de la page",
-		"de": "Text explique l'objectifg de la page"
+		"fr": "Ce logiciel provoque une répétition de montées et descentes de l'outil d'extraction.",
+		"en": "This software causes a repetition of the extraction tool's ascents and descents.",
+		"nl": "Deze software veroorzaakt een herhaling van het op en neer bewegen van het extractiegereedschap.",
+		"de": "Diese Software verursacht eine Wiederholung des Auf- und Absteigens des Extraktionswerkzeugs."
+	},
+	"Actuator screening paragraph 2": {
+		"fr": "L'actionneur pénètre le sol avec la tête dans la position d'initialisation actuelle.",
+		"en": "The actuator penetrates the ground with the head in the current initialization position.",
+		"nl": "De actuator dringt de grond binnen met het hoofd in de huidige startpositie.",
+		"de": "Der Aktuator dringt mit dem Kopf in der aktuellen Startposition in den Boden ein."
 	},
 	"Actuation counter": {
-		"fr": "Compteur d'actionnement : ",
-		"en": "Actuation counter: ",
-		"nl": "Actuation counter: ",
-		"de": "Actuation counter: "
+		"fr": "Compteur de descentes :",
+		"en": "Descent counter:",
+		"nl": "Afdalingsteller:",
+		"de": "Abstiegszähler:"
 	},
 	"Pause": {
 		"fr": "Pause",

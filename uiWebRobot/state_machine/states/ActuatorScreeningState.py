@@ -30,7 +30,6 @@ class ActuatorScreeningState(State.State):
         self.vesc_engine = vesc_engine
         self.__screening_shotting_thread_alive = False
         self.__screening_shotting_thread = None
-        self.count = 0
 
         try:
             if self.smoothie is None:
@@ -47,7 +46,7 @@ class ActuatorScreeningState(State.State):
         except Exception as e:
             raise e
 
-        self.statusOfUIObject = {"currentHTML": "ActuatorScreening.html"}
+        self.statusOfUIObject = {"currentHTML": "ActuatorScreening.html", "hasStarted": False, "count" : 0}
 
         res = self.smoothie.ext_calibrate_cork()
         if res != self.smoothie.RESPONSE_OK:
@@ -64,8 +63,8 @@ class ActuatorScreeningState(State.State):
             res = self.smoothie.ext_cork_up()
             if res != self.smoothie.RESPONSE_OK:
                 return Exception(res)
-            self.count += 1
-            self.socketio.emit('screening_status', {"counter": self.count}, namespace='/server', broadcast=True)
+            self.statusOfUIObject["count"] += 1
+            self.socketio.emit('screening_status', {"count": self.statusOfUIObject["count"]}, namespace='/server', broadcast=True)
 
     def on_event(self, event):
         if event == Events.ACTUATOR_SCREENING_START:
@@ -75,6 +74,7 @@ class ActuatorScreeningState(State.State):
                                                     daemon=True)
                 self.__screening_shotting_thread.start()
             self.socketio.emit('screening_status', "started", namespace='/server', broadcast=True)
+            self.statusOfUIObject["hasStarted"]= True
             return self
         elif event == Events.ACTUATOR_SCREENING_PAUSE:
             self.__screening_shotting_thread_alive = False
@@ -85,6 +85,7 @@ class ActuatorScreeningState(State.State):
             if res != self.smoothie.RESPONSE_OK:
                 return ErrorState(self.socketio, self.logger, res)
             self.socketio.emit('screening_status', "paused", namespace='/server', broadcast=True)
+            self.statusOfUIObject["hasStarted"]= False
             return self
         elif event == Events.ACTUATOR_SCREENING_STOP:
             self.__screening_shotting_thread_alive = False
