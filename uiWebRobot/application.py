@@ -23,7 +23,7 @@ from uiWebRobot.setting_page import SettingPageManager
 import utility
 from config import config
 from uiWebRobot.state_machine.states import *
-
+import traceback
 
 __author__ = 'Vincent LAMBERT'
 
@@ -371,9 +371,10 @@ class UIWebRobot:
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
-        exc_type, value, traceback = sys.exc_info()
-        print(f"Error handled : {exc_type} : {value}.\n{traceback}.")
-        return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=f"{str(exc_type)} : {value}"), 500
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        print(f"Error handled : {exc_type} : {exc_value}.")
+        traceback.print_exception(exc_type, exc_value, exc_traceback)
+        return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=f"{str(exc_type)} : {exc_value}"), 500
 
     def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
         self.__app.run(host, port, debug, load_dotenv, **options)

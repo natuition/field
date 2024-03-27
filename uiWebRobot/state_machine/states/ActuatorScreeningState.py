@@ -15,6 +15,7 @@ import subprocess
 import os
 import time
 import threading
+import csv
 
 # This state corresponds when the robot screening his actuator.
 class ActuatorScreeningState(State.State):
@@ -30,6 +31,9 @@ class ActuatorScreeningState(State.State):
         self.vesc_engine = vesc_engine
         self.__screening_shotting_thread_alive = False
         self.__screening_shotting_thread = None
+        self.__z_motor_stats_thread_alive = True
+        self.__z_motor_stats_thread = None
+        self.__z_motor_can_id = 2
 
         try:
             if self.smoothie is None:
@@ -52,6 +56,23 @@ class ActuatorScreeningState(State.State):
         if res != self.smoothie.RESPONSE_OK:
             return ErrorState(self.socketio, self.logger, res)
 
+        #self.__z_motor_stats_thread =  threading.Thread(target=self.__z_motor_stats_tf, daemon=True)
+        #self.__z_motor_stats_thread.start()
+
+    def __z_motor_stats_tf(self):
+        try:
+            fieldnames = ["avg_iq", "rpm"]
+            with open('force.csv', 'w', newline='') as csvfile:
+                csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel')
+                csv_writer.writeheader()
+                while(self.__z_motor_stats_thread_alive):
+                    data = self.vesc_engine.get_sensors_data_of_can_id(fieldnames, self.__z_motor_can_id)
+                    if data is not None:
+                        csv_writer.writerow(data)
+                    time.sleep(0.01)
+        except Exception as e:
+            print(e)
+
     def __screening_shotting_tf(self):
         while(self.__screening_shotting_thread_alive):
             time.sleep(0.1)
@@ -65,6 +86,14 @@ class ActuatorScreeningState(State.State):
                 return Exception(res)
             self.statusOfUIObject["count"] += 1
             self.socketio.emit('screening_status', {"count": self.statusOfUIObject["count"]}, namespace='/server', broadcast=True)
+
+    def __threads_stop_join(self):
+        self.__screening_shotting_thread_alive = False
+        if self.__screening_shotting_thread is not None:
+            self.__screening_shotting_thread.join()
+        self.__z_motor_stats_thread_alive = False
+        if self.__z_motor_stats_thread is not None:
+            self.__z_motor_stats_thread.join()
 
     def on_event(self, event):
         if event == Events.ACTUATOR_SCREENING_START:
@@ -88,9 +117,7 @@ class ActuatorScreeningState(State.State):
             self.statusOfUIObject["hasStarted"]= False
             return self
         elif event == Events.ACTUATOR_SCREENING_STOP:
-            self.__screening_shotting_thread_alive = False
-            if self.__screening_shotting_thread is not None:
-                self.__screening_shotting_thread.join()
+            self.__threads_stop_join()
             from state_machine.states.WaitWorkingState import WaitWorkingState
             res = self.smoothie.ext_calibrate_cork()
             if res != self.smoothie.RESPONSE_OK:
