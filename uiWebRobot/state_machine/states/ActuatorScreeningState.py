@@ -86,8 +86,8 @@ class ActuatorScreeningState(State.State):
                         self.socketio.emit('statistics', {"operation": "add", "y_data": [data_filtred["avg_iq"],data_filtred["rpm"]]}, namespace='/server', broadcast=True)
                     else:
                         self.__x_data.append(self.__x_data_cpt)
-                        self.__y_data[0].append(data_filtred["avg_iq"])
-                        self.__y_data[1].append(data_filtred["rpm"])
+                        self.__y_data[0].append(data_filtred["avg_iq"]*(10**42))
+                        self.__y_data[1].append(data_filtred["rpm"]/7)
                 self.__x_data_cpt+=1
                 time.sleep(0.01)
             if ActuatorScreeningState.DATA_IN_CSV:

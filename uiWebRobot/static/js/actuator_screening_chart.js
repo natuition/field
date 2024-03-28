@@ -70,6 +70,7 @@ window.onload = function () {
             ]
         },
         options: {
+            responsive: true,
             stacked: false,
             elements: {
                 point: {
@@ -101,7 +102,11 @@ window.onload = function () {
                         id: "y_iq",
                         gridLines: {
                             display: false
-                        }
+                        },
+                        ticks: {
+                            suggestedMin: 0,
+                            suggestedMax: 7,
+                        },
                     },
                     {
                         type: 'linear',
@@ -113,7 +118,11 @@ window.onload = function () {
                             fontColor: '#0000FF',
                             fontSize: 14
                         },
-                        id: "y_rpm",
+                        ticks: {
+                            suggestedMin: -1500,
+                            suggestedMax: 1500,
+                        },
+                        id: "y_rpm"
                     },
                 ]
             }
