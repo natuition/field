@@ -288,7 +288,7 @@ class UIWebRobot:
 
         currentState: ActuatorScreeningState = self.get_state_machine().currentState
 
-        return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), hasStarted=currentState.getStatusOfControls()["hasStarted"], count=currentState.getStatusOfControls()["count"])
+        return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), hasStarted=currentState.getStatusOfControls()["hasStarted"], count=currentState.getStatusOfControls()["count"], now=datetime.now().strftime("%H_%M_%S_%f"))
     
     def __get_ui_language(self):
         ui_language = self.__config.UI_LANGUAGE

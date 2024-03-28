@@ -16,9 +16,12 @@ import os
 import time
 import threading
 import csv
+import math
 
 # This state corresponds when the robot screening his actuator.
 class ActuatorScreeningState(State.State):
+
+    DATA_IN_CSV = False
 
     def __init__(self,
                  socketio: SocketIO,
@@ -34,6 +37,13 @@ class ActuatorScreeningState(State.State):
         self.__z_motor_stats_thread_alive = True
         self.__z_motor_stats_thread = None
         self.__z_motor_can_id = 2
+
+        self.__radar_chart = False
+        self.__x_data_cpt = 0
+        self.__x_data = list()
+        self.__y_data = list()
+        self.__y_data.append(list())
+        self.__y_data.append(list())
 
         try:
             if self.smoothie is None:
@@ -56,20 +66,32 @@ class ActuatorScreeningState(State.State):
         if res != self.smoothie.RESPONSE_OK:
             return ErrorState(self.socketio, self.logger, res)
 
-        #self.__z_motor_stats_thread =  threading.Thread(target=self.__z_motor_stats_tf, daemon=True)
-        #self.__z_motor_stats_thread.start()
+        self.__z_motor_stats_thread =  threading.Thread(target=self.__z_motor_stats_tf, daemon=True)
+        self.__z_motor_stats_thread.start()
 
     def __z_motor_stats_tf(self):
         try:
             fieldnames = ["avg_iq", "rpm"]
-            with open('force.csv', 'w', newline='') as csvfile:
-                csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel')
+            if ActuatorScreeningState.DATA_IN_CSV:
+                csvfile = open('force.csv', 'w', newline='')
+                csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter='\t')
                 csv_writer.writeheader()
-                while(self.__z_motor_stats_thread_alive):
-                    data = self.vesc_engine.get_sensors_data_of_can_id(fieldnames, self.__z_motor_can_id)
-                    if data is not None:
-                        csv_writer.writerow(data)
-                    time.sleep(0.01)
+            while(self.__z_motor_stats_thread_alive):
+                data = self.vesc_engine.get_sensors_data_of_can_id(fieldnames, self.__z_motor_can_id)
+                if data is not None and self.__screening_shotting_thread_alive:
+                    data_filtred = {k:(v if not math.isnan(v) else 0) for k, v in data.items()}
+                    if ActuatorScreeningState.DATA_IN_CSV:
+                        csv_writer.writerow({k:(f"{str(v).replace('.',',')}") for k, v in data_filtred.items()})
+                    if self.__radar_chart:
+                        self.socketio.emit('statistics', {"operation": "add", "y_data": [data_filtred["avg_iq"],data_filtred["rpm"]]}, namespace='/server', broadcast=True)
+                    else:
+                        self.__x_data.append(self.__x_data_cpt)
+                        self.__y_data[0].append(data_filtred["avg_iq"])
+                        self.__y_data[1].append(data_filtred["rpm"])
+                self.__x_data_cpt+=1
+                time.sleep(0.01)
+            if ActuatorScreeningState.DATA_IN_CSV:
+                csvfile.close()
         except Exception as e:
             print(e)
 
@@ -86,6 +108,14 @@ class ActuatorScreeningState(State.State):
                 return Exception(res)
             self.statusOfUIObject["count"] += 1
             self.socketio.emit('screening_status', {"count": self.statusOfUIObject["count"]}, namespace='/server', broadcast=True)
+            if self.__radar_chart:
+                self.socketio.emit('statistics', {"operation": "clear"}, namespace='/server', broadcast=True)
+            else:
+                self.socketio.emit('statistics', {"operation": "set", "x_data": self.__x_data, "y_data": self.__y_data}, namespace='/server', broadcast=True)
+                self.__x_data = list()
+                self.__y_data[0] = list()
+                self.__y_data[1] = list()
+                self.__x_data_cpt = 0
 
     def __threads_stop_join(self):
         self.__screening_shotting_thread_alive = False
