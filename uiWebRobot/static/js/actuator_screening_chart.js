@@ -119,7 +119,7 @@ window.onload = function () {
                             fontSize: 14
                         },
                         ticks: {
-                            suggestedMin: -1500,
+                            suggestedMin: -2000,
                             suggestedMax: 1500,
                         },
                         id: "y_rpm"
