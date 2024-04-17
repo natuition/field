@@ -159,3 +159,9 @@ yolo/Y0016.conf
 deployement/target_coords.json
 deployement/target_detection.jpg
 uiWebRobot/target_detection.jpg
+
+darknet2trt/*.names
+darknet2trt/*.weights
+darknet2trt/*.cfg
+darknet2trt/*.jpg
+darknet2trt/*.onnx
