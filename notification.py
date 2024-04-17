@@ -77,7 +77,7 @@ class RobotStateServer:
                     data = client_socket.recv(1024)
                     if not data:
                         break
-                    self.__robot_state = RobotStates[data.decode()]
+                    self.__robot_state = RobotStates(data.decode())
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except:
