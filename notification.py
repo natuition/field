@@ -78,6 +78,7 @@ class RobotStateServer:
                     if not data:
                         break
                     self.__robot_state = RobotStates(data.decode())
+                    self.__send_robot_status()
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except:
@@ -107,26 +108,29 @@ class RobotStateServer:
                 if self.__keep_conn_listener_alive:
                     print(traceback.format_exc())
 
+    def __send_robot_status(self):
+        try:
+            with self.__sync_locker:
+                robot_state_to_send = {
+                    "robot_synthesis": self.__robot_state.value,
+                    "robot_serial_number": self.__robot_sn
+                }
+            response = requests.post(
+                f"http://{self.__fleet_ip}:{self.__fleet_port}/api/v1/data_gathering/robot_status",
+                json=[robot_state_to_send])
+        except KeyboardInterrupt:
+            msg = f"[RobotStateServer] Robot state sender thread '{threading.current_thread().name}' caught KBI " \
+                    f"(parent process should get it instead)"
+            print(msg, flush=True)
+            raise KeyboardInterrupt
+        except:
+            msg = f"[RobotStateServer] Failed send robot status to remote data gathering server:\n" \
+                    f"{traceback.format_exc()}"
+            print(msg, flush=True)
+
     def __robot_state_sender_tf(self):
         while self.__keep_robot_state_sender_alive:
-            try:
-                with self.__sync_locker:
-                    robot_state_to_send = {
-                        "robot_synthesis": self.__robot_state.value,
-                        "robot_serial_number": self.__robot_sn
-                    }
-                response = requests.post(
-                    f"http://{self.__fleet_ip}:{self.__fleet_port}/api/v1/data_gathering/robot_status",
-                    json=[robot_state_to_send])
-            except KeyboardInterrupt:
-                msg = f"[RobotStateServer] Robot state sender thread '{threading.current_thread().name}' caught KBI " \
-                      f"(parent process should get it instead)"
-                print(msg, flush=True)
-                raise KeyboardInterrupt
-            except:
-                msg = f"[RobotStateServer] Failed send robot status to remote data gathering server:\n" \
-                      f"{traceback.format_exc()}"
-                print(msg, flush=True)
+            self.__send_robot_status()
             time.sleep(self.__fleet_tick_delay)
 
 
