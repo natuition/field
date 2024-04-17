@@ -14,6 +14,7 @@ import adapters
 import time
 import sys
 sys.path.append('../')
+from navigation import NavigationV3
 
 
 def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
@@ -45,23 +46,35 @@ def sendInputVoltage(socketio, input_voltage):
                   namespace='/voltage', broadcast=True)
 
 
-def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio):
+def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio, logger: utility.Logger):
     with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
         while send_last_pos_thread_alive():
             lastPos = gps.get_fresh_position()
+            if config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART and lastPos[2]!='4':
+                NavigationV3.restart_ntrip_service(logger)
             socketio.emit('updatePath', json.dumps(
                 [[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
 
 
 def initVesc(logger: utility.Logger):
-    smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
-    if "vesc" in smoothie_vesc_addr:
-        vesc_address = smoothie_vesc_addr["vesc"]
-    else:
-        msg = "Couldn't get vesc's USB address!"
-        logger.write_and_flush(msg + "\n")
-        print(msg)
-        exit(1)
+    for i in range(3):
+        if i==2:
+            msg = "Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
+            logger.write_and_flush(msg + "\n")
+            raise Exception(msg)
+        smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
+        if "vesc" in smoothie_vesc_addr:
+            vesc_address = smoothie_vesc_addr["vesc"]
+            msg = f"Finding vesc's USB address at '{vesc_address}'."
+            logger.write_and_flush(msg + "\n")
+            print(msg)
+            break
+        else:
+            msg = "Couldn't get vesc's USB address, attempt to unlock with lifeline"
+            logger.write_and_flush(msg + "\n")
+            print(msg)
+            utility.life_line_reset()
+        
     vesc_engine = adapters.VescAdapterV4(vesc_address,
                                          config.VESC_BAUDRATE,
                                          config.VESC_ALIVE_FREQ,

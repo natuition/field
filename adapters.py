@@ -1460,7 +1460,7 @@ class VescAdapterV3:
         if config.VESC_ALLOW_EXTRACTION:
             if config.VESC_EXTRACTION_AUTODETECT_CAN_ID:
                 raise NotImplementedError("can id detection is not confirmed to work fine")
-                # ext_can_id = self.__get_unregistered_can_id()
+                # ext_can_id = self.get_unregistered_can_id()
             else:
                 ext_can_id = config.VESC_EXTRACTION_CAN_ID
             if ext_can_id is not None:
@@ -1554,7 +1554,7 @@ class VescAdapterV3:
         self._movement_ctrl_th.join(1)
         self.__ser.close()
 
-    def __get_unregistered_can_id(self):
+    def get_unregistered_can_id(self):
         for can_id in range(0, 253):
             data = self.__get_firmware_version(['version_major', 'version_minor'], can_id)
             if data is not None and can_id not in self.__can_ids.values():
@@ -1825,7 +1825,7 @@ class VescAdapterV4:
         if config.VESC_ALLOW_EXTRACTION:
             if config.VESC_EXTRACTION_AUTODETECT_CAN_ID:
                 raise NotImplementedError("can id detection is not confirmed to work fine")
-                # ext_can_id = self.__get_unregistered_can_id()
+                # ext_can_id = self.get_unregistered_can_id()
             else:
                 ext_can_id = config.VESC_EXTRACTION_CAN_ID
             if ext_can_id is not None:
@@ -1917,7 +1917,7 @@ class VescAdapterV4:
             self._movement_ctrl_th.join(1)
             self.__ser.close()
 
-    def __get_unregistered_can_id(self):
+    def get_unregistered_can_id(self):
         for can_id in range(0, 253):
             data = self.__get_firmware_version(['version_major', 'version_minor'], can_id)
             if data is not None and can_id not in self.__can_ids.values():
@@ -2223,6 +2223,26 @@ class VescAdapterV4:
         """Returns specified vesc engine target RPM"""
 
         return self.__target_rpm[engine_key]
+
+    def get_sensors_data_of_can_id(self, report_field_names, can_id):
+        with self.__locker:
+            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=can_id)))
+            in_buf = b''
+            while self.__ser.in_waiting > 0:
+                in_buf += self.__ser.read(self.__ser.in_waiting)
+
+        if len(in_buf) == 0:
+            return None
+        response, consumed = pyvesc.decode(in_buf)
+        if consumed == 0:
+            return None
+
+        if isinstance(response, pyvesc.GetValues):
+            report_row = {}
+            for field_name in report_field_names:
+                report_row[field_name] = getattr(response, field_name)
+            return report_row
+        return None
 
     def get_sensors_data(self, report_field_names, engine_key):
         with self.__locker:

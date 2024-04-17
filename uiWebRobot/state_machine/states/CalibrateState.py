@@ -4,7 +4,6 @@ sys.path.append('../')
 from flask_socketio import SocketIO
 
 from state_machine import State
-from state_machine.states.WaitWorkingState import WaitWorkingState
 from state_machine.states.ErrorState import ErrorState
 from state_machine.Events import Events
 from state_machine import utilsFunction
@@ -80,6 +79,7 @@ class CalibrateState(State.State):
             self.socketio.emit('save_applied', namespace='/server', broadcast=True)
             return self
         elif event == Events.CALIBRATION_CANCEL:
+            from state_machine.states.WaitWorkingState import WaitWorkingState
             res = self.smoothie.ext_calibrate_cork()
             if res != self.smoothie.RESPONSE_OK:
                 return ErrorState(self.socketio, self.logger, res)

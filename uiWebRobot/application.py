@@ -23,7 +23,7 @@ from uiWebRobot.setting_page import SettingPageManager
 import utility
 from config import config
 from uiWebRobot.state_machine.states import *
-
+import traceback
 
 __author__ = 'Vincent LAMBERT'
 
@@ -63,6 +63,7 @@ class UIWebRobot:
         self.__app.add_url_rule("/reboot", view_func=self.reboot)
         self.__app.add_url_rule("/restart_ui", view_func=self.restart_ui)
         self.__app.add_url_rule("/calibrate", view_func=self.calibrate, methods=['GET', 'POST'])
+        self.__app.add_url_rule("/actuator_screening", view_func=self.actuator_screening)
 
     def __setting_flask(self):
         self.__app.register_error_handler(Exception, self.handle_exception)
@@ -160,7 +161,10 @@ class UIWebRobot:
             "field_name": Events.VALIDATE_FIELD_NAME,
             "allChecked": Events.LIST_VALIDATION,
             "calibration_validate": Events.CALIBRATION_VALIDATE,
-            "calibration_cancel": Events.CALIBRATION_CANCEL
+            "calibration_cancel": Events.CALIBRATION_CANCEL,
+            "screening_start": Events.ACTUATOR_SCREENING_START,
+            "screening_pause": Events.ACTUATOR_SCREENING_PAUSE,
+            "screening_quit": Events.ACTUATOR_SCREENING_STOP
         }
         msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field"]
         if "type" in data:
@@ -212,6 +216,9 @@ class UIWebRobot:
 
         if isinstance(self.get_state_machine().currentState, CalibrateState):
             return redirect('/calibrate')
+
+        if isinstance(self.get_state_machine().currentState, ActuatorScreeningState):
+            return redirect('/actuator_screening')
 
         if isinstance(self.get_state_machine().currentState, ErrorState):
             if self.get_state_machine().currentState.getReason():
@@ -271,6 +278,17 @@ class UIWebRobot:
             else:
                 currentState.getStatusOfControls()["currentHTML"] = "CalibrateDetect.html"
         return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language())
+
+    def actuator_screening(self):
+        if not isinstance(self.get_state_machine().currentState, (WaitWorkingState, ActuatorScreeningState)):
+            return redirect('/')
+        
+        if isinstance(self.get_state_machine().currentState, (WaitWorkingState)):
+            self.get_state_machine().on_event(Events.ACTUATOR_SCREENING)
+
+        currentState: ActuatorScreeningState = self.get_state_machine().currentState
+
+        return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), hasStarted=currentState.getStatusOfControls()["hasStarted"], count=currentState.getStatusOfControls()["count"], now=datetime.now().strftime("%H_%M_%S_%f"))
     
     def __get_ui_language(self):
         ui_language = self.__config.UI_LANGUAGE
@@ -353,9 +371,10 @@ class UIWebRobot:
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
-        exc_type, value, traceback = sys.exc_info()
-        print(f"Error handled : {exc_type} : {value}.\n{traceback}.")
-        return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=f"{str(exc_type)} : {value}"), 500
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        print(f"Error handled : {exc_type} : {exc_value}.")
+        traceback.print_exception(exc_type, exc_value, exc_traceback)
+        return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=f"{str(exc_type)} : {exc_value}"), 500
 
     def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
         self.__app.run(host, port, debug, load_dotenv, **options)

@@ -13,6 +13,7 @@ from config import config
 import time
 from pytz import timezone
 import socket
+import subprocess
 
 
 class ImageSaver:
@@ -689,3 +690,30 @@ def get_last_dir_name(parent_dir_path: str):
                 last_dir = cur_obj_name
                 last_dir_creation_time = cur_dir_creation_time
     return last_dir
+
+def life_line_reset():
+    dir_gpio = f"/sys/class/gpio/gpio{config.LIFE_LINE_PIN}"
+    if os.path.isdir(dir_gpio):
+        print(f"The directory '{dir_gpio}' exist.")
+    else:
+        print(f"The directory '{dir_gpio}' not exist, creating...")
+        subprocess.run(f'echo {config.LIFE_LINE_PIN} > /sys/class/gpio/export',shell=True)
+
+    check_direction = subprocess.run(f'grep -q "out" "/sys/class/gpio/gpio{config.LIFE_LINE_PIN}/direction"',shell=True).returncode
+
+    if check_direction==0:
+        print(f"Gpio {config.LIFE_LINE_PIN} is already out.")
+    else:
+        print(f"Gpio {config.LIFE_LINE_PIN} is not output, output adjustment in progress...")
+        subprocess.run(f'echo out > /sys/class/gpio/gpio{config.LIFE_LINE_PIN}/direction',shell=True)
+
+    subprocess.run(f'echo 1 > /sys/class/gpio/gpio{config.LIFE_LINE_PIN}/value',shell=True)
+    sleep(0.5)
+    subprocess.run(f'echo 0 > /sys/class/gpio/gpio{config.LIFE_LINE_PIN}/value',shell=True)
+
+    for time_int in range(10):
+        if "vesc" in get_smoothie_vesc_addresses():
+            break
+        else:
+            print(f"Not find vesc sleeping {time_int+1}/10 secs.")
+        sleep(1)

@@ -515,6 +515,10 @@ class SettingPageManager:
         btn_calibrate.set_on_click_fct_name("go_to_page('calibrate')")
         btn_calibrate.set_color(Button.WHITE)
 
+        btn_screening = Button("actuator_screening", "Actuator screening")
+        btn_screening.set_on_click_fct_name("go_to_page('actuator_screening')")
+        btn_screening.set_color(Button.WHITE)
+
         btn_restart_app = Button("reboot_app", "Restart application")
         btn_restart_app.set_on_click_fct_name("go_to_page('restart_ui', true)")
         btn_restart_app.set_color(Button.WHITE)
@@ -526,7 +530,10 @@ class SettingPageManager:
         btn_group_restart = ButtonGroup("btn_restart", "Restart button", [
                                         btn_restart_app, btn_restart_robot])
 
-        category_other.add_items([selector_language, btn_calibrate, btn_group_restart])
+        btn_group_tools = ButtonGroup("btn_tools", "Tools button", [
+                                        btn_calibrate, btn_screening])
+
+        category_other.add_items([selector_language, btn_group_tools, btn_group_restart])
 
         # Setting page
 
