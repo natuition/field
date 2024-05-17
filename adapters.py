@@ -1790,7 +1790,7 @@ class VescAdapterV4:
         self.__stopper_signals = dict()
         self.__gpio_stoppers_pins = dict()
 
-        self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
+        self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate, timeout= 2)
         self.__ser.flushInput()
         self.__ser.flushOutput()
 
@@ -2249,7 +2249,10 @@ class VescAdapterV4:
             self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
             in_buf = b''
             while self.__ser.in_waiting > 0:
-                in_buf += self.__ser.read(self.__ser.in_waiting)
+                try:
+                    in_buf += self.__ser.read(self.__ser.in_waiting)
+                except:
+                    return None
 
         if len(in_buf) == 0:
             return None

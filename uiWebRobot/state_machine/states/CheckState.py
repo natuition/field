@@ -11,6 +11,7 @@ from flask_socketio import SocketIO
 from EnvironnementConfig import EnvironnementConfig
 import utility
 import os
+import time
 
 # This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
 
@@ -36,20 +37,28 @@ class CheckState(State.State):
         self.logger.write_and_flush(msg + "\n")
         print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
+        
+        self.__start_voltage_thread()
+
+        if EnvironnementConfig.NATUITION_CHECKLIST():
+            self.statusOfUIObject["checkbox"] = True
+        else:
+            self.statusOfUIObject["checkbox"] = False
+
+    def __start_voltage_thread(self):
+        msg = f"[{self.__class__.__name__}] -> start voltage thread."
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
         self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
                                                  args=(lambda: self.__voltage_thread_alive,
                                                        self.vesc_engine, self.socketio,
-                                                       self.input_voltage),
+                                                       self.input_voltage,
+                                                       lambda: self.__noVoltageAfter10Sec()),
                                                  daemon=True)
         self.__voltage_thread.start()
-
-        if EnvironnementConfig.NATUITION_CHECKLIST():
-            self.statusOfUIObject["checkbox"] = True
-        else:
-            self.statusOfUIObject["checkbox"] = False
 
     def on_event(self, event):
         if event == Events.Events.LIST_VALIDATION:
@@ -96,6 +105,32 @@ class CheckState(State.State):
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)
         return self
+    
+    def __noVoltageAfter10Sec(self):
+        msg = f"[{self.__class__.__name__}] -> noVoltageAfter10Sec"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
+
+        try:
+            self.vesc_engine.close()
+        except Exception as e:
+            print(e)
+            pass
+
+        msg = f"[{self.__class__.__name__}] -> life line"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
+
+        utility.life_line_reset()
+
+        msg = f"[{self.__class__.__name__}] -> initVesc again"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
+        self.vesc_engine = utilsFunction.initVesc(self.logger)
+
+        time.sleep(2)
+        self.__start_voltage_thread()
+
 
     def getStatusOfControls(self):
         return self.statusOfUIObject

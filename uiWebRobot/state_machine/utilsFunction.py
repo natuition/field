@@ -17,9 +17,9 @@ sys.path.append('../')
 from navigation import NavigationV3
 
 
-def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
-    last_update = 0
+def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage, no_voltage_return: None):
     vesc_data = None
+    count = 0
     while voltage_thread_alive():
         if voltage_thread_alive():
             if vesc_engine is not None:
@@ -31,9 +31,18 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                 except:
                     break
                 if vesc_data is not None and voltage_thread_alive():
-                    last_update = time.time()
+                    count = -1
                     sendInputVoltage(socketio, vesc_data["input_voltage"])
                     input_voltage["input_voltage"] = vesc_data["input_voltage"]
+                    print(f"Readed voltage : {vesc_data['input_voltage']}.")
+            if count >= 0:
+                count += 1
+        if count > 0:
+            print(f"No voltage ({count}).")
+        if count >= 10 and no_voltage_return:
+            print("Call no_voltage_return.")
+            no_voltage_return()
+            break
         time.sleep(1)
 
 
