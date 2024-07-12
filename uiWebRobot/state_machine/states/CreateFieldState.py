@@ -14,6 +14,8 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from state_machine import utilsFunction
+from shared_class.robot_synthesis import RobotSynthesis
+
 from config import config
 import time
 import utility
@@ -29,6 +31,7 @@ class CreateFieldState(State.State):
                  logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
+        self.robot_synthesis_value = RobotSynthesis.UI_CREATE_FIELD_STATE
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie

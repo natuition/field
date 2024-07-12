@@ -15,6 +15,7 @@ from state_machine.states import ErrorState
 from state_machine.states import CalibrateState
 from state_machine.states import ActuatorScreeningState
 from state_machine import Events
+from shared_class.robot_synthesis import RobotSynthesis
 
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
 from state_machine import utilsFunction
@@ -35,7 +36,7 @@ class WaitWorkingState(State.State):
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
                  vesc_engine: adapters.VescAdapterV4 = None):
-
+        self.robot_synthesis_value = RobotSynthesis.UI_WAIT_WORKING_STATE
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie

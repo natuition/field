@@ -8,6 +8,7 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
 from state_machine import utilsFunction
+from shared_class.robot_synthesis import RobotSynthesis
 from config import config
 import utility
 
@@ -15,6 +16,7 @@ import utility
 class StartingState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit=False):
+        self.robot_synthesis_value = RobotSynthesis.UI_STARTING_STATE
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit

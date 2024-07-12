@@ -5,6 +5,7 @@ from state_machine import utilsFunction
 from state_machine import Events
 from state_machine.states import WaitWorkingState
 from state_machine import State
+from shared_class.robot_synthesis import RobotSynthesis
 import signal
 import threading
 from flask_socketio import SocketIO
@@ -17,6 +18,7 @@ import os
 class CheckState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger):
+        self.robot_synthesis_value = RobotSynthesis.UI_CHECK_STATE
         self.socketio = socketio
         self.logger = logger
         self.cam = None

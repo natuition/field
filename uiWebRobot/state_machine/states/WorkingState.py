@@ -13,6 +13,7 @@ from state_machine import State
 from state_machine.states import WaitWorkingState
 from state_machine.states import ErrorState
 from state_machine import Events
+from shared_class.robot_synthesis import RobotSynthesis
 
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects
 from uiWebRobot.state_machine import utilsFunction
@@ -23,6 +24,7 @@ import utility
 class WorkingState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit: bool, isResume: bool):
+        self.robot_synthesis_value = RobotSynthesis.WORKING
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit
