@@ -24,7 +24,10 @@ import utility
 class WorkingState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit: bool, isResume: bool):
-        self.robot_synthesis_value = RobotSynthesis.WORKING
+        if isResume:
+            self.robot_synthesis_value = RobotSynthesis.UI_CONTINUE_STATE
+        else:
+            self.robot_synthesis_value = RobotSynthesis.UI_STARTING_STATE
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit

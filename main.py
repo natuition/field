@@ -872,7 +872,7 @@ def move_to_point_and_extract(coords_from_to: list,
                           f"P2: '{str(cur_field[0] if last_point else cur_field[pt_idx + 1])}'"
                     print(msg)
                     logger_full.write_and_flush(msg + "\n")
-                    notification.set_robot_state(RobotSynthesis.HS)
+                    notification.set_robot_state(RobotSynthesis.ANTI_THEFT)
                     exit()
 
         # check if arrived
@@ -2855,7 +2855,6 @@ def main():
             traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotSynthesis.ENABLED)
         notification.close()
         if ui_msg_queue is not None:
             ui_msg_queue.close()

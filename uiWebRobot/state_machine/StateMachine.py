@@ -15,13 +15,13 @@ from notification import RobotStateClient
 
 class StateMachine:
 
-    def __init__(self, socketio):
+    def __init__(self, socketio, robot_state_client: RobotStateClient):
         utility.create_directories("logs/")
         self.logger = utility.Logger("logs/"+utility.get_current_time())
         sys.stderr = ErrorLogger(self.logger)
         self.socketio: SocketIO = socketio
         self.currentState: State.State = None
-        self.__robot_state_client = RobotStateClient()
+        self.__robot_state_client = robot_state_client
         self.change_current_state(CheckState(socketio,self.logger))
 
     def on_event(self, event: Events.Events):

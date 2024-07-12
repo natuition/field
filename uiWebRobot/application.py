@@ -20,6 +20,8 @@ import posix_ipc
 from threading import Thread
 from datetime import datetime
 from uiWebRobot.setting_page import SettingPageManager
+from notification import RobotStateClient
+from shared_class.robot_synthesis import RobotSynthesis
 import utility
 from config import config
 from uiWebRobot.state_machine.states import *
@@ -38,6 +40,7 @@ class UIWebRobot:
             self.__app, async_mode=None, logger=False, engineio_logger=False)
         self.__init_socketio()  # SOCKET IO
         self.__reload_config()
+        self.__robot_state_client = RobotStateClient()
         self.init_params()
         self.demo_pause_client = utility.DemoPauseClient(
             config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
@@ -88,7 +91,7 @@ class UIWebRobot:
         thread_notification = Thread(target=self.catch_send_notification)
         thread_notification.setDaemon(True)
         thread_notification.start()
-        self.__stateMachine = StateMachine(self.__socketio)
+        self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
 
     def get_state_machine(self) -> StateMachine:
         return self.__stateMachine
@@ -352,6 +355,7 @@ class UIWebRobot:
         return response
 
     def reboot(self):
+        self.__robot_state_client.set_robot_state(RobotSynthesis.UI_RESTART_APP)
         os.system('sudo reboot')
         return None
 
