@@ -192,6 +192,13 @@ class RobotStateClient:
             self.__robot_state = robot_state
             self.__robot_state_is_fresh = True
 
+    def set_robot_state_and_wait_send(self, robot_state: RobotSynthesis):
+        self.set_robot_state(robot_state)
+        while self.__keep_robot_state_sender_alive:
+            if not self.__robot_state_is_fresh:
+                return
+            time.sleep(0.3)
+
     def __robot_state_sender_tf(self):
         while self.__keep_robot_state_sender_alive:
             time.sleep(self.__state_update_freq)

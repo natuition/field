@@ -40,10 +40,15 @@ class UIWebRobot:
             self.__app, async_mode=None, logger=False, engineio_logger=False)
         self.__init_socketio()  # SOCKET IO
         self.__reload_config()
-        self.robot_state_client = RobotStateClient()
+        self.__robot_state_client = RobotStateClient()
         self.init_params()
         self.demo_pause_client = utility.DemoPauseClient(
             config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
+
+    def exit(self):
+        print("Send OP RobotSynthesis...")
+        self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
+        print("Sent ✅")
 
     def __init_socketio(self):
         self.__socketio.on_event(
@@ -91,7 +96,7 @@ class UIWebRobot:
         thread_notification = Thread(target=self.catch_send_notification)
         thread_notification.setDaemon(True)
         thread_notification.start()
-        self.__stateMachine = StateMachine(self.__socketio, self.robot_state_client)
+        self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
 
     def get_state_machine(self) -> StateMachine:
         return self.__stateMachine
@@ -355,7 +360,7 @@ class UIWebRobot:
         return response
 
     def reboot(self):
-        self.robot_state_client.set_robot_state(RobotSynthesis.UI_RESTART_APP)
+        self.__robot_state_client.set_robot_state(RobotSynthesis.UI_RESTART_APP)
         os.system('sudo reboot')
         return None
 
@@ -392,7 +397,7 @@ def main():
     finally:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
-        uiWebRobot.robot_state_client.set_robot_state(RobotSynthesis.OP)
+        uiWebRobot.exit()
         print("Closing app...")
 
 

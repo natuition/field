@@ -871,7 +871,7 @@ def move_to_point_and_extract(coords_from_to: list,
                           f"P2: '{str(cur_field[0] if last_point else cur_field[pt_idx + 1])}'"
                     print(msg)
                     logger_full.write_and_flush(msg + "\n")
-                    notification.set_robot_state(RobotSynthesis.ANTI_THEFT)
+                    notification.set_robot_state_and_wait_send(RobotSynthesis.ANTI_THEFT)
                     raise Exception("LEAVING_FIELD")
 
         # check if arrived
@@ -2859,7 +2859,7 @@ def main():
             ui_msg_queue.close()
     except Exception as e:
         if "LEAVING_FIELD" not in e.args:
-            notification.set_robot_state(RobotSynthesis.HS)
+            notification.set_robot_state_and_wait_send(RobotSynthesis.HS)
             msg = "Exception occurred:\n" + traceback.format_exc()
             print(msg)
             logger_full.write(msg + "\n")
