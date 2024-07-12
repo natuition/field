@@ -115,7 +115,6 @@ if config.RECEIVE_FIELD_FROM_RTK:
 """
 # TODO: temp debug counter
 IMAGES_COUNTER = 0
-LEAVE_FIELD = False
 
 def load_coordinates(file_path):
     positions_list = []
@@ -873,8 +872,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     print(msg)
                     logger_full.write_and_flush(msg + "\n")
                     notification.set_robot_state(RobotSynthesis.ANTI_THEFT)
-                    LEAVE_FIELD = True
-                    exit()
+                    raise Exception("LEAVING_FIELD")
 
         # check if arrived
         _, side = nav.get_deviation(
@@ -2859,12 +2857,12 @@ def main():
         notification.close()
         if ui_msg_queue is not None:
             ui_msg_queue.close()
-    except:
-        msg = "Exception occurred:\n" + traceback.format_exc()
-        print(msg)
-        logger_full.write(msg + "\n")
-        if not LEAVE_FIELD:
+    except Exception as e:
+        if "LEAVING_FIELD" not in e.args:
             notification.set_robot_state(RobotSynthesis.HS)
+            msg = "Exception occurred:\n" + traceback.format_exc()
+            print(msg)
+            logger_full.write(msg + "\n")
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:
