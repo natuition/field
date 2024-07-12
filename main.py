@@ -115,7 +115,7 @@ if config.RECEIVE_FIELD_FROM_RTK:
 """
 # TODO: temp debug counter
 IMAGES_COUNTER = 0
-
+LEAVE_FIELD = False
 
 def load_coordinates(file_path):
     positions_list = []
@@ -873,6 +873,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     print(msg)
                     logger_full.write_and_flush(msg + "\n")
                     notification.set_robot_state(RobotSynthesis.ANTI_THEFT)
+                    LEAVE_FIELD = True
                     exit()
 
         # check if arrived
@@ -2862,7 +2863,8 @@ def main():
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotSynthesis.HS)
+        if not LEAVE_FIELD:
+            notification.set_robot_state(RobotSynthesis.HS)
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:
