@@ -1,0 +1,3 @@
+[submodule "shared_class"]
+	path = shared_class
+	url = git@github.com:natuition/shared_class.git

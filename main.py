@@ -99,7 +99,7 @@ import stubs
 import extraction
 import datacollection
 from extraction import ExtractionManagerV3
-from notification import RobotStates
+from notification import RobotSynthesis
 from notification import NotificationClient
 import connectors
 
@@ -872,7 +872,7 @@ def move_to_point_and_extract(coords_from_to: list,
                           f"P2: '{str(cur_field[0] if last_point else cur_field[pt_idx + 1])}'"
                     print(msg)
                     logger_full.write_and_flush(msg + "\n")
-                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    notification.set_robot_state(RobotSynthesis.HS)
                     exit()
 
         # check if arrived
@@ -2039,7 +2039,7 @@ def main():
             len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
 
     notification = NotificationClient(time_start)
-    notification.set_robot_state(RobotStates.WORKING)
+    notification.set_robot_state(RobotSynthesis.WORKING)
     data_collector = datacollection.DataCollector(
         log_cur_dir + config.STATISTICS_DB_FILE_NAME,
         notification,
@@ -2075,7 +2075,7 @@ def main():
         msg = "Couldn't get vesc's USB address!"
         print(msg)
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+        notification.set_robot_state(RobotSynthesis.HS)
         exit()
     if config.SMOOTHIE_BACKEND == 1:
         smoothie_address = config.SMOOTHIE_HOST
@@ -2086,7 +2086,7 @@ def main():
             msg = "Couldn't get smoothie's USB address!"
             print(msg)
             logger_full.write(msg + "\n")
-            notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+            notification.set_robot_state(RobotSynthesis.HS)
             exit()
 
     # load yolo networks
@@ -2121,7 +2121,7 @@ def main():
         msg = "Wrong config.PERIPHERY_WRAPPER = " + \
             str(config.PERIPHERY_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+        notification.set_robot_state(RobotSynthesis.HS)
         exit()
 
     # load precise NN
@@ -2150,7 +2150,7 @@ def main():
             msg = "Wrong config.PRECISE_WRAPPER = " + \
                 str(config.PRECISE_WRAPPER) + " code. Exiting."
             logger_full.write(msg + "\n")
-            notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+            notification.set_robot_state(RobotSynthesis.HS)
             exit()
     else:
         msg = "Using periphery detector as precise."
@@ -2331,7 +2331,7 @@ def main():
                     msg = f"Exiting main as building path without field points is impossible"
                     print(msg)
                     logger_full.write_and_flush(msg)
-                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    notification.set_robot_state(RobotSynthesis.HS)
                     exit()
 
                 # check field corner points count
@@ -2377,7 +2377,7 @@ def main():
                         field_gps_coords)
                     print(msg)
                     logger_full.write(msg + "\n")
-                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    notification.set_robot_state(RobotSynthesis.HS)
                     exit()
 
                 # save path points and point to start from index
@@ -2402,7 +2402,7 @@ def main():
                       " instead (1st point is starting point)."
                 print(msg)
                 logger_full.write(msg + "\n")
-                notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                notification.set_robot_state(RobotSynthesis.HS)
                 exit()
 
             # set smoothie's A axis to 0 (nav turn wheels)
@@ -2855,7 +2855,7 @@ def main():
             traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotStates.ENABLED)
+        notification.set_robot_state(RobotSynthesis.ENABLED)
         notification.close()
         if ui_msg_queue is not None:
             ui_msg_queue.close()
@@ -2863,7 +2863,7 @@ def main():
         msg = "Exception occurred:\n" + traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+        notification.set_robot_state(RobotSynthesis.HS)
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:

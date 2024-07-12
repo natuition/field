@@ -9,6 +9,7 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine import State
 from state_machine.FrontEndObjects import FrontEndObjects
+from shared_class.robot_synthesis import RobotSynthesis
 
 
 class StateMachine:
@@ -19,6 +20,8 @@ class StateMachine:
         sys.stderr = ErrorLogger(self.logger)
         self.socketio: SocketIO = socketio
         self.currentState: State.State = CheckState(socketio,self.logger)
+        self.__robot_state_client = RobotStateClient()
+        self.__robot_state_client.set_robot_state(RobotSynthesis.UI_CHECK_STATE)
         msg = f"Current state : {self.currentState}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
