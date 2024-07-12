@@ -19,12 +19,9 @@ class StateMachine:
         self.logger = utility.Logger("logs/"+utility.get_current_time())
         sys.stderr = ErrorLogger(self.logger)
         self.socketio: SocketIO = socketio
-        self.currentState: State.State = CheckState(socketio,self.logger)
+        self.currentState: State.State = None
         self.__robot_state_client = RobotStateClient()
-        self.__robot_state_client.set_robot_state(RobotSynthesis.UI_CHECK_STATE)
-        msg = f"Current state : {self.currentState}."
-        self.logger.write_and_flush(msg+"\n")
-        print(msg)
+        self.change_current_state(CheckState(socketio,self.logger))
 
     def on_event(self, event: Events.Events):
         print()
@@ -57,6 +54,7 @@ class StateMachine:
     
     def change_current_state(self, newState):
         self.currentState = newState
+        self.__robot_state_client.set_robot_state(self.currentState.robot_synthesis_value)
         msg = f"Current state : {self.currentState}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
