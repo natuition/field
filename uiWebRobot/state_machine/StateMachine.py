@@ -10,6 +10,7 @@ from state_machine import Events
 from state_machine import State
 from state_machine.FrontEndObjects import FrontEndObjects
 from shared_class.robot_synthesis import RobotSynthesis
+from notification import RobotStateClient
 
 
 class StateMachine:
