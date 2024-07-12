@@ -46,7 +46,7 @@ class UIWebRobot:
             config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
 
     def exit(self):
-        print("Send OP RobotSynthesis...")
+        print("Send RobotSynthesis...")
         self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
         print("Sent ✅")
 
