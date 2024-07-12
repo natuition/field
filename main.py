@@ -99,7 +99,7 @@ import stubs
 import extraction
 import datacollection
 from extraction import ExtractionManagerV3
-from notification import RobotSynthesis
+from shared_class.robot_synthesis import RobotSynthesis
 from notification import NotificationClient
 import connectors
 
