@@ -322,6 +322,9 @@ class NotificationClient:
     def set_robot_state(self, robot_state: RobotSynthesis):
         self.__robot_state_client.set_robot_state(robot_state)
 
+    def set_robot_state_and_wait_send(self, robot_state: RobotSynthesis):
+        self.__robot_state_client.set_robot_state_and_wait_send(robot_state)
+
     def set_current_coordinate(self, current_coordinate):
         new_pos_and_weeds_record, newly_extracted_weeds = dict(), dict()
         if self.__total_ext_weeds:
