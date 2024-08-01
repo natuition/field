@@ -1766,13 +1766,14 @@ class VescAdapterV4:
     PROPULSION_KEY = 0
     EXTRACTION_KEY = 1
 
-    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
+    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq, logger_full: utility.Logger):
         self.__locker = threading.Lock()
 
         gpio_is_initialized = False
         self.__stopper_check_freq = stopper_check_freq
         self.__alive_freq = alive_freq
         self.__check_freq = check_freq
+        self.__logger_full = logger_full
         self.__next_alive_time = time.time()
 
         self.__can_ids = dict()
@@ -2015,7 +2016,23 @@ class VescAdapterV4:
                         for engine_key in self.__is_moving:
                             if self.__is_moving[engine_key]:
                                 self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
-
+                            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+                            in_buf = b''
+                            while self.__ser.in_waiting > 0:
+                                in_buf += self.__ser.read(self.__ser.in_waiting)
+                            if len(in_buf) != 0:
+                                response, consumed = pyvesc.decode(in_buf)
+                                if consumed != 0 and response is not None:
+                                    if response.__dict__["rpm"] == 0 and self.__target_rpm[engine_key] != 0:
+                                        self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
+                                        self.__ser.write(
+                                            pyvesc.encode(
+                                                pyvesc.SetRPM(
+                                                    self.__target_rpm[engine_key],
+                                                    can_id=self.__can_ids[engine_key]
+                                                )
+                                            )
+                                        )
                 # wait for next checking tick
                 time.sleep(self.__check_freq)
         except serial.SerialException as ex:

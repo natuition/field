@@ -79,7 +79,8 @@ def initVesc(logger: utility.Logger):
                                          config.VESC_BAUDRATE,
                                          config.VESC_ALIVE_FREQ,
                                          config.VESC_CHECK_FREQ,
-                                         config.VESC_STOPPER_CHECK_FREQ)
+                                         config.VESC_STOPPER_CHECK_FREQ,
+                                         logger)
     vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
     vesc_engine.set_time_to_move(
         config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
