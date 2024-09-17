@@ -233,7 +233,6 @@ class UIWebRobot:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()], reason=self.get_state_machine().currentState.getReason()), 500
             else:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()]), 500
-
         return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
 
     def setting(self):
