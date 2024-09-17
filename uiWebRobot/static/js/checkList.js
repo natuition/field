@@ -65,7 +65,6 @@ function checkAllBoxAreChecked() {
         count_next_interval = setInterval(count_next, 500);
         socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
     }
-
 }
 
 function activateNext() {
