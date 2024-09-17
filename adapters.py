@@ -12,6 +12,7 @@ import serial
 import pyvesc
 import re
 import RPi.GPIO as GPIO
+import csv
 
 
 class SmoothieAdapter:
@@ -1794,6 +1795,8 @@ class VescAdapterV4:
         self.__ser.flushInput()
         self.__ser.flushOutput()
 
+        self.__analyze_thread_alive = False
+
         # INIT ALL ALLOWED VESCS HERE
         # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
         if config.VESC_ALLOW_PROPULSION:
@@ -1848,6 +1851,11 @@ class VescAdapterV4:
                         GPIO.setmode(GPIO.BOARD)
                         gpio_is_initialized = True
                     GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
+                if config.VESC_EXTRACTION_ANALYZE_MODE:
+                    self.__analyze_thread_alive = True
+                    self._analyze_thread = threading.Thread(target=self._analyze_thread_function(2), daemon=True)
+                    self._analyze_thread.start()
+
             else:
                 # TODO what robot should do if initialization was failed?
                 print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
@@ -2267,6 +2275,41 @@ class VescAdapterV4:
     def is_moving(self, engine_key):
         with self.__locker:
             return self.__is_moving[engine_key]
+
+
+    def _analyze_thread_function(self, engine_key):
+        field_to_analyze = ["temp_fet_filtered", 
+                            "temp_motor_filtered", 
+                            "avg_motor_current", 
+                            "avg_input_current", 
+                            "avg_id", 
+                            "avg_iq", 
+                            "duty_cycle_now", 
+                            "rpm", 
+                            "input_voltage",
+                            "amp_hours",
+                            "amp_hours_charged",
+                            "watt_hours",
+                            "watt_hours_charged",
+                            "tachometer_value",
+                            "tachometer_abs_value",
+                            "fault",] # Name fields according to GetValues message if raess1/PyVESC-FW3.33
+
+        try:
+            csv_file = open('extraction_analyze.csv', 'w', newline='')
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(field_to_analyze)
+            while self.__analyze_thread_alive:
+                stats = self.get_sensors_data_of_can_id(field_to_analyze, engine_key)
+                if stats is not None:
+                    csv_writer.writerow(stats.values())
+                time.sleep(0.02) # Same delay as vesctool
+
+        except serial.SerialException as ex:
+            print("VESC analyzing thread error:", ex)
+            if csv_file:
+                csv_file.close()
+
 
 
 class GPSUbloxAdapter:
