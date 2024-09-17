@@ -58,13 +58,31 @@ class WaitWorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
 
+            msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+
             self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
+
+            msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+
             self.vesc_engine.set_current_rpm(
                 0, self.vesc_engine.PROPULSION_KEY)
+
+            msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+
             self.vesc_engine.start_moving(
                 self.vesc_engine.PROPULSION_KEY,
                 smooth_acceleration=True,
                 smooth_deceleration=True)
+
+            msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
 
             if self.smoothie is None:
                 msg = f"[{self.__class__.__name__}] -> initSmoothie"
@@ -90,7 +108,7 @@ class WaitWorkingState(State.State):
 
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Setting FrontEndObjects..."
-            self.logger.write_and_flush(msg)
+            self.logger.write_and_flush(msg + "\n")
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.ENABLE,
                                                 startButton=ButtonState.ENABLE,
@@ -101,6 +119,7 @@ class WaitWorkingState(State.State):
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
                                                 audit=AuditButtonState.EXTRACTION_ENABLE)
+
         if createField:
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
 
@@ -118,7 +137,7 @@ class WaitWorkingState(State.State):
 
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Go next page..."
-            self.logger.write_and_flush(msg)
+            self.logger.write_and_flush(msg + "\n")
             print(msg)
 
         self.socketio.emit(
@@ -128,7 +147,7 @@ class WaitWorkingState(State.State):
 
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Starting 'send_last_pos_thread_tf' thread..."
-            self.logger.write_and_flush(msg)
+            self.logger.write_and_flush(msg + "\n")
             print(msg)
 
         self.send_last_pos_thread_alive = True
@@ -138,7 +157,7 @@ class WaitWorkingState(State.State):
 
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Starting 'voltage_thread_tf' thread..."
-            self.logger.write_and_flush(msg)
+            self.logger.write_and_flush(msg + "\n")
             print(msg)
 
         self.__voltage_thread_alive = True
@@ -152,7 +171,7 @@ class WaitWorkingState(State.State):
         self.__voltage_thread.start()
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Starting '__check_joystick_info_tf' thread..."
-            self.logger.write_and_flush(msg)
+            self.logger.write_and_flush(msg + "\n")
             print(msg)
 
         self.__last_joystick_info = time.time()

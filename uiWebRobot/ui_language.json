@@ -48,7 +48,7 @@
 		"de": "Step"
 	},
 	"Stop": {
-		"fr": "Arret",
+		"fr": "Arrêt",
 		"en": "Stop",
 		"nl": "Stop",
 		"de": "Stoppen"
@@ -96,15 +96,15 @@
 		"de": "Schließe und verriegele die mittlere Abdeckung"
 	},
 	"Wheels straight": {
-		"fr": "Mettez les roues du robot droite.",
+		"fr": "Mettez les roues du robot droites.",
 		"en": "Put the robot wheels straight.",
 		"nl": "Zet de robotwielen recht.",
 		"de": "Stelle die Vorderräder gerade."
 	},
 	"Waiting GPS": {
-		"fr": "En attente de gps...",
-		"en": "Waiting for gps...",
-		"nl": "Wachten op gps...",
+		"fr": "En attente de GPS...",
+		"en": "Waiting for GPS...",
+		"nl": "Wachten op GPS...",
 		"de": "Warten auf GPS..."
 	},
 	"GPS found": {
@@ -228,7 +228,7 @@
 		"de": "Keine Verbindung mit dem Roboter mehr !"
 	},
 	"Check_remove_zone": {
-		"fr": "Êtes vous sûr de vouloir supprimer la zone séléctionnée ?",
+		"fr": "Êtes-vous sûr de vouloir supprimer la zone séléctionnée ?",
 		"en": "Are you sure you want to delete the selected area ?",
 		"nl": "Weet u zeker dat u het geselecteerde gebied wilt verwijderen ?",
 		"de": "Möchten Sie den ausgewählte Zone wirklich löschen?"
@@ -444,7 +444,7 @@
 		"de": "Wartende Kamera..."
 	},
 	"Restart UI": {
-		"fr": "Une erreur c'est produite, nous avons relancé le robot pour vous",
+		"fr": "Une erreur s'est produite, nous avons relancé le robot pour vous",
 		"en": "Something went wrong, we restart robot for you",
 		"nl": "Er ging iets mis, we herstarten de robot voor je",
 		"de": "Etwas ist schief gelaufen, wir starten den Roboter für Sie neu"

@@ -32,6 +32,8 @@ class StateMachine:
 
         try:
             newState = self.currentState.on_event(event)
+            msg = f"[{self.__class__.__name__}] -> {self.currentState} : on_event"
+            self.logger.write_and_flush(msg + "\n")
         except Exception as e:
             self.logger.write_and_flush("[Error] "+str(e)+"\n")
             newState = ErrorState(self.socketio,self.logger,str(e))
@@ -45,6 +47,8 @@ class StateMachine:
             self.change_current_state(newState.on_event(Events.Events.CONFIG_IS_SET))
         else:
             self.change_current_state(newState)
+        msg = f"[{self.__class__.__name__}] -> {self.currentState} : State changed"
+        self.logger.write_and_flush(msg + "\n")
     
     def on_socket_data(self, data):
         try:
