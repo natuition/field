@@ -6,6 +6,7 @@ var isCheck = false
 
 var show_cam_interval = setInterval(show_cam, 1000);
 var count_next_interval;
+var all_checked_interval;
 
 var count = 0;
 var last_para_txt = null;
@@ -13,8 +14,8 @@ var loading_next = null;
 
 function count_next() {
     loading_next.innerHTML = count.toString() + "% " + "<i class='fas fa-sync-alt fa-spin'></i>";
-    count = count + 5;
-    if (count > 100) {
+    // count = count + 5;
+   /* if (count > 100) {
         clearInterval(count_next_interval);
         alert((ui_languages["Restart UI"])[ui_language]);
         $.ajax({
@@ -23,7 +24,7 @@ function count_next() {
             asynch: true
         });
         document.location.reload();
-    }
+    }*/
 }
 
 function show_cam() {
@@ -52,18 +53,31 @@ function canNext() {
         document.getElementById('no_cam') == null;
 }
 
-function checkAllBoxAreChecked() {
+function allCheckedEvery500ms() {
+    console.log("Send allChecked");
     var select_ai = document.getElementById("AI_selector");
+    socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
+}
+
+socketio.on('data', function (dataServ) {
+    if (dataServ["ACK"] == "allChecked") {
+        console.log("Stop allChecked");
+        clearInterval(all_checked_interval);
+    }
+});
+
+function checkAllBoxAreChecked() {
     if (canNext() && isCheck == false) {
-        isCheck = true
-        console.log("User all check !")
+        isCheck = true;
+        console.log("User all check !");
         $('#checkbutton').attr('disabled', '');
         $('#checkbutton').addClass('unselectable');
         $('#checkbutton').addClass('active');
         $('#AI_selector').attr('disabled', '');
         loading_next = document.getElementById("checkbutton").getElementsByClassName('loading')[0];
-        count_next_interval = setInterval(count_next, 500);
-        socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
+        
+        //count_next_interval = setInterval(count_next, 500);
+        all_checked_interval = setInterval(allCheckedEvery500ms, 1000);
     }
 }
 
@@ -79,7 +93,7 @@ function activateNext() {
 
 socketio.on('checklist', function (dataServ) {
     if (dataServ["status"] == "refresh") {
-        clearInterval(count_next_interval);
+        //clearInterval(count_next_interval);
         document.location.reload();
     }
 });

@@ -58,31 +58,31 @@ class WaitWorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
 
-            msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
+                self.logger.write_and_flush(msg + "\n")
 
             self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
 
-            msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
+                self.logger.write_and_flush(msg + "\n")
 
             self.vesc_engine.set_current_rpm(
                 0, self.vesc_engine.PROPULSION_KEY)
 
-            msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
+                self.logger.write_and_flush(msg + "\n")
 
             self.vesc_engine.start_moving(
                 self.vesc_engine.PROPULSION_KEY,
                 smooth_acceleration=True,
                 smooth_deceleration=True)
 
-            msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
+                self.logger.write_and_flush(msg + "\n")
 
             if self.smoothie is None:
                 msg = f"[{self.__class__.__name__}] -> initSmoothie"

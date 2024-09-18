@@ -18,10 +18,16 @@ import os
 class CheckState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger):
+
         self.robot_synthesis_value = RobotSynthesis.UI_CHECK_STATE
         self.socketio = socketio
         self.logger = logger
         self.cam = None
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Self initialization"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+
         try:
             msg = f"[{self.__class__.__name__}] -> startLiveCam"
             self.logger.write_and_flush(msg + "\n")
@@ -53,8 +59,14 @@ class CheckState(State.State):
         else:
             self.statusOfUIObject["checkbox"] = False
 
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Self initialization DONE"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+
     def on_event(self, event):
         if event == Events.Events.LIST_VALIDATION:
+            self.socketio.emit('data', {"ACK": "allChecked"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
             self.__voltage_thread_alive = False
             if self.cam:

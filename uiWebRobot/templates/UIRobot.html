@@ -459,11 +459,11 @@
             </section>
         </div>
 
-        <script src="/static/{{ now }}/js/checkList.js" defer></script>
+        <script src="/static/{{ now }}/js/checkList.js"></script>
 
         {% if statusOfUIObject['checkbox'] %}
 
-        <script>
+        <script defer>
             document.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
                 checkbox.checked = true;
             });
