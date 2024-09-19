@@ -1912,6 +1912,10 @@ class VescAdapterV4:
         self.close()
 
     def close(self):
+
+        if self.__analyze_thread_alive is True:
+            self.__analyze_thread_alive = False
+            self._analyze_thread.join(1)
         
         if self.__ser.is_open:
             self.__keep_thread_alive = False
@@ -2312,7 +2316,7 @@ class VescAdapterV4:
                                 print(f"Error during sending message to queue {e}")
                     except Exception as e:
                         print(f"Error during sending message to queue {e}")
-                time.sleep(0.02) # In vesctool set to 0,02 but here we need less data
+                time.sleep(config.VESC_EXTRACTION_ANALYZE_FREQUENCY)
         except serial.SerialException as ex:
             print("VESC analyzing thread error:", ex)
         finally:

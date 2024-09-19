@@ -194,13 +194,19 @@ class WorkingState(State.State):
             elif "input_voltage" in data:
                 utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
 
+
             if self.queue_vesc_data is not None:
-                try:
-                    msg = self.queue_vesc_data.receive(timeout=0.3)
-                    self.socketio.emit('analyse_data_vesc', json.loads(msg[0]), namespace="/server", broadcast=True )
-                    print(f"Emit on analyse_data_vesc channel : {msg[0]} ")
-                except posix_ipc.BusyError:
-                    continue # If queue is empty continue reading, it will refill
+                is_queue_vesc_data_empty = False
+                data_in_queue = []
+                while is_queue_vesc_data_empty is False:
+                    try:
+                        msg = self.queue_vesc_data.receive(timeout=0.1)
+                        data_in_queue.append(json.loads(msg[0]))
+                    except posix_ipc.BusyError:
+                        is_queue_vesc_data_empty = True # If queue is empty continue loop, it will refill
+                print(f"Emit on analyse_data_vesc channel : {data_in_queue} ")
+                self.socketio.emit('analyse_data_vesc', data_in_queue, namespace="/server", broadcast=True)
+
 
             
         msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
