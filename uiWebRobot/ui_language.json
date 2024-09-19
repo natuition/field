@@ -652,5 +652,11 @@
 		"en": "Pause",
 		"nl": "Pause",
 		"de": "Pause"
+	},
+	"Analyse data vesc title": {
+		"fr": "Analyse des données VESC",
+		"en": "Analyse des données VESC",
+		"nl": "Analyse des données VESC",
+		"de": "Analyse des données VESC"
 	}
 }

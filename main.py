@@ -76,6 +76,7 @@ except Exception as exc:
                 f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
                 f"_config.py")
             shutil.copy(config_backup[0], "config/config.py")
+            shutil.chown("config/config.py", user="violette", group="violette")
 
             if is_config_empty("config/config.py"):
                 raise Exception("config file is empty")

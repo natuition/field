@@ -135,6 +135,16 @@ class WorkingState(State.State):
 
     def _main_msg_thread_tf(self):
         self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
+        
+        self.queue_vesc_data = None
+        if config.VESC_EXTRACTION_ANALYZE_MODE:
+            # Waiting for queue creating by adapter
+            while(self.queue_vesc_data is None):
+                try:
+                    self.queue_vesc_data = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_DATA)
+                except posix_ipc.ExistentialError:
+                    pass
+
         while self._main_msg_thread_alive:
             try:
                 msg = self.msgQueue.receive(timeout=2)
@@ -183,6 +193,16 @@ class WorkingState(State.State):
                 self.allPath.clear()
             elif "input_voltage" in data:
                 utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
+
+            if self.queue_vesc_data is not None:
+                try:
+                    msg = self.queue_vesc_data.receive(timeout=0.3)
+                    self.socketio.emit('analyse_data_vesc', json.loads(msg[0]), namespace="/server", broadcast=True )
+                    print(f"Emit on analyse_data_vesc channel : {msg[0]} ")
+                except posix_ipc.BusyError:
+                    continue # If queue is empty continue reading, it will refill
+
+            
         msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
@@ -194,3 +214,18 @@ class WorkingState(State.State):
             self.msgQueue.unlink()
         except posix_ipc.ExistentialError:
             pass
+
+        if self.queue_vesc_data is not None:
+            msg = f"[{self.__class__.__name__}] -> Close queue_vesc_data..."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+            self.queue_vesc_data.close()
+            msg = f"[{self.__class__.__name__}] -> Unlink queue_vesc_data..."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+            try:
+                self.queue_vesc_data.unlink()
+            except posix_ipc.ExistentialError:
+                pass
+
+        

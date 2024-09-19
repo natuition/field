@@ -13,6 +13,8 @@ import pyvesc
 import re
 import RPi.GPIO as GPIO
 import csv
+import posix_ipc
+import json
 
 
 class SmoothieAdapter:
@@ -1851,10 +1853,6 @@ class VescAdapterV4:
                         GPIO.setmode(GPIO.BOARD)
                         gpio_is_initialized = True
                     GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
-                if config.VESC_EXTRACTION_ANALYZE_MODE:
-                    self.__analyze_thread_alive = True
-                    self._analyze_thread = threading.Thread(target=self._analyze_thread_function(2), daemon=True)
-                    self._analyze_thread.start()
 
             else:
                 # TODO what robot should do if initialization was failed?
@@ -1898,6 +1896,12 @@ class VescAdapterV4:
         # do any new calibrations (add vesc calibration code here)
         # ...
 
+        if config.VESC_EXTRACTION_ANALYZE_MODE:
+            self.__analyze_thread_alive = True
+            self._analyze_thread = threading.Thread(target=self._analyze_thread_function, args=(config.VESC_EXTRACTION_CAN_ID,), daemon=True)
+            self._analyze_thread.start()
+
+
     def __enter__(self):
         return self
 
@@ -1908,6 +1912,7 @@ class VescAdapterV4:
         self.close()
 
     def close(self):
+        
         if self.__ser.is_open:
             self.__keep_thread_alive = False
             cleanup_gpio = False
@@ -2277,38 +2282,49 @@ class VescAdapterV4:
             return self.__is_moving[engine_key]
 
 
-    def _analyze_thread_function(self, engine_key):
-        field_to_analyze = ["temp_fet_filtered", 
-                            "temp_motor_filtered", 
+    def _analyze_thread_function(self, engine_id):
+        field_to_analyze = ["temp_motor_filtered", 
                             "avg_motor_current", 
-                            "avg_input_current", 
-                            "avg_id", 
-                            "avg_iq", 
-                            "duty_cycle_now", 
-                            "rpm", 
-                            "input_voltage",
-                            "amp_hours",
-                            "amp_hours_charged",
-                            "watt_hours",
-                            "watt_hours_charged",
-                            "tachometer_value",
-                            "tachometer_abs_value",
-                            "fault",] # Name fields according to GetValues message if raess1/PyVESC-FW3.33
+                            "rpm",] # Name fields according to GetValues message if raess1/PyVESC-FW3.33
 
+        try: # Be sure that the precedent queue isn't already here
+            posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_DATA)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            pass
+
+        queue_data = None
         try:
-            csv_file = open('extraction_analyze.csv', 'w', newline='')
-            csv_writer = csv.writer(csv_file)
-            csv_writer.writerow(field_to_analyze)
+            queue_data = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_DATA, posix_ipc.O_CREAT, max_messages=config.MAX_MESSAGE_QUEUE_VESC_ANALYSE_DATA)
             while self.__analyze_thread_alive:
-                stats = self.get_sensors_data_of_can_id(field_to_analyze, engine_key)
+                stats = self.get_sensors_data_of_can_id(field_to_analyze, engine_id)
                 if stats is not None:
-                    csv_writer.writerow(stats.values())
-                time.sleep(0.02) # Same delay as vesctool
-
+                    try:
+                        stats_json = json.dumps(stats)
+                        try:
+                            queue_data.send(stats_json, timeout=0.01)
+                        except posix_ipc.BusyError: # If queue is full
+                            try:
+                                queue_data.receive()  # Remove the older message
+                                queue_data.send(stats_json)  # Send a new message
+                            except posix_ipc.BusyError as e:
+                                print(f"Error during sending message to queue {e}")
+                    except Exception as e:
+                        print(f"Error during sending message to queue {e}")
+                time.sleep(0.02) # In vesctool set to 0,02 but here we need less data
         except serial.SerialException as ex:
             print("VESC analyzing thread error:", ex)
-            if csv_file:
-                csv_file.close()
+        finally:
+            if queue_data is not None:
+                try:
+                    queue_data.close()  # Fermer la queue pour libérer le descripteur
+                except Exception as e:
+                    print(f"Error closing message queue: {e}")
+                try:
+                    posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_DATA)  # Supprimer la queue
+                except Exception as e:
+                    print(f"Error unlinking message queue: {e}")
 
 
 
