@@ -74,6 +74,8 @@ def initVesc(logger: utility.Logger):
             logger.write_and_flush(msg + "\n")
             print(msg)
             utility.life_line_reset()
+    
+    time.sleep(5)
 
     vesc_engine = adapters.VescAdapterV4(vesc_address,
                                          config.VESC_BAUDRATE,
