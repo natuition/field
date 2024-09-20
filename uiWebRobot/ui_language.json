@@ -654,9 +654,33 @@
 		"de": "Pause"
 	},
 	"Analyse data vesc title": {
-		"fr": "Analyse des données VESC",
-		"en": "Analyse des données VESC",
-		"nl": "Analyse des données VESC",
-		"de": "Analyse des données VESC"
+		"fr": "Analyse des données du moteur d'extraction",
+		"en": "Analyse des données du moteur d'extraction",
+		"nl": "Analyse des données du moteur d'extraction",
+		"de": "Analyse des données du moteur d'extraction"
+	},
+	"analyse data vesc checkbox": {
+		"fr": "Cocher la case pour afficher la courbe :",
+		"en": "Cocher la case pour afficher la courbe :",
+		"nl": "Cocher la case pour afficher la courbe :",
+		"de": "Cocher la case pour afficher la courbe :"
+	},
+	"temperature": {
+		"fr": "Température",
+		"en": "Température",
+		"nl": "Température",
+		"de": "Température"
+	},
+	"speed": {
+		"fr": "Vitesse",
+		"en": "Vitesse",
+		"nl": "Vitesse",
+		"de": "Vitesse"
+	},
+	"torque": {
+		"fr": "Couple",
+		"en": "Couple",
+		"nl": "Couple",
+		"de": "Couple"
 	}
 }

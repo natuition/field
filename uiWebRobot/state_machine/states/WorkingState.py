@@ -146,12 +146,16 @@ class WorkingState(State.State):
                     pass
 
         while self._main_msg_thread_alive:
+            print("Début de la boucle working state")
             try:
                 msg = self.msgQueue.receive(timeout=2)
             except posix_ipc.BusyError:
                 continue
+
+            
             data = json.loads(msg[0])
             if "start" in data:
+                print("Premier if");
                 if data["start"]:
                     msg = f"[{self.__class__.__name__}] -> Main lancé !"
                     self.logger.write_and_flush(msg + "\n")
@@ -160,11 +164,13 @@ class WorkingState(State.State):
                                                      "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
                                        namespace='/button', broadcast=True)
             elif "datacollector" in data:
+                print("Deuxieme if");
                 self.detected_plants = data["datacollector"][0]
                 self.extracted_plants = data["datacollector"][1]
                 self.previous_sessions_working_time = data["datacollector"][2]
                 self.sendLastStatistics()
             elif "last_gps" in data:
+                print("Troisième if");
                 data = data["last_gps"]
                 self.allPath.append([data[1], data[0]])
                 if self.lastGpsQuality != data[2]:
@@ -172,6 +178,7 @@ class WorkingState(State.State):
                 self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map',
                                    broadcast=True)
             elif "last_gps_list_file" in data:
+                print("Quatrième if");
                 last_gps_list_file = data["last_gps_list_file"]
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
                     self.last_path_all_points.append(list())
@@ -186,12 +193,15 @@ class WorkingState(State.State):
                                    namespace='/map',
                                    broadcast=True)
             elif "display_instruction_path" in data:
+                print("Cinquième if");
                 data = data["display_instruction_path"]
                 self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]),
                                    namespace='/map', broadcast=True)
             elif "clear_path" in data:
+                print("Sixième if");
                 self.allPath.clear()
             elif "input_voltage" in data:
+                print("Septième if");
                 utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
 
 
@@ -204,7 +214,7 @@ class WorkingState(State.State):
                         data_in_queue.append(json.loads(msg[0]))
                     except posix_ipc.BusyError:
                         is_queue_vesc_data_empty = True # If queue is empty continue loop, it will refill
-                print(f"Emit on analyse_data_vesc channel : {data_in_queue} ")
+                print(f"Envoie de {data_in_queue.__len__()} packets au client WEB")
                 self.socketio.emit('analyse_data_vesc', data_in_queue, namespace="/server", broadcast=True)
 
 

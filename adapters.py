@@ -1897,6 +1897,7 @@ class VescAdapterV4:
         # ...
 
         if config.VESC_EXTRACTION_ANALYZE_MODE:
+            print("Lancement du thread vesc")
             self.__analyze_thread_alive = True
             self._analyze_thread = threading.Thread(target=self._analyze_thread_function, args=(config.VESC_EXTRACTION_CAN_ID,), daemon=True)
             self._analyze_thread.start()
@@ -1914,6 +1915,7 @@ class VescAdapterV4:
     def close(self):
 
         if self.__analyze_thread_alive is True:
+            print("Arret du thred d'analyse vesc")
             self.__analyze_thread_alive = False
             self._analyze_thread.join(1)
         
@@ -2305,13 +2307,14 @@ class VescAdapterV4:
                 stats = self.get_sensors_data_of_can_id(field_to_analyze, engine_id)
                 if stats is not None:
                     try:
+                        stats['timestamp'] = time.time()
                         stats_json = json.dumps(stats)
                         try:
                             queue_data.send(stats_json, timeout=0.01)
                         except posix_ipc.BusyError: # If queue is full
                             try:
                                 queue_data.receive()  # Remove the older message
-                                queue_data.send(stats_json)  # Send a new message
+                                queue_data.send(stats_json, timeout=0.01)  # Send a new message
                             except posix_ipc.BusyError as e:
                                 print(f"Error during sending message to queue {e}")
                     except Exception as e:
@@ -2322,11 +2325,11 @@ class VescAdapterV4:
         finally:
             if queue_data is not None:
                 try:
-                    queue_data.close()  # Fermer la queue pour libérer le descripteur
+                    queue_data.close()
                 except Exception as e:
                     print(f"Error closing message queue: {e}")
                 try:
-                    posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_DATA)  # Supprimer la queue
+                    posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_DATA)
                 except Exception as e:
                     print(f"Error unlinking message queue: {e}")
 

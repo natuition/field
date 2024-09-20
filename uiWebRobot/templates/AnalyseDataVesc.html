@@ -22,14 +22,17 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
     <script>
         var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
-        
     </script>
 </head>
 
 <body>
     <h1 style="text-align: center; padding: 10px 0;">{{(ui_languages["Analyse data vesc title"])[ui_language]}}</h1>
 
-    <div></div>
+    <p>{{(ui_languages["analyse data vesc checkbox"])[ui_language]}}</p>
+    <label><input type="checkbox" id="toggleTemp" checked> {{(ui_languages["temperature"])[ui_language]}}</label>
+    <label><input type="checkbox" id="toggleRPM" checked> {{(ui_languages["speed"])[ui_language]}}</label>
+    <label><input type="checkbox" id="toggleTorque" checked> {{(ui_languages["torque"])[ui_language]}}</label>
+    <canvas id="myChart" width="400" height="200"></canvas>
 
     <script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script>
     <script type="text/javascript" src="/static/{{ now }}/js/analyse_data_vesc.js"></script>
