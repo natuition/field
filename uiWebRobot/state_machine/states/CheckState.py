@@ -23,10 +23,6 @@ class CheckState(State.State):
         self.socketio = socketio
         self.logger = logger
         self.cam = None
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Self initialization"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
 
         try:
             msg = f"[{self.__class__.__name__}] -> startLiveCam"
@@ -58,11 +54,6 @@ class CheckState(State.State):
             self.statusOfUIObject["checkbox"] = True
         else:
             self.statusOfUIObject["checkbox"] = False
-
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Self initialization DONE"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
 
     def on_event(self, event):
         if event == Events.Events.LIST_VALIDATION:

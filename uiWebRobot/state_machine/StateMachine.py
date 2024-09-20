@@ -32,8 +32,6 @@ class StateMachine:
 
         try:
             newState = self.currentState.on_event(event)
-            msg = f"[{self.__class__.__name__}] -> {self.currentState} : on_event"
-            self.logger.write_and_flush(msg + "\n")
         except Exception as e:
             self.logger.write_and_flush("[Error] "+str(e)+"\n")
             newState = ErrorState(self.socketio,self.logger,str(e))

@@ -135,30 +135,15 @@ class WaitWorkingState(State.State):
                     self.smoothie.custom_move_to(
                         A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Go next page..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-
         self.socketio.emit(
             'checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
 
         self.field = None
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Starting 'send_last_pos_thread_tf' thread..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-
         self.send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=utilsFunction.send_last_pos_thread_tf, args=(
             lambda: self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
         self._send_last_pos_thread.start()
-
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Starting 'voltage_thread_tf' thread..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
@@ -169,19 +154,12 @@ class WaitWorkingState(State.State):
                                                        self.input_voltage),
                                                  daemon=True)
         self.__voltage_thread.start()
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Starting '__check_joystick_info_tf' thread..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
 
         self.__last_joystick_info = time.time()
         self.__check_joystick_info_alive = True
         self.__joystick_info_thread = threading.Thread(target=self.__check_joystick_info_tf,
                                                        daemon=True)
         self.__joystick_info_thread.start()
-        if config.UI_VERBOSE_LOGGING:
-            msg = " DONE"
-            self.logger.write_and_flush(msg + "\n")
 
         self.can_go_setting = True
 

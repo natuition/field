@@ -1927,14 +1927,10 @@ class VescAdapterV4:
 
     def __get_firmware_version(self, report_field_names, can_id):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> __get_firmware_version : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__ser.write(pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id)))
             in_buf = b''
             while self.__ser.in_waiting > 0:
                 in_buf += self.__ser.read(self.__ser.in_waiting)
-            msg = f"[{self.__class__.__name__}] -> __get_firmware_version : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
         if len(in_buf) == 0:
             return None
@@ -1954,42 +1950,20 @@ class VescAdapterV4:
 
         Implements keeping multiple vesc engines alive and stopping them by a timers if they were set.
         """
-
-        msg = f"[{self.__class__.__name__}] -> _movement_ctrl_th_tf : START"
-        self.__logger_full.write_and_flush(msg + "\n")
         try:
             while self.__keep_thread_alive:
-                msg = f"[{self.__class__.__name__}] -> thread alive"
-                self.__logger_full.write_and_flush(msg + "\n")
                 with self.__locker:
-                    msg = f"[{self.__class__.__name__}] -> _movement_ctrl_th_tf : I take the locker"
-                    self.__logger_full.write_and_flush(msg + "\n")
                     # process each active engine
                     for engine_key in self.__can_ids:
-                        msg = f"[{self.__class__.__name__}] -> For engine_key"
-                        self.__logger_full.write_and_flush(msg + "\n")
                         if not self.__keep_thread_alive:
-                            msg = f"[{self.__class__.__name__}] -> thread not alive"
-                            self.__logger_full.write_and_flush(msg + "\n")
                             break
-
                         if not self.__is_moving[engine_key]:
-                            msg = f"[{self.__class__.__name__}] -> is not moving"
-                            self.__logger_full.write_and_flush(msg + "\n")
                             continue
-
-                        msg = f"[{self.__class__.__name__}] -> end if"
-                        self.__logger_full.write_and_flush(msg + "\n")
-
                         # engine movement timeout
                         if time.time() - self.__start_time[engine_key] >= self.__time_to_move[engine_key] or \
                                 self.__stop_request[engine_key]:
-                            msg = f"[{self.__class__.__name__}] -> Engine movement timeout"
-                            self.__logger_full.write_and_flush(msg + "\n")
                             # immediate engine stop
                             if not self.__use_smooth_decel[engine_key]:
-                                msg = f"[{self.__class__.__name__}] -> immediate engine stop"
-                                self.__logger_full.write_and_flush(msg + "\n")
                                 self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
                                 self.__current_rpm[engine_key] = 0
                                 self.__last_stop_time[engine_key] = time.time()
@@ -1997,14 +1971,10 @@ class VescAdapterV4:
                                 self.__stop_request[engine_key] = False
                             # smooth engine stop (if it's time to check)
                             elif time.time() >= self.__smooth_decel_next_t[engine_key]:
-                                msg = f"[{self.__class__.__name__}] -> smooth engine stop (if it's time to check)"
-                                self.__logger_full.write_and_flush(msg + "\n")
                                 self.__smooth_decel_next_t[engine_key] = time.time() + config.VESC_SMOOTH_DECEL_TIME_STEP
 
                                 # reduce speed (RPM is bigger than step so step is possible)
                                 if abs(self.__current_rpm[engine_key]) > config.VESC_SMOOTH_DECEL_RPM_STEP:
-                                    msg = f"[{self.__class__.__name__}] -> reduce speed (RPM is bigger than step so step is possible)"
-                                    self.__logger_full.write_and_flush(msg + "\n")
                                     self.__current_rpm[engine_key] += -config.VESC_SMOOTH_DECEL_RPM_STEP \
                                         if self.__current_rpm[engine_key] > 0 else config.VESC_SMOOTH_DECEL_RPM_STEP
                                     self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
@@ -2012,8 +1982,6 @@ class VescAdapterV4:
                                         can_id=self.__can_ids[engine_key])))
                                 # stop engine (current RPM <= RPM step)
                                 else:
-                                    msg = f"[{self.__class__.__name__}] -> stop engine (current RPM <= RPM step)"
-                                    self.__logger_full.write_and_flush(msg + "\n")
                                     self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
                                     self.__current_rpm[engine_key] = 0
                                     self.__last_stop_time[engine_key] = time.time()
@@ -2021,23 +1989,17 @@ class VescAdapterV4:
                                     self.__stop_request[engine_key] = False
                         # smooth start engine if needed
                         elif self.__use_smooth_accel[engine_key] and time.time() >= self.__smooth_accel_next_t[engine_key]:
-                            msg = f"[{self.__class__.__name__}] -> smooth start engine if needed"
-                            self.__logger_full.write_and_flush(msg + "\n")
                             self.__smooth_accel_next_t[engine_key] = time.time() + config.VESC_SMOOTH_ACCEL_TIME_STEP
 
                             # set engine to target RPM as current-target difference is <= RPM step
                             if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= \
                                     config.VESC_SMOOTH_ACCEL_RPM_STEP:
-                                msg = f"[{self.__class__.__name__}] -> set engine to target RPM as current-target difference is <= RPM step"
-                                self.__logger_full.write_and_flush(msg + "\n")
                                 self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
                                     self.__target_rpm[engine_key],
                                     can_id=self.__can_ids[engine_key])))
                                 self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
                             # increase current RPM by RPM step
                             else:
-                                msg = f"[{self.__class__.__name__}] -> increase current RPM by RPM step"
-                                self.__logger_full.write_and_flush(msg + "\n")
                                 self.__current_rpm[engine_key] += config.VESC_SMOOTH_ACCEL_RPM_STEP \
                                     if self.__target_rpm[engine_key] > self.__current_rpm[engine_key] \
                                     else -config.VESC_SMOOTH_ACCEL_RPM_STEP
@@ -2047,60 +2009,22 @@ class VescAdapterV4:
 
                     # send alive to each active
                     if time.time() > self.__next_alive_time:
-                        """ msg = f"[{self.__class__.__name__}] -> send alive to each active"
-                        self.__logger_full.write_and_flush(msg + "\n") """
-
                         self.__next_alive_time = time.time() + self.__alive_freq
-                        """ msg = f"[{self.__class__.__name__}] -> __next_alive_time"
-                        self.__logger_full.write_and_flush(msg + "\n") """
-
                         for engine_key in self.__is_moving:
-                            """ msg = f"[{self.__class__.__name__}] -> for engine_key"
-                            self.__logger_full.write_and_flush(msg + "\n") """
-
                             if self.__is_moving[engine_key]:
-                                """ msg = f"[{self.__class__.__name__}] -> if is moving"
-                                self.__logger_full.write_and_flush(msg + "\n") """
-
                                 self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
-                                """ msg = f"[{self.__class__.__name__}] -> write set alive"
-                                self.__logger_full.write_and_flush(msg + "\n") """
-
                             self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-                            """ msg = f"[{self.__class__.__name__}] -> write get value"
-                            self.__logger_full.write_and_flush(msg + "\n")
- """
                             in_buf = b''
                             while self.__ser.in_waiting > 0:
-                                msg = f"[{self.__class__.__name__}] -> while is waiting"
-                                self.__logger_full.write_and_flush(msg + "\n")
-
-                                self.__ser.timeout = 5
                                 try :
                                     in_buf += self.__ser.read(self.__ser.in_waiting)
                                 except Exception as e:
                                     self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
-                                    
-                                self.__ser.timeout = None
-
-                                msg = f"[{self.__class__.__name__}] -> read is waiting"
-                                self.__logger_full.write_and_flush(msg + "\n")
 
                             if len(in_buf) != 0:
-                                """ msg = f"[{self.__class__.__name__}] -> if buf"
-                                self.__logger_full.write_and_flush(msg + "\n") """
-
                                 response, consumed = pyvesc.decode(in_buf)
-                                """ msg = f"[{self.__class__.__name__}] -> decode buf"
-                                self.__logger_full.write_and_flush(msg + "\n") """
-
                                 if consumed != 0 and response is not None:
-                                    """ msg = f"[{self.__class__.__name__}] -> if response"
-                                    self.__logger_full.write_and_flush(msg + "\n") """
-
                                     if response.__dict__["rpm"] == 0 and self.__target_rpm[engine_key] != 0:
-                                        """ msg = f"[{self.__class__.__name__}] -> if stop propulsion"
-                                        self.__logger_full.write_and_flush(msg + "\n") """
                                         self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
                                         self.__ser.write(
                                             pyvesc.encode(
@@ -2110,25 +2034,13 @@ class VescAdapterV4:
                                                 )
                                             )
                                         )
-                                        msg = f"[{self.__class__.__name__}] -> write set rpm"
-                                        self.__logger_full.write_and_flush(msg + "\n")
-                    msg = f"[{self.__class__.__name__}] -> _movement_ctrl_th_tf : I leave the locker"
-                    self.__logger_full.write_and_flush(msg + "\n")
                 # wait for next checking tick
-                msg = f"[{self.__class__.__name__}] -> wait for next checking tick"
-                self.__logger_full.write_and_flush(msg + "\n")
                 time.sleep(self.__check_freq)
-                msg = f"[{self.__class__.__name__}] -> next checking tick"
-                self.__logger_full.write_and_flush(msg + "\n")
         except serial.SerialException as ex:
-            msg = f"[{self.__class__.__name__}] -> exception"
-            self.__logger_full.write_and_flush(msg + "\n")
             print(ex)  # TODO should these exceptions to be ignored?
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> start_moving : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__use_smooth_accel[engine_key] = smooth_acceleration
             self.__use_smooth_decel[engine_key] = smooth_deceleration
             self.__start_time[engine_key] = time.time()
@@ -2143,13 +2055,9 @@ class VescAdapterV4:
                     can_id=self.__can_ids[engine_key])))
                 self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
             self.__is_moving[engine_key] = True
-            msg = f"[{self.__class__.__name__}] -> start_moving : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def stop_moving(self, engine_key, smooth_deceleration: bool = False):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> stop_moving : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__use_smooth_decel[engine_key] = smooth_deceleration
 
             if smooth_deceleration:
@@ -2160,8 +2068,6 @@ class VescAdapterV4:
                 self.__current_rpm[engine_key] = 0
                 self.__last_stop_time[engine_key] = time.time()
                 self.__is_moving[engine_key] = False
-            msg = f"[{self.__class__.__name__}] -> stop_moving : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def wait_for_stop(self, engine_key, timeout=None):
         """Blocks caller thread until specified engine is end his work or timeout time is out (if timeout was set).
@@ -2173,14 +2079,8 @@ class VescAdapterV4:
 
         while True:
             with self.__locker:
-                msg = f"[{self.__class__.__name__}] -> wait_for_stop : I take the locker"
-                self.__logger_full.write_and_flush(msg + "\n")
                 if not self.__is_moving[engine_key]:
-                    msg = f"[{self.__class__.__name__}] -> wait_for_stop : I leave the locker"
-                    self.__logger_full.write_and_flush(msg + "\n")
                     return True
-                msg = f"[{self.__class__.__name__}] -> wait_for_stop : I leave the locker"
-                self.__logger_full.write_and_flush(msg + "\n")
             if timeout is not None and time.time() > end_t:
                 return False
             time.sleep(self.__check_freq)
@@ -2208,14 +2108,8 @@ class VescAdapterV4:
 
         while True:
             with self.__locker:
-                msg = f"[{self.__class__.__name__}] -> wait_for_stopper_hit : I take the locker"
-                self.__logger_full.write_and_flush(msg + "\n")
                 if not self.__is_moving[engine_key]:
-                    msg = f"[{self.__class__.__name__}] -> wait_for_stopper_hit : I leave the locker"
-                    self.__logger_full.write_and_flush(msg + "\n")
                     return False
-                msg = f"[{self.__class__.__name__}] -> wait_for_stopper_hit : I leave the locker"
-                self.__logger_full.write_and_flush(msg + "\n")
             if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
                 if stop_engine_if_stopper_hit:
                     self.stop_moving(engine_key)
@@ -2242,12 +2136,8 @@ class VescAdapterV4:
             raise TypeError(msg)
 
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> set_current_rpm : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__ser.write(pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])))
             self.__current_rpm[engine_key] = rpm
-            msg = f"[{self.__class__.__name__}] -> set_current_rpm : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def set_target_rpm(self, rpm, engine_key):
         """Set given RPM as target RPM for specified engine_key vesc engine.
@@ -2256,20 +2146,12 @@ class VescAdapterV4:
         otherwise this RPM will be applied immediately during engine start. In this case high RPM values may lead to
         strong jerk during the start.
         """
-        msg = f"[{self.__class__.__name__}] -> A"
-        self.__logger_full.write_and_flush(msg + "\n")
         if not isinstance(rpm, (int, float)):
             msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
             raise TypeError(msg)
 
-        msg = f"[{self.__class__.__name__}] -> B"
-        self.__logger_full.write_and_flush(msg + "\n")
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> C"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__target_rpm[engine_key] = rpm
-            msg = f"[{self.__class__.__name__}] -> D"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def set_time_to_move(self, time_to_move, engine_key):
         if not isinstance(time_to_move, (int, float)):
@@ -2280,11 +2162,7 @@ class VescAdapterV4:
             raise ValueError(msg)
 
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> set_time_to_move : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__time_to_move[engine_key] = time_to_move
-            msg = f"[{self.__class__.__name__}] -> set_time_to_move : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def set_alive_freq(self, alive_freq):
         if not isinstance(alive_freq, (int, float)):
@@ -2295,11 +2173,7 @@ class VescAdapterV4:
             raise ValueError(msg)
 
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> set_alive_freq : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__alive_freq = alive_freq
-            msg = f"[{self.__class__.__name__}] -> set_alive_freq : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def set_check_freq(self, check_freq):
         if not isinstance(check_freq, (int, float)):
@@ -2310,11 +2184,7 @@ class VescAdapterV4:
             raise ValueError(msg)
 
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> set_check_freq : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__check_freq = check_freq
-            msg = f"[{self.__class__.__name__}] -> set_check_freq : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def set_smooth_acceleration(self, smooth_acceleration: bool, engine_key):
         if not isinstance(smooth_acceleration, bool):
@@ -2322,11 +2192,7 @@ class VescAdapterV4:
             raise TypeError(msg)
 
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> set_smooth_acceleration : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__use_smooth_accel[engine_key] = smooth_acceleration
-            msg = f"[{self.__class__.__name__}] -> set_smooth_acceleration : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def set_smooth_deceleration(self, smooth_deceleration: bool, engine_key):
         if not isinstance(smooth_deceleration, bool):
@@ -2334,34 +2200,22 @@ class VescAdapterV4:
             raise TypeError(msg)
 
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> set_smooth_deceleration : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__use_smooth_decel[engine_key] = smooth_deceleration
-            msg = f"[{self.__class__.__name__}] -> set_smooth_deceleration : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
     def get_smooth_acceleration(self, engine_key):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> get_smooth_acceleration : I take and I will leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             return self.__use_smooth_accel[engine_key]
 
     def get_smooth_deceleration(self, engine_key):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> get_smooth_deceleration : I take and I will leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             return self.__use_smooth_decel[engine_key]
 
     def get_last_stop_time(self, engine_key):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> get_last_stop_time : I take and I will leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             return self.__last_stop_time[engine_key]
 
     def get_last_start_time(self, engine_key):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> get_last_start_time : I take and I will leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             return self.__start_time[engine_key]
 
     def get_last_movement_time(self, engine_key):
@@ -2370,19 +2224,11 @@ class VescAdapterV4:
         """
 
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> get_last_movement_time : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             if math.isclose(self.__start_time[engine_key], 0):
-                msg = f"[{self.__class__.__name__}] -> get_last_movement_time : I leave the locker"
-                self.__logger_full.write_and_flush(msg + "\n")
                 return 0
             elif self.__is_moving[engine_key] or math.isclose(self.__last_stop_time[engine_key], 0):
-                msg = f"[{self.__class__.__name__}] -> get_last_movement_time : I leave the locker"
-                self.__logger_full.write_and_flush(msg + "\n")
                 return time.time() - self.__start_time[engine_key]
             else:
-                msg = f"[{self.__class__.__name__}] -> get_last_movement_time : I leave the locker"
-                self.__logger_full.write_and_flush(msg + "\n")
                 return self.__last_stop_time[engine_key] - self.__start_time[engine_key]
 
     def get_current_rpm(self, engine_key):
@@ -2397,14 +2243,10 @@ class VescAdapterV4:
 
     def get_sensors_data_of_can_id(self, report_field_names, can_id):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> get_sensors_data_of_can_id : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=can_id)))
             in_buf = b''
             while self.__ser.in_waiting > 0:
                 in_buf += self.__ser.read(self.__ser.in_waiting)
-            msg = f"[{self.__class__.__name__}] -> get_sensors_data_of_can_id : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
         if len(in_buf) == 0:
             return None
@@ -2421,14 +2263,10 @@ class VescAdapterV4:
 
     def get_sensors_data(self, report_field_names, engine_key):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> get_sensors_data : I take the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
             in_buf = b''
             while self.__ser.in_waiting > 0:
                 in_buf += self.__ser.read(self.__ser.in_waiting)
-            msg = f"[{self.__class__.__name__}] -> get_sensors_data : I leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
 
         if len(in_buf) == 0:
             return None
@@ -2445,8 +2283,6 @@ class VescAdapterV4:
 
     def is_moving(self, engine_key):
         with self.__locker:
-            msg = f"[{self.__class__.__name__}] -> get_sensors_data : I take and I will leave the locker"
-            self.__logger_full.write_and_flush(msg + "\n")
             return self.__is_moving[engine_key]
 
 

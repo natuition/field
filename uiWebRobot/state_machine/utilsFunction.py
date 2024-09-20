@@ -21,7 +21,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
     last_update = 0
     vesc_data = None
     while voltage_thread_alive():
-        """ if voltage_thread_alive():
+        if voltage_thread_alive():
             if vesc_engine is not None:
                 try:
                     vesc_data = vesc_engine.get_sensors_data(
@@ -34,8 +34,6 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                     last_update = time.time()
                     sendInputVoltage(socketio, vesc_data["input_voltage"])
                     input_voltage["input_voltage"] = vesc_data["input_voltage"]
-                     """
-        sendInputVoltage(socketio, 20)
         time.sleep(1)
 
 
@@ -76,12 +74,6 @@ def initVesc(logger: utility.Logger):
             logger.write_and_flush(msg + "\n")
             print(msg)
             utility.life_line_reset()
-
-    msg = "A"
-    logger.write_and_flush(msg + "\n")
-    time.sleep(5)
-    msg = "B"
-    logger.write_and_flush(msg + "\n")
 
     vesc_engine = adapters.VescAdapterV4(vesc_address,
                                          config.VESC_BAUDRATE,
