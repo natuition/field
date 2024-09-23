@@ -49,7 +49,6 @@ function canNext() {
         document.getElementById('Z').checked &&
         document.getElementById('camera').checked &&
         document.getElementById('wheelsStraight').checked &&
-        //document.getElementById("voltage_indicator").getAttribute("bumper_disable") == "true" &&
         document.getElementById('no_cam') == null;
 }
 
