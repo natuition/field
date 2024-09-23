@@ -58,6 +58,10 @@ const myChart = new Chart(ctx, {
                         fontColor: 'rgba(75, 192, 192, 1)',
                         fontSize: 14
                     },
+                    ticks: {
+                        suggestedMin: 0,
+                        suggestedMax: 150,
+                    },
                 },
                 {
                     id: "y_rpm",
@@ -70,6 +74,10 @@ const myChart = new Chart(ctx, {
                         fontColor: 'rgba(123, 12, 12, 1)',
                         fontSize: 14
                     },
+                    ticks: {
+                        suggestedMin: -2000,
+                        suggestedMax: 2000,
+                    },
                 },
                 {
                     id: "y_torque",
@@ -78,9 +86,13 @@ const myChart = new Chart(ctx, {
                     beginAtZero: true,
                     scaleLabel: {
                         display: true,
-                        labelString: 'Torque (N/M)',
+                        labelString: 'Torque (N/m)',
                         fontColor: 'rgba(12, 234, 12, 1)',
                         fontSize: 14
+                    },
+                    ticks: {
+                        suggestedMin: -1,
+                        suggestedMax: 10,
                     },
                 }
             ]
@@ -88,41 +100,38 @@ const myChart = new Chart(ctx, {
     }
 });
 
-// Fonction pour mettre à jour les données du graphique
+
 function updateGraph(dataArray) {
-    // Itération à travers chaque point de données reçu (Array d'objets)
     dataArray.forEach((dataPoint) => {
-        // Température, RPM et calcul du torque basé sur le courant
+        console.log(dataPoint);
         const temp = dataPoint.temp_motor_filtered;
-        const rpm = dataPoint.rpm;
+        const erpm = dataPoint.rpm;
+        const rpm = erpm / 7 // RPM calculating
         const current = dataPoint.avg_motor_current;
-        const torque = current * 0.081; // Calcul du torque
+        const torque = current * 0.081; // Torque calculating
+        const currentTime = dataPoint.timestamp;
 
-        // Ajout des nouvelles données
-        let currentTime = x_labels.length > 0 ? parseFloat(x_labels[x_labels.length - 1]) + 0.05 : 0; // Incrément de 0.05s pour chaque point
-        x_labels.push(currentTime.toFixed(2)); // Arrondir à 2 chiffres
-
+        x_labels.push(currentTime);
         data_temp.push(temp);
         data_rpm.push(rpm);
         data_torque.push(torque);
 
-        // Limiter l'échelle X à 10 secondes (pour un total de 200 points de données)
-        if (currentTime > 10) {
-            x_labels.shift(); // Supprime l'ancienne étiquette (temps)
-            data_temp.shift();   // Supprime les anciennes valeurs
+        // Remove point olders than 10 seconds
+        const currentTimestamp = dataArray[dataArray.length - 1].timestamp;
+        while (x_labels.length > 0 && (currentTimestamp - x_labels[0]) > 10) {
+            x_labels.shift();
+            data_temp.shift();
             data_rpm.shift();
             data_torque.shift();
         }
 
-        // Mise à jour du graphique
         myChart.update();
     });
 }
 
-// Écoute des données via Socket.IO
+// Listenning of the socketio channel
 socketio.on('analyse_data_vesc', function(dataArray) {
-    console.log(dataArray); // Vérification des données reçues
-    updateGraph(dataArray); // Mise à jour du graphique avec les nouvelles données
+    updateGraph(dataArray);
 });
 
 
