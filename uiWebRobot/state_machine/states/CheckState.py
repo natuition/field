@@ -40,6 +40,8 @@ class CheckState(State.State):
         self.logger.write_and_flush(msg + "\n")
         print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
+        del self.vesc_engine
+        self.vesc_engine = utilsFunction.initVesc(self.logger)
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
