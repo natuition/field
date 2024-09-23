@@ -2017,8 +2017,6 @@ class VescAdapterV4:
                             self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
                             in_buf = b''
                             while self.__ser.in_waiting > 0:
-                                msg = f"[{self.__class__.__name__}] -> while is waiting"
-                                self.__logger_full.write_and_flush(msg + "\n")
                                 try :
                                     in_buf += self.__ser.read(self.__ser.in_waiting)
                                 except Exception as e:
