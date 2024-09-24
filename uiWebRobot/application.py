@@ -158,12 +158,11 @@ class UIWebRobot:
 
     # SOCKET IO
     def on_socket_data(self, data):
-        msg_socket_data_before_event = ["field_name", "allChecked"]
+        msg_socket_data_before_event = ["field_name", "allChecked", "wheel"]
         msg_socket_to_event = {
             "stop": Events.STOP, 
             "run_target_detection": Events.CALIBRATION_DETECT,
             "run_target_move": Events.CALIBRATION_MOVE,
-            "wheel": Events.WHEEL,
             "start": Events.START_MAIN,
             "continue": Events.CONTINUE_MAIN,
             "field": Events.CREATE_FIELD,

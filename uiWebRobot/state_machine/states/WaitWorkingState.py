@@ -114,7 +114,7 @@ class WaitWorkingState(State.State):
                                                 startButton=ButtonState.ENABLE,
                                                 continueButton=ButtonState.ENABLE,
                                                 stopButton=ButtonState.NOT_HERE,
-                                                wheelButton=ButtonState.ENABLE,
+                                                wheelButton=ButtonState.DISABLE,
                                                 removeFieldButton=ButtonState.ENABLE,
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
@@ -235,9 +235,6 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.close()
                 self.vesc_engine = None
             return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
-        elif event == Events.Events.WHEEL:
-            self.smoothie.freewheels()
-            return self
         elif event == Events.Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
             return self
@@ -284,6 +281,9 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.set_target_rpm(
                     y, self.vesc_engine.PROPULSION_KEY)
                 self.lastValueY = y
+            if(self.statusOfUIObject.wheelButton) :
+                self.statusOfUIObject.wheelButton = ButtonState.DISABLE
+                self.socketio.emit("wheel", "unrelease", namespace='/button')
 
         elif data["type"] == 'getInputVoltage':
             utilsFunction.sendInputVoltage(
@@ -311,7 +311,16 @@ class WaitWorkingState(State.State):
             self.socketio.emit('newField', json.dumps(
                 {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
                  "fields_list": fields_list}), namespace='/map')
-
+            
+        elif data["type"] == 'wheel':
+            if(data["status"]=="release") :
+                self.smoothie.freewheels()
+                self.statusOfUIObject.wheelButton = ButtonState.ENABLE
+                self.socketio.emit("wheel", "release", namespace='/button')
+            else :
+                self.smoothie.tighten_wheels()
+                self.statusOfUIObject.wheelButton = ButtonState.DISABLE
+                self.socketio.emit("wheel", "unrelease", namespace='/button')
         return self
 
     def getStatusOfControls(self):

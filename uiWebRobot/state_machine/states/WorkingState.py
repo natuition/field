@@ -61,7 +61,7 @@ class WorkingState(State.State):
                                                 startButton=ButtonState.DISABLE,
                                                 continueButton=ButtonState.DISABLE,
                                                 stopButton=ButtonState.ENABLE,
-                                                wheelButton=ButtonState.DISABLE,
+                                                wheelButton=ButtonState.NOT_HERE,
                                                 removeFieldButton=ButtonState.DISABLE,
                                                 joystick=False,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)

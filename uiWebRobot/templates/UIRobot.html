@@ -132,13 +132,17 @@
                                                         </span>
                                                         {% endif %}
                                                     </button>
-                                                    {% if statusOfUIObject['wheelButton'] %}
-                                                    <img id="Wheel" class="unselectable"
-                                                        src="{{ url_for('static', filename='wheel.png') }}"
+                                                    {% if statusOfUIObject['wheelButton'] is none %}
+                                                    <img id="Wheel" class="disabled-wheel unselectable"
+                                                        src="{{ url_for('static', filename='red_wheel.png') }}"
+                                                        height="30px" , width="30px">
+                                                    {% elif statusOfUIObject['wheelButton'] %}
+                                                    <img id="Wheel" class="release unselectable"
+                                                        src="{{ url_for('static', filename='green_wheel.png') }}"
                                                         height="30px" , width="30px">
                                                     {% else %}
-                                                    <img id="Wheel" class="disabled-wheel unselectable"
-                                                        src="{{ url_for('static', filename='wheel.png') }}"
+                                                    <img id="Wheel" class="unrelease unselectable"
+                                                        src="{{ url_for('static', filename='red_wheel.png') }}"
                                                         height="30px" , width="30px">
                                                     {% endif %}
                     </div>

@@ -26,7 +26,7 @@ class ErrorState(State.State):
                                                 startButton=ButtonState.DISABLE,
                                                 continueButton=ButtonState.DISABLE,
                                                 stopButton=ButtonState.NOT_HERE,
-                                                wheelButton=ButtonState.DISABLE,
+                                                wheelButton=ButtonState.NOT_HERE,
                                                 removeFieldButton=ButtonState.DISABLE,
                                                 joystick=False,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
