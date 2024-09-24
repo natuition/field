@@ -682,5 +682,23 @@
 		"en": "Couple",
 		"nl": "Couple",
 		"de": "Couple"
+	},
+	"Graphique en temps reel": {
+		"fr": "Graphique en temps réel",
+		"en": "Graphique en temps réel",
+		"nl": "Graphique en temps réel",
+		"de": "Graphique en temps réel"
+	},
+	"Graphique de la derniere extraction": {
+		"fr": "Graphique de la dernière extraction",
+		"en": "Graphique de la dernière extraction",
+		"nl": "Graphique de la dernière extraction",
+		"de": "Graphique de la dernière extraction"
+	},
+	"enregistrer derniere extraction": {
+		"fr": "Capturer la dernière extraction",
+		"en": "Capturer la dernière extraction",
+		"nl": "Capturer la dernière extraction",
+		"de": "Capturer la dernière extraction"
 	}
 }

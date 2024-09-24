@@ -8,7 +8,8 @@ from matplotlib.patches import Polygon
 import time
 import pickle
 from sklearn.preprocessing import PolynomialFeatures
-
+import posix_ipc
+import json
 
 class ExtractionManagerV3:
     """Implements extraction logic and control"""
@@ -1091,8 +1092,20 @@ class ExtractionMethods:
         res = smoothie.RESPONSE_OK
         all_ext_z_start_t = start_t = time.time()
 
+
+
         # this loop implements multiple tries of cork re-picking
         for _ in range(config.VESC_CORK_PICKUP_MAX_TRIES):
+            if config.VESC_EXTRACTION_ANALYZE_MODE:
+                message_queue = None
+                try:
+                    message_queue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN)
+                    message_queue.send(json.dumps({"analyse_data_vesc_instruction" : "start_extraction_analyse"}))
+                except posix_ipc.ExistentialError:
+                    print(f"File de message {config.QUEUE_NAME_UI_MAIN} introuvable")
+                finally:
+                    if message_queue is not None:
+                        message_queue.close()
             # extraction, cork down
             if config.EXTRACTION_CONTROLLER == 1:  # if Z axis controller is smoothie
                 res = smoothie.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)

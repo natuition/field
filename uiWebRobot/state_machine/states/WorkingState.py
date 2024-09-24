@@ -209,6 +209,10 @@ class WorkingState(State.State):
                 self.allPath.clear()
             elif "input_voltage" in data:
                 utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
+            elif "analyse_data_vesc_instruction" in data:
+                if data["analyse_data_vesc_instruction"] == "start_extraction_analyse":
+                    self.socketio.emit('analyse_data_vesc_instruction', json.dumps("start_extraction_analyse"),namespace='/server', broadcast=True)
+
             
         msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
         self.logger.write_and_flush(msg + "\n")

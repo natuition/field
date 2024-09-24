@@ -32,7 +32,12 @@
     <label><input type="checkbox" id="toggleTemp" checked> {{(ui_languages["temperature"])[ui_language]}}</label>
     <label><input type="checkbox" id="toggleRPM" checked> {{(ui_languages["speed"])[ui_language]}}</label>
     <label><input type="checkbox" id="toggleTorque" checked> {{(ui_languages["torque"])[ui_language]}}</label>
-    <canvas id="myChart" width="400" height="200"></canvas>
+    <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique en temps reel"])[ui_language]}}</h2>
+    <canvas id="myLiveChart" width="400" height="200"></canvas>
+    <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique de la derniere extraction"])[ui_language]}}</h2>
+    <label><input type="checkbox" id="updateRegisteredGraph" checked> {{(ui_languages["enregistrer derniere extraction"])[ui_language]}}</label>
+    <canvas id="myRegistredChart" width="400" height="200"></canvas>
+    
 
     <script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script>
     <script type="text/javascript" src="/static/{{ now }}/js/analyse_data_vesc.js"></script>
