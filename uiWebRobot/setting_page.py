@@ -486,7 +486,7 @@ class SettingPageManager:
         category_weed_removal.add_items([slider_extraction_z, slider_cycle])
 
         # Seeding technique category
-        category_weed_seeding = Category(
+        """ category_weed_seeding = Category(
             "seeding_technique", "Seeding parameter:")
 
         slider_seeder_quantity = Slider("seeder_quantity", "Number of seeding doses",
@@ -500,7 +500,7 @@ class SettingPageManager:
             0, 70, 5, self.__config.SEEDER_EXT_OFFSET_Y)
 
         category_weed_seeding.add_items(
-            [slider_seeder_quantity, slider_seeder_ext_offset_y])
+            [slider_seeder_quantity, slider_seeder_ext_offset_y]) """
 
         # Other category
         category_other = Category("other", "Other")
@@ -538,6 +538,6 @@ class SettingPageManager:
         # Setting page
 
         self.__setting_generator.add_items(
-            [checkbox_demo_mode, category_nav, category_detection, category_weed_removal, category_weed_seeding, category_other])
+            [checkbox_demo_mode, category_nav, category_detection, category_weed_removal, category_other]) #category_weed_seeding
 
         return self.__setting_generator.generate_html(self.__ui_languages, self.__config.UI_LANGUAGE)
