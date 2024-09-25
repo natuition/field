@@ -32,10 +32,16 @@
     <label><input type="checkbox" id="toggleTemp" checked> {{(ui_languages["temperature"])[ui_language]}}</label>
     <label><input type="checkbox" id="toggleRPM" checked> {{(ui_languages["speed"])[ui_language]}}</label>
     <label><input type="checkbox" id="toggleTorque" checked> {{(ui_languages["torque"])[ui_language]}}</label>
+
     <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique en temps reel"])[ui_language]}}</h2>
     <canvas id="myLiveChart" width="400" height="200"></canvas>
-    <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique de la derniere extraction"])[ui_language]}}</h2>
-    <label><input type="checkbox" id="updateRegisteredGraph" checked> {{(ui_languages["enregistrer derniere extraction"])[ui_language]}}</label>
+
+    <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique une extraction"])[ui_language]}}</h2>
+    <button id="newSignalButton">{{(ui_languages["rechercher un nouveau signal"])[ui_language]}}</button>
+    <div id="loadingIcon" style="display: block; text-align: center; margin: 20px 0;">
+        <img src="{{ url_for('static', filename='loading.gif') }}" alt="Loading..." width="100">
+        <p>{{(ui_languages["en attente de donnees"])[ui_language]}}</p>
+    </div>
     <canvas id="myRegistredChart" width="400" height="200"></canvas>
     
 

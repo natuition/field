@@ -3,16 +3,46 @@ let live_data_temp = []; // Y axes
 let live_data_rpm = []; // Y axes
 let live_data_torque = []; // Y axes
 
-let is_analysing_extraction = false
-let timerActive = false;
-let shouldUpdateRegisteredGraph = true;
+let initialTimestamp = null;
 
-let registred_x_labels = []
-let registred_data_temp =[]
-let registred_data_rpm =[]
-let registred_data_torque =[]
 
-// Live charts settings
+// Listenning of the socketio channel
+socketio.on('analyse_data_vesc', function(dataArray) {
+    updateLiveGraph(dataArray);
+});
+
+
+function updateLiveGraph(dataArray) {
+    dataArray.forEach((dataPoint) => {
+        console.log(dataPoint);
+        const temp = dataPoint.temp_motor_filtered;
+        const erpm = dataPoint.rpm;
+        const rpm = erpm / 7 // RPM calculating
+        const current = dataPoint.avg_motor_current;
+        const torque = current * 0.081; // Torque calculating
+        const currentTime = dataPoint.timestamp;
+
+        live_x_labels.push(currentTime);
+        live_data_temp.push(temp);
+        live_data_rpm.push(rpm);
+        live_data_torque.push(torque);
+
+
+        // Remove point olders than 10 seconds
+        const currentTimestamp = dataArray[dataArray.length - 1].timestamp;
+        while (live_x_labels.length > 0 && (currentTimestamp - live_x_labels[0]) > 10) {
+            live_x_labels.shift();
+            live_data_temp.shift();
+            live_data_rpm.shift();
+            live_data_torque.shift();
+        }
+
+        myLiveChart.update();
+    });
+}
+
+
+
 const ctx_live_chart = document.getElementById('myLiveChart').getContext('2d');
 const myLiveChart = new Chart(ctx_live_chart, {
     type: 'line',
@@ -47,14 +77,21 @@ const myLiveChart = new Chart(ctx_live_chart, {
     },
     options: {
         scales: {
-            x: {
-                type: 'linear',
+            xAxes: [{
                 position: 'bottom',
                 title: {
                     display: true,
                     text: 'Temps (s)',
+                },
+                ticks: {
+                    callback: function(value, index, ticks) {
+                        if(index%8==0) {
+                            return (value - ticks[0]).toFixed(2);
+                        }
+                        return "" ;
+                    }
                 }
-            },
+            }],
             yAxes: [
                 {
                     id: "y_temp",
@@ -110,75 +147,56 @@ const myLiveChart = new Chart(ctx_live_chart, {
 });
 
 
-function updateGraph(dataArray) {
+
+let shouldUpdateRegisteredGraph = true;
+
+let registred_x_labels = []
+let registred_data_temp =[]
+let registred_data_rpm =[]
+let registred_data_torque =[]
+
+let initialTimestampRegistered = null;
+
+
+// Listenning of the socketio channel
+socketio.on('analyse_extraction_pattern', function(dataArray) {
+    console.log(dataArray);
+    if(shouldUpdateRegisteredGraph) {
+        shouldUpdateRegisteredGraph = false
+        document.getElementById('loadingIcon').style.display = 'none';
+        updateRegistredGraph(dataArray);
+    };
+
+});
+
+function updateRegistredGraph(dataArray) {
+    // Erase the old graph
+    myRegistredChart.data.labels.pop()
+    myRegistredChart.data.datasets.forEach((dataset) => {
+        dataset.data.pop();
+    });
+    registred_x_labels.length = 0;
+    registred_data_temp.length = 0;
+    registred_data_rpm.length = 0;
+    registred_data_torque.length = 0;
+
     dataArray.forEach((dataPoint) => {
-        console.log(dataPoint);
         const temp = dataPoint.temp_motor_filtered;
         const erpm = dataPoint.rpm;
-        const rpm = erpm / 7 // RPM calculating
+        const rpm = erpm / 7; // RPM calculating
         const current = dataPoint.avg_motor_current;
         const torque = current * 0.081; // Torque calculating
         const currentTime = dataPoint.timestamp;
 
-        live_x_labels.push(currentTime);
-        live_data_temp.push(temp);
-        live_data_rpm.push(rpm);
-        live_data_torque.push(torque);
-
-        if (is_analysing_extraction) {
-            registred_x_labels.push(currentTime);
-            registred_data_temp.push(temp);
-            registred_data_rpm.push(rpm);
-            registred_data_torque.push(torque);
-        }
-
-        // Remove point olders than 10 seconds
-        const currentTimestamp = dataArray[dataArray.length - 1].timestamp;
-        while (live_x_labels.length > 0 && (currentTimestamp - live_x_labels[0]) > 10) {
-            live_x_labels.shift();
-            live_data_temp.shift();
-            live_data_rpm.shift();
-            live_data_torque.shift();
-        }
-
-        myLiveChart.update();
+        registred_x_labels.push(currentTime);
+        registred_data_temp.push(temp);
+        registred_data_rpm.push(rpm);
+        registred_data_torque.push(torque);
     });
+
+    myRegistredChart.update();
 }
 
-// Listenning of the socketio channel
-socketio.on('analyse_data_vesc', function(dataArray) {
-    updateGraph(dataArray);
-});
-
-
-socketio.on('analyse_data_vesc_instruction', function(instruction) {
-    
-    if (JSON.parse(instruction) == "start_extraction_analyse") {
-        if(shouldUpdateRegisteredGraph == false) {
-            return;
-        }
-        if (is_analysing_extraction) {
-            return;
-        }
-
-        myRegistredChart.data.labels.pop()
-            myRegistredChart.data.datasets.forEach((dataset) => {
-                dataset.data.pop();
-            });
-            registred_x_labels.length = 0;
-            registred_data_temp.length = 0;
-            registred_data_rpm.length = 0;
-            registred_data_torque.length = 0;
-        is_analysing_extraction = true;
-        timerActive = true;
-
-        setTimeout(function() {
-            myRegistredChart.update();
-            timerActive = false;
-            is_analysing_extraction = false;
-        }, 5000);
-    }
-});
 
 
 
@@ -218,14 +236,21 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
     },
     options: {
         scales: {
-            x: {
-                type: 'linear',
+            xAxes: [{
                 position: 'bottom',
                 title: {
                     display: true,
                     text: 'Temps (s)',
+                },
+                ticks: {
+                    callback: function(value, index, ticks) {
+                        if(index%8==0) {
+                            return (value - ticks[0]).toFixed(2);
+                        }
+                        return "" ;
+                    }
                 }
-            },
+            }],
             yAxes: [
                 {
                     id: "y_temp",
@@ -286,13 +311,18 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
 // Mask and unmask curve and axes
 function toggleDatasetVisibility(datasetIndex, checkbox, axisId) {
     myLiveChart.data.datasets[datasetIndex].hidden = !checkbox.checked;
-
-    const axis = myLiveChart.options.scales.yAxes.find(axis => axis.id === axisId);
-    if (axis) {
-        axis.display = checkbox.checked;
+    const liveAxis = myLiveChart.options.scales.yAxes.find(axis => axis.id === axisId);
+    if (liveAxis) {
+        liveAxis.display = checkbox.checked;
     }
-
     myLiveChart.update();
+
+    myRegistredChart.data.datasets[datasetIndex].hidden = !checkbox.checked;
+    const registredAxis = myRegistredChart.options.scales.yAxes.find(axis => axis.id === axisId);
+    if (registredAxis) {
+        registredAxis.display = checkbox.checked;
+    }
+    myRegistredChart.update();
 }
 
 // Attach event listener to html checkbox
@@ -308,6 +338,7 @@ document.getElementById('toggleTorque').addEventListener('change', function() {
     toggleDatasetVisibility(2, this, 'y_torque'); // 2 is the position of the dataset of torque in the chart
 });
 
-document.getElementById('updateRegisteredGraph').addEventListener('change', function() {
-    shouldUpdateRegisteredGraph = this.checked; // Met à jour la variable en fonction de l'état de la checkbox
+document.getElementById('newSignalButton').addEventListener('click', function() {
+    shouldUpdateRegisteredGraph = true;
+    document.getElementById('loadingIcon').style.display = 'block';
 });

@@ -138,11 +138,17 @@ class WorkingState(State.State):
         self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
 
         self.queue_vesc_data = None
+        self.queue_extraction_pattern = None
         if config.VESC_EXTRACTION_ANALYZE_MODE:
             # Waiting for queue creating by adapter
             while(self.queue_vesc_data is None):
                 try:
                     self.queue_vesc_data = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_DATA)
+                except posix_ipc.ExistentialError:
+                    pass
+            while(self.queue_extraction_pattern is None):
+                try:
+                    self.queue_extraction_pattern = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
                 except posix_ipc.ExistentialError:
                     pass
         
@@ -160,6 +166,17 @@ class WorkingState(State.State):
                         is_queue_vesc_data_empty = True # If queue is empty continue loop, it will refill
                 print(f"Envoie de {data_in_queue.__len__()} packets au client WEB")
                 self.socketio.emit('analyse_data_vesc', data_in_queue, namespace="/server", broadcast=True)
+
+            if self.queue_extraction_pattern is not None:
+                msg = None
+                try:
+                    msg = self.queue_extraction_pattern.receive(0.01)
+                except posix_ipc.BusyError:
+                    pass # If queue is empty continue loop, it will refill
+                if msg is not None:
+                    print(f"Envoie packets c'est l'extraction !")
+                    self.socketio.emit('analyse_extraction_pattern', json.loads(msg[0]), namespace="/server", broadcast=True)
+
 
             try:
                 msg = self.msgQueue.receive(timeout=2)
@@ -209,9 +226,6 @@ class WorkingState(State.State):
                 self.allPath.clear()
             elif "input_voltage" in data:
                 utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
-            elif "analyse_data_vesc_instruction" in data:
-                if data["analyse_data_vesc_instruction"] == "start_extraction_analyse":
-                    self.socketio.emit('analyse_data_vesc_instruction', json.dumps("start_extraction_analyse"),namespace='/server', broadcast=True)
 
             
         msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
@@ -236,5 +250,18 @@ class WorkingState(State.State):
             print(msg)
             try:
                 self.queue_vesc_data.unlink()
+            except posix_ipc.ExistentialError:
+                pass
+        
+        if self.queue_extraction_pattern is not None:
+            msg = f"[{self.__class__.__name__}] -> Close queue_extraction_pattern..."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+            self.queue_extraction_pattern.close()
+            msg = f"[{self.__class__.__name__}] -> Unlink queue_extraction_pattern..."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+            try:
+                self.queue_extraction_pattern.unlink()
             except posix_ipc.ExistentialError:
                 pass

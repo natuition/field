@@ -689,16 +689,22 @@
 		"nl": "Graphique en temps réel",
 		"de": "Graphique en temps réel"
 	},
-	"Graphique de la derniere extraction": {
-		"fr": "Graphique de la dernière extraction",
-		"en": "Graphique de la dernière extraction",
-		"nl": "Graphique de la dernière extraction",
-		"de": "Graphique de la dernière extraction"
+	"rechercher un nouveau signal": {
+		"fr": "Rechercher un nouveau signal",
+		"en": "Rechercher un nouveau signal",
+		"nl": "Rechercher un nouveau signal",
+		"de": "Rechercher un nouveau signal"
 	},
-	"enregistrer derniere extraction": {
-		"fr": "Capturer la dernière extraction",
-		"en": "Capturer la dernière extraction",
-		"nl": "Capturer la dernière extraction",
-		"de": "Capturer la dernière extraction"
+	"en attente de donnees": {
+		"fr": "En attente de données ...",
+		"en": "En attente de données ...",
+		"nl": "En attente de données ...",
+		"de": "En attente de données ..."
+	},
+	"Graphique une extraction": {
+		"fr": "Graphique d'une extraction",
+		"en": "Graphique d'une extraction",
+		"nl": "Graphique d'une extraction",
+		"de": "Graphique d'une extraction"
 	}
 }
