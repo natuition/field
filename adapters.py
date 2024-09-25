@@ -129,6 +129,14 @@ class SmoothieAdapter:
         with self.__sync_locker:
             self.__smc.write("M18")
             return self.__smc.read_some()
+        
+    def tighten_wheels(self):
+        """Disable stepper motors.
+
+        Sends 'M17' command to smoothie. Returns smoothie answer message."""
+        with self.__sync_locker:
+            self.__smc.write("M17")
+            return self.__smc.read_some()
 
     def reset_halted_state(self):
         """Reset from a halted state caused by limit switch, M112 or kill switch

@@ -71,106 +71,105 @@
                         <input type="range" min="{{ slider_min }}" max="{{ slider_max }}"
                             value="{{statusOfUIObject['slider']}}" step="{{ slider_step }}" id="r1"
                             oninput="range('r1','rangeCol')">
-                </div>
-                <script defer>
-                    range(" r1", "rangeCol") </script>
                     </div>
-                    <div class="ruler__main--button">
-                        {% if statusOfUIObject['fieldButton'] == None %}
-                        {% if statusOfUIObject['stopButton'] == 'charging' %}
-                        <button name="Newfield" id="Stop" class="unselectable active arret">
+                    <script defer>
+                        range(" r1", "rangeCol") </script>
+                </div>
+                <div class="ruler__main--button">
+                    {% if statusOfUIObject['fieldButton'] == None %}
+                    {% if statusOfUIObject['stopButton'] == 'charging' %}
+                    <button name="Newfield" id="Stop" class="unselectable active arret">
+                        <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
+                        {% elif statusOfUIObject['stopButton'] %}
+                        <button name="Newfield" id="Stop" class="unselectable arret">
                             <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                            {% elif statusOfUIObject['stopButton'] %}
-                            <button name="Newfield" id="Stop" class="unselectable arret">
+                            {% else %}
+                            <button name="Newfield" id="Stop" class="unselectable arret disabled" disabled="">
                                 <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                                {% else %}
-                                <button name="Newfield" id="Stop" class="unselectable arret disabled" disabled="">
-                                    <span class="submit">{{(ui_languages["Stop"])[ui_language]}}</span>
-                                    {% endif %}
-                                    {% elif statusOfUIObject['fieldButton'] == 'charging' %}
-                                    <button name="Newfield" id="Newfield" class="unselectable active" disabled>
-                                        <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
-                                        {% elif statusOfUIObject['fieldButton'] == 'validate' %}
-                                        <button name="Newfield" id="ValidateZone" class="unselectable">
-                                            <span class="submit">{{(ui_languages["Validate zone"])[ui_language]}}</span>
-                                            {% elif not statusOfUIObject['fieldButton'] %}
-                                            <button name="Newfield" id="Newfield" class="unselectable disabled"
-                                                disabled>
-                                                <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
+                                {% endif %}
+                                {% elif statusOfUIObject['fieldButton'] == 'charging' %}
+                                <button name="Newfield" id="Newfield" class="unselectable active" disabled>
+                                    <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
+                                    {% elif statusOfUIObject['fieldButton'] == 'validate' %}
+                                    <button name="Newfield" id="ValidateZone" class="unselectable">
+                                        <span class="submit">{{(ui_languages["Validate zone"])[ui_language]}}</span>
+                                        {% elif not statusOfUIObject['fieldButton'] %}
+                                        <button name="Newfield" id="Newfield" class="unselectable disabled" disabled>
+                                            <span class="submit">{{(ui_languages["New zone"])[ui_language]}}</span>
+                                            {% else %}
+                                            <button name="Newfield" id="Newfield" class="unselectable">
+                                                <span class="submit">
+                                                    {{(ui_languages["New zone"])[ui_language]}}
+                                                </span>
+                                                {% endif %}
+                                                <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
+                                                <span class="check"><i class="fas fa-check scale"></i></span>
+                                            </button>
+                                            {% if statusOfUIObject['removeFieldButton'] and Field_list is not none
+                                            %}
+                                            <button name="RemoveField" id="RemoveField" class="unselectable arret"
+                                                style="padding:10px!important;">
+                                                <span class="submit">
+                                                    <svg id="trash" xmlns="http://www.w3.org/2000/svg" fill="#FFF"
+                                                        viewBox="0 0 24 24" width="24px" height="24px"
+                                                        style="margin:0;">
+                                                        <path
+                                                            d="M 10 2 L 9 3 L 4 3 L 4 5 L 20 5 L 20 3 L 15 3 L 14 2 L 10 2 z M 5 7 L 5 22 L 19 22 L 19 7 L 5 7 z M 8 9 L 10 9 L 10 20 L 8 20 L 8 9 z M 14 9 L 16 9 L 16 20 L 14 20 L 14 9 z" />
+                                                    </svg>
+                                                </span>
                                                 {% else %}
-                                                <button name="Newfield" id="Newfield" class="unselectable">
+                                                <button name="RemoveField" id="RemoveField"
+                                                    class="unselectable arret disabled" style="padding:10px!important;"
+                                                    disabled>
                                                     <span class="submit">
-                                                        {{(ui_languages["New zone"])[ui_language]}}
-                                                    </span>
-                                                    {% endif %}
-                                                    <span class="loading"><i class="fas fa-sync-alt fa-spin"></i></span>
-                                                    <span class="check"><i class="fas fa-check scale"></i></span>
-                                                </button>
-                                                {% if statusOfUIObject['removeFieldButton'] and Field_list is not none
-                                                %}
-                                                <button name="RemoveField" id="RemoveField" class="unselectable arret"
-                                                    style="padding:10px!important;">
-                                                    <span class="submit">
-                                                        <svg id="trash" xmlns="http://www.w3.org/2000/svg" fill="#FFF"
-                                                            viewBox="0 0 24 24" width="24px" height="24px"
-                                                            style="margin:0;">
+                                                        <svg id="trash" xmlns="http://www.w3.org/2000/svg"
+                                                            fill="#5d61646b" viewBox="0 0 24 24" width="24px"
+                                                            height="24px" style="margin:0;">
                                                             <path
                                                                 d="M 10 2 L 9 3 L 4 3 L 4 5 L 20 5 L 20 3 L 15 3 L 14 2 L 10 2 z M 5 7 L 5 22 L 19 22 L 19 7 L 5 7 z M 8 9 L 10 9 L 10 20 L 8 20 L 8 9 z M 14 9 L 16 9 L 16 20 L 14 20 L 14 9 z" />
                                                         </svg>
                                                     </span>
-                                                    {% else %}
-                                                    <button name="RemoveField" id="RemoveField"
-                                                        class="unselectable arret disabled"
-                                                        style="padding:10px!important;" disabled>
-                                                        <span class="submit">
-                                                            <svg id="trash" xmlns="http://www.w3.org/2000/svg"
-                                                                fill="#5d61646b" viewBox="0 0 24 24" width="24px"
-                                                                height="24px" style="margin:0;">
-                                                                <path
-                                                                    d="M 10 2 L 9 3 L 4 3 L 4 5 L 20 5 L 20 3 L 15 3 L 14 2 L 10 2 z M 5 7 L 5 22 L 19 22 L 19 7 L 5 7 z M 8 9 L 10 9 L 10 20 L 8 20 L 8 9 z M 14 9 L 16 9 L 16 20 L 14 20 L 14 9 z" />
-                                                            </svg>
-                                                        </span>
-                                                        {% endif %}
-                                                    </button>
-                                                    {% if statusOfUIObject['wheelButton'] is none %}
-                                                    <img id="Wheel" class="disabled-wheel unselectable"
-                                                        src="{{ url_for('static', filename='red_wheel.png') }}"
-                                                        height="30px" , width="30px">
-                                                    {% elif statusOfUIObject['wheelButton'] %}
-                                                    <img id="Wheel" class="release unselectable"
-                                                        src="{{ url_for('static', filename='green_wheel.png') }}"
-                                                        height="30px" , width="30px">
-                                                    {% else %}
-                                                    <img id="Wheel" class="unrelease unselectable"
-                                                        src="{{ url_for('static', filename='red_wheel.png') }}"
-                                                        height="30px" , width="30px">
                                                     {% endif %}
-                    </div>
-                    <div id="choose_field_selector" class="checklist__select">
-                        <div class="checklist__select--role">
-                            <select id="field_selector"
-                                style="background-color: rgb(238 240 243)!important; border-radius:20px;margin-top:5px;">
-                                {% if Field_list is none %}
-                                <option value='{{(ui_languages["no_field"])[ui_language]}}' disabled selected>
-                                    {{(ui_languages["no_field"])[ui_language]}}</option>
-                                {% else %}
-                                <option value='{{(ui_languages["Choose_field"])[ui_language]}}' disabled>
-                                    {{(ui_languages["Choose_field"])[ui_language]}}</option>
-                                {% for field in Field_list %}
-                                <option value='{{field}}' {% if field==current_field %}selected{% endif %}>{{field}}
-                                </option>
-                                {% endfor %}
-                                {% endif %}
-                            </select>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4"
-                                class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
-                                <path
-                                    d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z">
-                                </path>
-                            </svg>
-                        </div>
+                                                </button>
+                                                {% if statusOfUIObject['wheelButton'] is none %}
+                                                <img id="Wheel" class="disabled-wheel unselectable"
+                                                    src="{{ url_for('static', filename='lock.png') }}" height="30px" ,
+                                                    width="30px" style="margin-right: 5px;">
+                                                {% elif statusOfUIObject['wheelButton'] %}
+                                                <img id="Wheel" class="release unselectable"
+                                                    src="{{ url_for('static', filename='unlock.png') }}" height="30px" ,
+                                                    width="30px" style="margin-left: 5px;">
+                                                {% else %}
+                                                <img id="Wheel" class="unrelease unselectable"
+                                                    src="{{ url_for('static', filename='lock.png') }}" height="30px" ,
+                                                    width="30px" style="margin-right: 5px;">
+                                                {% endif %}
+                </div>
+                <div id="choose_field_selector" class="checklist__select">
+                    <div class="checklist__select--role">
+                        <select id="field_selector"
+                            style="background-color: rgb(238 240 243)!important; border-radius:20px;margin-top:5px;">
+                            {% if Field_list is none %}
+                            <option value='{{(ui_languages["no_field"])[ui_language]}}' disabled selected>
+                                {{(ui_languages["no_field"])[ui_language]}}</option>
+                            {% else %}
+                            <option value='{{(ui_languages["Choose_field"])[ui_language]}}' disabled>
+                                {{(ui_languages["Choose_field"])[ui_language]}}</option>
+                            {% for field in Field_list %}
+                            <option value='{{field}}' {% if field==current_field %}selected{% endif %}>{{field}}
+                            </option>
+                            {% endfor %}
+                            {% endif %}
+                        </select>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4"
+                            class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
+                            <path
+                                d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z">
+                            </path>
+                        </svg>
                     </div>
                 </div>
+            </div>
         </section>
 
         <div id="joystick"

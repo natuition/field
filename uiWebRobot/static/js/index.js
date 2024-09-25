@@ -90,12 +90,14 @@ socketButton.on('wheel', function (dataServ) {
     if (dataServ == "release") {
         $('#Wheel').addClass('release');
         $('#Wheel').removeClass('unrelease');
-        $('#Wheel').attr("src","/static/green_wheel.png");
+        $('#Wheel').attr("src","/static/unlock.png");
+        $('#Wheel').attr("style","margin-left:5px");
     }
     else {
         $('#Wheel').addClass('unrelease');
         $('#Wheel').removeClass('release');
-        $('#Wheel').attr("src","/static/red_wheel.png");
+        $('#Wheel').attr("src","/static/lock.png");
+        $('#Wheel').attr("style","margin-right:5px");
     }
 }
 );
