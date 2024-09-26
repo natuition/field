@@ -223,10 +223,10 @@ VESC_PROPULSION_CAN_ID = None  # parent vesc has can_id=None
 
 # engine 2
 # enables extraction vesc initialization and usage
-VESC_ALLOW_EXTRACTION = True # extraction GPIO stopper PIN number, set to None to disable stopper usage or if no stopper is used for this vesc
+VESC_ALLOW_EXTRACTION = False # extraction GPIO stopper PIN number, set to None to disable stopper usage or if no stopper is used for this vesc
 VESC_EXTRACTION_STOPPER_PIN = 16  # VALUE MAY BE DIFFERENT FOR EACH ROBOT # set to True if GPIO returns 1 if stopper was hit, otherwise set to False
 VESC_EXTRACTION_STOP_SIGNAL = False # set to True to allow this axis init calibration during vesc adapter instance creation
-VESC_EXTRACTION_CALIBRATE_AT_INIT = True 
+VESC_EXTRACTION_CALIBRATE_AT_INIT = False 
 VESC_EXTRACTION_CALIBRATION_RPM = -2500 # rpm for init calibration 
 VESC_EXTRACTION_CALIBRATION_MAX_TIME = 2 # seconds; max time needed to reach stopper, calibration will be stopped after this timeout 
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM = 2500  
@@ -432,7 +432,7 @@ QUEUE_TRACK_PERFORMANCE = False
 MAX_LENGHT_POINT_HISTORY = 100
 ROBOT_SYNTHESIS_HOST = "127.0.0.1"
 ROBOT_SYNTHESIS_PORT = 2006
-DATAGATHERING_HOST = "172.16.3.5"
+DATAGATHERING_HOST = "172.16.0.10"
 DATAGATHERING_PORT = 8080
 
 LIFE_LINE_PIN = 77 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
@@ -463,7 +463,7 @@ TIMEOUT_JOYSTICK_USER_ACTION = 1
 
 EXTRACTION_PATTERNS_OFFSET_MM = 5 
 EXTRACTION_MAP_CELL_SIZE_MM = 10
-EXTRACTION_TRIES_PER_PLANT = 3 # defines how many times robot will try to extract plant or plants group in undist. zone
+EXTRACTION_TRIES_PER_PLANT = 1 # defines how many times robot will try to extract plant or plants group in undist. zone
 # should be >= 1; expected value that equal to extraction strategies count so each of them can be applied
 
 AVOID_CORK_VIEW_OBSCURING_DIST_X = 10  # mm; offset size to "remove" corkscrew tube from camera-plant view
@@ -546,7 +546,7 @@ MILLING_PLANT_BOX_Y_SIZE_SCALE = 1
 PERIPHERY_CONFIDENCE_THRESHOLD = 0.1
 PERIPHERY_INPUT_SIZE = (416, 416)
 PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
-PERIPHERY_MODEL_PATH = "yolo/Y0016_416_416.trt" 
+PERIPHERY_MODEL_PATH = "yolo/Y0016_416_416.trt"
 
 PERIPHERY_HIER_THRESHOLD = 0.5
 PERIPHERY_NMS_THRESHOLD = 0.4
@@ -581,18 +581,18 @@ PRECISE_DATA_FILE = "yolo/Y0016.data"
 # ======================================================================================================================
 # CAMERA SETTINGS
 # ======================================================================================================================
-CAMERA_W = 3264
-CAMERA_H = 1848
-APPLY_IMAGE_CROPPING = True
-CROP_W_FROM = 508 
-CROP_W_TO = 2508 
-CROP_H_FROM = -62 
-CROP_H_TO = 1438 
+CAMERA_W = 1920
+CAMERA_H = 1080
+APPLY_IMAGE_CROPPING = False
+CROP_W_FROM = 0 
+CROP_W_TO = 1920 
+CROP_H_FROM = 0 
+CROP_H_TO = 1080
 CAMERA_FRAMERATE = 16
 CAMERA_FLIP_METHOD = 0
 SCENE_CENTER_X = 1000
 SCENE_CENTER_Y = 980
-ONE_MM_IN_PX = 5.2
+ONE_MM_IN_PX = 3.2
 ISP_DIGITAL_GAIN_RANGE_FROM = 4
 ISP_DIGITAL_GAIN_RANGE_TO = 4
 GAIN_RANGE_FROM = 4
