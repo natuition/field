@@ -167,7 +167,7 @@ class UIWebRobot:
             "screening_pause": Events.ACTUATOR_SCREENING_PAUSE,
             "screening_quit": Events.ACTUATOR_SCREENING_STOP
         }
-        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field"]
+        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field", "trigger_analyse_vesc"]
         if "type" in data:
             if data["type"] in msg_socket_data_before_event:
                 self.get_state_machine().on_socket_data(data)

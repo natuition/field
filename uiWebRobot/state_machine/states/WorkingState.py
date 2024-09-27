@@ -115,6 +115,15 @@ class WorkingState(State.State):
                                    json.dumps(self.last_path_all_points), 
                                    namespace='/map')
             return self
+        # When parameters for trigger are changed by the UI
+        elif data["type"] == 'trigger_analyse_vesc':
+            try:
+                queue_params = posix_ipc.MessageQueue(config.NAME_QUEUE_VESC_DETECTION_PARAMS)
+                queue_params.send(json.dumps(data), timeout=0.01)
+                queue_params.close()
+            except Exception as e:
+                print("VESC ANALYSE MODE, envoie des parametres dans la queue:", e)
+            return self
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()

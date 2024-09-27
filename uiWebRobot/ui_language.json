@@ -718,5 +718,29 @@
 		"en": "Graphique d'une extraction",
 		"nl": "Graphique d'une extraction",
 		"de": "Graphique d'une extraction"
+	},
+	"nb_capture_before": {
+		"fr": "Nombre de capture avant le déclencheur",
+		"en": "Nombre de capture avant le déclencheur",
+		"nl": "Nombre de capture avant le déclencheur",
+		"de": "Nombre de capture avant le déclencheur"
+	},
+	"nb_capture": {
+		"fr": "Nombre de capture au dessus du seuil",
+		"en": "Nombre de capture au dessus du seuil",
+		"nl": "Nombre de capture au dessus du seuil",
+		"de": "Nombre de capture au dessus du seuil"
+	},
+	"nb_capture_after": {
+		"fr": "Nombre de capture après le déclencheur",
+		"en": "Nombre de capture après le déclencheur",
+		"nl": "Nombre de capture après le déclencheur",
+		"de": "Nombre de capture après le déclencheur"
+	},
+	"threshold": {
+		"fr": "Seuil de vitesse",
+		"en": "Seuil de vitesse",
+		"nl": "Seuil de vitesse",
+		"de": "Seuil de vitesse"
 	}
 }

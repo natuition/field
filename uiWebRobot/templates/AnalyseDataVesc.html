@@ -56,7 +56,7 @@
 
     <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique une extraction"])[ui_language]}}</h2>-->
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 20px; margin-bottom: 20px;">
-        <button id="newSignalButton" style="display: none; background-color: green; color: white; font-weight: 600; padding: 15px 30px; font-size: 18px; border-radius: 10px; border: none; cursor: pointer;">{{(ui_languages["rechercher un nouveau signal"])[ui_language]}}</button>
+        <button id="newSignalButton" style="display: block; background-color: green; color: white; font-weight: 600; padding: 15px 30px; font-size: 18px; border-radius: 10px; border: none; cursor: pointer;">{{(ui_languages["rechercher un nouveau signal"])[ui_language]}}</button>
 
         <div id="loadingContainer" style="display: block; text-align: center;">
             <div class="spinner"></div>
@@ -64,20 +64,29 @@
         </div>
     </div>
 
-    <div style="position: relative; width: 100%; height: 400px;">
-        <canvas id="myRegistredChart" width="400" height="200" style="width: 100%; height: 100%;"></canvas>
-    </div>
-    
-    <div>
-        <canvas id="myRegistredChart" width="400" height="200" style="width: 100%; height: 100%;"></canvas>
+    <div id="paramContainer" style="display: none; margin-top: 20px;">
+        <div style="display: flex; justify-content: space-around; width: 100%;">
+            <div>
+                <label for="nbCaptureBefore">{{ (ui_languages["nb_capture_before"])[ui_language] }}:</label>
+                <input id="nbCaptureBefore" type="number" min="0" max="10" value="0">
+            </div>
+            <div>
+                <label for="nbCapture">{{ (ui_languages["nb_capture"])[ui_language] }}:</label>
+                <input id="nbCapture" type="number" min="0" max="10" value="0">
+            </div>
+            <div>
+                <label for="nbCaptureAfter">{{ (ui_languages["nb_capture_after"])[ui_language] }}:</label>
+                <input id="nbCaptureAfter" type="number" min="0" max="50" value="0">
+            </div>
+            <div>
+                <label for="threshold">{{ (ui_languages["threshold"])[ui_language] }}:</label>
+                <input id="threshold" type="number" min="0" max="2000" step="100" value="0">
+            </div>
+        </div>
     </div>
 
     <div>
-        <p>Fréquence des captures : <span id="captures_frequency"></span></p>
-        <p>Seuil RPM : <span id="rpm_threshold"></span></p>
-        <p>Nombre de captures au-dessus du seuil : <span id="capture_count_over_threshold"></span></p>
-        <p>Nombre de captures avant détection : <span id="capture_count_before_detection"></span></p>
-        <p>Nombre de captures après détection : <span id="capture_count_after_detection"></span></p>
+        <canvas id="myRegistredChart" width="400" height="200" style="width: 100%; height: 100%;"></canvas>
     </div>
 
     <script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script>

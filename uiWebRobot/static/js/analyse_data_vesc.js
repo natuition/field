@@ -5,39 +5,34 @@ let registred_data_temp =[]
 let registred_data_rpm =[]
 let registred_data_torque =[]
 
+let nb_capture_before = 0;
+let nb_capture = 0;
+let nb_capture_after = 0;
+let threshold = 0;
 
-let capturesFrequency = 0;
-let rpmThreshold;
-let captureCountOverThreshold = 0;
-let captureCountBeforeDetection = 0;
-let captureCountAfterDetection = 0;
-
-// Listenning of the socketio channel
+// Écoute des données du serveur via socketio
 socketio.on('analyse_extraction_pattern', function(data) {
     console.log("Données d'extraction reçues :");
     console.log(data);
-    
+
     if (shouldUpdateRegisteredGraph) {
         console.log("Actualisation du graphique");
         shouldUpdateRegisteredGraph = false;
-        
-        // Masquer le conteneur de chargement et afficher le bouton
-        document.getElementById('loadingContainer').style.display = 'none';
-        document.getElementById('newSignalButton').style.display = 'block';
-        
-        // Stocker les paramètres dans des variables globales
-        capturesFrequency = data.detection_parameters.captures_frequency;
-        rpmThreshold = data.detection_parameters.rpm_threshold;
-        captureCountOverThreshold = data.detection_parameters.capture_count_over_threshold;
-        captureCountBeforeDetection = data.detection_parameters.capture_count_before_detection;
-        captureCountAfterDetection = data.detection_parameters.capture_count_after_detetion;
 
-        // Mettre à jour le texte dans le HTML
-        document.getElementById('captures_frequency').innerText = capturesFrequency;
-        document.getElementById('rpm_threshold').innerText = rpmThreshold;
-        document.getElementById('capture_count_over_threshold').innerText = captureCountOverThreshold;
-        document.getElementById('capture_count_before_detection').innerText = captureCountBeforeDetection;
-        document.getElementById('capture_count_after_detection').innerText = captureCountAfterDetection;
+        // Masquer le conteneur de chargement, afficher le bouton et les paramètres
+        document.getElementById('loadingContainer').style.display = 'none';
+        document.getElementById('paramContainer').style.display = 'block';
+
+        // Mettre à jour les champs de paramétrage avec les données reçues
+        nb_capture_before = data.detection_parameters.nb_capture_before;
+        nb_capture = data.detection_parameters.nb_capture;
+        nb_capture_after = data.detection_parameters.nb_capture_after;
+        threshold = data.detection_parameters.threshold;
+
+        document.getElementById('nbCaptureBefore').value = nb_capture_before;
+        document.getElementById('nbCapture').value = nb_capture;
+        document.getElementById('nbCaptureAfter').value = nb_capture_after;
+        document.getElementById('threshold').value = threshold;
 
         // Mettre à jour le graphique avec les nouvelles données
         updateRegistredGraph(data.captures);
@@ -45,6 +40,7 @@ socketio.on('analyse_extraction_pattern', function(data) {
 });
 
 function updateRegistredGraph(dataArray) {
+    let initialTimestamp = dataArray[0].timestamp;
 
     dataArray.forEach((dataPoint) => {
         const temp = dataPoint.temp_motor_filtered;
@@ -52,14 +48,18 @@ function updateRegistredGraph(dataArray) {
         const rpm = erpm / 7; // RPM calculating
         const current = dataPoint.avg_motor_current;
         const torque = current * 0.081; // Torque calculating
-        const currentTime = dataPoint.timestamp;
+        const currentTime = ((dataPoint.timestamp - initialTimestamp).toFixed(3))*1000;
+        //console.log(currentTime);
 
         registred_x_labels.push(currentTime);
         registred_data_temp.push(temp);
         registred_data_rpm.push(rpm);
         registred_data_torque.push(torque);
     });
-
+    myRegistredChart.data.datasets[0].data = registred_data_torque.map((v, i) => ({ x: registred_x_labels[i], y: v }))
+    myRegistredChart.data.datasets[1].data = registred_data_rpm.map((v, i) => ({ x: registred_x_labels[i], y: v }))
+    myRegistredChart.data.datasets[2].data = registred_data_temp.map((v, i) => ({ x: registred_x_labels[i], y: v }))
+    myRegistredChart.options.annotation.annotations[0].value = threshold
     myRegistredChart.update();
 }
 
@@ -67,9 +67,8 @@ function updateRegistredGraph(dataArray) {
 // Registred charts settings
 const ctx_registred_chart = document.getElementById('myRegistredChart').getContext('2d');
 const myRegistredChart = new Chart(ctx_registred_chart, {
-    type: 'line',
+    type: 'scatter',
     data: {
-        labels: registred_x_labels,
         datasets: [
             {
                 label: (ui_languages["torque"])[ui_language],
@@ -78,6 +77,7 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                 borderWidth: 2,
                 fill: false,
                 yAxisID: 'y_torque',
+                showLine: true,
             },
             {
                 label: (ui_languages["speed"])[ui_language],
@@ -86,6 +86,7 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                 borderWidth: 2,
                 fill: false,
                 yAxisID: 'y_rpm',
+                showLine: true,
             },
             {
                 label: (ui_languages["temperature"])[ui_language],
@@ -94,27 +95,28 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                 borderWidth: 2,
                 fill: false,
                 yAxisID: 'y_temp',
+                showLine: true,
             }
         ]
     },
     options: {
         scales: {
             xAxes: [{
+                display: true,
                 position: 'bottom',
-                scaleLabel: {
-                    display: true,
-                    labelString: (ui_languages["time"])[ui_language],
-                    fontSize: 14
-                },
                 ticks: {
-                    callback: function(value, index, ticks) {
-                        if(index%8==0) {
-                            return (value - ticks[0]).toFixed(2);
-                        }
-                        return "" ;
-                    }
+                  stepSize: 1,
+                  autoSkip: false,
+                  callback: function(value) {
+                    if(value % 500 == 0 ) return value 
+                    if(value % 100 == 0 ) return "" 
+                    else return null
+                   },
+                  min: 0,
+                  max: registred_x_labels[registred_x_labels.length - 1],
+                  maxRotation: 0
                 }
-            }],
+              }],
             yAxes: [
                 {
                     id: "y_torque",
@@ -196,7 +198,7 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                 type: 'line',
                 mode: 'horizontal',
                 scaleID: 'y_rpm',
-                value: 500,
+                value: threshold,
                 borderColor: 'red',
                 borderWidth: 2,
                 label: {
@@ -221,17 +223,34 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
 
 document.getElementById('newSignalButton').addEventListener('click', function() {
     shouldUpdateRegisteredGraph = true;
-    this.style.display = 'none'; // Disable the button
     document.getElementById('loadingContainer').style.display = 'block';
     // Erase the old graph
-    myRegistredChart.data.labels.pop()
     myRegistredChart.data.datasets.forEach((dataset) => {
-        dataset.data.pop();
+        dataset.data = [];  // Réinitialiser le tableau de données du dataset
     });
-    registred_x_labels.length = 0;
-    registred_data_temp.length = 0;
-    registred_data_rpm.length = 0;
-    registred_data_torque.length = 0;
+    
+    // Vider les tableaux sources utilisés pour les données
+    registred_x_labels = [];
+    registred_data_torque = [];
+    registred_data_rpm = [];
+    registred_data_temp = [];
     myRegistredChart.update();
 
+    // Récupérer les valeurs actuelles des paramètres
+    nb_capture_before = parseInt(document.getElementById('nbCaptureBefore').value);
+    nb_capture = parseInt(document.getElementById('nbCapture').value);
+    nb_capture_after = parseInt(document.getElementById('nbCaptureAfter').value);
+    threshold = parseFloat(document.getElementById('threshold').value);
+
+    // Envoyer les nouveaux paramètres au serveur pour la prochaine détection
+    socketio.emit('data', {
+        'type': 'trigger_analyse_vesc',
+        'nb_capture_before': nb_capture_before,
+        'nb_capture': nb_capture,
+        'nb_capture_after': nb_capture_after,
+        'threshold': threshold
+    });
+
 });
+
+
