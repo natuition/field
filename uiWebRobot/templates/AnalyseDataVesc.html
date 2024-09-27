@@ -14,6 +14,28 @@
             height: 100%;
             touch-action: manipulation;
         }
+
+        /* Style for the loading spinner */
+        .spinner {
+            margin-left: auto;
+            margin-right: auto;
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #37b318; /* Blue */
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Animation for the spinner */
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script>
@@ -26,26 +48,40 @@
 </head>
 
 <body>
-    <h1 style="text-align: center; padding: 10px 0;">{{(ui_languages["Analyse data vesc title"])[ui_language]}}</h1>
+    <script type="text/javascript">
+        const ui_languages = {{ ui_languages | tojson}};
+        const ui_language = {{ ui_language | tojson}};
+    </script>
+    <!-- <h1 style="text-align: center; padding: 10px 0;">{{(ui_languages["Analyse data vesc title"])[ui_language]}}</h1>
 
-    <p>{{(ui_languages["analyse data vesc checkbox"])[ui_language]}}</p>
-    <label><input type="checkbox" id="toggleTemp" checked> {{(ui_languages["temperature"])[ui_language]}}</label>
-    <label><input type="checkbox" id="toggleRPM" checked> {{(ui_languages["speed"])[ui_language]}}</label>
-    <label><input type="checkbox" id="toggleTorque" checked> {{(ui_languages["torque"])[ui_language]}}</label>
+    <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique une extraction"])[ui_language]}}</h2>-->
+    <div style="display: flex; flex-direction: column; align-items: center; margin-top: 20px; margin-bottom: 20px;">
+        <button id="newSignalButton" style="display: none; background-color: green; color: white; font-weight: 600; padding: 15px 30px; font-size: 18px; border-radius: 10px; border: none; cursor: pointer;">{{(ui_languages["rechercher un nouveau signal"])[ui_language]}}</button>
 
-    <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique en temps reel"])[ui_language]}}</h2>
-    <canvas id="myLiveChart" width="400" height="200"></canvas>
-
-    <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique une extraction"])[ui_language]}}</h2>
-    <button id="newSignalButton">{{(ui_languages["rechercher un nouveau signal"])[ui_language]}}</button>
-    <div id="loadingIcon" style="display: block; text-align: center; margin: 20px 0;">
-        <img src="{{ url_for('static', filename='loading.gif') }}" alt="Loading..." width="100">
-        <p>{{(ui_languages["en attente de donnees"])[ui_language]}}</p>
+        <div id="loadingContainer" style="display: block; text-align: center;">
+            <div class="spinner"></div>
+            <p style="font-size: xx-large; font-weight: 700;">{{(ui_languages["en attente de donnees"])[ui_language]}}</p>
+        </div>
     </div>
-    <canvas id="myRegistredChart" width="400" height="200"></canvas>
+
+    <div style="position: relative; width: 100%; height: 400px;">
+        <canvas id="myRegistredChart" width="400" height="200" style="width: 100%; height: 100%;"></canvas>
+    </div>
     
+    <div>
+        <canvas id="myRegistredChart" width="400" height="200" style="width: 100%; height: 100%;"></canvas>
+    </div>
+
+    <div>
+        <p>Fréquence des captures : <span id="captures_frequency"></span></p>
+        <p>Seuil RPM : <span id="rpm_threshold"></span></p>
+        <p>Nombre de captures au-dessus du seuil : <span id="capture_count_over_threshold"></span></p>
+        <p>Nombre de captures avant détection : <span id="capture_count_before_detection"></span></p>
+        <p>Nombre de captures après détection : <span id="capture_count_after_detection"></span></p>
+    </div>
 
     <script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script>
+    <script type="text/javascript" src="/static/{{ now }}/js/chartjs-plugin-annotation.min.js"></script>
     <script type="text/javascript" src="/static/{{ now }}/js/analyse_data_vesc.js"></script>
 </body>
 

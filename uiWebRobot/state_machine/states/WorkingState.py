@@ -137,15 +137,9 @@ class WorkingState(State.State):
     def _main_msg_thread_tf(self):
         self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
 
-        self.queue_vesc_data = None
         self.queue_extraction_pattern = None
         if config.VESC_EXTRACTION_ANALYZE_MODE:
             # Waiting for queue creating by adapter
-            while(self.queue_vesc_data is None):
-                try:
-                    self.queue_vesc_data = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_DATA)
-                except posix_ipc.ExistentialError:
-                    pass
             while(self.queue_extraction_pattern is None):
                 try:
                     self.queue_extraction_pattern = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
@@ -155,18 +149,6 @@ class WorkingState(State.State):
         
         while self._main_msg_thread_alive:
 
-            if self.queue_vesc_data is not None:
-                is_queue_vesc_data_empty = False
-                data_in_queue = []
-                while is_queue_vesc_data_empty is False:
-                    try:
-                        msg = self.queue_vesc_data.receive(timeout=config.VESC_EXTRACTION_ANALYZE_FREQUENCY)
-                        data_in_queue.append(json.loads(msg[0]))
-                    except posix_ipc.BusyError:
-                        is_queue_vesc_data_empty = True # If queue is empty continue loop, it will refill
-                print(f"Envoie de {data_in_queue.__len__()} packets au client WEB")
-                self.socketio.emit('analyse_data_vesc', data_in_queue, namespace="/server", broadcast=True)
-
             if self.queue_extraction_pattern is not None:
                 msg = None
                 try:
@@ -174,7 +156,7 @@ class WorkingState(State.State):
                 except posix_ipc.BusyError:
                     pass # If queue is empty continue loop, it will refill
                 if msg is not None:
-                    print(f"Envoie packets c'est l'extraction !")
+                    print(f"Envoie des données de l'extraction au client WEB")
                     self.socketio.emit('analyse_extraction_pattern', json.loads(msg[0]), namespace="/server", broadcast=True)
 
 
@@ -240,19 +222,7 @@ class WorkingState(State.State):
         except posix_ipc.ExistentialError:
             pass
         
-        if self.queue_vesc_data is not None:
-            msg = f"[{self.__class__.__name__}] -> Close queue_vesc_data..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-            self.queue_vesc_data.close()
-            msg = f"[{self.__class__.__name__}] -> Unlink queue_vesc_data..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-            try:
-                self.queue_vesc_data.unlink()
-            except posix_ipc.ExistentialError:
-                pass
-        
+        # Closing file descriptor and removing queue if it exist
         if self.queue_extraction_pattern is not None:
             msg = f"[{self.__class__.__name__}] -> Close queue_extraction_pattern..."
             self.logger.write_and_flush(msg + "\n")

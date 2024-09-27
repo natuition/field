@@ -666,22 +666,34 @@
 		"de": "Cocher la case pour afficher la courbe :"
 	},
 	"temperature": {
-		"fr": "Température",
-		"en": "Température",
-		"nl": "Température",
-		"de": "Température"
+		"fr": "Température (°C)",
+		"en": "Température (°C)",
+		"nl": "Température (°C)",
+		"de": "Température (°C)"
 	},
 	"speed": {
-		"fr": "Vitesse",
-		"en": "Vitesse",
-		"nl": "Vitesse",
-		"de": "Vitesse"
+		"fr": "Vitesse (RPM)",
+		"en": "Vitesse (RPM)",
+		"nl": "Vitesse (RPM)",
+		"de": "Vitesse (RPM)"
 	},
 	"torque": {
-		"fr": "Couple",
-		"en": "Couple",
-		"nl": "Couple",
-		"de": "Couple"
+		"fr": "Couple (N/m)",
+		"en": "Couple (N/m)",
+		"nl": "Couple (N/m)",
+		"de": "Couple (N/m)"
+	},
+	"time": {
+		"fr": "Temps (s)",
+		"en": "Temps (s)",
+		"nl": "Temps (s)",
+		"de": "Temps (s)"
+	},
+	"seuil vitesse": {
+		"fr": "Seuil (RPM)",
+		"en": "Seuil (RPM)",
+		"nl": "Seuil (RPM)",
+		"de": "Seuil (RPM)"
 	},
 	"Graphique en temps reel": {
 		"fr": "Graphique en temps réel",

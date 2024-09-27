@@ -1,153 +1,3 @@
-let live_x_labels = []; // Labels for x axe
-let live_data_temp = []; // Y axes
-let live_data_rpm = []; // Y axes
-let live_data_torque = []; // Y axes
-
-let initialTimestamp = null;
-
-
-// Listenning of the socketio channel
-socketio.on('analyse_data_vesc', function(dataArray) {
-    updateLiveGraph(dataArray);
-});
-
-
-function updateLiveGraph(dataArray) {
-    dataArray.forEach((dataPoint) => {
-        console.log(dataPoint);
-        const temp = dataPoint.temp_motor_filtered;
-        const erpm = dataPoint.rpm;
-        const rpm = erpm / 7 // RPM calculating
-        const current = dataPoint.avg_motor_current;
-        const torque = current * 0.081; // Torque calculating
-        const currentTime = dataPoint.timestamp;
-
-        live_x_labels.push(currentTime);
-        live_data_temp.push(temp);
-        live_data_rpm.push(rpm);
-        live_data_torque.push(torque);
-
-
-        // Remove point olders than 10 seconds
-        const currentTimestamp = dataArray[dataArray.length - 1].timestamp;
-        while (live_x_labels.length > 0 && (currentTimestamp - live_x_labels[0]) > 10) {
-            live_x_labels.shift();
-            live_data_temp.shift();
-            live_data_rpm.shift();
-            live_data_torque.shift();
-        }
-
-        myLiveChart.update();
-    });
-}
-
-
-
-const ctx_live_chart = document.getElementById('myLiveChart').getContext('2d');
-const myLiveChart = new Chart(ctx_live_chart, {
-    type: 'line',
-    data: {
-        labels: live_x_labels,
-        datasets: [
-            {
-                label: 'Temperature (°C)',
-                data: live_data_temp,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 2,
-                fill: false,
-                yAxisID: 'y_temp',
-            },
-            {
-                label: 'Speed (RPM)',
-                data: live_data_rpm,
-                borderColor: 'rgba(123, 12, 12, 1)',
-                borderWidth: 2,
-                fill: false,
-                yAxisID: 'y_rpm',
-            },
-            {
-                label: 'Torque (N/M)',
-                data: live_data_torque,
-                borderColor: 'rgba(12, 234, 12, 1)',
-                borderWidth: 2,
-                fill: false,
-                yAxisID: 'y_torque',
-            }
-        ]
-    },
-    options: {
-        scales: {
-            xAxes: [{
-                position: 'bottom',
-                title: {
-                    display: true,
-                    text: 'Temps (s)',
-                },
-                ticks: {
-                    callback: function(value, index, ticks) {
-                        if(index%8==0) {
-                            return (value - ticks[0]).toFixed(2);
-                        }
-                        return "" ;
-                    }
-                }
-            }],
-            yAxes: [
-                {
-                    id: "y_temp",
-                    display : true,
-                    position : "right",
-                    beginAtZero: true,
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Temperature (°C)',
-                        fontColor: 'rgba(75, 192, 192, 1)',
-                        fontSize: 14
-                    },
-                    ticks: {
-                        suggestedMin: 0,
-                        suggestedMax: 150,
-                    },
-                },
-                {
-                    id: "y_rpm",
-                    display : true,
-                    position : "right",
-                    beginAtZero: true,
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Speed (RPM)',
-                        fontColor: 'rgba(123, 12, 12, 1)',
-                        fontSize: 14
-                    },
-                    ticks: {
-                        suggestedMin: -2000,
-                        suggestedMax: 2000,
-                    },
-                },
-                {
-                    id: "y_torque",
-                    display : true,
-                    position : "right",
-                    beginAtZero: true,
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Torque (N/m)',
-                        fontColor: 'rgba(12, 234, 12, 1)',
-                        fontSize: 14
-                    },
-                    ticks: {
-                        suggestedMin: -1,
-                        suggestedMax: 10,
-                    },
-                }
-            ]
-        }
-    }
-});
-
-
-
 let shouldUpdateRegisteredGraph = true;
 
 let registred_x_labels = []
@@ -155,30 +5,46 @@ let registred_data_temp =[]
 let registred_data_rpm =[]
 let registred_data_torque =[]
 
-let initialTimestampRegistered = null;
 
+let capturesFrequency = 0;
+let rpmThreshold;
+let captureCountOverThreshold = 0;
+let captureCountBeforeDetection = 0;
+let captureCountAfterDetection = 0;
 
 // Listenning of the socketio channel
-socketio.on('analyse_extraction_pattern', function(dataArray) {
-    console.log(dataArray);
-    if(shouldUpdateRegisteredGraph) {
-        shouldUpdateRegisteredGraph = false
-        document.getElementById('loadingIcon').style.display = 'none';
-        updateRegistredGraph(dataArray);
-    };
+socketio.on('analyse_extraction_pattern', function(data) {
+    console.log("Données d'extraction reçues :");
+    console.log(data);
+    
+    if (shouldUpdateRegisteredGraph) {
+        console.log("Actualisation du graphique");
+        shouldUpdateRegisteredGraph = false;
+        
+        // Masquer le conteneur de chargement et afficher le bouton
+        document.getElementById('loadingContainer').style.display = 'none';
+        document.getElementById('newSignalButton').style.display = 'block';
+        
+        // Stocker les paramètres dans des variables globales
+        capturesFrequency = data.detection_parameters.captures_frequency;
+        rpmThreshold = data.detection_parameters.rpm_threshold;
+        captureCountOverThreshold = data.detection_parameters.capture_count_over_threshold;
+        captureCountBeforeDetection = data.detection_parameters.capture_count_before_detection;
+        captureCountAfterDetection = data.detection_parameters.capture_count_after_detetion;
 
+        // Mettre à jour le texte dans le HTML
+        document.getElementById('captures_frequency').innerText = capturesFrequency;
+        document.getElementById('rpm_threshold').innerText = rpmThreshold;
+        document.getElementById('capture_count_over_threshold').innerText = captureCountOverThreshold;
+        document.getElementById('capture_count_before_detection').innerText = captureCountBeforeDetection;
+        document.getElementById('capture_count_after_detection').innerText = captureCountAfterDetection;
+
+        // Mettre à jour le graphique avec les nouvelles données
+        updateRegistredGraph(data.captures);
+    }
 });
 
 function updateRegistredGraph(dataArray) {
-    // Erase the old graph
-    myRegistredChart.data.labels.pop()
-    myRegistredChart.data.datasets.forEach((dataset) => {
-        dataset.data.pop();
-    });
-    registred_x_labels.length = 0;
-    registred_data_temp.length = 0;
-    registred_data_rpm.length = 0;
-    registred_data_torque.length = 0;
 
     dataArray.forEach((dataPoint) => {
         const temp = dataPoint.temp_motor_filtered;
@@ -198,9 +64,6 @@ function updateRegistredGraph(dataArray) {
 }
 
 
-
-
-
 // Registred charts settings
 const ctx_registred_chart = document.getElementById('myRegistredChart').getContext('2d');
 const myRegistredChart = new Chart(ctx_registred_chart, {
@@ -209,15 +72,15 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
         labels: registred_x_labels,
         datasets: [
             {
-                label: 'Temperature (°C)',
-                data: registred_data_temp,
-                borderColor: 'rgba(75, 192, 192, 1)',
+                label: (ui_languages["torque"])[ui_language],
+                data: registred_data_torque,
+                borderColor: 'rgba(12, 234, 12, 1)',
                 borderWidth: 2,
                 fill: false,
-                yAxisID: 'y_temp',
+                yAxisID: 'y_torque',
             },
             {
-                label: 'Speed (RPM)',
+                label: (ui_languages["speed"])[ui_language],
                 data: registred_data_rpm,
                 borderColor: 'rgba(123, 12, 12, 1)',
                 borderWidth: 2,
@@ -225,12 +88,12 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                 yAxisID: 'y_rpm',
             },
             {
-                label: 'Torque (N/M)',
-                data: registred_data_torque,
-                borderColor: 'rgba(12, 234, 12, 1)',
+                label: (ui_languages["temperature"])[ui_language],
+                data: registred_data_temp,
+                borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 2,
                 fill: false,
-                yAxisID: 'y_torque',
+                yAxisID: 'y_temp',
             }
         ]
     },
@@ -238,9 +101,10 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
         scales: {
             xAxes: [{
                 position: 'bottom',
-                title: {
+                scaleLabel: {
                     display: true,
-                    text: 'Temps (s)',
+                    labelString: (ui_languages["time"])[ui_language],
+                    fontSize: 14
                 },
                 ticks: {
                     callback: function(value, index, ticks) {
@@ -253,19 +117,19 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
             }],
             yAxes: [
                 {
-                    id: "y_temp",
+                    id: "y_torque",
                     display : true,
                     position : "right",
                     beginAtZero: true,
                     scaleLabel: {
                         display: true,
-                        labelString: 'Temperature (°C)',
-                        fontColor: 'rgba(75, 192, 192, 1)',
+                        labelString: (ui_languages["torque"])[ui_language],
+                        fontColor: 'rgba(12, 234, 12, 1)',
                         fontSize: 14
                     },
                     ticks: {
-                        suggestedMin: 0,
-                        suggestedMax: 150,
+                        suggestedMin: -10,
+                        suggestedMax: 10,
                     },
                 },
                 {
@@ -275,7 +139,7 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                     beginAtZero: true,
                     scaleLabel: {
                         display: true,
-                        labelString: 'Speed (RPM)',
+                        labelString: (ui_languages["speed"])[ui_language],
                         fontColor: 'rgba(123, 12, 12, 1)',
                         fontSize: 14
                     },
@@ -285,60 +149,89 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                     },
                 },
                 {
-                    id: "y_torque",
+                    id: "y_temp",
                     display : true,
                     position : "right",
+            
+                    // Text to display in label - default is null
                     beginAtZero: true,
                     scaleLabel: {
                         display: true,
-                        labelString: 'Torque (N/m)',
-                        fontColor: 'rgba(12, 234, 12, 1)',
+                        labelString: (ui_languages["temperature"])[ui_language],
+                        fontColor: 'rgba(75, 192, 192, 1)',
                         fontSize: 14
                     },
                     ticks: {
-                        suggestedMin: -1,
-                        suggestedMax: 10,
+                        suggestedMin: -100,
+                        suggestedMax: 100,
                     },
                 }
             ]
+        },
+        legend: {
+            display: true,
+            position: 'chartArea',
+            align: 'end',
+            labels: {
+                boxWidth: 100,
+                boxHeight: 100,
+                generateLabels: function(chart) {
+                    // Return the legend items with only the colored box
+                    return chart.data.datasets.map(function(dataset, i) {
+                        return {
+                            // Remove the text (label)
+                            text: '',
+                            fillStyle: dataset.borderColor, // Color of the box
+                            strokeStyle: dataset.borderColor,
+                            lineWidth: 2,
+                            hidden: !chart.isDatasetVisible(i),
+                            datasetIndex: i
+                        };
+                    });
+                },
+            },
+        },
+        annotation: {
+            annotations: [{
+                type: 'line',
+                mode: 'horizontal',
+                scaleID: 'y_rpm',
+                value: 500,
+                borderColor: 'red',
+                borderWidth: 2,
+                label: {
+                    // Background color of label, default below
+                    backgroundColor: 'red',
+                    fontSize: 12,
+                    fontColor: "#234321",
+                    xPadding: 6,
+                    yPadding: 6,
+                    cornerRadius: 6,
+                    position: "left",
+                    xAdjust: 0,
+                    yAdjust: 0,
+                    enabled: true,
+                    content: (ui_languages["seuil vitesse"])[ui_language]
+                },
+            }]
         }
     }
 });
 
 
-
-
-// Mask and unmask curve and axes
-function toggleDatasetVisibility(datasetIndex, checkbox, axisId) {
-    myLiveChart.data.datasets[datasetIndex].hidden = !checkbox.checked;
-    const liveAxis = myLiveChart.options.scales.yAxes.find(axis => axis.id === axisId);
-    if (liveAxis) {
-        liveAxis.display = checkbox.checked;
-    }
-    myLiveChart.update();
-
-    myRegistredChart.data.datasets[datasetIndex].hidden = !checkbox.checked;
-    const registredAxis = myRegistredChart.options.scales.yAxes.find(axis => axis.id === axisId);
-    if (registredAxis) {
-        registredAxis.display = checkbox.checked;
-    }
-    myRegistredChart.update();
-}
-
-// Attach event listener to html checkbox
-document.getElementById('toggleTemp').addEventListener('change', function() {
-    toggleDatasetVisibility(0, this, 'y_temp'); // 0 is the position of the dataset of temperature in the chart
-});
-
-document.getElementById('toggleRPM').addEventListener('change', function() {
-    toggleDatasetVisibility(1, this, 'y_rpm'); // 1 is the position of the dataset of rpm in the chart
-});
-
-document.getElementById('toggleTorque').addEventListener('change', function() {
-    toggleDatasetVisibility(2, this, 'y_torque'); // 2 is the position of the dataset of torque in the chart
-});
-
 document.getElementById('newSignalButton').addEventListener('click', function() {
     shouldUpdateRegisteredGraph = true;
-    document.getElementById('loadingIcon').style.display = 'block';
+    this.style.display = 'none'; // Disable the button
+    document.getElementById('loadingContainer').style.display = 'block';
+    // Erase the old graph
+    myRegistredChart.data.labels.pop()
+    myRegistredChart.data.datasets.forEach((dataset) => {
+        dataset.data.pop();
+    });
+    registred_x_labels.length = 0;
+    registred_data_temp.length = 0;
+    registred_data_rpm.length = 0;
+    registred_data_torque.length = 0;
+    myRegistredChart.update();
+
 });

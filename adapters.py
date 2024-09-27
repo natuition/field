@@ -1897,6 +1897,7 @@ class VescAdapterV4:
         # do any new calibrations (add vesc calibration code here)
         # ...
 
+        # Creation and launch of the thread for extraction analyse 
         if config.VESC_EXTRACTION_ANALYZE_MODE:
             print("Lancement du thread vesc")
             self.__analyze_thread_alive = True
@@ -1915,6 +1916,7 @@ class VescAdapterV4:
 
     def close(self):
 
+        # Stopping the thread for extraction analyze
         if self.__analyze_thread_alive is True:
             print("Arret du thred d'analyse vesc")
             self.__analyze_thread_alive = False
@@ -2294,15 +2296,7 @@ class VescAdapterV4:
                             "avg_motor_current", 
                             "rpm",] # Name fields according to GetValues message if raess1/PyVESC-FW3.33
 
-
-
-        try: # Be sure that the precedent queue isn't already here
-            posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_DATA)
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            pass
-
+        # Be sure that there is no queue already existing
         try:
             posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
         except KeyboardInterrupt:
@@ -2310,91 +2304,85 @@ class VescAdapterV4:
         except:
             pass
 
-        queue_data = None
+        # Creating the queue for sending extraction data
         queue_pattern = None
+        try:
+            queue_pattern = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN, posix_ipc.O_CREAT, max_messages=config.MAX_MESSAGE_QUEUE_ANALYSE_EXTRACTION_PATTERN)
+        except Exception as e:
+            self.__analyze_thread_alive = False
+            print("VESC ANALYSE MODE, création de queue:", e)
 
+        # Variables for trigger algorythm
         buffer = [] 
         max_buffer_size = config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_BEFORE + config.VESC_EXTRACTION_ANALYSE_RPM_NB_CAPTURE + config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_AFTER
         rpm_over_500_count = 0
         detection_triggered = False
         nb_capture_after_triggered = 0
 
-        try:
-            queue_data = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_DATA, posix_ipc.O_CREAT, max_messages=config.MAX_MESSAGE_QUEUE_VESC_ANALYSE_DATA)
-            queue_pattern = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN, posix_ipc.O_CREAT, max_messages=config.MAX_MESSAGE_QUEUE_ANALYSE_EXTRACTION_PATTERN)
-            while self.__analyze_thread_alive:
-                stats = self.get_sensors_data_of_can_id(field_to_analyze, engine_id)
-                if stats is not None:
-                    stats['timestamp'] = time.time()
+        # Thread loop
+        while self.__analyze_thread_alive:
+            stats = self.get_sensors_data_of_can_id(field_to_analyze, engine_id)
+            if stats is not None:
 
-                    buffer.append(stats)
-                    if len(buffer) > max_buffer_size:
-                        buffer.pop(0)
+                stats['timestamp'] = time.time()
+                buffer.append(stats)
+                if len(buffer) > max_buffer_size:
+                    buffer.pop(0)
 
-                    if (stats.get('rpm', 0) > config.VESC_EXTRACTION_ANALYSE_RPM_THRESHOLD) or (detection_triggered is True):
-                        rpm_over_500_count += 1
-                    else:
-                        rpm_over_500_count = 0
+                # Trigger algorythm
+                if (stats.get('rpm', 0) > config.VESC_EXTRACTION_ANALYSE_RPM_THRESHOLD) or (detection_triggered is True):
+                    rpm_over_500_count += 1
+                else:
+                    rpm_over_500_count = 0
+                if rpm_over_500_count >= config.VESC_EXTRACTION_ANALYSE_RPM_NB_CAPTURE:
+                    detection_triggered = True
+                if detection_triggered:
+                    nb_capture_after_triggered += 1
 
-                    if rpm_over_500_count >= config.VESC_EXTRACTION_ANALYSE_RPM_NB_CAPTURE:
-                        detection_triggered = True
+                # When the datas are nicely placed in the buffer
+                if nb_capture_after_triggered == config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_AFTER:
+                    # Creating a json objet with vesc data and trigger's param
+                    extraction_data = {
+                        "captures": buffer,
+                        "detection_parameters": {
+                            "captures_frequency" : config.VESC_EXTRACTION_ANALYZE_FREQUENCY,
+                            "rpm_threshold" : config.VESC_EXTRACTION_ANALYSE_RPM_THRESHOLD,
+                            "capture_count_over_threshold" : config.VESC_EXTRACTION_ANALYSE_RPM_NB_CAPTURE,
+                            "capture_count_before_detection" : config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_BEFORE,
+                            "capture_count_after_detetion" : config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_AFTER,
+                        }
+                    }
+                    data_json = json.dumps(extraction_data)
 
-                    if detection_triggered:
-                        nb_capture_after_triggered += 1
-
-                    if nb_capture_after_triggered == config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_AFTER:
-                        buffer_json = json.dumps(buffer)
-                        try:
-                            queue_pattern.send(buffer_json, timeout=0.01)
-                        except posix_ipc.BusyError:
-                            try:
-                                queue_pattern.receive()  # Remove the older message
-                                queue_pattern.send(buffer_json, timeout=0.01)  # Send a new message
-                            except posix_ipc.BusyError as e:
-                                print(f"Error during sending message to queue {e}")
-                        except Exception as e:
-                            print(f"Error during sending pattern to queue: {e}")
-                        
-                        buffer.clear()
-                        rpm_over_500_count = 0
-                        detection_triggered = False
-                        nb_capture_after_triggered = 0
-
+                    # Sending to queue, if full remove the older message to add a new message
                     try:
-                        stats_json = json.dumps(stats)
+                        queue_pattern.send(data_json, timeout=0.01)
+                    except posix_ipc.BusyError:
                         try:
-                            queue_data.send(stats_json, timeout=0.01)
-                        except posix_ipc.BusyError: # If queue is full
-                            try:
-                                queue_data.receive()  # Remove the older message
-                                queue_data.send(stats_json, timeout=0.01)  # Send a new message
-                            except posix_ipc.BusyError as e:
-                                print(f"Error during sending message to queue {e}")
-                    except Exception as e:
-                        print(f"Error during sending message to queue {e}")
+                            queue_pattern.receive(timeout=0.01)
+                            queue_pattern.send(data_json, timeout=0.01)
+                        except posix_ipc.BusyError as e:
+                            print("VESC ANALYSE MODE, envoie des données dans la queue:", e)
                     
+                    # Reinitialise variable for the trigger
+                    buffer.clear()
+                    rpm_over_500_count = 0
+                    detection_triggered = False
+                    nb_capture_after_triggered = 0
+                
+                # Do not saturate the CPU
                 time.sleep(config.VESC_EXTRACTION_ANALYZE_FREQUENCY)
-        except serial.SerialException as ex:
-            print("VESC analyzing thread error:", ex)
-        finally:
-            if queue_data is not None:
-                try:
-                    queue_data.close()
-                except Exception as e:
-                    print(f"Error closing message queue: {e}")
-                try:
-                    posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_DATA)
-                except Exception as e:
-                    print(f"Error unlinking message queue: {e}")
-            if queue_pattern is not None:
-                try:
-                    queue_pattern.close()
-                except Exception as e:
-                    print(f"Error closing message queue: {e}")
-                try:
-                    posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
-                except Exception as e:
-                    print(f"Error unlinking message queue: {e}")
+
+        # Closing descriptor file and removing queue if it exist at the end of the thread
+        if queue_pattern is not None:
+            try:
+                queue_pattern.close()
+            except Exception as e:
+                print("VESC ANALYSE MODE, fermeture du descripteur de queue:", e)
+            try:
+                posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
+            except Exception as e:
+                print("VESC ANALYSE MODE, suppression de la queue:", e)
 
 
 
