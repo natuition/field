@@ -20,6 +20,8 @@ import posix_ipc
 from threading import Thread
 from datetime import datetime
 from uiWebRobot.setting_page import SettingPageManager
+from notification import RobotStateClient
+from shared_class.robot_synthesis import RobotSynthesis
 import utility
 from config import config
 from uiWebRobot.state_machine.states import *
@@ -38,9 +40,16 @@ class UIWebRobot:
             self.__app, async_mode=None, logger=False, engineio_logger=False)
         self.__init_socketio()  # SOCKET IO
         self.__reload_config()
+        self.__robot_state_client = RobotStateClient()
         self.init_params()
         self.demo_pause_client = utility.DemoPauseClient(
             config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
+
+
+    def exit(self):
+        print("Send RobotSynthesis...")
+        self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
+        print("Sent ✅")
 
     def __init_socketio(self):
         self.__socketio.on_event(
@@ -88,7 +97,7 @@ class UIWebRobot:
         thread_notification = Thread(target=self.catch_send_notification)
         thread_notification.setDaemon(True)
         thread_notification.start()
-        self.__stateMachine = StateMachine(self.__socketio)
+        self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
 
     def get_state_machine(self) -> StateMachine:
         return self.__stateMachine
@@ -149,12 +158,11 @@ class UIWebRobot:
 
     # SOCKET IO
     def on_socket_data(self, data):
-        msg_socket_data_before_event = ["field_name", "allChecked"]
+        msg_socket_data_before_event = ["field_name", "allChecked", "wheel"]
         msg_socket_to_event = {
             "stop": Events.STOP, 
             "run_target_detection": Events.CALIBRATION_DETECT,
             "run_target_move": Events.CALIBRATION_MOVE,
-            "wheel": Events.WHEEL,
             "start": Events.START_MAIN,
             "continue": Events.CONTINUE_MAIN,
             "field": Events.CREATE_FIELD,
@@ -225,7 +233,6 @@ class UIWebRobot:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()], reason=self.get_state_machine().currentState.getReason()), 500
             else:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()]), 500
-
         return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
 
     def setting(self):
@@ -352,6 +359,7 @@ class UIWebRobot:
         return response
 
     def reboot(self):
+        self.__robot_state_client.set_robot_state(RobotSynthesis.UI_RESTART_APP)
         os.system('sudo reboot')
         return None
 
@@ -388,6 +396,7 @@ def main():
     finally:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
+        uiWebRobot.exit()
         print("Closing app...")
 
 

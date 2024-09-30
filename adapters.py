@@ -129,6 +129,14 @@ class SmoothieAdapter:
         with self.__sync_locker:
             self.__smc.write("M18")
             return self.__smc.read_some()
+        
+    def tighten_wheels(self):
+        """Disable stepper motors.
+
+        Sends 'M17' command to smoothie. Returns smoothie answer message."""
+        with self.__sync_locker:
+            self.__smc.write("M17")
+            return self.__smc.read_some()
 
     def reset_halted_state(self):
         """Reset from a halted state caused by limit switch, M112 or kill switch
@@ -1766,13 +1774,14 @@ class VescAdapterV4:
     PROPULSION_KEY = 0
     EXTRACTION_KEY = 1
 
-    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
+    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq, logger_full: utility.Logger):
         self.__locker = threading.Lock()
 
         gpio_is_initialized = False
         self.__stopper_check_freq = stopper_check_freq
         self.__alive_freq = alive_freq
         self.__check_freq = check_freq
+        self.__logger_full = logger_full
         self.__next_alive_time = time.time()
 
         self.__can_ids = dict()
@@ -1793,6 +1802,7 @@ class VescAdapterV4:
         self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
         self.__ser.flushInput()
         self.__ser.flushOutput()
+        self.__ser.timeout = 5
 
         # INIT ALL ALLOWED VESCS HERE
         # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
@@ -1949,7 +1959,6 @@ class VescAdapterV4:
 
         Implements keeping multiple vesc engines alive and stopping them by a timers if they were set.
         """
-
         try:
             while self.__keep_thread_alive:
                 with self.__locker:
@@ -1957,10 +1966,8 @@ class VescAdapterV4:
                     for engine_key in self.__can_ids:
                         if not self.__keep_thread_alive:
                             break
-
                         if not self.__is_moving[engine_key]:
                             continue
-
                         # engine movement timeout
                         if time.time() - self.__start_time[engine_key] >= self.__time_to_move[engine_key] or \
                                 self.__stop_request[engine_key]:
@@ -2015,7 +2022,27 @@ class VescAdapterV4:
                         for engine_key in self.__is_moving:
                             if self.__is_moving[engine_key]:
                                 self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
+                            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+                            in_buf = b''
+                            while self.__ser.in_waiting > 0:
+                                try :
+                                    in_buf += self.__ser.read(self.__ser.in_waiting)
+                                except Exception as e:
+                                    self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
 
+                            if len(in_buf) != 0:
+                                response, consumed = pyvesc.decode(in_buf)
+                                if consumed != 0 and response is not None:
+                                    if response.__dict__["rpm"] == 0 and self.__target_rpm[engine_key] != 0:
+                                        self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
+                                        self.__ser.write(
+                                            pyvesc.encode(
+                                                pyvesc.SetRPM(
+                                                    self.__target_rpm[engine_key],
+                                                    can_id=self.__can_ids[engine_key]
+                                                )
+                                            )
+                                        )
                 # wait for next checking tick
                 time.sleep(self.__check_freq)
         except serial.SerialException as ex:
@@ -2128,7 +2155,6 @@ class VescAdapterV4:
         otherwise this RPM will be applied immediately during engine start. In this case high RPM values may lead to
         strong jerk during the start.
         """
-
         if not isinstance(rpm, (int, float)):
             msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
             raise TypeError(msg)

@@ -11,14 +11,7 @@ import _thread as thread
 import pytz
 import enum
 import traceback
-
-
-class RobotStates(enum.Enum):
-    ENABLED = "OP"  # power is on, but robot is not currently at work
-    WORKING = "WORKING"  # at work
-    OUT_OF_SERVICE = "HS"
-    ANTI_THEFT = "ANTI_THEFT"
-
+from shared_class.robot_synthesis import RobotSynthesis
 
 class RobotStateServer:
     def __init__(self, fleet_tick_delay=60):
@@ -31,7 +24,7 @@ class RobotStateServer:
         self.__host = config.ROBOT_SYNTHESIS_HOST
         self.__port = config.ROBOT_SYNTHESIS_PORT
 
-        self.__robot_state = RobotStates.ENABLED
+        self.__robot_state = RobotSynthesis.OP
         self.__robot_sn = config.ROBOT_SN
 
         # clients connection listener
@@ -77,7 +70,7 @@ class RobotStateServer:
                     data = client_socket.recv(1024)
                     if not data:
                         break
-                    self.__robot_state = RobotStates(data.decode())
+                    self.__robot_state = RobotSynthesis(data.decode())
                     self.__send_robot_status()
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
@@ -142,7 +135,7 @@ class RobotStateClient:
         self.__port = config.ROBOT_SYNTHESIS_PORT
         self.__robot_state_server_socket: socket.socket = None
 
-        self.__robot_state = RobotStates.ENABLED
+        self.__robot_state = RobotSynthesis.OP
         self.__robot_state_is_fresh = False
         self.__robot_state_locker = threading.Lock()
 
@@ -194,10 +187,17 @@ class RobotStateClient:
             except:
                 pass
 
-    def set_robot_state(self, robot_state: RobotStates):
+    def set_robot_state(self, robot_state: RobotSynthesis):
         with self.__robot_state_locker:
             self.__robot_state = robot_state
             self.__robot_state_is_fresh = True
+
+    def set_robot_state_and_wait_send(self, robot_state: RobotSynthesis):
+        self.set_robot_state(robot_state)
+        while self.__keep_robot_state_sender_alive:
+            if not self.__robot_state_is_fresh:
+                return
+            time.sleep(0.3)
 
     def __robot_state_sender_tf(self):
         while self.__keep_robot_state_sender_alive:
@@ -319,8 +319,11 @@ class NotificationClient:
             self.__field_name = field_name
             self.anti_theft_zone = navigation.AntiTheftZone(field)
 
-    def set_robot_state(self, robot_state: RobotStates):
+    def set_robot_state(self, robot_state: RobotSynthesis):
         self.__robot_state_client.set_robot_state(robot_state)
+
+    def set_robot_state_and_wait_send(self, robot_state: RobotSynthesis):
+        self.__robot_state_client.set_robot_state_and_wait_send(robot_state)
 
     def set_current_coordinate(self, current_coordinate):
         new_pos_and_weeds_record, newly_extracted_weeds = dict(), dict()

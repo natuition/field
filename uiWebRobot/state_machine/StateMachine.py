@@ -9,19 +9,20 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine import State
 from state_machine.FrontEndObjects import FrontEndObjects
+from shared_class.robot_synthesis import RobotSynthesis
+from notification import RobotStateClient
 
 
 class StateMachine:
 
-    def __init__(self, socketio):
+    def __init__(self, socketio, robot_state_client: RobotStateClient):
         utility.create_directories("logs/")
         self.logger = utility.Logger("logs/"+utility.get_current_time())
         sys.stderr = ErrorLogger(self.logger)
         self.socketio: SocketIO = socketio
-        self.currentState: State.State = CheckState(socketio,self.logger)
-        msg = f"Current state : {self.currentState}."
-        self.logger.write_and_flush(msg+"\n")
-        print(msg)
+        self.currentState: State.State = None
+        self.__robot_state_client = robot_state_client
+        self.change_current_state(CheckState(socketio,self.logger))
 
     def on_event(self, event: Events.Events):
         print()
@@ -54,6 +55,7 @@ class StateMachine:
     
     def change_current_state(self, newState):
         self.currentState = newState
+        self.__robot_state_client.set_robot_state(self.currentState.robot_synthesis_value)
         msg = f"Current state : {self.currentState}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)

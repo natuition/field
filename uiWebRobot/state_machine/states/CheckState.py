@@ -5,6 +5,7 @@ from state_machine import utilsFunction
 from state_machine import Events
 from state_machine.states import WaitWorkingState
 from state_machine import State
+from shared_class.robot_synthesis import RobotSynthesis
 import signal
 import threading
 from flask_socketio import SocketIO
@@ -17,9 +18,12 @@ import os
 class CheckState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger):
+
+        self.robot_synthesis_value = RobotSynthesis.UI_CHECK_STATE
         self.socketio = socketio
         self.logger = logger
         self.cam = None
+
         try:
             msg = f"[{self.__class__.__name__}] -> startLiveCam"
             self.logger.write_and_flush(msg + "\n")
@@ -35,6 +39,8 @@ class CheckState(State.State):
         msg = f"[{self.__class__.__name__}] -> initVesc"
         self.logger.write_and_flush(msg + "\n")
         print(msg)
+        self.vesc_engine = utilsFunction.initVesc(self.logger)
+        del self.vesc_engine
         self.vesc_engine = utilsFunction.initVesc(self.logger)
 
         self.__voltage_thread_alive = True
@@ -53,6 +59,7 @@ class CheckState(State.State):
 
     def on_event(self, event):
         if event == Events.Events.LIST_VALIDATION:
+            self.socketio.emit('data', {"ACK": "allChecked"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
             self.__voltage_thread_alive = False
             if self.cam:

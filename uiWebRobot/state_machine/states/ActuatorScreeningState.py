@@ -7,6 +7,7 @@ from state_machine import State
 from state_machine.states.ErrorState import ErrorState
 from state_machine.Events import Events
 from state_machine import utilsFunction
+from shared_class.robot_synthesis import RobotSynthesis
 from config import config
 import utility
 import adapters
@@ -28,6 +29,7 @@ class ActuatorScreeningState(State.State):
                  logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
+        self.robot_synthesis_value = RobotSynthesis.UI_ACTUATOR_SCREENING_STATE
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie

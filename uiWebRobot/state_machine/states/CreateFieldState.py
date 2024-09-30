@@ -14,6 +14,8 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from state_machine import utilsFunction
+from shared_class.robot_synthesis import RobotSynthesis
+
 from config import config
 import time
 import utility
@@ -29,6 +31,7 @@ class CreateFieldState(State.State):
                  logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
+        self.robot_synthesis_value = RobotSynthesis.UI_CREATE_FIELD_STATE
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
@@ -55,7 +58,7 @@ class CreateFieldState(State.State):
                                                 startButton=ButtonState.DISABLE,
                                                 continueButton=ButtonState.DISABLE,
                                                 stopButton=ButtonState.ENABLE,
-                                                wheelButton=ButtonState.DISABLE,
+                                                wheelButton=ButtonState.NOT_HERE,
                                                 removeFieldButton=ButtonState.DISABLE,
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
@@ -354,6 +357,7 @@ class FieldCreator:
         self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(0, self.vesc_emergency.PROPULSION_KEY)
         if config.UI_VERBOSE_LOGGING:
             msg = f"Field creation: stopped vesc movement of " \
                   f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"

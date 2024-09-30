@@ -61,7 +61,12 @@ function clickHandler() {
     } else if (this.id == "Continue") {
         socketio.emit('data', { type: "continue", audit: audit });
     } else if (this.id == "Wheel" && !this.classList.contains("disabled-wheel")) {
-        socketio.emit('data', { type: "wheel" });
+        if(this.classList.contains("release")) {
+            socketio.emit('data', { type: "wheel", status: "unrelease" });
+        }
+        else {
+            socketio.emit('data', { type: "wheel", status: "release" });
+        }
     } else if (this.id == "RemoveField") {
         if (confirm((ui_languages["Check_remove_zone"])[ui_language])) {
             socketio.emit('data', { type: "removeField", field_name: choose_field_selector.value });
@@ -80,6 +85,22 @@ function disable_button_after_start_or_continue() {
 
     $('#Wheel').addClass('disabled-wheel');
 }
+
+socketButton.on('wheel', function (dataServ) {
+    if (dataServ == "release") {
+        $('#Wheel').addClass('release');
+        $('#Wheel').removeClass('unrelease');
+        $('#Wheel').attr("src","/static/unlock.png");
+        $('#Wheel').attr("style","margin-left:5px");
+    }
+    else {
+        $('#Wheel').addClass('unrelease');
+        $('#Wheel').removeClass('release');
+        $('#Wheel').attr("src","/static/lock.png");
+        $('#Wheel').attr("style","margin-right:5px");
+    }
+}
+);
 
 socketButton.on('start', function (dataServ) {
     if (dataServ["status"] == "pushed") {
@@ -204,6 +225,7 @@ socketButton.on('stop', function (dataServ) {
             removeFieldButton.removeAttribute("disabled");
 
             wheelButton.classList.remove("disabled-wheel");
+
             //document.getElementById("webCamStream").remove();
             //verif_iframe_start();
 
@@ -223,9 +245,10 @@ socketButton.on('field', function (dataServ) {
         $('#Newfield').addClass('active');
         $('#Newfield').attr('disabled', '');
         $('#r1').attr('disabled', '');
-
+ 
         $('#RemoveField').addClass('disabled');
         $('#RemoveField').attr('disabled', '');
+
         $('#trash').attr('fill', "#5d61646b");
 
     } else if (dataServ["status"] == "inRun") {
@@ -284,9 +307,10 @@ socketButton.on('field', function (dataServ) {
         $('#Start').removeAttr('disabled');
         $('#Start').removeClass('disabled');
         //$('#Audit').removeClass('disable-switcher-audit');
-
+        
         $('#RemoveField').removeAttr('disabled');
         $('#RemoveField').removeClass('disabled');
+
         $('#trash').attr('fill', "#FFF");
         wheelButton.classList.remove("disabled-wheel");
 
