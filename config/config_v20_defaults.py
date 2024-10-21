@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.9"
+CONFIG_VERSION = "0.20.11"
 
 
 # ======================================================================================================================
@@ -232,12 +232,26 @@ VESC_EXTRACTION_CALIBRATION_MAX_TIME = 2 # seconds; max time needed to reach sto
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM = 2500  
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME = 0.3 # seconds; calibration small movement down time (calibration "Z-5" fix) 
 VESC_EXTRACTION_AUTODETECT_CAN_ID = False # set to False to use vesc can id from this config, set to True to try detect vesc can id during initialization
-VESC_EXTRACTION_CAN_ID = 0 # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
+VESC_EXTRACTION_CAN_ID = 2 # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
 
 VESC_SMOOTH_ACCEL_RPM_STEP = 2500
 VESC_SMOOTH_ACCEL_TIME_STEP = 0.1  
 VESC_SMOOTH_DECEL_RPM_STEP = 2500
 VESC_SMOOTH_DECEL_TIME_STEP = 0.1
+
+VESC_EXTRACTION_ANALYZE_MODE = True
+NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN = "/queue_vesc_analyse_pattern"
+MAX_MESSAGE_QUEUE_ANALYSE_EXTRACTION_PATTERN = 10
+MAX_BUFFER_SIZE_IN_A_MESSAGE = 50
+VESC_EXTRACTION_ANALYZE_FREQUENCY = 0.05
+NAME_QUEUE_VESC_DETECTION_PARAMS = "/queue_vesc_analyse_params"
+MAX_MESSAGE_QUEUE_VESC_DETECTION_PARAMS = 5
+VESC_EXTRACTION_ANALYSE_NB_CAPTURE_BEFORE = 10
+VESC_EXTRACTION_ANALYSE_RPM_NB_CAPTURE = 5
+VESC_EXTRACTION_ANALYSE_NB_CAPTURE_AFTER = 35
+VESC_EXTRACTION_ANALYSE_RPM_THRESHOLD = 500
+POLARY_POLE_COUNT = 7
+TORQUE_CONST = 0.081
 
 # ======================================================================================================================
 # GPS SETTINGS

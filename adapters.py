@@ -2360,12 +2360,14 @@ class VescAdapterV4:
             if stats is not None:
 
                 stats['timestamp'] = time.time()
+                stats['rpm_meca'] = stats['rpm'] / config.POLARY_POLE_COUNT
+                stats['torque'] = stats['avg_motor_current'] * config.TORQUE_CONST
                 buffer.append(stats)
                 while len(buffer) > max_buffer_size:
                     buffer.pop(0)
 
                 # Trigger algorythm
-                if ((stats.get('rpm', 0) / config.POLARY_POLE_COUNT) >= threshold) or (detection_triggered is True):
+                if ((stats.get('rpm_meca', 0)) >= threshold) or (detection_triggered is True):
                     rpm_over_threshold_count += 1
                 else:
                     rpm_over_threshold_count = 0
@@ -2376,32 +2378,40 @@ class VescAdapterV4:
 
                 # When the datas are nicely placed in the buffer
                 if count_capture_after_triggered == nb_capture_after:
-                    # Creating a json objet with vesc data and trigger's param
-                    extraction_data = {
-                        "captures": buffer,
-                        "detection_parameters": {
-                            "captures_frequency" : config.VESC_EXTRACTION_ANALYZE_FREQUENCY,
-                            "threshold" : threshold,
-                            "nb_capture" : nb_capture,
-                            "nb_capture_before" : nb_capture_before,
-                            "nb_capture_after" : nb_capture_after,
+                    # Slicing the buffer
+                    slices = [buffer[i:i + config.MAX_BUFFER_SIZE_IN_A_MESSAGE] for i in range(0, len(buffer), config.MAX_BUFFER_SIZE_IN_A_MESSAGE)]
+                    
+                    # Sending each slice
+                    for i, slice in enumerate(slices):
+                        is_last_slice = (i == len(slices) - 1) # Check if it is the last slice
+                        # Creating a json objet with vesc data and trigger's param
+                        extraction_data = {
+                            "captures": slice,
+                            "detection_parameters": {
+                                "captures_frequency": config.VESC_EXTRACTION_ANALYZE_FREQUENCY,
+                                "threshold": threshold,
+                                "nb_capture": nb_capture,
+                                "nb_capture_before": nb_capture_before,
+                                "nb_capture_after": nb_capture_after,
+                            },
+                            "is_last_slice": is_last_slice,
                         }
-                    }
-                    data_json = json.dumps(extraction_data)
+                        data_json = json.dumps(extraction_data)
 
-                    # Sending to queue, if full remove the older message to add a new message
-                    try:
-                        queue_pattern.send(data_json, timeout=0.01)
-                    except posix_ipc.BusyError:
+                        # Sending to queue, if full remove the older message to add a new message
                         try:
-                            queue_pattern.receive(timeout=0.01)
                             queue_pattern.send(data_json, timeout=0.01)
-                        except posix_ipc.BusyError as e:
-                            print("VESC ANALYSE MODE, envoie des données dans la queue:", e)
+                        except posix_ipc.BusyError:
+                            try:
+                                queue_pattern.receive(timeout=0.01)
+                                queue_pattern.send(data_json, timeout=0.01)
+                            except posix_ipc.BusyError as e:
+                                print("VESC ANALYSE MODE, envoie des données dans la queue:", e)
+                            except ValueError as e :
+                                print("VESC ANALYSE MODE, Impossible d'envoyer un message aussi long dans la queue", e)
                         except ValueError as e :
                             print("VESC ANALYSE MODE, Impossible d'envoyer un message aussi long dans la queue", e)
-                    except ValueError as e :
-                        print("VESC ANALYSE MODE, Impossible d'envoyer un message aussi long dans la queue", e)
+                            
                         
                     
                     # Reinitialise variable for the trigger

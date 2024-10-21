@@ -68,19 +68,23 @@
         <div style="display: flex; justify-content: space-around; width: 100%;">
             <div>
                 <label for="nbCaptureBefore">{{ (ui_languages["nb_capture_before"])[ui_language] }}:</label>
-                <input id="nbCaptureBefore" type="number" min="0" max="10" value="0">
+                <input id="nbCaptureBefore" type="number" min="1" max="100" value="1">
+                <p id="nbCaptureBeforeError" style="color: red; display: none;">Valeur invalide ! Doit être un nombre entre 1 et 100.</p>
             </div>
             <div>
                 <label for="nbCapture">{{ (ui_languages["nb_capture"])[ui_language] }}:</label>
-                <input id="nbCapture" type="number" min="0" max="10" value="0">
+                <input id="nbCapture" type="number" min="1" max="50" value="1">
+                <p id="nbCaptureError" style="color: red; display: none;">Valeur invalide ! Doit être un nombre entre 1 et 50.</p>
             </div>
             <div>
                 <label for="nbCaptureAfter">{{ (ui_languages["nb_capture_after"])[ui_language] }}:</label>
-                <input id="nbCaptureAfter" type="number" min="0" max="50" value="0">
+                <input id="nbCaptureAfter" type="number" min="1" max="200" value="1">
+                <p id="nbCaptureAfterError" style="color: red; display: none;">Valeur invalide ! Doit être un nombre entre 1 et 200.</p>
             </div>
             <div>
                 <label for="threshold">{{ (ui_languages["threshold"])[ui_language] }}:</label>
-                <input id="threshold" type="number" min="0" max="2000" step="100" value="0">
+                <input id="threshold" type="number" min="1" max="2000" step="100" value="1">
+                <p id="thresholdError" style="color: red; display: none;">Valeur invalide ! Doit être un nombre entre 1 et 2000.</p>
             </div>
         </div>
     </div>

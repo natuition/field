@@ -1,4 +1,5 @@
 let shouldUpdateRegisteredGraph = true;
+let receivedData = [];
 
 let registred_x_labels = []
 let registred_data_temp =[]
@@ -15,27 +16,31 @@ socketio.on('analyse_extraction_pattern', function(data) {
     console.log("Données d'extraction reçues :");
     console.log(data);
 
-    if (shouldUpdateRegisteredGraph) {
-        console.log("Actualisation du graphique");
-        shouldUpdateRegisteredGraph = false;
-
-        // Masquer le conteneur de chargement, afficher le bouton et les paramètres
-        document.getElementById('loadingContainer').style.display = 'none';
-        document.getElementById('paramContainer').style.display = 'block';
-
-        // Mettre à jour les champs de paramétrage avec les données reçues
-        nb_capture_before = data.detection_parameters.nb_capture_before;
-        nb_capture = data.detection_parameters.nb_capture;
-        nb_capture_after = data.detection_parameters.nb_capture_after;
-        threshold = data.detection_parameters.threshold;
-
-        document.getElementById('nbCaptureBefore').value = nb_capture_before;
-        document.getElementById('nbCapture').value = nb_capture;
-        document.getElementById('nbCaptureAfter').value = nb_capture_after;
-        document.getElementById('threshold').value = threshold;
-
-        // Mettre à jour le graphique avec les nouvelles données
-        updateRegistredGraph(data.captures);
+    receivedData.push(...data.captures) // Decompose the array and push it
+    if(data.is_last_slice){
+        if (shouldUpdateRegisteredGraph) {
+            console.log("Actualisation du graphique");
+            shouldUpdateRegisteredGraph = false;
+    
+            // Masquer le conteneur de chargement, afficher le bouton et les paramètres
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('paramContainer').style.display = 'block';
+    
+            // Mettre à jour les champs de paramétrage avec les données reçues
+            nb_capture_before = data.detection_parameters.nb_capture_before;
+            nb_capture = data.detection_parameters.nb_capture;
+            nb_capture_after = data.detection_parameters.nb_capture_after;
+            threshold = data.detection_parameters.threshold;
+    
+            document.getElementById('nbCaptureBefore').value = nb_capture_before;
+            document.getElementById('nbCapture').value = nb_capture;
+            document.getElementById('nbCaptureAfter').value = nb_capture_after;
+            document.getElementById('threshold').value = threshold;
+    
+            // Mettre à jour le graphique avec les nouvelles données
+            updateRegistredGraph(receivedData);
+            receivedData = []
+        }
     }
 });
 
@@ -44,12 +49,9 @@ function updateRegistredGraph(dataArray) {
 
     dataArray.forEach((dataPoint) => {
         const temp = dataPoint.temp_motor_filtered;
-        const erpm = dataPoint.rpm;
-        const rpm = erpm / 7; // RPM calculating
-        const current = dataPoint.avg_motor_current;
-        const torque = current * 0.081; // Torque calculating
+        const rpm = dataPoint.rpm_meca;
+        const torque = dataPoint.torque;
         const currentTime = ((dataPoint.timestamp - initialTimestamp).toFixed(3))*1000;
-        //console.log(currentTime);
 
         registred_x_labels.push(currentTime);
         registred_data_temp.push(temp);
@@ -222,35 +224,83 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
 
 
 document.getElementById('newSignalButton').addEventListener('click', function() {
-    shouldUpdateRegisteredGraph = true;
-    document.getElementById('loadingContainer').style.display = 'block';
-    // Erase the old graph
-    myRegistredChart.data.datasets.forEach((dataset) => {
-        dataset.data = [];  // Réinitialiser le tableau de données du dataset
-    });
-    
-    // Vider les tableaux sources utilisés pour les données
-    registred_x_labels = [];
-    registred_data_torque = [];
-    registred_data_rpm = [];
-    registred_data_temp = [];
-    myRegistredChart.update();
+    if(isInputsValid()){
+        shouldUpdateRegisteredGraph = true;
+        document.getElementById('loadingContainer').style.display = 'block';
+        // Erase the old graph
+        myRegistredChart.data.datasets.forEach((dataset) => {
+            dataset.data = [];  // Réinitialiser le tableau de données du dataset
+        });
+        
+        // Vider les tableaux sources utilisés pour les données
+        registred_x_labels = [];
+        registred_data_torque = [];
+        registred_data_rpm = [];
+        registred_data_temp = [];
+        myRegistredChart.update();
 
-    // Récupérer les valeurs actuelles des paramètres
-    nb_capture_before = parseInt(document.getElementById('nbCaptureBefore').value);
-    nb_capture = parseInt(document.getElementById('nbCapture').value);
-    nb_capture_after = parseInt(document.getElementById('nbCaptureAfter').value);
-    threshold = parseFloat(document.getElementById('threshold').value);
+        // Récupérer les valeurs actuelles des paramètres
+        nb_capture_before = parseInt(document.getElementById('nbCaptureBefore').value);
+        nb_capture = parseInt(document.getElementById('nbCapture').value);
+        nb_capture_after = parseInt(document.getElementById('nbCaptureAfter').value);
+        threshold = parseFloat(document.getElementById('threshold').value);
 
-    // Envoyer les nouveaux paramètres au serveur pour la prochaine détection
-    socketio.emit('data', {
-        'type': 'trigger_analyse_vesc',
-        'nb_capture_before': nb_capture_before,
-        'nb_capture': nb_capture,
-        'nb_capture_after': nb_capture_after,
-        'threshold': threshold
-    });
-
+        // Envoyer les nouveaux paramètres au serveur pour la prochaine détection
+        socketio.emit('data', {
+            'type': 'trigger_analyse_vesc',
+            'nb_capture_before': nb_capture_before,
+            'nb_capture': nb_capture,
+            'nb_capture_after': nb_capture_after,
+            'threshold': threshold
+        });
+    }
 });
+
+
+function isInputsValid() {
+    const nbCaptureBefore = document.getElementById('nbCaptureBefore');
+    const nbCapture = document.getElementById('nbCapture');
+    const nbCaptureAfter = document.getElementById('nbCaptureAfter');
+    const threshold = document.getElementById('threshold');
+
+    const nbCaptureBeforeError = document.getElementById('nbCaptureBeforeError');
+    const nbCaptureError = document.getElementById('nbCaptureError');
+    const nbCaptureAfterError = document.getElementById('nbCaptureAfterError');
+    const thresholdError = document.getElementById('thresholdError');
+
+    // Validation du champ nbCaptureBefore (entre 1 et 100)
+    if (isNaN(nbCaptureBefore.value) || nbCaptureBefore.value < 1 || nbCaptureBefore.value > 100) {
+        nbCaptureBeforeError.style.display = 'block';
+        return false;
+    } else {
+        nbCaptureBeforeError.style.display = 'none';
+    }
+
+    // Validation du champ nbCapture (entre 1 et 50)
+    if (isNaN(nbCapture.value) || nbCapture.value < 1 || nbCapture.value > 50) {
+        nbCaptureError.style.display = 'block';
+        return false;
+    } else {
+        nbCaptureError.style.display = 'none';
+    }
+
+    // Validation du champ nbCaptureAfter (entre 1 et 200)
+    if (isNaN(nbCaptureAfter.value) || nbCaptureAfter.value < 1 || nbCaptureAfter.value > 200) {
+        nbCaptureAfterError.style.display = 'block';
+        return false
+    } else {
+        nbCaptureAfterError.style.display = 'none';
+    }
+
+    // Validation du champ threshold (entre 1 et 2000)
+    if (isNaN(threshold.value) || threshold.value < 1 || threshold.value > 2000) {
+        thresholdError.style.display = 'block';
+        return false
+    } else {
+        thresholdError.style.display = 'none';
+    }
+
+    return true;
+}
 
 
