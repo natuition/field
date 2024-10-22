@@ -16,6 +16,8 @@ import RPi.GPIO as GPIO
 import csv
 import posix_ipc
 import json
+import vesc_data_pb2
+
 
 
 class SmoothieAdapter:
@@ -2296,6 +2298,11 @@ class VescAdapterV4:
                             "avg_motor_current", 
                             "rpm",] # Name fields according to GetValues message if raess1/PyVESC-FW3.33
 
+        # Create the binary file for saving data
+        file_name = f"data_{time.strftime('%Y-%m-%d-%H-%M-%S')}.pb"
+        if(config.VESC_EXTRACTION_ANALYSE_SAVING_MODE):
+            open(f"/home/violette/field/extraction_data_vesc/{file_name}", "xb").close()
+
         # Be sure that there is no queue already existing
         try:
             posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
@@ -2412,6 +2419,28 @@ class VescAdapterV4:
                         except ValueError as e :
                             print("VESC ANALYSE MODE, Impossible d'envoyer un message aussi long dans la queue", e)
                             
+                    if(config.VESC_EXTRACTION_ANALYSE_SAVING_MODE):
+                        # Créer une instance de VescData
+                        vesc_data = vesc_data_pb2.VescData()
+
+                        # Remplir les données d'extraction
+                        rpm_list = [data['rpm'] for data in buffer]
+                        torque_list = [data['torque'] for data in buffer]
+                        timestamp_list = [data['timestamp'] for data in buffer]
+
+                        # Créer un message d'extraction pour cette extraction
+                        extraction = vesc_data.extractionList.add()
+                        extraction.rpm.extend(rpm_list)
+                        extraction.torque.extend(torque_list)
+                        extraction.timestamp.extend(timestamp_list)
+
+                        # Ajouter la latitude et la longitude
+                        extraction.latitude = 9876.54321
+                        extraction.longitude = 12345.6789
+
+                        # Écrire les données dans le fichier
+                        with open(f"/home/violette/field/extraction_data_vesc/{file_name}", "ab") as file:
+                            file.write(vesc_data.SerializeToString())
                         
                     
                     # Reinitialise variable for the trigger
@@ -2421,10 +2450,9 @@ class VescAdapterV4:
                     count_capture_after_triggered = 0
                 
             # Do not saturate the CPU
-            if (config.VESC_EXTRACTION_ANALYZE_FREQUENCY - (time.time()-waitingTime)) > 0:
-                time.sleep(config.VESC_EXTRACTION_ANALYZE_FREQUENCY - (time.time()-waitingTime))
-            else:
-                time.sleep(config.VESC_EXTRACTION_ANALYZE_FREQUENCY)
+            time_to_sleep = config.VESC_EXTRACTION_ANALYZE_FREQUENCY - (time.time()- waitingTime)
+            if (time_to_sleep > 0):
+                time.sleep(time_to_sleep)
 
         # Closing descriptor file and removing queue if it exist at the end of the thread
         if queue_pattern is not None:

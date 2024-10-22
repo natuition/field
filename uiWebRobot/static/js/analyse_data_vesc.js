@@ -39,7 +39,6 @@ socketio.on('analyse_extraction_pattern', function(data) {
     
             // Mettre à jour le graphique avec les nouvelles données
             updateRegistredGraph(receivedData);
-            receivedData = []
         }
     }
 });
@@ -237,6 +236,7 @@ document.getElementById('newSignalButton').addEventListener('click', function() 
         registred_data_torque = [];
         registred_data_rpm = [];
         registred_data_temp = [];
+        receivedData = [];
         myRegistredChart.update();
 
         // Récupérer les valeurs actuelles des paramètres
