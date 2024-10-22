@@ -2420,25 +2420,27 @@ class VescAdapterV4:
                             print("VESC ANALYSE MODE, Impossible d'envoyer un message aussi long dans la queue", e)
                             
                     if(config.VESC_EXTRACTION_ANALYSE_SAVING_MODE):
-                        # Créer une instance de VescData
+                        # Creating an object corresponding to protocol buffer prototype
                         vesc_data = vesc_data_pb2.VescData()
 
-                        # Remplir les données d'extraction
                         rpm_list = [data['rpm'] for data in buffer]
                         torque_list = [data['torque'] for data in buffer]
                         timestamp_list = [data['timestamp'] for data in buffer]
 
-                        # Créer un message d'extraction pour cette extraction
                         extraction = vesc_data.extractionList.add()
                         extraction.rpm.extend(rpm_list)
                         extraction.torque.extend(torque_list)
                         extraction.timestamp.extend(timestamp_list)
 
-                        # Ajouter la latitude et la longitude
-                        extraction.latitude = 9876.54321
-                        extraction.longitude = 12345.6789
+                        # with GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps :
+                        #     position = gps._read_from_gps()
+                        #     extraction.latitude = position.latitude
+                        #     extraction.longitude = position.longitude
 
-                        # Écrire les données dans le fichier
+                        extraction.latitude = 123
+                        extraction.longitude = 456
+
+                        # Writing the objet into the binary file
                         with open(f"/home/violette/field/extraction_data_vesc/{file_name}", "ab") as file:
                             file.write(vesc_data.SerializeToString())
                         
