@@ -13,6 +13,7 @@ import json
 import adapters
 import time
 import sys
+import math
 sys.path.append('../')
 from navigation import NavigationV3
 
@@ -216,3 +217,62 @@ def get_other_field():
                     coords_other.append(coords)
             return coords_other
         return list()
+
+class GearboxProtection:
+    def __init__(self):
+        self.__positionList = []
+        self.__minNbPositions = 20
+        self.__dataCollector = []
+        self.__nbExtractions = 0
+    
+    def store_position(self, latitude, longitude, quality):
+        position = {"latitude": latitude , "longitude": longitude, "quality": quality}
+        self.__positionList.append(position)
+        
+    def __are_position_closed(self, position1, position2):
+        if(position1["quality"] == position2["quality"]) :
+            R = 6371000 # Radius of Earth in meters
+            latitude_radian = math.radians(position1["latitude"])
+            longitude_radian = math.radians(position2["latitude"])
+
+            delta_latitude = math.radians(position2["latitude"] - position1["latitude"])
+            delta_longitude = math.radians(position2["longitude"] - position1["longitude"])
+
+            a = math.sin(delta_latitude/2.0)**2 + \
+            math.cos(latitude_radian) * math.cos(longitude_radian) * \
+            math.sin(delta_longitude/2.0)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+            distance_meters = R * c 
+            return distance_meters < 3
+        else :
+            return False
+        
+    def __are_positions_closed(self):
+        nbPositions = len(self.__positionList)
+        if(nbPositions >= self.__minNbPositions) :
+            lastPosition = self.__positionList[-1]
+            for i in range(nbPositions-2, nbPositions-self.__minNbPositions, -1) :
+                iPosition = self.__positionList[i]
+                if(not self.__are_position_closed(lastPosition, iPosition)):
+                   return False 
+            return True
+        else :
+            return False
+        
+    def store_datacollector(self, datacollector):
+        self.__nbExtractions = self.__compute_number_of_extractions(self.__dataCollector)
+        self.__dataCollector = datacollector
+
+    def __compute_number_of_extractions(datacollector):
+        sum = 0
+        for nbExtractions in datacollector[1].values():
+            sum += nbExtractions
+        return sum
+
+    def is_physically_blocked(self):
+        currentNbExtractions = self.__compute_number_of_extractions(self.__dataCollector)
+        if(currentNbExtractions == self.__nbExtractions) :
+            return self.__are_positions_closed()
+        else :
+            return False

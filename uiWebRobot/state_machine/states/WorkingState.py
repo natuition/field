@@ -11,9 +11,11 @@ import json
 
 from state_machine import State
 from state_machine.states import WaitWorkingState
+from state_machine.states import PhysicalBlocageState
 from state_machine.states import ErrorState
 from state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
+from utilsFunction import GearboxProtection
 
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects
 from uiWebRobot.state_machine import utilsFunction
@@ -37,6 +39,7 @@ class WorkingState(State.State):
         self.extracted_plants = dict()
         self.last_path_all_points = list()
         self.previous_sessions_working_time = None
+        self.gearbox_protection = GearboxProtection()
 
         msg = f"Audit mode enable : {isAudit}"
         self.logger.write_and_flush(msg + "\n")
@@ -101,6 +104,21 @@ class WorkingState(State.State):
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
+        elif event == Events.Events.PHYSICAL_BLOCAGE:
+            self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
+            self.statusOfUIObject.stopButton = ButtonState.CHARGING
+            os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+            self.main.wait()
+            os.system("sudo systemctl restart nvargus-daemon")
+            self._main_msg_thread_alive = False
+            self._main_msg_thread.join()
+            self.socketio.emit('stop', {"status": "finish"}, namespace='/server', broadcast=True)
+            if self.isResume:
+                self.statusOfUIObject.continueButton = ButtonState.ENABLE
+            else:
+                self.statusOfUIObject.startButton = ButtonState.ENABLE
+            self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
+            return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.logger, False)
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
@@ -159,6 +177,7 @@ class WorkingState(State.State):
                 self.extracted_plants = data["datacollector"][1]
                 self.previous_sessions_working_time = data["datacollector"][2]
                 self.sendLastStatistics()
+                self.gearbox_protection.store_datacollector(data["datacollector"])
             elif "last_gps" in data:
                 data = data["last_gps"]
                 self.allPath.append([data[1], data[0]])
@@ -166,6 +185,9 @@ class WorkingState(State.State):
                     self.lastGpsQuality = data[2]
                 self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map',
                                    broadcast=True)
+                self.gearbox_protection.store_position(data[0], data[1], data[2])
+                if(self.gearbox_protection.is_physically_blocked()) :
+                    self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
