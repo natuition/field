@@ -13,10 +13,7 @@ import serial
 import pyvesc
 import re
 import RPi.GPIO as GPIO
-import csv
-import posix_ipc
-import json
-import vesc_data_pb2
+
 
 
 
@@ -1800,7 +1797,6 @@ class VescAdapterV4:
         self.__ser.flushInput()
         self.__ser.flushOutput()
 
-        self.__analyze_thread_alive = False
 
         # INIT ALL ALLOWED VESCS HERE
         # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
@@ -1899,14 +1895,6 @@ class VescAdapterV4:
         # do any new calibrations (add vesc calibration code here)
         # ...
 
-        # Creation and launch of the thread for extraction analyse 
-        if config.VESC_EXTRACTION_ANALYZE_MODE:
-            print("Lancement du thread vesc")
-            self.__analyze_thread_alive = True
-            self._analyze_thread = threading.Thread(target=self._analyze_thread_function, args=(config.VESC_EXTRACTION_CAN_ID,), daemon=True)
-            self._analyze_thread.start()
-
-
     def __enter__(self):
         return self
 
@@ -1917,12 +1905,6 @@ class VescAdapterV4:
         self.close()
 
     def close(self):
-
-        # Stopping the thread for extraction analyze
-        if self.__analyze_thread_alive is True:
-            print("Arret du thred d'analyse vesc")
-            self.__analyze_thread_alive = False
-            self._analyze_thread.join(1)
         
         if self.__ser.is_open:
             self.__keep_thread_alive = False
@@ -2291,190 +2273,6 @@ class VescAdapterV4:
     def is_moving(self, engine_key):
         with self.__locker:
             return self.__is_moving[engine_key]
-
-
-    def _analyze_thread_function(self, engine_id):
-        field_to_analyze = ["temp_motor_filtered", 
-                            "avg_motor_current", 
-                            "rpm",] # Name fields according to GetValues message if raess1/PyVESC-FW3.33
-
-        # Create the binary file for saving data
-        file_name = f"data_{time.strftime('%Y-%m-%d-%H-%M-%S')}.pb"
-        if(config.VESC_EXTRACTION_ANALYSE_SAVING_MODE):
-            open(f"/home/violette/field/extraction_data_vesc/{file_name}", "xb").close()
-
-        # Be sure that there is no queue already existing
-        try:
-            posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            pass
-        try:
-            posix_ipc.unlink_message_queue(config.NAME_QUEUE_VESC_DETECTION_PARAMS)
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            pass
-
-
-        # Creating the queue for sending extraction data
-        queue_pattern = None
-        try:
-            queue_pattern = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN, posix_ipc.O_CREAT, max_messages=config.MAX_MESSAGE_QUEUE_ANALYSE_EXTRACTION_PATTERN)
-        except Exception as e:
-            self.__analyze_thread_alive = False
-            print("VESC ANALYSE MODE, création de queue:", e)
-
-        # Creating the queue for receiving extraction params
-        queue_params = None
-        try:
-            queue_params = posix_ipc.MessageQueue(config.NAME_QUEUE_VESC_DETECTION_PARAMS, posix_ipc.O_CREAT, max_messages=config.MAX_MESSAGE_QUEUE_VESC_DETECTION_PARAMS)
-        except Exception as e:
-            self.__analyze_thread_alive = False
-            print("VESC ANALYSE MODE, création de queue:", e)
-
-        # Variables for trigger algorythm
-        buffer = [] 
-        max_buffer_size = config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_BEFORE + config.VESC_EXTRACTION_ANALYSE_RPM_NB_CAPTURE + config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_AFTER
-        rpm_over_threshold_count = 0
-        detection_triggered = False
-        count_capture_after_triggered = 0
-
-        # Parameters for trigger algorythm
-        nb_capture_before = config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_BEFORE
-        nb_capture = config.VESC_EXTRACTION_ANALYSE_RPM_NB_CAPTURE
-        nb_capture_after = config.VESC_EXTRACTION_ANALYSE_NB_CAPTURE_AFTER
-        threshold = config.VESC_EXTRACTION_ANALYSE_RPM_THRESHOLD
-
-
-        # Thread loop
-        while self.__analyze_thread_alive:
-            waitingTime = time.time()
-            # Searching if new parameters for trigger are wanted
-            try:
-                new_params = queue_params.receive(timeout=0.01)
-                new_params_json = json.loads(new_params[0])
-                nb_capture_before = new_params_json['nb_capture_before']
-                nb_capture = new_params_json['nb_capture']
-                nb_capture_after = new_params_json['nb_capture_after']
-                threshold = new_params_json['threshold']
-                max_buffer_size = nb_capture_before + nb_capture + nb_capture_after
-            except posix_ipc.BusyError:
-                pass # If queue is empty continue loop, it will refill
-
-            stats = self.get_sensors_data_of_can_id(field_to_analyze, engine_id)
-            if stats is not None:
-
-                stats['timestamp'] = time.time()
-                stats['rpm_meca'] = stats['rpm'] / config.POLARY_POLE_COUNT
-                stats['torque'] = stats['avg_motor_current'] * config.TORQUE_CONST
-                buffer.append(stats)
-                while len(buffer) > max_buffer_size:
-                    buffer.pop(0)
-
-                # Trigger algorythm
-                if ((stats.get('rpm_meca', 0)) >= threshold) or (detection_triggered is True):
-                    rpm_over_threshold_count += 1
-                else:
-                    rpm_over_threshold_count = 0
-                if rpm_over_threshold_count >= nb_capture:
-                    detection_triggered = True
-                if detection_triggered:
-                    count_capture_after_triggered += 1
-
-                # When the datas are nicely placed in the buffer
-                if count_capture_after_triggered == nb_capture_after:
-                    # Slicing the buffer
-                    slices = [buffer[i:i + config.MAX_BUFFER_SIZE_IN_A_MESSAGE] for i in range(0, len(buffer), config.MAX_BUFFER_SIZE_IN_A_MESSAGE)]
-                    
-                    # Sending each slice
-                    for i, slice in enumerate(slices):
-                        is_last_slice = (i == len(slices) - 1) # Check if it is the last slice
-                        # Creating a json objet with vesc data and trigger's param
-                        extraction_data = {
-                            "captures": slice,
-                            "detection_parameters": {
-                                "captures_frequency": config.VESC_EXTRACTION_ANALYZE_FREQUENCY,
-                                "threshold": threshold,
-                                "nb_capture": nb_capture,
-                                "nb_capture_before": nb_capture_before,
-                                "nb_capture_after": nb_capture_after,
-                            },
-                            "is_last_slice": is_last_slice,
-                        }
-                        data_json = json.dumps(extraction_data)
-
-                        # Sending to queue, if full remove the older message to add a new message
-                        try:
-                            queue_pattern.send(data_json, timeout=0.01)
-                        except posix_ipc.BusyError:
-                            try:
-                                queue_pattern.receive(timeout=0.01)
-                                queue_pattern.send(data_json, timeout=0.01)
-                            except posix_ipc.BusyError as e:
-                                print("VESC ANALYSE MODE, envoie des données dans la queue:", e)
-                            except ValueError as e :
-                                print("VESC ANALYSE MODE, Impossible d'envoyer un message aussi long dans la queue", e)
-                        except ValueError as e :
-                            print("VESC ANALYSE MODE, Impossible d'envoyer un message aussi long dans la queue", e)
-                            
-                    if(config.VESC_EXTRACTION_ANALYSE_SAVING_MODE):
-                        # Creating an object corresponding to protocol buffer prototype
-                        vesc_data = vesc_data_pb2.VescData()
-
-                        rpm_list = [data['rpm'] for data in buffer]
-                        torque_list = [data['torque'] for data in buffer]
-                        timestamp_list = [data['timestamp'] for data in buffer]
-
-                        extraction = vesc_data.extractionList.add()
-                        extraction.rpm.extend(rpm_list)
-                        extraction.torque.extend(torque_list)
-                        extraction.timestamp.extend(timestamp_list)
-
-                        # with GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps :
-                        #     position = gps._read_from_gps()
-                        #     extraction.latitude = position.latitude
-                        #     extraction.longitude = position.longitude
-
-                        extraction.latitude = 123
-                        extraction.longitude = 456
-
-                        # Writing the objet into the binary file
-                        with open(f"/home/violette/field/extraction_data_vesc/{file_name}", "ab") as file:
-                            file.write(vesc_data.SerializeToString())
-                        
-                    
-                    # Reinitialise variable for the trigger
-                    buffer.clear()
-                    rpm_over_threshold_count = 0
-                    detection_triggered = False
-                    count_capture_after_triggered = 0
-                
-            # Do not saturate the CPU
-            time_to_sleep = config.VESC_EXTRACTION_ANALYZE_FREQUENCY - (time.time()- waitingTime)
-            if (time_to_sleep > 0):
-                time.sleep(time_to_sleep)
-
-        # Closing descriptor file and removing queue if it exist at the end of the thread
-        if queue_pattern is not None:
-            try:
-                queue_pattern.close()
-            except Exception as e:
-                print("VESC ANALYSE MODE, fermeture du descripteur de queue:", e)
-            try:
-                posix_ipc.unlink_message_queue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
-            except Exception as e:
-                print("VESC ANALYSE MODE, suppression de la queue:", e)
-        if queue_params is not None:
-            try:
-                queue_params.close()
-            except Exception as e:
-                print("VESC ANALYSE MODE, fermeture du descripteur de queue:", e)
-            try:
-                posix_ipc.unlink_message_queue(config.NAME_QUEUE_VESC_DETECTION_PARAMS)
-            except Exception as e:
-                print("VESC ANALYSE MODE, suppression de la queue:", e)
 
 
 

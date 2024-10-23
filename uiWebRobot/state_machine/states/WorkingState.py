@@ -118,7 +118,7 @@ class WorkingState(State.State):
         # When parameters for trigger are changed by the UI
         elif data["type"] == 'trigger_analyse_vesc':
             try:
-                queue_params = posix_ipc.MessageQueue(config.NAME_QUEUE_VESC_DETECTION_PARAMS)
+                queue_params = posix_ipc.MessageQueue(config.PENETROMETRY_PARAMS_QUEUE_NAME)
                 queue_params.send(json.dumps(data), timeout=0.01)
                 queue_params.close()
             except Exception as e:
@@ -147,11 +147,11 @@ class WorkingState(State.State):
         self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
 
         self.queue_extraction_pattern = None
-        if config.VESC_EXTRACTION_ANALYZE_MODE:
+        if config.PENETROMETRY_ANALYSE_MODE:
             # Waiting for queue creating by adapter
             while(self.queue_extraction_pattern is None):
                 try:
-                    self.queue_extraction_pattern = posix_ipc.MessageQueue(config.NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN)
+                    self.queue_extraction_pattern = posix_ipc.MessageQueue(config.PENETROMETRY_DATA_QUEUE_NAME)
                 except posix_ipc.ExistentialError:
                     pass
         

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-message extraction {
+message Extraction {
   repeated float rpm = 1;
   repeated float torque = 2;
   repeated double timestamp = 3;
@@ -8,6 +8,6 @@ message extraction {
   double longitude = 5;
 }
 
-message VescData {
-  repeated extraction extractionList = 1;
+message ExtractionList {
+  repeated Extraction extractions = 1;
 }
