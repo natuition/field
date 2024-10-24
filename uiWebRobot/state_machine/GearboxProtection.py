@@ -3,11 +3,12 @@ from navigation import GPSComputing
 class GearboxProtection:
     def __init__(self):
         self.__coord_list = []
-        self.__min_nb_coords = 120
+        self.__min_nb_coords = 30
         self.__nb_extracts = 0
         self.__gps_computing = GPSComputing()
         self.__min_speed = 100 #millimeters per second
-        self.__min_time = 30 #seconds
+        self.__min_time = 60 #seconds
+        self.__min_distance = self.__min_speed * self.__min_time 
     
     def store_coord(self, lat: float, long: float, quality: int):
         coord = [lat, long, quality, self.__nb_extracts]
@@ -18,8 +19,10 @@ class GearboxProtection:
     def __are_coord_closed(self, coord1, coord2):
         if coord1[2] == coord2[2] :
             distance_millimeters = self.__gps_computing.get_distance(coord1, coord2)
-            return distance_millimeters < self.__min_speed * self.__min_time
+            print("Coordinates are closed : ", distance_millimeters, ", ", (distance_millimeters < self.__min_distance))
+            return distance_millimeters < self.__min_distance
         else :
+            print("Coordinates have not the same gps quality.")
             return False
         
     def store_number_of_extracts(self, extracts):
@@ -33,6 +36,8 @@ class GearboxProtection:
 
     def is_physically_blocked(self):
         nb_coords = len(self.__coord_list)
+        print("Nb coordinates = ", nb_coords)
+        print("Min nb coordinates = ", self.__min_nb_coords)
         if nb_coords >= self.__min_nb_coords :
             last_coord = self.__coord_list[-1]
             for i in range(1, nb_coords, 1) :

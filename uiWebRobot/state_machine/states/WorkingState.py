@@ -186,7 +186,13 @@ class WorkingState(State.State):
                 self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map',
                                    broadcast=True)
                 self.__gearbox_protection.store_coord(data[0], data[1], data[2])
+                msg = f"Coordinates : {data[0]}, {data[1]}, {data[2]}"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
                 if(self.__gearbox_protection.is_physically_blocked()) :
+                    msg = f"IS PHYSICALLY BLOCKED"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                     self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
