@@ -28,4 +28,4 @@ class PhysicalBlocageState(State.State) :
 
         msg = f"[{self.__class__.__name__}] -> Physically blocked"
         self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        print(msg)        

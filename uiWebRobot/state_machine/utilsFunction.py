@@ -13,9 +13,10 @@ import json
 import adapters
 import time
 import sys
-import math
+#import math
 sys.path.append('../')
 from navigation import NavigationV3
+from navigation import GPSComputing
 
 
 def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
@@ -220,59 +221,43 @@ def get_other_field():
 
 class GearboxProtection:
     def __init__(self):
-        self.__positionList = []
-        self.__minNbPositions = 20
-        self.__dataCollector = []
-        self.__nbExtractions = 0
+        self.__coord_list = []
+        self.__min_nb_coords = 120
+        self.__nb_extracts = 0
+        self.__gps_computing = GPSComputing()
+        self.__min_speed = 100 #millimeters per second
+        self.__min_time = 30 #seconds
     
-    def store_position(self, latitude, longitude, quality):
-        position = {"latitude": latitude , "longitude": longitude, "quality": quality}
-        self.__positionList.append(position)
+    def store_coord(self, lat: float, long: float, quality: int):
+        coord = [lat, long, quality, self.__nb_extracts]
+        if self.__coord_list >= self.__min_nb_coords :
+            self.__coord_list.pop(0)
+        self.__coord_list.append(coord)
         
-    def __are_position_closed(self, position1, position2):
-        if(position1["quality"] == position2["quality"]) :
-            R = 6371000 # Radius of Earth in meters
-            latitude_radian = math.radians(position1["latitude"])
-            longitude_radian = math.radians(position2["latitude"])
-
-            delta_latitude = math.radians(position2["latitude"] - position1["latitude"])
-            delta_longitude = math.radians(position2["longitude"] - position1["longitude"])
-
-            a = math.sin(delta_latitude/2.0)**2 + \
-            math.cos(latitude_radian) * math.cos(longitude_radian) * \
-            math.sin(delta_longitude/2.0)**2
-            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-
-            distance_meters = R * c 
-            return distance_meters < 3
+    def __are_coord_closed(self, coord1, coord2):
+        if coord1[2] == coord2[2] :
+            distance_millimeters = self.__gps_computing.get_distance(coord1, coord2)
+            return distance_millimeters < self.__min_speed * self.__min_time
         else :
             return False
         
-    def __are_positions_closed(self):
-        nbPositions = len(self.__positionList)
-        if(nbPositions >= self.__minNbPositions) :
-            lastPosition = self.__positionList[-1]
-            for i in range(nbPositions-2, nbPositions-self.__minNbPositions, -1) :
-                iPosition = self.__positionList[i]
-                if(not self.__are_position_closed(lastPosition, iPosition)):
-                   return False 
-            return True
-        else :
-            return False
-        
-    def store_datacollector(self, datacollector):
-        self.__nbExtractions = self.__compute_number_of_extractions(self.__dataCollector)
-        self.__dataCollector = datacollector
+    def store_number_of_extracts(self, extracts):
+        self.__nb_extracts = self.__compute_number_of_extracts(extracts)
 
-    def __compute_number_of_extractions(datacollector):
+    def __compute_number_of_extracts(extracts):
         sum = 0
-        for nbExtractions in datacollector[1].values():
-            sum += nbExtractions
+        for nb_extracts in extracts.values():
+            sum += nb_extracts
         return sum
 
     def is_physically_blocked(self):
-        currentNbExtractions = self.__compute_number_of_extractions(self.__dataCollector)
-        if(currentNbExtractions == self.__nbExtractions) :
-            return self.__are_positions_closed()
+        nb_coords = len(self.__coord_list)
+        if nb_coords >= self.__min_nb_coords :
+            last_coord = self.__coord_list[-1]
+            for i in range(1, nb_coords, 1) :
+                i_coord = self.__coord_list[i]
+                if not self.__are_coord_closed(last_coord, i_coord) and last_coord[3] == i_coord[3]:
+                    return False 
+            return True
         else :
             return False

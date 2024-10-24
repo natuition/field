@@ -15,7 +15,7 @@ from state_machine.states import PhysicalBlocageState
 from state_machine.states import ErrorState
 from state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
-from utilsFunction import GearboxProtection
+from state_machine.GearboxProtection import GearboxProtection
 
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects
 from uiWebRobot.state_machine import utilsFunction
@@ -39,7 +39,7 @@ class WorkingState(State.State):
         self.extracted_plants = dict()
         self.last_path_all_points = list()
         self.previous_sessions_working_time = None
-        self.gearbox_protection = GearboxProtection()
+        self.__gearbox_protection = GearboxProtection()
 
         msg = f"Audit mode enable : {isAudit}"
         self.logger.write_and_flush(msg + "\n")
@@ -177,7 +177,7 @@ class WorkingState(State.State):
                 self.extracted_plants = data["datacollector"][1]
                 self.previous_sessions_working_time = data["datacollector"][2]
                 self.sendLastStatistics()
-                self.gearbox_protection.store_datacollector(data["datacollector"])
+                self.__gearbox_protection.store_number_of_extracts(data["datacollector"][1])
             elif "last_gps" in data:
                 data = data["last_gps"]
                 self.allPath.append([data[1], data[0]])
@@ -185,8 +185,8 @@ class WorkingState(State.State):
                     self.lastGpsQuality = data[2]
                 self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map',
                                    broadcast=True)
-                self.gearbox_protection.store_position(data[0], data[1], data[2])
-                if(self.gearbox_protection.is_physically_blocked()) :
+                self.__gearbox_protection.store_coord(data[0], data[1], data[2])
+                if(self.__gearbox_protection.is_physically_blocked()) :
                     self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
