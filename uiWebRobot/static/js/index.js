@@ -86,6 +86,10 @@ function disable_button_after_start_or_continue() {
     $('#Wheel').addClass('disabled-wheel');
 }
 
+socketButton.on('physical_blocage', function (dataServ) {
+    socketio.emit('data', { type: "physical_blocage"});
+});
+
 socketButton.on('wheel', function (dataServ) {
     if (dataServ == "release") {
         $('#Wheel').addClass('release');

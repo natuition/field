@@ -158,6 +158,7 @@ class UIWebRobot:
 
     # SOCKET IO
     def on_socket_data(self, data):
+        print("on_socket_data", data)
         msg_socket_data_before_event = ["field_name", "allChecked", "wheel"]
         msg_socket_to_event = {
             "stop": Events.STOP, 
@@ -180,6 +181,7 @@ class UIWebRobot:
             if data["type"] in msg_socket_data_before_event:
                 self.get_state_machine().on_socket_data(data)
             if data["type"] in msg_socket_to_event.keys():
+                print("Data type : ", data["type"])
                 self.get_state_machine().on_event(msg_socket_to_event[data["type"]])
             if data["type"] in msg_socket_data_after_event:
                 self.get_state_machine().on_socket_data(data)
