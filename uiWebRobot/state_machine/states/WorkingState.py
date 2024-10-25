@@ -22,6 +22,8 @@ from uiWebRobot.state_machine import utilsFunction
 from config import config
 import utility
 
+from queue import Queue
+
 # This state corresponds when the robot is working.
 class WorkingState(State.State):
 
@@ -87,8 +89,17 @@ class WorkingState(State.State):
         print(msg)
         self.main = utilsFunction.startMain()
         self.timeStartMain = datetime.now(timezone.utc)
+        print("Start main")
+
+        self._physical_blocage = False
+        self._second_msg_thread_alive = True
+        self._second_msg_thread = threading.Thread(target=self._second_msg_thread_tf, daemon=True)
+        self._second_msg_thread.start()
+
+        print("I'm not blocking in the init method")         
 
     def on_event(self, event):
+        
         if event == Events.Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
@@ -97,6 +108,8 @@ class WorkingState(State.State):
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
+            self._second_msg_thread_alive = False
+            self._second_msg_thread.join()
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
@@ -105,14 +118,12 @@ class WorkingState(State.State):
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
         elif event == Events.Events.PHYSICAL_BLOCAGE:
-            self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
             os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
             self.main.wait()
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
-            self.socketio.emit('stop', {"status": "finish"}, namespace='/server', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
             else:
@@ -193,7 +204,7 @@ class WorkingState(State.State):
                     msg = f"IS PHYSICALLY BLOCKED"
                     self.logger.write_and_flush(msg + "\n")
                     print(msg)
-                    self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
+                    self._physical_blocage = True
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
@@ -227,3 +238,11 @@ class WorkingState(State.State):
             self.msgQueue.unlink()
         except posix_ipc.ExistentialError:
             pass
+
+    def _second_msg_thread_tf(self) :
+        while not self._physical_blocage and self._second_msg_thread_alive :
+            pass
+        if (self._physical_blocage) :
+            self.on_event(Events.Events.PHYSICAL_BLOCAGE)
+        self._second_msg_thread_alive = False
+        print("stop second_msg_queue")

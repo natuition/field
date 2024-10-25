@@ -173,7 +173,7 @@ class UIWebRobot:
             "screening_start": Events.ACTUATOR_SCREENING_START,
             "screening_pause": Events.ACTUATOR_SCREENING_PAUSE,
             "screening_quit": Events.ACTUATOR_SCREENING_STOP,
-            #"physical_blocage": Events.PHYSICAL_BLOCAGE
+            "physical_blocage": Events.PHYSICAL_BLOCAGE
         }
         msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field"]
         if "type" in data:
@@ -403,7 +403,6 @@ def main():
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
         print("Closing app...")
-
 
 if __name__ == "__main__":
     main()

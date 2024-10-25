@@ -3,11 +3,11 @@ from navigation import GPSComputing
 class GearboxProtection:
     def __init__(self):
         self.__coord_list = []
-        self.__min_nb_coords = 30
+        self.__min_nb_coords = 10
         self.__nb_extracts = 0
         self.__gps_computing = GPSComputing()
         self.__min_speed = 100 #millimeters per second
-        self.__min_time = 60 #seconds
+        self.__min_time = 30 #seconds
         self.__min_distance = self.__min_speed * self.__min_time 
     
     def store_coord(self, lat: float, long: float, quality: int):

@@ -25,7 +25,12 @@ class PhysicalBlocageState(State.State) :
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit: bool) :
         self.socketio = socketio
         self.logger = logger
+        self.robot_synthesis_value = RobotSynthesis.UI_PHYSICAL_BLOCAGE
 
         msg = f"[{self.__class__.__name__}] -> Physically blocked"
         self.logger.write_and_flush(msg + "\n")
-        print(msg)        
+        print(msg)    
+
+        """ self._main_msg_thread_alive = True
+        self._main_msg_thread = threading.Thread(target=self._main_msg_thread_tf, daemon=True)
+        self._main_msg_thread.start()   """  

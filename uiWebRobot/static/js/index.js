@@ -338,6 +338,10 @@ socketBroadcast.on('audit', function (data) {
     }
 });
 
+socketBroadcast.on('physical_blocage', function (dataServ) {
+    socketio.emit('data', { type: "physical_blocage" });
+});
+
 function changeMode() {
     /*if(!this.classList.contains("fix") && !this.classList.contains("disable-switcher-audit")){
         if(!this.classList.contains("disable-extraction")){
