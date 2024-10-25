@@ -239,20 +239,25 @@ VESC_SMOOTH_ACCEL_TIME_STEP = 0.1
 VESC_SMOOTH_DECEL_RPM_STEP = 2500
 VESC_SMOOTH_DECEL_TIME_STEP = 0.1
 
-VESC_EXTRACTION_ANALYZE_MODE = True  # Active or desactive the analyse of vesc datas
-NAME_QUEUE_ANALYSE_EXTRACTION_PATTERN = "/queue_vesc_analyse_pattern" # Name of the queue that contain the data of extraction
-MAX_MESSAGE_QUEUE_ANALYSE_EXTRACTION_PATTERN = 10 # Size of the queue that contain the data of extraction
-MAX_BUFFER_SIZE_IN_A_MESSAGE = 50 # Size max of buffer in message sended in the queue
-VESC_EXTRACTION_ANALYZE_FREQUENCY = 0.02 # Frequency of vesc questionning, in second
-NAME_QUEUE_VESC_DETECTION_PARAMS = "/queue_vesc_analyse_params" # Name of the queue that contain the new params send by the web client
-MAX_MESSAGE_QUEUE_VESC_DETECTION_PARAMS = 5 # Size of the queue that contain the new params send by the web client
-VESC_EXTRACTION_ANALYSE_NB_CAPTURE_BEFORE = 15 # Number of capture registred before the trigger
-VESC_EXTRACTION_ANALYSE_RPM_NB_CAPTURE = 5 # Number of capture over the treshold to trigger
-VESC_EXTRACTION_ANALYSE_NB_CAPTURE_AFTER = 100 # Number of capture registred after the trigger
-VESC_EXTRACTION_ANALYSE_RPM_THRESHOLD = 500 # RPM threshold for the trigger
+PENETROMETRY_ANALYSE_MODE = True  # Active or desactive the analyse of vesc datas
+PENETROMETRY_ANALYSE_FREQUENCY = 0.02 # Frequency of vesc questionning, in second
+
+PENETROMETRY_DATA_QUEUE_NAME = "/queue_penetrometry_data" # Name of the queue that contain the data of extraction
+PENETROMETRY_DATA_QUEUE_MAX_MESSAGE = 10 # Size of the queue that contain the data of extraction
+PENETROMETRY_DATA_QUEUE_BUFFER_SLICE_SIZE = 50 # Size max of buffer in message sended in the queue
+
+PENETROMETRY_PARAMS_QUEUE_NAME = "/queue_penetrometry_params" # Name of the queue that contain the new params send by the web client
+PENETROMETRY_PARAMS_QUEUE_MAX_MESSAGE = 5 # Size of the queue that contain the new params send by the web client
+
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_BEFORE = 15 # Number of capture registred before the trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_OVER = 5 # Number of capture over the treshold to trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_AFTER = 100 # Number of capture registred after the trigger
+PENETROMETRY_RPM_TRIGGER_THRESHOLD = 500 # RPM threshold for the trigger
+
+PENETROMETRY_SAVING_MODE = True # Active or desactive the saving of vesc datas
+
 POLARY_POLE_COUNT = 7 # Multiply the erpm by the pole count of the motor give you the rpm
 TORQUE_CONST = 0.081 # Multiply the input current motor by this constant give you the torque
-VESC_EXTRACTION_ANALYSE_SAVING_MODE = True # Active or desactive the saving of vesc datas
 
 # ======================================================================================================================
 # GPS SETTINGS
