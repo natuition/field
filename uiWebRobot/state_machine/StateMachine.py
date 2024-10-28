@@ -9,7 +9,6 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine import State
 from state_machine.FrontEndObjects import FrontEndObjects
-from shared_class.robot_synthesis import RobotSynthesis
 from notification import RobotStateClient
 
 
@@ -25,12 +24,12 @@ class StateMachine:
         self.change_current_state(CheckState(socketio,self.logger))
 
     def on_event(self, event: Events.Events):
-        print()
         msg = f"{self.currentState} received event : {event}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
 
         try:
+            print("On_event call :")
             newState = self.currentState.on_event(event)
         except Exception as e:
             self.logger.write_and_flush("[Error] "+str(e)+"\n")
@@ -44,7 +43,9 @@ class StateMachine:
         if str(newState) in ["StartingState","ResumeState"]:
             self.change_current_state(newState.on_event(Events.Events.CONFIG_IS_SET))
         else:
+            print("Change current state")
             self.change_current_state(newState)
+        print("Fin received event")
     
     def on_socket_data(self, data):
         try:

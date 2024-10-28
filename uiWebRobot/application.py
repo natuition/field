@@ -60,6 +60,7 @@ class UIWebRobot:
 
     def __init_flask_route(self):
         self.__app.add_url_rule("/", view_func=self.index)
+        self.__app.add_url_rule("/received_on_socket_data/<event_name>", view_func=self.received_on_socket_data)
         self.__app.add_url_rule("/setting", view_func=self.setting)
         self.__app.add_url_rule("/map", view_func=self.maps)
         self.__app.add_url_rule("/offline.html", view_func=self.offline)
@@ -185,7 +186,6 @@ class UIWebRobot:
                 self.get_state_machine().on_event(msg_socket_to_event[data["type"]])
             if data["type"] in msg_socket_data_after_event:
                 self.get_state_machine().on_socket_data(data)
-
             if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
                 self.get_state_machine().on_socket_data(data)
             elif data["type"] == "demo_resume_cmd":
@@ -241,6 +241,15 @@ class UIWebRobot:
             return render_template("Error.html", sn=sn, error_message="Je ne suis pas contente.")
 
         return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
+
+    def received_on_socket_data(self, event_name):
+        self.on_socket_data({"type": event_name})
+        response = self.__app.response_class(
+                response=json.dumps({True}),
+                status=200,
+                mimetype='application/json'
+        )
+        return response
 
     def setting(self):
         sn = self.__config.ROBOT_SN

@@ -6,7 +6,7 @@ class GearboxProtection:
         self.__min_nb_coords = 10
         self.__nb_extracts = 0
         self.__gps_computing = GPSComputing()
-        self.__min_speed = 100 #millimeters per second
+        self.__min_speed = 300 #millimeters per second
     
     def store_coord(self, lat: float, long: float, quality: int):
         coord = [lat, long, quality, self.__nb_extracts]

@@ -1,4 +1,6 @@
 import sys
+
+import requests
 sys.path.append('../')
 
 from flask_socketio import SocketIO
@@ -110,11 +112,20 @@ class WorkingState(State.State):
         elif event == Events.Events.PHYSICAL_BLOCAGE:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
+            msg = f"[{self.__class__.__name__}] -> Wait start"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
             os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
             self.main.wait()
+            msg = f"[{self.__class__.__name__}] -> Wait done"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
+            msg = f"[{self.__class__.__name__}] -> Join done"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
@@ -193,8 +204,12 @@ class WorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
                 if(self.__gearbox_protection.is_physically_blocked()) :
-                    self._main_msg_thread_alive = False
                     #TODO: Change state
+                    self._main_msg_thread_alive = False
+                    res = requests.get("http://violette.local/received_on_socket_data/physical_blocage")
+                    msg = f"[{self.__class__.__name__}] -> Res : {res}"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
