@@ -29,7 +29,6 @@ class StateMachine:
         print(msg)
 
         try:
-            print("On_event call :")
             newState = self.currentState.on_event(event)
         except Exception as e:
             self.logger.write_and_flush("[Error] "+str(e)+"\n")
@@ -43,9 +42,7 @@ class StateMachine:
         if str(newState) in ["StartingState","ResumeState"]:
             self.change_current_state(newState.on_event(Events.Events.CONFIG_IS_SET))
         else:
-            print("Change current state")
             self.change_current_state(newState)
-        print("Fin received event")
     
     def on_socket_data(self, data):
         try:

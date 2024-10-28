@@ -1,4 +1,6 @@
 import sys
+
+import socketio
 sys.path.append('../')
 import time
 from flask_socketio import SocketIO
@@ -99,6 +101,12 @@ class WaitWorkingState(State.State):
                 msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
+            
+            self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+
+            msg = f"[{self.__class__.__name__}] -> Reload web page !"
+            self.logger.write_and_flush(msg+"\n")
+            print(msg)
 
         except KeyboardInterrupt:
             raise KeyboardInterrupt
@@ -206,7 +214,7 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.startButton = ButtonState.CHARGING
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
-            self.statusOfUIObject.joystick = False
+            self.statusOfUIObject.joystick = False 
             if event == Events.Events.START_MAIN:
                 self.statusOfUIObject.audit = AuditButtonState.NOT_IN_USE
             elif event == Events.Events.START_AUDIT:

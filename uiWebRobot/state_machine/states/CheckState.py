@@ -43,14 +43,14 @@ class CheckState(State.State):
         del self.vesc_engine
         self.vesc_engine = utilsFunction.initVesc(self.logger)
 
-        self.__voltage_thread_alive = True
+        """self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
         self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
                                                  args=(lambda: self.__voltage_thread_alive,
                                                        self.vesc_engine, self.socketio,
                                                        self.input_voltage),
                                                  daemon=True)
-        self.__voltage_thread.start()
+        self.__voltage_thread.start() """
 
         if EnvironnementConfig.NATUITION_CHECKLIST():
             self.statusOfUIObject["checkbox"] = True
@@ -96,13 +96,14 @@ class CheckState(State.State):
                             utilsFunction.changeConfigValue(key.strip(), value.strip())
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-        elif data["type"] == 'getInputVoltage':
-            utilsFunction.sendInputVoltage(
-                self.socketio, self.input_voltage["input_voltage"])
         else:
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)
         return self
+        """ elif data["type"] == 'getInputVoltage':
+            utilsFunction.sendInputVoltage(
+                self.socketio, self.input_voltage["input_voltage"]) """
+        
 
     def getStatusOfControls(self):
         return self.statusOfUIObject

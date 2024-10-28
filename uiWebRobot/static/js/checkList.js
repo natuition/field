@@ -98,5 +98,5 @@ socketio.on('checklist', function (dataServ) {
 });
 
 window.addEventListener("load", function (event) {
-    socketio.emit('data', { type: "getInputVoltage" });
+    //socketio.emit('data', { type: "getInputVoltage" });
 });

@@ -51,10 +51,14 @@ class UIWebRobot:
         self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
         print("Sent ✅")
 
+    def on_connect(self):
+        print("A client is connected.")
+
     def __init_socketio(self):
         self.__socketio.on_event(
             'data', self.on_socket_broadcast, namespace='/broadcast')
         self.__socketio.on_event('disconnect', self.on_disconnect)
+        self.__socketio.on_event('connect', self.on_connect)
         self.__socketio.on_event(
             'data', self.on_socket_data, namespace='/server')
 
