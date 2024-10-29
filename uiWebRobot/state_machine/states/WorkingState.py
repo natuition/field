@@ -109,23 +109,15 @@ class WorkingState(State.State):
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
+        
         elif event == Events.Events.PHYSICAL_BLOCAGE:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
-            msg = f"[{self.__class__.__name__}] -> Wait start"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
             os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
             self.main.wait()
-            msg = f"[{self.__class__.__name__}] -> Wait done"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
             os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
-            msg = f"[{self.__class__.__name__}] -> Join done"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
@@ -133,6 +125,7 @@ class WorkingState(State.State):
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
             return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.logger)
+        
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
@@ -173,11 +166,13 @@ class WorkingState(State.State):
     def _main_msg_thread_tf(self):
         self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
         while self._main_msg_thread_alive:
+
             try:
                 msg = self.msgQueue.receive(timeout=2)
             except posix_ipc.BusyError:
                 continue
             data = json.loads(msg[0])
+
             if "start" in data:
                 if data["start"]:
                     msg = f"[{self.__class__.__name__}] -> Main lancé !"
@@ -186,12 +181,14 @@ class WorkingState(State.State):
                     self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit,
                                                      "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
                                        namespace='/button', broadcast=True)
+                    
             elif "datacollector" in data:
                 self.detected_plants = data["datacollector"][0]
                 self.extracted_plants = data["datacollector"][1]
                 self.previous_sessions_working_time = data["datacollector"][2]
                 self.sendLastStatistics()
                 self.__gearbox_protection.store_number_of_extracts(data["datacollector"][1])
+
             elif "last_gps" in data:
                 data = data["last_gps"]
                 self.allPath.append([data[1], data[0]])
@@ -199,12 +196,14 @@ class WorkingState(State.State):
                     self.lastGpsQuality = data[2]
                 self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map',
                                    broadcast=True)
+                
                 self.__gearbox_protection.store_coord(data[0], data[1], data[2])
                 msg = f"Coordinates : {data[0]}, {data[1]}, {data[2]}"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
-                if(self.__gearbox_protection.is_physically_blocked()) :
+                if(self.__gearbox_protection.is_physically_blocked() and config.CHECK_PHYSICAL_BLOCAGE) :
                     utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
+
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
@@ -219,21 +218,27 @@ class WorkingState(State.State):
                                    json.dumps(self.last_path_all_points), 
                                    namespace='/map',
                                    broadcast=True)
+                
             elif "display_instruction_path" in data:
                 data = data["display_instruction_path"]
                 self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]),
                                    namespace='/map', broadcast=True)
+                
             elif "clear_path" in data:
                 self.allPath.clear()
+
             elif "input_voltage" in data:
                 utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
+
         msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
+
         self.msgQueue.close()
         msg = f"[{self.__class__.__name__}] -> Unlink msgQueue..."
         self.logger.write_and_flush(msg + "\n")
         print(msg)
+
         try:
             self.msgQueue.unlink()
         except posix_ipc.ExistentialError:

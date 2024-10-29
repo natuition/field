@@ -1,5 +1,6 @@
 from navigation import GPSComputing
 from typing import Dict
+from config import config
 
 
 class GearboxProtection:
@@ -13,11 +14,15 @@ class GearboxProtection:
 			Create an empy list of cooridinates. \n
             Inits some parameters.
 		"""
+        
+        self.__min_nb_valid_distances: int = config.MIN_NB_VALID_DISTANCES
+        self.__max_nb_coords_stored: int = config.MAX_NB_COORDS_STORED
+        self.__min_speed: int = config.MIN_SPEED #millimeters per second
+
         self.__coord_list = []
-        self.__min_nb_coords: int = 10
         self.__nb_extracts: int = 0
         self.__gps_computing: GPSComputing = GPSComputing()
-        self.__min_speed: int = 200 #millimeters per second
+        
     
     def store_coord(self, lat: float, long: float, quality: int) -> None:
         """
@@ -27,7 +32,7 @@ class GearboxProtection:
             :param quality: quality of the RTK signal.
 		"""
         coord = [lat, long, quality, self.__nb_extracts]
-        if len(self.__coord_list) >= self.__min_nb_coords :
+        if len(self.__coord_list) >= self.__max_nb_coords_stored :
             self.__coord_list.pop(0)
         self.__coord_list.append(coord)
         
@@ -56,9 +61,9 @@ class GearboxProtection:
             :param point_B: coordinates of the secoond point (latitude, longitude, quality).\n
             :return: True if the GPS quality is equivalent, else otherwise.
 		"""
-        return ((point_A[3],point_B[3])==(4,4)) \
+        return ((point_A[3], point_B[3]) == (4, 4)) \
             or \
-                (4 not in (point_A[3],point_B[3]))
+                (4 not in (point_A[3], point_B[3]))
         
     def is_physically_blocked(self) -> None:
         """
@@ -67,17 +72,19 @@ class GearboxProtection:
 		"""
         nb_coords = len(self.__coord_list)
         list_valid_distances = []
-        if nb_coords >= self.__min_nb_coords :
-            for i in range(nb_coords - 2) :
-                point_A = self.__coord_list[i]
-                point_B = self.__coord_list[i+1]
-                if not self.__check_same_gps_quality(point_A, point_B):
-                    continue
-                list_valid_distances.append(self.__gps_computing.get_distance(point_A, point_B))
-            list_valid_distances.sort()
-            median_index = len(list_valid_distances) // 2
-            median_value = list_valid_distances[median_index]
-            print("median = ", median_value)
-            return median_value < self.__min_speed
-        else :
+        for i in range(nb_coords - 2) :
+            point_A = self.__coord_list[i]
+            point_B = self.__coord_list[i+1]
+            if not self.__check_same_gps_quality(point_A, point_B):
+                continue
+            list_valid_distances.append(self.__gps_computing.get_distance(point_A, point_B))
+        
+        if len(list_valid_distances) < self.__min_nb_valid_distances :
             return False
+        
+        list_valid_distances.sort()
+        median_index = len(list_valid_distances) // 2
+        median_value = list_valid_distances[median_index]
+        print("Distance median = ", median_value)
+        
+        return median_value < self.__min_speed
