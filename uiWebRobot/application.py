@@ -200,12 +200,15 @@ class UIWebRobot:
 
             if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
                 self.get_state_machine().on_socket_data(data)
+
             elif data["type"] == "demo_resume_cmd":
                 self.demo_pause_client.send_resume_cmd()
+
             elif data["type"] == "validerZone":
                 data["client_id"] = request.sid
                 self.get_state_machine().on_socket_data(data)
                 self.get_state_machine().on_event(Events.VALIDATE_FIELD)
+
             elif data["type"] == "removeField":
                 if isinstance(self.get_state_machine().currentState, WaitWorkingState):
                     self.get_state_machine().on_socket_data(data)

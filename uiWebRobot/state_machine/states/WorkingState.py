@@ -178,7 +178,7 @@ class WorkingState(State.State):
                     msg = f"[{self.__class__.__name__}] -> Main lancé !"
                     self.logger.write_and_flush(msg + "\n")
                     print(msg)
-                    self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit,
+                    self.socketio.emit('start_main', {"status": "finish", "audit": self.isAudit,
                                                      "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
                                        namespace='/button', broadcast=True)
                     

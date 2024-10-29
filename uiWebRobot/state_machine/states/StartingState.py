@@ -21,7 +21,7 @@ class StartingState(State.State):
         self.logger = logger
         self.isAudit = isAudit
 
-        self.socketio.emit('start', {"status": "pushed"}, namespace='/button', broadcast=True)
+        self.socketio.emit('start_main', {"status": "pushed"}, namespace='/button', broadcast=True)
         msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{False},AUDIT_MODE:{isAudit})"
         self.logger.write_and_flush(msg + "\n")
         print(msg)

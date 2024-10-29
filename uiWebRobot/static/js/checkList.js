@@ -90,9 +90,10 @@ function activateNext() {
     }
 }
 
-socketio.on('checklist', function (dataServ) {
+socketio.on('list_validation', function (dataServ) {
     if (dataServ["status"] == "refresh") {
         //clearInterval(count_next_interval);
+        console.log("refresh !")
         document.location.reload();
     }
 });

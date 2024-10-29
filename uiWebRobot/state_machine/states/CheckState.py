@@ -57,11 +57,8 @@ class CheckState(State.State):
             self.statusOfUIObject["checkbox"] = False
 
     def on_event(self, event):
-        print("Event reçu : ", event, event.value)
-        print("Event expected : ", Events.Events.LIST_VALIDATION, Events.Events.LIST_VALIDATION.value)
-        print(event.value == Events.Events.LIST_VALIDATION.value)
+
         if event == Events.Events.LIST_VALIDATION:
-            print("Event reçu")
             self.socketio.emit('data', {"ACK": "list_validation"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
             #self.__voltage_thread_alive = False
@@ -83,6 +80,7 @@ class CheckState(State.State):
                     print(msg)
                 os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
+        
         else:
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)

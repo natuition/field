@@ -99,12 +99,6 @@ class WaitWorkingState(State.State):
                 msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
-            
-            self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
-
-            msg = f"[{self.__class__.__name__}] -> Reload web page !"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
 
         except KeyboardInterrupt:
             raise KeyboardInterrupt
@@ -141,8 +135,7 @@ class WaitWorkingState(State.State):
                     self.smoothie.custom_move_to(
                         A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
-        self.socketio.emit(
-            'checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
+        self.socketio.emit('list_validation', {"status": "refresh"}, namespace='/server', broadcast=True)
 
         self.field = None
 
@@ -193,6 +186,7 @@ class WaitWorkingState(State.State):
         self.__joystick_info_thread.join()
 
     def on_event(self, event):
+
         if event == Events.Events.CREATE_FIELD:
             self.__stop_thread()
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
@@ -201,12 +195,15 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
             return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event == Events.Events.CALIBRATION:
             self.__stop_thread()
             return CalibrateState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event == Events.Events.ACTUATOR_SCREENING:
             self.__stop_thread()
             return ActuatorScreeningState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.startButton = ButtonState.CHARGING
@@ -224,6 +221,7 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.close()
                 self.vesc_engine = None
             return StartingState.StartingState(self.socketio, self.logger, (event == Events.Events.START_AUDIT))
+        
         elif event in [Events.Events.CONTINUE_MAIN, Events.Events.CONTINUE_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
@@ -241,15 +239,19 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.close()
                 self.vesc_engine = None
             return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
+        
         elif event == Events.Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
             return self
+        
         elif event == Events.Events.AUDIT_DISABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_ENABLE
             return self
+        
         elif event == Events.Events.CLOSE_APP:
             self.__stop_thread()
             return self
+        
         else:
             self.__stop_thread()
             try:
