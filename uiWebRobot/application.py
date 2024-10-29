@@ -164,32 +164,40 @@ class UIWebRobot:
     # SOCKET IO
     def on_socket_data(self, data):
         print("on_socket_data", data)
-        msg_socket_data_before_event = ["field_name", "allChecked", "wheel"]
-        msg_socket_to_event = {
-            "stop": Events.STOP, 
-            "run_target_detection": Events.CALIBRATION_DETECT,
-            "run_target_move": Events.CALIBRATION_MOVE,
-            "start": Events.START_MAIN,
-            "continue": Events.CONTINUE_MAIN,
-            "field": Events.CREATE_FIELD,
-            "field_name": Events.VALIDATE_FIELD_NAME,
-            "allChecked": Events.LIST_VALIDATION,
-            "calibration_validate": Events.CALIBRATION_VALIDATE,
-            "calibration_cancel": Events.CALIBRATION_CANCEL,
-            "screening_start": Events.ACTUATOR_SCREENING_START,
-            "screening_pause": Events.ACTUATOR_SCREENING_PAUSE,
-            "screening_quit": Events.ACTUATOR_SCREENING_STOP,
-            "physical_blocage": Events.PHYSICAL_BLOCAGE
-        }
-        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field"]
+        msg_socket_data_before_event = [
+            Events.VALIDATE_FIELD_NAME, 
+            Events.LIST_VALIDATION, 
+            Events.WHEEL
+        ]
+        msg_socket_to_event = [
+            Events.STOP, 
+            Events.CALIBRATION_DETECT,
+            Events.CALIBRATION_MOVE,
+            Events.START_MAIN,
+            Events.CONTINUE_MAIN,
+            Events.CREATE_FIELD,
+            Events.VALIDATE_FIELD_NAME,
+            Events.LIST_VALIDATION,
+            Events.CALIBRATION_VALIDATE,
+            Events.CALIBRATION_CANCEL,
+            Events.ACTUATOR_SCREENING_START,
+            Events.ACTUATOR_SCREENING_PAUSE,
+            Events.ACTUATOR_SCREENING_STOP,
+            Events.PHYSICAL_BLOCAGE
+        ]
+        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "create_field"]
+        
         if "type" in data:
-            if data["type"] in msg_socket_data_before_event:
+            if data["type"] in [str(i) for i in msg_socket_data_before_event]:
                 self.get_state_machine().on_socket_data(data)
-            if data["type"] in msg_socket_to_event.keys():
+
+            if data["type"] in [str(i) for i in msg_socket_to_event]:
                 print("Data type : ", data["type"])
-                self.get_state_machine().on_event(msg_socket_to_event[data["type"]])
+                self.get_state_machine().on_event(Events.from_str(data["type"]))
+
             if data["type"] in msg_socket_data_after_event:
                 self.get_state_machine().on_socket_data(data)
+
             if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
                 self.get_state_machine().on_socket_data(data)
             elif data["type"] == "demo_resume_cmd":

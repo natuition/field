@@ -142,7 +142,7 @@ class CreateFieldState(State.State):
                     x *= config.A_MAX / 100
                 # print(f"[{self.__class__.__name__}] -> Move '{x}'.")
                 self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x)
-        elif data["type"] == "field":
+        elif data["type"] == "create_field":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
             self.logger.write_and_flush(msg + "\n")
             print(msg)
@@ -178,7 +178,7 @@ class CreateFieldState(State.State):
             self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
             self.field = self.fieldCreator.calculateField()
             self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
-        elif data["type"] == "field_name":
+        elif data["type"] == "validate_field_name":
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             #patch bug field
             utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")

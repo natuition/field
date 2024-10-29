@@ -1,3 +1,4 @@
+import socketio
 import application
 from config import config
 import threading
@@ -8,6 +9,7 @@ import grp
 import fileinput
 import os
 import pwd
+from uiWebRobot.state_machine.Events import Events
 import utility
 import json
 import adapters
@@ -218,6 +220,11 @@ def get_other_field():
                     coords_other.append(coords)
             return coords_other
         return list()
+
+def change_state(event : Events) :
+    io = socketio.Client()
+    io.connect(url="http://localhost:80", namespaces="/server")
+    io.emit(event="data", data={"type": str(event)}, namespace="/server")
 
 class GearboxProtection:
     def __init__(self):

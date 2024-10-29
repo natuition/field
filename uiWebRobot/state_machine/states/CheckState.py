@@ -7,7 +7,6 @@ from state_machine.states import WaitWorkingState
 from state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
 import signal
-import threading
 from flask_socketio import SocketIO
 from EnvironnementConfig import EnvironnementConfig
 import utility
@@ -58,10 +57,14 @@ class CheckState(State.State):
             self.statusOfUIObject["checkbox"] = False
 
     def on_event(self, event):
+        print("Event reçu : ", event, event.value)
+        print("Event expected : ", Events.Events.LIST_VALIDATION, Events.Events.LIST_VALIDATION.value)
+        print(event.value == Events.Events.LIST_VALIDATION.value)
         if event == Events.Events.LIST_VALIDATION:
-            self.socketio.emit('data', {"ACK": "allChecked"}, namespace='/server', broadcast=True)
+            print("Event reçu")
+            self.socketio.emit('data', {"ACK": "list_validation"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
-            self.__voltage_thread_alive = False
+            #self.__voltage_thread_alive = False
             if self.cam:
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Sending kill signal to camera process..."
@@ -86,7 +89,7 @@ class CheckState(State.State):
             return self
 
     def on_socket_data(self, data):
-        if data["type"] == 'allChecked':
+        if data["type"] == 'list_validation':
             try:
                 with open("../yolo/" + data["strategy"] + ".conf") as file:
                     for line in file:

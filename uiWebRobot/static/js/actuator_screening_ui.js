@@ -1,21 +1,21 @@
 function quitScreening() {
     $(':button').prop('disabled', true);
     $('.cancel').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
-    socketio.emit('data', { type: "screening_quit" })
+    socketio.emit('data', { type: "actuator_screening_stop" })
 }
 
 function startScreening() {
     $('#start_screening').attr({ disabled: true });
     $('#start_screening').parent().addClass('d-none');
     $('#loading_screening').parent().removeClass('d-none');
-    socketio.emit('data', { type: "screening_start" });
+    socketio.emit('data', { type: "actuator_screening_start" });
 }
 
 function pauseScreening() {
     $('#pause_screening').attr({ disabled: true });
     $('#pause_screening').parent().addClass('d-none');
     $('#loading_screening').parent().removeClass('d-none');
-    socketio.emit('data', { type: "screening_pause" });
+    socketio.emit('data', { type: "actuator_screening_pause" });
 }
 
 socketio.on('screening_status', function (data) {

@@ -98,14 +98,14 @@
             $('#validate').addClass('d-none');
             $('#label_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
             $('#img_detection_div').attr({ class: "d-none justify-content-center align-items-center" });
-            socketio.emit('data', { type: "run_target_detection" });
+            socketio.emit('data', { type: "calibration_detect" });
         }
 
         function validate() {
             $('#run_detection').attr({ disabled: true });
             $('#run_detection_d_none').addClass('d-none');
             $('#run_detection').removeClass('d-none');
-            socketio.emit('data', { type: "run_target_move" });
+            socketio.emit('data', { type: "calibration_move" });
         }
 
         socketio.on('image', function (data) {

@@ -4,7 +4,6 @@ import requests
 sys.path.append('../')
 
 from flask_socketio import SocketIO
-import socketio
 import signal
 import posix_ipc
 import threading
@@ -205,11 +204,7 @@ class WorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
                 if(self.__gearbox_protection.is_physically_blocked()) :
-                    #TODO: Change state
-                    io = socketio.Client()
-                    io.connect(url="http://localhost:80", namespaces="/server")
-                    io.emit(event="data", data={"type": "physical_blocage"}, namespace="/server")
-                    #io.disconnect()
+                    utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
