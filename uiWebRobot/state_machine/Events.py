@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import List
 
 class Events(Enum):
     ERROR = -1
@@ -37,7 +38,7 @@ class Events(Enum):
         return Events._value2member_map_[events_name]
     
     @staticmethod
-    def event_list_to_str_list(list_events: list['Events']) -> list[str]:
+    def event_list_to_str_list(list_events: List['Events']) -> List[str]:
         return [str(i) for i in list_events]
 
     def __str__(self):
