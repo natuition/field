@@ -98,6 +98,15 @@ socketio.on('list_validation', function (dataServ) {
     }
 });
 
+socketio.on('wait_working_state', function (dataServ) {
+    if (dataServ["status"] == "refresh") {
+        //clearInterval(count_next_interval);
+        document.location.reload();
+        console.log("refresh !")
+        socketio.emit('data', { type: "wait_working_state_refresh"});
+    }
+});
+
 window.addEventListener("load", function (event) {
     //socketio.emit('data', { type: "getInputVoltage" });
 });

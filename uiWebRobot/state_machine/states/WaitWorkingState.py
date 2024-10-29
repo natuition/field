@@ -136,6 +136,9 @@ class WaitWorkingState(State.State):
                         A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
         self.socketio.emit('list_validation', {"status": "refresh"}, namespace='/server', broadcast=True)
+        self.__check_ui_refresh_thread_alive = True
+        self.__check_ui_refresh_thread = threading.Thread(target=self.__check_ui_refresh_thread_tf, daemon=True)
+        self.__check_ui_refresh_thread.start()
 
         self.field = None
 
@@ -174,6 +177,11 @@ class WaitWorkingState(State.State):
             if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
                 self.vesc_engine.set_target_rpm(
                     0, self.vesc_engine.PROPULSION_KEY)
+            time.sleep(0.5)
+
+    def __check_ui_refresh_thread_tf(self) :
+        while self.__check_ui_refresh_thread_alive:
+            self.socketio.emit('wait_working_state', {"status": "refresh"}, namespace='/server', broadcast=True)
             time.sleep(0.5)
 
     def __stop_thread(self):
@@ -329,6 +337,9 @@ class WaitWorkingState(State.State):
                 self.smoothie.tighten_wheels()
                 self.statusOfUIObject.wheelButton = ButtonState.DISABLE
                 self.socketio.emit("wheel", "unrelease", namespace='/button')
+
+        elif data["type"] == "wait_working_state_refresh" :
+            self.__check_ui_refresh_thread_alive = False
         return self
 
     def getStatusOfControls(self):
