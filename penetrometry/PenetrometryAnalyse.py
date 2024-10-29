@@ -242,4 +242,3 @@ class PenetrometryAnalyse :
                     time.sleep(time_to_sleep)
 
             self.__close_queues()
-

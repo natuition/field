@@ -249,9 +249,9 @@ PENETROMETRY_DATA_QUEUE_BUFFER_SLICE_SIZE = 50 # Size max of buffer in message s
 PENETROMETRY_PARAMS_QUEUE_NAME = "/queue_penetrometry_params" # Name of the queue that contain the new params send by the web client
 PENETROMETRY_PARAMS_QUEUE_MAX_MESSAGE = 5 # Size of the queue that contain the new params send by the web client
 
-PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_BEFORE = 15 # Number of capture registred before the trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_BEFORE = 10 # Number of capture registred before the trigger
 PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_OVER = 5 # Number of capture over the treshold to trigger
-PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_AFTER = 100 # Number of capture registred after the trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_AFTER = 90 # Number of capture registred after the trigger
 PENETROMETRY_RPM_TRIGGER_THRESHOLD = 500 # RPM threshold for the trigger
 
 PENETROMETRY_SAVING_MODE = True # Active or desactive the saving of vesc datas
