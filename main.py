@@ -2812,11 +2812,13 @@ def main():
                             with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
                                 wheels_angle_file.write(
                                     str(smoothie.get_adapter_current_coordinates()["A"]))
-                        test_continue = input(
-                            "Press enter to continue the test, type anything to exit.")
-                        if test_continue != "":
-                            notification.close()
-                            break
+                        # test_continue = input(
+                        #     "Press enter to continue the test, type anything to exit.")
+                        # if test_continue != "":
+                        #     notification.close()
+                        #     break
+                        print("Retourne moi !")
+                        time.sleep(10)
                         try:
                             start_position = utility.average_point(
                                 gps, trajectory_saver, nav)
@@ -2824,8 +2826,9 @@ def main():
                             pass
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"clear_path": True}))
-                        # reload config if kp or ki change
-                        importlib.reload(config)
+                        if config.RELOAD_CONFIG_DURING_NAVIGATION_TEST:
+                            # reload config if kp or ki change
+                            importlib.reload(config)
 
                     # 1 -> moving forward #-1 -> moving backward
                     last_direction_of_travel = (speed >= 0) if 1 else -1

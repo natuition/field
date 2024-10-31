@@ -2,42 +2,42 @@ let shouldUpdateRegisteredGraph = true;
 let receivedData = [];
 
 let registred_x_labels = []
-let registred_data_temp =[]
-let registred_data_rpm =[]
-let registred_data_torque =[]
+let registred_data_temp = []
+let registred_data_rpm = []
+let registred_data_torque = []
 
 let nb_capture_before = 0;
-let nb_capture = 0;
+let nb_capture_over = 0;
 let nb_capture_after = 0;
 let threshold = 0;
 
-// Écoute des données du serveur via socketio
-socketio.on('analyse_extraction_pattern', function(data) {
-    console.log("Données d'extraction reçues :");
+// Listen to data from the server via socketio
+socketio.on('penetrometry_datas', function(data) {
+    console.log("Extraction data received:");
     console.log(data);
 
     receivedData.push(...data.captures) // Decompose the array and push it
     if(data.is_last_slice){
         if (shouldUpdateRegisteredGraph) {
-            console.log("Actualisation du graphique");
+            console.log("Updating the graph");
             shouldUpdateRegisteredGraph = false;
     
-            // Masquer le conteneur de chargement, afficher le bouton et les paramètres
+            // Hide the loading container, display the button and parameters
             document.getElementById('loadingContainer').style.display = 'none';
             document.getElementById('paramContainer').style.display = 'block';
     
-            // Mettre à jour les champs de paramétrage avec les données reçues
+            // Update the parameter fields with the received data
             nb_capture_before = data.detection_parameters.nb_capture_before;
-            nb_capture = data.detection_parameters.nb_capture;
+            nb_capture_over = data.detection_parameters.nb_capture_over;
             nb_capture_after = data.detection_parameters.nb_capture_after;
             threshold = data.detection_parameters.threshold;
     
             document.getElementById('nbCaptureBefore').value = nb_capture_before;
-            document.getElementById('nbCapture').value = nb_capture;
+            document.getElementById('nbCaptureOver').value = nb_capture_over;
             document.getElementById('nbCaptureAfter').value = nb_capture_after;
             document.getElementById('threshold').value = threshold;
     
-            // Mettre à jour le graphique avec les nouvelles données
+            // Update the graph with new data
             updateRegistredGraph(receivedData);
         }
     }
@@ -50,7 +50,7 @@ function updateRegistredGraph(dataArray) {
         const temp = dataPoint.temp_motor_filtered;
         const rpm = dataPoint.rpm_meca;
         const torque = dataPoint.torque;
-        const currentTime = ((dataPoint.timestamp - initialTimestamp).toFixed(3))*1000;
+        const currentTime = ((dataPoint.timestamp - initialTimestamp).toFixed(3)) * 1000;
 
         registred_x_labels.push(currentTime);
         registred_data_temp.push(temp);
@@ -65,7 +65,7 @@ function updateRegistredGraph(dataArray) {
 }
 
 
-// Registred charts settings
+// Registered chart settings
 const ctx_registred_chart = document.getElementById('myRegistredChart').getContext('2d');
 const myRegistredChart = new Chart(ctx_registred_chart, {
     type: 'scatter',
@@ -179,7 +179,7 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                 boxWidth: 100,
                 boxHeight: 100,
                 generateLabels: function(chart) {
-                    // Return the legend items with only the colored box
+                    // Return legend items with only the colored box
                     return chart.data.datasets.map(function(dataset, i) {
                         return {
                             // Remove the text (label)
@@ -226,12 +226,12 @@ document.getElementById('newSignalButton').addEventListener('click', function() 
     if(isInputsValid()){
         shouldUpdateRegisteredGraph = true;
         document.getElementById('loadingContainer').style.display = 'block';
-        // Erase the old graph
+        // Clear the old graph
         myRegistredChart.data.datasets.forEach((dataset) => {
-            dataset.data = [];  // Réinitialiser le tableau de données du dataset
+            dataset.data = [];  // Reset the dataset data array
         });
         
-        // Vider les tableaux sources utilisés pour les données
+        // Clear the source arrays used for data
         registred_x_labels = [];
         registred_data_torque = [];
         registred_data_rpm = [];
@@ -239,17 +239,17 @@ document.getElementById('newSignalButton').addEventListener('click', function() 
         receivedData = [];
         myRegistredChart.update();
 
-        // Récupérer les valeurs actuelles des paramètres
+        // Retrieve the current parameter values
         nb_capture_before = parseInt(document.getElementById('nbCaptureBefore').value);
-        nb_capture = parseInt(document.getElementById('nbCapture').value);
+        nb_capture_over = parseInt(document.getElementById('nbCaptureOver').value);
         nb_capture_after = parseInt(document.getElementById('nbCaptureAfter').value);
         threshold = parseFloat(document.getElementById('threshold').value);
 
-        // Envoyer les nouveaux paramètres au serveur pour la prochaine détection
+        // Send the new parameters to the server for the next detection
         socketio.emit('data', {
-            'type': 'trigger_analyse_vesc',
+            'type': 'penetrometry_new_params',
             'nb_capture_before': nb_capture_before,
-            'nb_capture': nb_capture,
+            'nb_capture_over': nb_capture_over,
             'nb_capture_after': nb_capture_after,
             'threshold': threshold
         });
@@ -259,16 +259,16 @@ document.getElementById('newSignalButton').addEventListener('click', function() 
 
 function isInputsValid() {
     const nbCaptureBefore = document.getElementById('nbCaptureBefore');
-    const nbCapture = document.getElementById('nbCapture');
+    const nbCaptureOver = document.getElementById('nbCaptureOver');
     const nbCaptureAfter = document.getElementById('nbCaptureAfter');
     const threshold = document.getElementById('threshold');
 
     const nbCaptureBeforeError = document.getElementById('nbCaptureBeforeError');
-    const nbCaptureError = document.getElementById('nbCaptureError');
+    const nbCaptureOverError = document.getElementById('nbCaptureOverError');
     const nbCaptureAfterError = document.getElementById('nbCaptureAfterError');
     const thresholdError = document.getElementById('thresholdError');
 
-    // Validation du champ nbCaptureBefore (entre 1 et 100)
+    // Validation for nbCaptureBefore field (between 1 and 100)
     if (isNaN(nbCaptureBefore.value) || nbCaptureBefore.value < 1 || nbCaptureBefore.value > 100) {
         nbCaptureBeforeError.style.display = 'block';
         return false;
@@ -276,15 +276,15 @@ function isInputsValid() {
         nbCaptureBeforeError.style.display = 'none';
     }
 
-    // Validation du champ nbCapture (entre 1 et 50)
-    if (isNaN(nbCapture.value) || nbCapture.value < 1 || nbCapture.value > 50) {
-        nbCaptureError.style.display = 'block';
+    // Validation for nbCaptureOver field (between 1 and 50)
+    if (isNaN(nbCaptureOver.value) || nbCaptureOver.value < 1 || nbCaptureOver.value > 50) {
+        nbCaptureOverError.style.display = 'block';
         return false;
     } else {
-        nbCaptureError.style.display = 'none';
+        nbCaptureOverError.style.display = 'none';
     }
 
-    // Validation du champ nbCaptureAfter (entre 1 et 200)
+    // Validation for nbCaptureAfter field (between 1 and 200)
     if (isNaN(nbCaptureAfter.value) || nbCaptureAfter.value < 1 || nbCaptureAfter.value > 200) {
         nbCaptureAfterError.style.display = 'block';
         return false
@@ -292,7 +292,7 @@ function isInputsValid() {
         nbCaptureAfterError.style.display = 'none';
     }
 
-    // Validation du champ threshold (entre 1 et 2000)
+    // Validation for threshold field (between 1 and 2000)
     if (isNaN(threshold.value) || threshold.value < 1 || threshold.value > 2000) {
         thresholdError.style.display = 'block';
         return false
@@ -302,5 +302,3 @@ function isInputsValid() {
 
     return true;
 }
-
-
