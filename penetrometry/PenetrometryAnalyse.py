@@ -8,7 +8,7 @@ from penetrometry import extractions_data_pb2
 class PenetrometryAnalyse :
     """Class use to get a penetrometry analyse.
 
-    This method accumulate data about motor erpm (rpm) and current (torque) 
+    This class accumulate data about motor erpm (rpm) and current (torque) 
     during an extraction. Those datas will be usefull to make a analyse of 
     the ground
 
@@ -41,7 +41,7 @@ class PenetrometryAnalyse :
         __penetrometry_thread (Thread) : The thread that gather datas about extractions.
     """
     def __init__(self, vescAdapter):
-        """Create an PenetrometryAnalyse object.
+        """Create a PenetrometryAnalyse object.
 
         Args:
             vescAdapter (VescAdapterV4): The vesc adapter use in main.
