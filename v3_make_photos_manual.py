@@ -49,7 +49,7 @@ def run_performance_test(camera):
     label = input("Please type label, which should be added to photos: ")
     sep = " "
     counter = 1
-    path_piece = OUTPUT_DIR + label + sep
+    path_piece = OUTPUT_DIR + label + "_"
     saving_time_delta = "None"
 
     try:
@@ -60,8 +60,6 @@ def run_performance_test(camera):
             saving_start_t = time.time()
             cv.imwrite(path_piece +
                        str(counter) +
-                       sep +
-                       cur_time +
                        # sep +
                        # "(prev. imwrite time " +
                        # str(saving_time_delta) +

@@ -2146,7 +2146,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
     smoothie.wait_for_all_actions_done()
 
     #arrière jusqu'à avoir reculer de spiral_side_interval
-    vesc_engine.set_target_rpm(-0.1 * config.MULTIPLIER_SI_SPEED_TO_RPM , vesc_engine.PROPULSION_KEY)
+    """vesc_engine.set_target_rpm(-0.1 * config.MULTIPLIER_SI_SPEED_TO_RPM , vesc_engine.PROPULSION_KEY)
     vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
 
     cur_pos_obj = gps.get_last_position_v2()
@@ -2163,7 +2163,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
         print(f"Distance n°1 : {distance}")
         
     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-    
+    """
     time.sleep(0.5)
 
     #Roue fond à gauche
