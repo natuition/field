@@ -70,6 +70,17 @@ function createMap(coords_field, coords_other) {
     }
 
     map.on('load', function () {
+
+        map.loadImage('http://' + document.domain + ':' + location.port + '/static/start-image.png', (error, image) => {
+            if (error) throw error;
+            map.addImage('start-img', image);
+        });
+
+        map.loadImage('http://' + document.domain + ':' + location.port + '/static/focus-image.png', (error, image) => {
+            if (error) throw error;
+            map.addImage('focus-img', image);
+        });
+
         //Other field zone
         if (typeof (map.getSource('other_field')) == "undefined") {
             map.addSource('other_field', {
@@ -178,20 +189,44 @@ function createMap(coords_field, coords_other) {
                     'type': 'Feature',
                     'geometry': {
                         'type': 'Point',
-                        'coordinates': coords_field[coords_field.length - 1]
+                        'coordinates': coords_field[1]
                     }
                 }
             });
             map.addLayer({
                 'id': 'field_startLayer',
-                'type': 'circle',
+                'type': 'symbol',
                 'source': 'field_start',
-                'paint': {
-                    'circle-radius': 3,
-                    'circle-color': '#2BFAFA'
+                'layout': {
+                    'icon-image': 'start-img',
+                    'icon-size': 0.25
                 }
             });
         }
+
+        //Field focus point
+        if (typeof (map.getSource('field_focus')) == "undefined") {
+            map.addSource('field_focus', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': coords_field[2]
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'field_focusLayer',
+                'type': 'symbol',
+                'source': 'field_focus',
+                'layout': {
+                    'icon-image': 'focus-img',
+                    'icon-size': 0.25
+                }
+            });
+        }
+
         //Instruction_line
         if (typeof (map.getSource('instruction_line')) == "undefined") {
             map.addSource('instruction_line', {
