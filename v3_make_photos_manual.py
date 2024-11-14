@@ -3,8 +3,18 @@ import adapters
 import cv2 as cv
 import time
 import utility
+import os
+ 
+OUTPUT_DIR_NAME = "/media/pictures/manual_photos_maker"
 
-OUTPUT_DIR = "manual_photos_maker/"
+tmp_ouput_dir = OUTPUT_DIR_NAME
+folder_exist = os.path.exists(tmp_ouput_dir)
+i=1
+while folder_exist:
+    tmp_ouput_dir = OUTPUT_DIR_NAME+f"_{i}"
+    folder_exist = os.path.exists(tmp_ouput_dir)
+
+OUTPUT_DIR = tmp_ouput_dir + "/"
 
 
 def markup_5_points(image):
@@ -53,6 +63,7 @@ def run_performance_test(camera):
     saving_time_delta = "None"
 
     try:
+        print("Violette is making photos now (ctrl+c for stop).")
         while True:
             frame = camera.get_image()
             cur_time = utility.get_current_time()  # timestamp when frame was read
