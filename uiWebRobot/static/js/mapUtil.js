@@ -549,7 +549,15 @@ socketMap.on('newField', function (dataServ) {
             'type': 'Feature',
             'geometry': {
                 'type': 'Point',
-                'coordinates': dataServ["field"][dataServ["field"].length - 1]
+                'coordinates': dataServ["field"][1]
+            }
+        });
+
+        map.getSource('field_focus').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Point',
+                'coordinates': dataServ["field"][2]
             }
         });
 
