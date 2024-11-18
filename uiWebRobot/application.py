@@ -64,6 +64,7 @@ class UIWebRobot:
         self.__app.add_url_rule("/restart_ui", view_func=self.restart_ui)
         self.__app.add_url_rule("/calibrate", view_func=self.calibrate, methods=['GET', 'POST'])
         self.__app.add_url_rule("/actuator_screening", view_func=self.actuator_screening)
+        self.__app.add_url_rule("/analyse_data_vesc", view_func=self.analyse_data_vesc)
 
     def __setting_flask(self):
         self.__app.register_error_handler(Exception, self.handle_exception)
@@ -166,7 +167,7 @@ class UIWebRobot:
             "screening_pause": Events.ACTUATOR_SCREENING_PAUSE,
             "screening_quit": Events.ACTUATOR_SCREENING_STOP
         }
-        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field"]
+        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field", "penetrometry_new_params"]
         if "type" in data:
             if data["type"] in msg_socket_data_before_event:
                 self.get_state_machine().on_socket_data(data)
@@ -290,6 +291,13 @@ class UIWebRobot:
 
         return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), hasStarted=currentState.getStatusOfControls()["hasStarted"], count=currentState.getStatusOfControls()["count"], now=datetime.now().strftime("%H_%M_%S_%f"))
     
+
+    def analyse_data_vesc(self):
+        if not isinstance(self.get_state_machine().currentState, (WorkingState)):
+            return redirect('/')
+        return render_template("AnalyseDataVesc.html", ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), now=datetime.now().strftime("%H_%M_%S_%f"))
+
+
     def __get_ui_language(self):
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:

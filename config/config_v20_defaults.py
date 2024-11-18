@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.9"
+CONFIG_VERSION = "0.20.11"
 
 
 # ======================================================================================================================
@@ -11,6 +11,7 @@ CONFIG_VERSION = "0.20.9"
 # ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
 # EXTRACTION SETTINGS
 # VESC SETTINGS
+# PENETROMETRY SETTINGS
 # GPS SETTINGS
 # SMOOTHIE SETTINGS
 # DETECTION SETTINGS
@@ -114,7 +115,7 @@ SLOW_FAST_MODE_HEAD_FACTOR = 0.5
 
 # protection to prevent robot leaving a field it works on
 # True: stop robot and set state to out if service if robot has left the field; False: disable leaving the field control
-ALLOW_FIELD_LEAVING_PROTECTION = True
+ALLOW_FIELD_LEAVING_PROTECTION = False
 # mms; robot will stop if ALLOW_FIELD_LEAVING_PROTECTION=True and PERPENDICULAR from a field's line is bigger
 # than this value (all ABCDA field lines are checked) and it's on left side of the line
 LEAVING_PROTECTION_DISTANCE_MAX = 1000
@@ -177,6 +178,7 @@ VESC_CORK_PICKUP_MAX_TRIES = 3
 AVOID_CORK_VIEW_OBSCURING = True  # is True: adds offsets to control points to make a plant to be at the top half of the undistorted zone
 
 EXTRACTIONS_FULL_CYCLES = 2  # count of full extraction loops called after periphery NN detection (should be >= 1)
+0.006184835433959961
 EXTRACTION_TUNING_MAX_COUNT = 3 # Number of try to get closer to a plant
 
 SEEK_DELTA_DISTANCE = 25  # mm; if weed is lost after tuning/getting closer - we do 3 shifts for that value (down, left, right) and trying to find it
@@ -187,6 +189,9 @@ FIRST_POINT_NO_EXTRACTIONS = False
 
 # True: set on pause extractions and wait for manual continue permission; False: usual extraction
 SET_EXTRACTIONS_ON_DEBUG_PAUSE = False
+
+
+
 
 
 # ======================================================================================================================
@@ -232,12 +237,44 @@ VESC_EXTRACTION_CALIBRATION_MAX_TIME = 2 # seconds; max time needed to reach sto
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM = 2500  
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME = 0.3 # seconds; calibration small movement down time (calibration "Z-5" fix) 
 VESC_EXTRACTION_AUTODETECT_CAN_ID = False # set to False to use vesc can id from this config, set to True to try detect vesc can id during initialization
-VESC_EXTRACTION_CAN_ID = 0 # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
+VESC_EXTRACTION_CAN_ID = 2 # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
 
 VESC_SMOOTH_ACCEL_RPM_STEP = 2500
 VESC_SMOOTH_ACCEL_TIME_STEP = 0.1  
 VESC_SMOOTH_DECEL_RPM_STEP = 2500
 VESC_SMOOTH_DECEL_TIME_STEP = 0.1
+
+
+
+# ======================================================================================================================
+# PENETROMETRY SETTINGS
+# ======================================================================================================================
+
+
+PENETROMETRY_ANALYSE_MODE = True  # Active or desactive the analyse of vesc datas
+PENETROMETRY_ANALYSE_FREQUENCY = 0.02 # Frequency of vesc questionning, in second
+
+PENETROMETRY_DATA_QUEUE_NAME = "/queue_penetrometry_data" # Name of the queue that contain the data of extraction
+PENETROMETRY_DATA_QUEUE_MAX_MESSAGE = 10 # Size of the queue that contain the data of extraction
+PENETROMETRY_DATA_QUEUE_BUFFER_SLICE_SIZE = 50 # Size max of buffer in message sended in the queue
+
+PENETROMETRY_PARAMS_QUEUE_NAME = "/queue_penetrometry_params" # Name of the queue that contain the new params send by the web client
+PENETROMETRY_PARAMS_QUEUE_MAX_MESSAGE = 5 # Size of the queue that contain the new params send by the web client
+
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_BEFORE = 10 # Number of capture registred before the trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_OVER = 5 # Number of capture over the treshold to trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_AFTER = 90 # Number of capture registred after the trigger
+PENETROMETRY_RPM_TRIGGER_THRESHOLD = 500 # RPM threshold for the trigger
+
+PENETROMETRY_SAVING_MODE = True # Active or desactive the saving of vesc datas
+
+POLARY_POLE_COUNT = 7 # Multiply the erpm by the pole count of the motor give you the rpm
+TORQUE_CONST = 0.081 # Multiply the input current motor by this constant give you the torque
+
+
+
+
+
 
 # ======================================================================================================================
 # GPS SETTINGS
@@ -256,9 +293,9 @@ GPS_POINT_TIME_BEFORE_STOP = 2
 # (starts counting after robot was stopped, not after last point received)
 GPS_POINT_TIME_BEFORE_RECONNECT = 5
 # True: allow robot to restart ntrip service if received GPS point's quality is not '4'; False: ignore points quality
-ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART = True
+ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART = False
 # True: allow robot to stop if GPS point quality is not '4'; False: don't stop the robot
-ALLOW_GPS_BAD_QUALITY_STOP = True
+ALLOW_GPS_BAD_QUALITY_STOP = False
 # True: stop robot if prev-cur position distance is bigger than PREV_CUR_POINT_MAX_DIST and wait for another
 # cur_pos point with suitable distance, no more than specified in GPS_DIST_WAIT_TIME_MAX time;
 # False: ignore prev-cur position distance
@@ -325,8 +362,8 @@ CORK_CALIBRATION_MIN_TIME = 3600
 CALIBRATION_ORDER = ["Z", "X", "Y", "A", "B", "C"]
 
 # DIRECTION WHEELS
-A_MIN = -6 
-A_MAX = 6 
+A_MIN = -13 
+A_MAX = 13 
 #NOT USED
 B_MIN = -float("inf")
 B_MAX = float("inf")
@@ -347,6 +384,7 @@ C_F_MAX = 1000
 C_COEFFICIENT_TO_MM = 1
 
 A_ONE_DEGREE_IN_SMOOTHIE = 2  # A axis
+0.005750913619995118
 A_DEGREES_PER_SECOND = 5  # A axis
 NAV_TURN_WHEELS_CENTER = 0
 
@@ -416,7 +454,7 @@ VALUES_LEARN_GO_STRAIGHT = 40
 
 ANTI_THEFT_ZONE_RADIUS = 5000
 
-ROBOT_SN = "SN000"
+ROBOT_SN = "SN030"
 
 # posix_ipc.MessageQueue in main script setting
 # int: override OS's default max amount messages in queue before new msg sending will be blocked and forced to wait;
@@ -432,10 +470,10 @@ QUEUE_TRACK_PERFORMANCE = False
 MAX_LENGHT_POINT_HISTORY = 100
 ROBOT_SYNTHESIS_HOST = "127.0.0.1"
 ROBOT_SYNTHESIS_PORT = 2006
-DATAGATHERING_HOST = "172.16.3.5"
+DATAGATHERING_HOST = "172.16.0.10"
 DATAGATHERING_PORT = 8080
 
-LIFE_LINE_PIN = 77 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
+LIFE_LINE_PIN = 78 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
@@ -546,7 +584,7 @@ MILLING_PLANT_BOX_Y_SIZE_SCALE = 1
 PERIPHERY_CONFIDENCE_THRESHOLD = 0.1
 PERIPHERY_INPUT_SIZE = (416, 416)
 PERIPHERY_CLASSES_FILE = "yolo/Y0016.names"
-PERIPHERY_MODEL_PATH = "yolo/Y0016_416_416.trt" 
+PERIPHERY_MODEL_PATH = "yolo/Y0016_416_416.trt"
 
 PERIPHERY_HIER_THRESHOLD = 0.5
 PERIPHERY_NMS_THRESHOLD = 0.4
@@ -563,9 +601,9 @@ PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
 PRECISE_CONFIDENCE_THRESHOLD = 0.1
-PRECISE_INPUT_SIZE = (832, 832)
+PRECISE_INPUT_SIZE = (416, 416)
 PRECISE_CLASSES_FILE = "yolo/Y0016.names"
-PRECISE_MODEL_PATH = "yolo/Y0016_832_832.trt"  # for TRT wrapper
+PRECISE_MODEL_PATH = "yolo/Y0016_416_416.trt"
 
 PRECISE_HIER_THRESHOLD = 0.5
 PRECISE_NMS_THRESHOLD = 0.4
@@ -606,9 +644,9 @@ APPLY_THREAD_BUFF_CLEANING = True
 BUFF_CLEANING_DELAY = 0  # seconds of waiting before frame reading; should be positive or zero; set to 0 if thread cleaning is used
 UNDISTORTED_ZONE_RADIUS = 300
 DELAY_BEFORE_2ND_SCAN = 0.3  # delay in seconds after robot stop and before second scan (M=1)
-WORKING_ZONE_POLY_POINTS = [[1000, 1050], [30, 1080], [45, 755], [40, 300], [640, 115], [1000, 70], [1360, 115], [1860, 300], [1955, 755], [1970, 1080]]
+WORKING_ZONE_POLY_POINTS = [[1534, 908], [1530, 772], [1523, 641], [1502, 519], [1479, 412], [1452, 322], [1438, 290], [1403, 279], [1300, 260], [1184, 235], [1062, 228], [936, 226], [809, 237], [693, 256], [594, 279], [493, 302], [479, 343], [454, 431], [435, 535], [417, 648], [410, 783], [412, 917], [988, 929]]
 # working zone polygon's points relative to scene center (used for abs points calculation during calibrations)
-WORKING_ZONE_POLY_POINTS_REL = [[621, 96], [622, -48], [609, -189], [585, -317], [558, -431], [389, -562], [-10, -564], [-407, -564], [-585, -445], [-611, -338], [-637, -208], [-646, -67], [-646, 89], [-21, 119]]
+WORKING_ZONE_POLY_POINTS_REL = [[534, -72], [530, -208], [523, -339], [502, -461], [479, -568], [452, -658], [438, -690], [403, -701], [300, -720], [184, -745], [62, -752], [-64, -754], [-191, -743], [-307, -724], [-406, -701], [-507, -678], [-521, -637], [-546, -549], [-565, -445], [-583, -332], [-590, -197], [-588, -63], [-12, -51]]
 # max res is used during deployment calibration to detect scene center position
 DEPLOYMENT_CAMERA_MAX_W = 3264
 # max res is used during deployment calibration to detect scene center position
@@ -657,13 +695,15 @@ ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
 # ======================================================================================================================
 NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
 #The robot will aim for the furthest point, 
+0.005507249832153321
 #when it reaches this point it will wait for a press on enter to go to the furthest point from it.
 DISPLAY_INSTRUCTION_PATH = False #Allows to display the robot guide points on the ui.
 DELTA_DISPLAY_INSTRUCTION_PATH = 15 #Number of guide points display on the ui.
-POINT_A = [[46.1579425, -1.1344245], -0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+POINT_A = [[46.1546931, -1.1198362], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
-POINT_B = [[46.1577957, -1.1347992], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+POINT_B = [[46.1545618, -1.119885], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
+RELOAD_CONFIG_DURING_NAVIGATION_TEST = False
 
 
 # ======================================================================================================================
@@ -702,3 +742,4 @@ GPS_POINT_WAIT_TIME_MAX = 0.25
 ALLOW_DEMO_PAUSES = False
 DEMO_PAUSES_HOST = "127.0.0.1"
 DEMO_PAUSES_PORT = 4546
+-0.0014936733245849605

@@ -76,6 +76,7 @@ except Exception as exc:
                 f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
                 f"_config.py")
             shutil.copy(config_backup[0], "config/config.py")
+            shutil.chown("config/config.py", user="violette", group="violette")
 
             if is_config_empty("config/config.py"):
                 raise Exception("config file is empty")
@@ -102,6 +103,7 @@ from extraction import ExtractionManagerV3
 from notification import RobotStates
 from notification import NotificationClient
 import connectors
+from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
 
 """
 import SensorProcessing
@@ -222,6 +224,7 @@ def move_to_point_and_extract(coords_from_to: list,
                               periphery_det: detection.YoloOpenCVDetection,
                               precise_det: detection.YoloOpenCVDetection,
                               logger_full: utility.Logger,
+                              myPenetrometryAnalyse,
                               report_field_names,
                               trajectory_saver: utility.TrajectorySaver,
                               working_zone_polygon,
@@ -652,6 +655,8 @@ def move_to_point_and_extract(coords_from_to: list,
         # NAVIGATION CONTROL
         cur_pos_obj = gps.get_last_position_v2()
         cur_pos = cur_pos_obj.as_old_list
+        if(config.PENETROMETRY_ANALYSE_MODE and myPenetrometryAnalyse is not None):
+            myPenetrometryAnalyse.set_current_coordinates(cur_pos[0], cur_pos[1])
 
         nav_start_t = time.time()
 
@@ -2212,6 +2217,10 @@ def main():
                 nav=nav,
                 log_cur_dir=log_cur_dir) as navigation_prediction:
 
+            myPenetrometryAnalyse = None
+            if(config.PENETROMETRY_ANALYSE_MODE):
+                myPenetrometryAnalyse = PenetrometryAnalyse(vesc_engine)
+
             # try to load field ABCD points
             field_gps_coords = None
             field_name = None
@@ -2610,6 +2619,7 @@ def main():
                                 periphery_detector,
                                 precise_detector,
                                 logger_full,
+                                myPenetrometryAnalyse,
                                 report_field_names,
                                 trajectory_saver,
                                 working_zone_polygon,
@@ -2646,6 +2656,7 @@ def main():
                                         periphery_detector,
                                         precise_detector,
                                         logger_full,
+                                        myPenetrometryAnalyse,
                                         report_field_names,
                                         trajectory_saver,
                                         working_zone_polygon,
@@ -2740,6 +2751,7 @@ def main():
                         periphery_detector,
                         precise_detector,
                         logger_full,
+                        myPenetrometryAnalyse,
                         report_field_names,
                         trajectory_saver,
                         working_zone_polygon,
@@ -2765,6 +2777,7 @@ def main():
                     if config.ENABLE_ADDITIONAL_WHEELS_TURN and \
                             i - 1 in bezier_points_indexes and i in bezier_points_indexes:
                         cur_pos = gps.get_last_position()
+                        
                         if cur_pos[2] != "4":
                             msg = f"Additional wheels turn got point {cur_pos} with non 4 quality - " \
                                   f"skipping wheels turn actions"
@@ -2799,11 +2812,13 @@ def main():
                             with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
                                 wheels_angle_file.write(
                                     str(smoothie.get_adapter_current_coordinates()["A"]))
-                        test_continue = input(
-                            "Press enter to continue the test, type anything to exit.")
-                        if test_continue != "":
-                            notification.close()
-                            break
+                        # test_continue = input(
+                        #     "Press enter to continue the test, type anything to exit.")
+                        # if test_continue != "":
+                        #     notification.close()
+                        #     break
+                        print("Retourne moi !")
+                        time.sleep(10)
                         try:
                             start_position = utility.average_point(
                                 gps, trajectory_saver, nav)
@@ -2811,8 +2826,9 @@ def main():
                             pass
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"clear_path": True}))
-                        # reload config if kp or ki change
-                        importlib.reload(config)
+                        if config.RELOAD_CONFIG_DURING_NAVIGATION_TEST:
+                            # reload config if kp or ki change
+                            importlib.reload(config)
 
                     # 1 -> moving forward #-1 -> moving backward
                     last_direction_of_travel = (speed >= 0) if 1 else -1
