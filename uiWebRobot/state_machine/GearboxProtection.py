@@ -88,3 +88,8 @@ class GearboxProtection:
         print("Distance median = ", median_value)
         
         return median_value < self.__min_speed
+    
+    def is_remote(self, start_point: list) -> bool:
+        current_point = self.__coord_list[-1]
+        distance = self.__gps_computing.get_distance(start_point, current_point)
+        return distance > 3000

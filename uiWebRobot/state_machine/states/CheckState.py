@@ -1,14 +1,14 @@
 import sys
 sys.path.append('../')
 from config import config
-from state_machine import utilsFunction
-from state_machine import Events
-from state_machine.states import WaitWorkingState
-from state_machine import State
+from uiWebRobot.state_machine import utilsFunction
+from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.states import WaitWorkingState
+from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
 import signal
 from flask_socketio import SocketIO
-from EnvironnementConfig import EnvironnementConfig
+from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 import utility
 import os
 

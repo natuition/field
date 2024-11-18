@@ -7,23 +7,23 @@ import os
 import json
 from urllib.parse import quote
 
-from state_machine import State
-from state_machine.states import CreateFieldState
-from state_machine.states import StartingState
-from state_machine.states import ResumeState
-from state_machine.states import ErrorState
-from state_machine.states import CalibrateState
-from state_machine.states import ActuatorScreeningState
-from state_machine import Events
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states import CreateFieldState
+from uiWebRobot.state_machine.states import StartingState
+from uiWebRobot.state_machine.states import ResumeState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine.states import CalibrateState
+from uiWebRobot.state_machine.states import ActuatorScreeningState
+from uiWebRobot.state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
 
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from state_machine import utilsFunction
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
+from uiWebRobot.state_machine import utilsFunction
 from config import config
 import adapters
 import utility
 
-from EnvironnementConfig import EnvironnementConfig
+from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.

@@ -1,5 +1,5 @@
 import socketio
-import application
+#import application
 from config import config
 import threading
 import telnetlib

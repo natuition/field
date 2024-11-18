@@ -11,13 +11,13 @@ from datetime import datetime, timezone
 import os
 import json
 
-from state_machine import State
-from state_machine.states import WaitWorkingState
-from state_machine.states import PhysicalBlocageState
-from state_machine.states import ErrorState
-from state_machine import Events
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states import WaitWorkingState
+from uiWebRobot.state_machine.states import PhysicalBlocageState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
-from state_machine.GearboxProtection import GearboxProtection
+from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects
 from uiWebRobot.state_machine import utilsFunction

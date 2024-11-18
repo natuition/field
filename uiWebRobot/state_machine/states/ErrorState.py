@@ -4,12 +4,12 @@ sys.path.append('../')
 from flask_socketio import SocketIO
 
 import utility
-from state_machine import State
+from uiWebRobot.state_machine import State
 from config import config
 from shared_class.robot_synthesis import RobotSynthesis
 
 #This state corresponds when the robot has an error.
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 
 class ErrorState(State.State):
 

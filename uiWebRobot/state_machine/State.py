@@ -2,7 +2,7 @@ import sys
 sys.path.append('../')
 
 import utility
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from shared_class.robot_synthesis import RobotSynthesis
 
 class State(object):
