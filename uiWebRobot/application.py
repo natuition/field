@@ -1,6 +1,9 @@
 import sys
 sys.path.append('../')
 
+import safe_import_of_config
+safe_import_of_config.make_import("../config", "../configBackup")
+
 from state_machine.Events import Events
 from state_machine.utilsFunction import *
 from state_machine.StateMachine import StateMachine
@@ -23,7 +26,6 @@ from uiWebRobot.setting_page import SettingPageManager
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from config import config
 from uiWebRobot.state_machine.states import *
 import traceback
 
@@ -73,6 +75,7 @@ class UIWebRobot:
         self.__app.add_url_rule("/restart_ui", view_func=self.restart_ui)
         self.__app.add_url_rule("/calibrate", view_func=self.calibrate, methods=['GET', 'POST'])
         self.__app.add_url_rule("/actuator_screening", view_func=self.actuator_screening)
+        self.__app.add_url_rule("/run_life_line", view_func=self.run_life_line)
 
     def __setting_flask(self):
         self.__app.register_error_handler(Exception, self.handle_exception)
@@ -366,6 +369,11 @@ class UIWebRobot:
     def restart_ui(self):
         os.system('sudo systemctl restart UI')
         return None
+
+    def run_life_line(self):
+        utility.life_line_reset()
+        #os.system('sudo systemctl restart UI')
+        return "OK"
 
     def handle_exception(self, e):
         # pass through HTTP errors

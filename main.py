@@ -20,76 +20,10 @@ import json
 import glob
 import importlib
 import subprocess
-import datetime
-import shutil
-import pytz
 
-
-# load config, if failed - copy and load config backups until success or no more backups
-def is_config_empty(config_full_path: str):
-    with open(config_full_path, "r") as config_file:
-        for line in config_file:
-            if line not in ["", "\n"]:
-                return False
-    return True
-
-
-try:
-    if not os.path.isfile("config/config.py"):
-        raise Exception("config file is not exist")
-
-    if is_config_empty("config/config.py"):
-        raise Exception("config file is empty")
-
-    from config import config
-except KeyboardInterrupt:
-    raise KeyboardInterrupt
-except Exception as exc:
-    print(f"Failed to load current config.py! ({str(exc)})")
-
-    # load config backups
-    config_backups = [path for path in glob.glob(
-        "configBackup/*.py") if "config" in path]
-    for i in range(len(config_backups)):
-        ds = config_backups[i].split("_")[1:]  # date structure
-        ds.extend(ds.pop(-1).split(":"))
-        ds[-1] = ds[-1][:ds[-1].find(".")]
-        config_backups[i] = [
-            config_backups[i],
-            datetime.datetime(
-                day=int(ds[0]),
-                month=int(ds[1]),
-                year=int(ds[2]),
-                hour=int(ds[3]),
-                minute=int(ds[4]),
-                second=int(ds[5])
-            ).timestamp()
-        ]
-    # make last backups to be placed and used first
-    config_backups.sort(key=lambda item: item[1], reverse=True)
-
-    # try to find and set as current last valid config
-    for config_backup in config_backups:
-        try:
-            os.rename(
-                "config/config.py",
-                f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
-                f"_config.py")
-            shutil.copy(config_backup[0], "config/config.py")
-
-            if is_config_empty("config/config.py"):
-                raise Exception("config file is empty")
-
-            from config import config
-            print("Successfully loaded config:", config_backup[0])
-            break
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            pass
-    else:
-        print("Couldn't find proper 'config.py' file in 'config' and 'configBackup' directories!")
-        exit()
+import safe_import_of_config
+safe_import_of_config.make_import()
+from config import config
 
 import adapters
 import navigation
