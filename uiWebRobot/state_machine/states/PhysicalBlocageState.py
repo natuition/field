@@ -46,13 +46,71 @@ class PhysicalBlocageState(State.State) :
                                                 removeFieldButton=ButtonState.DISABLE,
                                                 joystick=False,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
+        
+        try:
+            if self.vesc_engine is None:
+                msg = f"[{self.__class__.__name__}] -> initVesc"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+                self.vesc_engine = utilsFunction.initVesc(self.logger)
+            else:
+                msg = f"[{self.__class__.__name__}] -> no need to initVesc"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
+                self.logger.write_and_flush(msg + "\n")
+
+            self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
+                self.logger.write_and_flush(msg + "\n")
+
+            self.vesc_engine.set_current_rpm(
+                0, self.vesc_engine.PROPULSION_KEY)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
+                self.logger.write_and_flush(msg + "\n")
+
+            self.vesc_engine.start_moving(
+                self.vesc_engine.PROPULSION_KEY,
+                smooth_acceleration=True,
+                smooth_deceleration=True)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
+                self.logger.write_and_flush(msg + "\n")
+
+            if self.smoothie is None:
+                msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+                try:
+                    self.smoothie = utilsFunction.initSmoothie(self.logger)
+                except Exception as e:
+                    if "[Timeout sm]" in str(e):
+                        self.smoothie = utilsFunction.initSmoothie(self.logger)
+                    else:
+                        raise e
+            else:
+                msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
 
         self.field = None
-        self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
         self.__gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
         self.__blocagePos = self.__gps.get_last_position()
         self.__allPath = []
         self.__gb = GearboxProtection()
+        
+        msg = f"[{self.__class__.__name__}] -> GearboxProtection ok"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
 
         self.__backward_thread_alive = True
         self.__backward_thread = threading.Thread(target=self.__backward_thread_tf,
@@ -61,6 +119,9 @@ class PhysicalBlocageState(State.State) :
                                                        self.socketio),
                                                  daemon=True)
         self.__backward_thread.start()
+        msg = f"[{self.__class__.__name__}] -> __backward_thread ok"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
 
         self.__check_backward_thread_alive = True
         self.__check_backward_thread = threading.Thread(target=self.__check_backward_thread_tf,
@@ -69,9 +130,19 @@ class PhysicalBlocageState(State.State) :
                                                        self.socketio),
                                                  daemon=True)
         self.__check_backward_thread.start()
+        msg = f"[{self.__class__.__name__}] -> __check_backward_thread ok"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
+        self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+        msg = f"[{self.__class__.__name__}] -> reload ok"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
 
     def on_event(self, event):
-        if event in Events.Events.PHYSICAL_BLOCAGE:
+        if event in Events.Events.ACTUATOR_SCREENING:
+            msg = f"[{self.__class__.__name__}] -> Event : physical_bocage"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
             self.__stop_thread()
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
@@ -83,9 +154,13 @@ class PhysicalBlocageState(State.State) :
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
+            #return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
+            return ErrorState.ErrorState(self.socketio, self.logger, "La marche arrière a été effectuée")
         
         else:
+            msg = f"[{self.__class__.__name__}] -> Event : error"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
             self.__stop_thread()
             try:
                 if self.smoothie is not None:
@@ -98,7 +173,7 @@ class PhysicalBlocageState(State.State) :
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.logger, "Violette est totalement bloquée")
 
     def __backward_thread_tf(self) :
         speed = -config.SI_SPEED_FWD
@@ -109,6 +184,9 @@ class PhysicalBlocageState(State.State) :
     def __check_backward_thread_tf(self) :
         while self.__check_backward_thread_alive :
             current_position = self.__gps.get_last_position()
+            msg = f"[{self.__class__.__name__}] -> Current position : {current_position[0]}, {current_position[1]}"
+            self.logger.write_and_flush(msg+"\n")
+            print(msg)
             self.__allPath.append(current_position)
             self.__gb.store_coord(current_position)
             if self.__gb.is_physically_blocked() :
