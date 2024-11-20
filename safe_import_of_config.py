@@ -14,7 +14,7 @@ def is_config_empty(config_full_path: str):
                 return False
     return True
 
-def make_import(config_directory_path: str = "./config", config_backup_path : str = "./configBackup"):
+def make_import(config_directory_path: str = "config", config_backup_path : str = "configBackup"):
     try:
         if not os.path.isfile(f"{config_directory_path}/config.py"):
             raise Exception("config file doesn't exist")
