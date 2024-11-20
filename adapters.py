@@ -12,6 +12,7 @@ import serial
 import pyvesc
 import re
 import RPi.GPIO as GPIO
+from serial import SerialException
 
 
 class SmoothieAdapter:
@@ -49,18 +50,39 @@ class SmoothieAdapter:
             "C": self.__c_cur,
         }
 
+        #< Code de base
+        # res = None
+        # for i in range(3):
+        #     res = self.switch_to_relative()
+        #     if res != self.RESPONSE_OK:
+        #         msg = f"Attempt {i + 1} of switching smoothie to relative is failed, smoothie response:\n{res}"
+        #         print(msg)
+        #     else:
+        #         break
+        # else:
+        #     msg = f"All attempts of switching smoothie to relative were failed! Last smoothie's response:\n{res}"
+        #     print(msg)
+        #     raise Exception(msg)
+        #> Code de base
+
+        #< Code patché rapidement pour la démo
         res = None
         for i in range(3):
             res = self.switch_to_relative()
-            if res != self.RESPONSE_OK:
+            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                 msg = f"Attempt {i + 1} of switching smoothie to relative is failed, smoothie response:\n{res}"
                 print(msg)
             else:
+                if(res == self.RESPONSE_OK):
+                    print(f"La smoothie est passée en mode relatif sans aucune detection de bug. La réponse était : {res}")
+                else:
+                    print(f"Un bug a été détécté lors du passage de la smoothie en mode relatif mais pris en compte par la correction de bug. La réponse était {res}")
                 break
         else:
             msg = f"All attempts of switching smoothie to relative were failed! Last smoothie's response:\n{res}"
             print(msg)
             raise Exception(msg)
+        #> Code patché rapidement pour la démo
 
         if config.SEEDER_QUANTITY > 0:
             self.seeder_close()
@@ -1776,6 +1798,10 @@ class VescAdapterV4:
 
     def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq, logger_full: utility.Logger):
         self.__locker = threading.Lock()
+        self.__reconnect_locker = threading.Lock()
+
+        self.__ser_port = ser_port
+        self.__ser_baudrate = ser_baudrate
 
         gpio_is_initialized = False
         self.__stopper_check_freq = stopper_check_freq
@@ -1899,6 +1925,7 @@ class VescAdapterV4:
                 print("Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!)")
         # do any new calibrations (add vesc calibration code here)
         # ...
+        self.__last_reconnect_time = time.time() - 60
 
     def __enter__(self):
         return self
@@ -1908,6 +1935,7 @@ class VescAdapterV4:
 
     def __del__(self):
         self.close()
+        del self.__ser
 
     def close(self):
         if self.__ser.is_open:
@@ -1927,6 +1955,39 @@ class VescAdapterV4:
             self._movement_ctrl_th.join(1)
             self.__ser.close()
 
+    def reconnect_vesc(self) :
+        with self.__reconnect_locker :
+            if time.time() - self.__last_reconnect_time < 60 :
+                return
+
+            print(self)
+            self.__last_reconnect_time = time.time()
+            self.__ser.close()
+
+            smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
+            while not "vesc" in smoothie_vesc_addr:
+                msg = "Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
+                print(msg)
+                time.sleep(1)
+                smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
+                
+            vesc_address = smoothie_vesc_addr["vesc"]
+            msg = f"Finding vesc's USB address at '{vesc_address}'."
+            print(msg)
+            
+            could_open_port = False
+            while not could_open_port :
+                try : 
+                    self.__ser = serial.Serial(port=vesc_address, baudrate=self.__ser_baudrate)
+                    could_open_port = True
+                    self.__ser.flushInput()
+                    self.__ser.flushOutput()
+                    self.__ser.timeout = 5
+                    print("It is reconnected!")
+                except Exception as e:
+                    print(f"Could not open port ({e}).")
+                    time.sleep(1)
+
     def get_unregistered_can_id(self):
         for can_id in range(0, 253):
             data = self.__get_firmware_version(['version_major', 'version_minor'], can_id)
@@ -1936,10 +1997,14 @@ class VescAdapterV4:
 
     def __get_firmware_version(self, report_field_names, can_id):
         with self.__locker:
-            self.__ser.write(pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id)))
-            in_buf = b''
-            while self.__ser.in_waiting > 0:
-                in_buf += self.__ser.read(self.__ser.in_waiting)
+            try :
+                self.__ser.write(pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id)))
+                in_buf = b''
+                while self.__ser.in_waiting > 0:
+                    in_buf += self.__ser.read(self.__ser.in_waiting)
+            except SerialException :
+                self.reconnect_vesc()
+
 
         if len(in_buf) == 0:
             return None
@@ -1973,7 +2038,10 @@ class VescAdapterV4:
                                 self.__stop_request[engine_key]:
                             # immediate engine stop
                             if not self.__use_smooth_decel[engine_key]:
-                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                try :
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
                                 self.__current_rpm[engine_key] = 0
                                 self.__last_stop_time[engine_key] = time.time()
                                 self.__is_moving[engine_key] = False
@@ -1986,12 +2054,18 @@ class VescAdapterV4:
                                 if abs(self.__current_rpm[engine_key]) > config.VESC_SMOOTH_DECEL_RPM_STEP:
                                     self.__current_rpm[engine_key] += -config.VESC_SMOOTH_DECEL_RPM_STEP \
                                         if self.__current_rpm[engine_key] > 0 else config.VESC_SMOOTH_DECEL_RPM_STEP
-                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                        self.__current_rpm[engine_key],
-                                        can_id=self.__can_ids[engine_key])))
+                                    try :
+                                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                            self.__current_rpm[engine_key],
+                                            can_id=self.__can_ids[engine_key])))
+                                    except SerialException :
+                                        self.reconnect_vesc()
                                 # stop engine (current RPM <= RPM step)
                                 else:
-                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                    try :
+                                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                    except SerialException :
+                                        self.reconnect_vesc()
                                     self.__current_rpm[engine_key] = 0
                                     self.__last_stop_time[engine_key] = time.time()
                                     self.__is_moving[engine_key] = False
@@ -2003,46 +2077,60 @@ class VescAdapterV4:
                             # set engine to target RPM as current-target difference is <= RPM step
                             if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= \
                                     config.VESC_SMOOTH_ACCEL_RPM_STEP:
-                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                    self.__target_rpm[engine_key],
-                                    can_id=self.__can_ids[engine_key])))
+                                try :
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                        self.__target_rpm[engine_key],
+                                        can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
                                 self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
                             # increase current RPM by RPM step
                             else:
                                 self.__current_rpm[engine_key] += config.VESC_SMOOTH_ACCEL_RPM_STEP \
                                     if self.__target_rpm[engine_key] > self.__current_rpm[engine_key] \
                                     else -config.VESC_SMOOTH_ACCEL_RPM_STEP
-                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                    self.__current_rpm[engine_key],
-                                    can_id=self.__can_ids[engine_key])))
+                                try :
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                        self.__current_rpm[engine_key],
+                                        can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
 
                     # send alive to each active
                     if time.time() > self.__next_alive_time:
                         self.__next_alive_time = time.time() + self.__alive_freq
                         for engine_key in self.__is_moving:
-                            if self.__is_moving[engine_key]:
-                                self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
-                            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-                            in_buf = b''
-                            while self.__ser.in_waiting > 0:
-                                try :
-                                    in_buf += self.__ser.read(self.__ser.in_waiting)
-                                except Exception as e:
-                                    self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
+                            try :
+                                if self.__is_moving[engine_key]:
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
+                                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+                        
+                                in_buf = b''
+                                while self.__ser.in_waiting > 0:
+                                    try:
+                                        in_buf += self.__ser.read(self.__ser.in_waiting)
+                                    except Exception as e:
+                                        self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
+                            except SerialException or OSError as e :
+                                if e.errno == 5 or isinstance(e, SerialException):
+                                    self.reconnect_vesc()
 
                             if len(in_buf) != 0:
                                 response, consumed = pyvesc.decode(in_buf)
                                 if consumed != 0 and response is not None:
                                     if response.__dict__["rpm"] == 0 and self.__target_rpm[engine_key] != 0:
                                         self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
-                                        self.__ser.write(
-                                            pyvesc.encode(
-                                                pyvesc.SetRPM(
-                                                    self.__target_rpm[engine_key],
-                                                    can_id=self.__can_ids[engine_key]
+                                        try :
+                                            self.__ser.write(
+                                                pyvesc.encode(
+                                                    pyvesc.SetRPM(
+                                                        self.__target_rpm[engine_key],
+                                                        can_id=self.__can_ids[engine_key]
+                                                    )
                                                 )
                                             )
-                                        )
+                                        except SerialException :
+                                            self.reconnect_vesc()
                 # wait for next checking tick
                 time.sleep(self.__check_freq)
         except serial.SerialException as ex:
@@ -2059,9 +2147,12 @@ class VescAdapterV4:
             if smooth_acceleration:
                 self.__smooth_accel_next_t[engine_key] = 0
             else:
-                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                    self.__target_rpm[engine_key],
-                    can_id=self.__can_ids[engine_key])))
+                try :
+                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                        self.__target_rpm[engine_key],
+                        can_id=self.__can_ids[engine_key])))
+                except SerialException :
+                    self.reconnect_vesc()
                 self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
             self.__is_moving[engine_key] = True
 
@@ -2073,7 +2164,10 @@ class VescAdapterV4:
                 self.__smooth_decel_next_t[engine_key] = 0
                 self.__stop_request[engine_key] = True
             else:
-                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                try :
+                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                except SerialException :
+                    self.reconnect_vesc()
                 self.__current_rpm[engine_key] = 0
                 self.__last_stop_time[engine_key] = time.time()
                 self.__is_moving[engine_key] = False
@@ -2145,7 +2239,10 @@ class VescAdapterV4:
             raise TypeError(msg)
 
         with self.__locker:
-            self.__ser.write(pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])))
+            try :
+                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])))
+            except SerialException :
+                self.reconnect_vesc()
             self.__current_rpm[engine_key] = rpm
 
     def set_target_rpm(self, rpm, engine_key):
@@ -2252,10 +2349,13 @@ class VescAdapterV4:
 
     def get_sensors_data_of_can_id(self, report_field_names, can_id):
         with self.__locker:
-            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=can_id)))
-            in_buf = b''
-            while self.__ser.in_waiting > 0:
-                in_buf += self.__ser.read(self.__ser.in_waiting)
+            try :
+                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=can_id)))
+                in_buf = b''
+                while self.__ser.in_waiting > 0:
+                    in_buf += self.__ser.read(self.__ser.in_waiting)
+            except SerialException :
+                self.reconnect_vesc()
 
         if len(in_buf) == 0:
             return None
@@ -2272,10 +2372,13 @@ class VescAdapterV4:
 
     def get_sensors_data(self, report_field_names, engine_key):
         with self.__locker:
-            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-            in_buf = b''
-            while self.__ser.in_waiting > 0:
-                in_buf += self.__ser.read(self.__ser.in_waiting)
+            try : 
+                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+                in_buf = b''
+                while self.__ser.in_waiting > 0:
+                    in_buf += self.__ser.read(self.__ser.in_waiting)
+            except SerialException :
+                self.reconnect_vesc()
 
         if len(in_buf) == 0:
             return None

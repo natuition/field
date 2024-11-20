@@ -372,8 +372,7 @@ class UIWebRobot:
 
     def run_life_line(self):
         utility.life_line_reset()
-        #os.system('sudo systemctl restart UI')
-        return "OK"
+        return "Restarting equipment on the current life line."
 
     def handle_exception(self, e):
         # pass through HTTP errors

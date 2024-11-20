@@ -40,7 +40,11 @@ class CheckState(State.State):
         self.logger.write_and_flush(msg + "\n")
         print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
+        self.vesc_engine.close()
         del self.vesc_engine
+        msg = f"[{self.__class__.__name__}] -> Close and recreate vesc"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
 
         self.__voltage_thread_alive = True

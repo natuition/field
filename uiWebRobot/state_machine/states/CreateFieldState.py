@@ -249,6 +249,9 @@ class FieldCreator:
         print(msg)
 
         self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
 
         msg = f"[{self.__class__.__name__}] -> Getting point B..."
         self.logger.write_and_flush(msg + "\n")
@@ -312,18 +315,25 @@ class FieldCreator:
         return unquote(fieldName[:-4], encoding='utf-8')
 
     def manoeuvre(self):
+
         # move backward and stop
         if config.UI_VERBOSE_LOGGING:
             msg = f"Field creation: starting vesc movement of " \
                   f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
             print(msg)
             self.logger.write_and_flush(msg + "\n")
+        
+        self.vesc_emergency.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.set_target_rpm(
             -config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
             self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_BACKWARD, self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_current_rpm(-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
+        time.sleep(config.MANEUVER_TIME_BACKWARD)
+        self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+
         if config.UI_VERBOSE_LOGGING:
             msg = f"Field creation: stopped vesc movement of " \
                   f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
@@ -351,13 +361,17 @@ class FieldCreator:
                   f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
             print(msg)
             self.logger.write_and_flush(msg + "\n")
+
         self.vesc_emergency.set_target_rpm(
             config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
             self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_time_to_move(config.MANEUVER_TIME_FORWARD, self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_current_rpm(config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,self.vesc_emergency.PROPULSION_KEY)
         self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_target_rpm(0, self.vesc_emergency.PROPULSION_KEY)
+        time.sleep(config.MANEUVER_TIME_FORWARD)
+        self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+        self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+
         if config.UI_VERBOSE_LOGGING:
             msg = f"Field creation: stopped vesc movement of " \
                   f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
