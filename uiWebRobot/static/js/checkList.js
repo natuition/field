@@ -107,6 +107,16 @@ socketio.on('wait_working_state', function (dataServ) {
     }
 });
 
+socketio.on('physical_blocage_state', function (dataServ) {
+    console.log("yes")
+    if (dataServ["status"] == "refresh") {
+        //clearInterval(count_next_interval);
+        document.location.reload();
+        console.log("refresh !")
+        socketio.emit('data', { type: "physical_blocage_state_refresh"});
+    }
+});
+
 window.addEventListener("load", function (event) {
     //socketio.emit('data', { type: "getInputVoltage" });
 });

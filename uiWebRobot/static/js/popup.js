@@ -15,4 +15,5 @@ socketBroadcast_.on('notification', function(data) {
 
 socketBroadcast_.on('reload', function(dataServ) {
     document.location.reload();
+    console.log("Reload !")
 });

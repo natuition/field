@@ -1,6 +1,9 @@
 import sys
 sys.path.append('../')
 
+import safe_import_of_config
+safe_import_of_config.make_import("../config", "../configBackup")
+
 from state_machine.Events import Events
 from state_machine.utilsFunction import *
 from state_machine.StateMachine import StateMachine
@@ -23,7 +26,6 @@ from uiWebRobot.setting_page import SettingPageManager
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from config import config
 from uiWebRobot.state_machine.states import *
 import traceback
 
@@ -171,6 +173,7 @@ class UIWebRobot:
         ]
         msg_socket_to_event = [
             Events.STOP, 
+            Events.ERROR,
             Events.CALIBRATION_DETECT,
             Events.CALIBRATION_MOVE,
             Events.START_MAIN,
@@ -185,14 +188,14 @@ class UIWebRobot:
             Events.ACTUATOR_SCREENING_STOP,
             Events.PHYSICAL_BLOCAGE
         ]
-        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "create_field"]
+        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "create_field", "wait_working_state_refresh"]
         
         if "type" in data:
             if data["type"] in [str(i) for i in msg_socket_data_before_event]:
                 self.get_state_machine().on_socket_data(data)
 
             if data["type"] in [str(i) for i in msg_socket_to_event]:
-                print("Data type : ", data["type"])
+                print("Event: ", Events.from_str(data["type"]) == Events.ERROR)
                 self.get_state_machine().on_event(Events.from_str(data["type"]))
 
             if data["type"] in msg_socket_data_after_event:
@@ -253,7 +256,7 @@ class UIWebRobot:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()]), 500
             
         if isinstance(self.get_state_machine().currentState, PhysicalBlocageState):
-            return render_template("Error.html", sn=sn, error_message="Je ne suis pas contente.")
+            return render_template("Error.html", sn=sn, error_message="The robot is physically blocked.")
 
         return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
 
