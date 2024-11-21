@@ -195,7 +195,6 @@ class UIWebRobot:
                 self.get_state_machine().on_socket_data(data)
 
             if data["type"] in [str(i) for i in msg_socket_to_event]:
-                print("Event: ", Events.from_str(data["type"]) == Events.ERROR)
                 self.get_state_machine().on_event(Events.from_str(data["type"]))
 
             if data["type"] in msg_socket_data_after_event:

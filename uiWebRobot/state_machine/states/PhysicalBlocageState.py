@@ -23,7 +23,7 @@ import utility
 import adapters
 
 # This state corresponds when the robot is physically blocking.
-class PhysicalBlocageState(State.State) :
+class PhysicalBlocageState(State) :
     def __init__(
             self, 
             socketio: SocketIO, 
@@ -56,7 +56,7 @@ class PhysicalBlocageState(State.State) :
         self.socketio.emit('physical_blocage_state', {"status": "refresh"}, namespace='/server', broadcast=True)
         self.__check_ui_refresh_thread_alive = True
         self.__check_ui_refresh_thread = threading.Thread(target=self.__check_ui_refresh_thread_tf, daemon=True)
-        #self.__check_ui_refresh_thread.start()
+        self.__check_ui_refresh_thread.start()
 
         msg = f"[{self.__class__.__name__}] -> reload"
         self.logger.write_and_flush(msg + "\n")
