@@ -256,7 +256,7 @@ class UIWebRobot:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()]), 500
             
         if isinstance(self.get_state_machine().currentState, PhysicalBlocageState):
-            return render_template("Error.html", sn=sn, error_message="The robot is physically blocked.")
+            return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Physical_blocage"][self.__get_ui_language()])
 
         return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
 

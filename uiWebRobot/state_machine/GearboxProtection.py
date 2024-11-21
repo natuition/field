@@ -90,6 +90,12 @@ class GearboxProtection:
         return median_value < self.__min_speed
     
     def is_remote(self, start_point: list) -> bool:
+        """
+			Function for checking the distance between two points.\n
+			:param point_A: coordinates of the first point (latitude, longitude, quality).\n
+            :param point_B: coordinates of the secoond point (latitude, longitude, quality).\n
+            :return: True if the two points are remoted, else otherwise.
+		"""
         current_point = self.__coord_list[-1]
         distance = self.__gps_computing.get_distance(start_point, current_point)
-        return distance > 3000
+        return distance > config.REVERSING_DISTANCE

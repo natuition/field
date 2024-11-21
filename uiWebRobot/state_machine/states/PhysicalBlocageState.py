@@ -8,11 +8,12 @@ sys.path.append('../')
 
 from flask_socketio import SocketIO
 
-from uiWebRobot.state_machine import State
-from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.State import State
+from uiWebRobot.state_machine.states.ErrorState import ErrorState
+from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import utilsFunction
-from uiWebRobot.state_machine import GearboxProtection
-from uiWebRobot.state_machine.states import ErrorState, ResumeState
+from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
+
 
 from shared_class.robot_synthesis import RobotSynthesis
 
@@ -61,8 +62,9 @@ class PhysicalBlocageState(State.State) :
         self.logger.write_and_flush(msg + "\n")
         print(msg)
         
-        if not already_blocked :
+        if not already_blocked : # If has still not try to go backward
             try:
+                # Init Vesc
                 if self.vesc_engine is None:
                     msg = f"[{self.__class__.__name__}] -> initVesc"
                     self.logger.write_and_flush(msg + "\n")
@@ -99,6 +101,7 @@ class PhysicalBlocageState(State.State) :
                     msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
                     self.logger.write_and_flush(msg + "\n")
 
+                # Init smoothie
                 if self.smoothie is None:
                     msg = f"[{self.__class__.__name__}] -> initSmoothie"
                     self.logger.write_and_flush(msg + "\n")
@@ -117,16 +120,19 @@ class PhysicalBlocageState(State.State) :
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
 
-            self.field = None
+            # Init GPS
             self.__gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
             self.__blocagePos = self.__gps.get_last_position()
-            self.__allPath = []
-            self.__gb = GearboxProtection.GearboxProtection()
+            self.__allPath = [] # store all GPS point during the backward process
 
+            self.__gb = GearboxProtection()
+
+            # Init thread that run the backward
             self.__backward_thread_alive = True
             self.__backward_thread = threading.Thread(target=self.__backward_thread_tf, daemon=True)
             self.__backward_thread.start()
 
+            # Init the thread that get the GPS point and check the position of the robot
             self.__check_backward_thread_alive = True
             self.__check_backward_thread = threading.Thread(target=self.__check_backward_thread_tf, daemon=True)
             self.__check_backward_thread.start()
@@ -136,8 +142,8 @@ class PhysicalBlocageState(State.State) :
         self.logger.write_and_flush(msg + "\n")
         print(msg)
 
-    def on_event(self, event):
-        if event == Events.Events.PHYSICAL_BLOCAGE:
+    def on_event(self, event: Events) -> State:
+        if event == Events.PHYSICAL_BLOCAGE:
             self.__stop_thread()
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
@@ -165,20 +171,26 @@ class PhysicalBlocageState(State.State) :
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
-            return ErrorState.ErrorState(self.socketio, self.logger, "Violette is totally blocked.")
+            return ErrorState(self.socketio, self.logger, "Violette is totally blocked.")
 
-    def on_socket_data(self, data):
+    def on_socket_data(self, data: dict) -> State:
         if data["type"] == "physical_blocage_state_refresh" :
             self.__check_ui_refresh_thread_alive = False
         return self
 
-    def __backward_thread_tf(self) :        
+    def __backward_thread_tf(self) -> None:  
+        """
+			Function for running the backward process.
+		"""      
         speed = -config.SI_SPEED_FWD
         self.vesc_engine.set_target_rpm(speed * config.MULTIPLIER_SI_SPEED_TO_RPM, self.vesc_engine.PROPULSION_KEY)
         while self.__backward_thread_alive :
-            self.smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
+            self.smoothie.custom_move_to(A_F=config.A_F_MAX, A=config.NAV_TURN_WHEELS_CENTER)
 
-    def __check_backward_thread_tf(self) :
+    def __check_backward_thread_tf(self) -> None:
+        """
+			Function for checking the position during the backward process.
+		"""
         while self.__check_backward_thread_alive :
             current_position = self.__gps.get_last_position()
             msg = f"[{self.__class__.__name__}] -> Current position : {current_position[0]}, {current_position[1]}"
@@ -187,23 +199,29 @@ class PhysicalBlocageState(State.State) :
             self.__allPath.append(current_position)
             self.__gb.store_coord(current_position[0], current_position[1], current_position[2])
             if self.__gb.is_physically_blocked() :
-                utilsFunction.change_state(Events.Events.ERROR)
+                utilsFunction.change_state(Events.ERROR)
                 self.__check_backward_thread_alive = False
                 self.__backward_thread_alive = False
             if self.__gb.is_remote(self.__blocagePos) :
-                utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
+                utilsFunction.change_state(Events.PHYSICAL_BLOCAGE)
             time.sleep(1)
     
-    def __check_ui_refresh_thread_tf(self) :
+    def __check_ui_refresh_thread_tf(self) -> None:
+        """
+			Function for checking the ui to refresh it.
+		"""
         while self.__check_ui_refresh_thread_alive:
             self.socketio.emit('physical_blocage_state', {"status": "refresh"}, namespace='/server', broadcast=True)
             time.sleep(0.5)
 
-    def __stop_thread(self):
+    def __stop_thread(self) -> None:
+        """
+			Function for stopping all threads.
+		"""
         self.__check_ui_refresh_thread_alive = False
         self.__backward_thread_alive = False
         self.__check_backward_thread_alive = False
-        #self.__check_ui_refresh_thread.join()
+        self.__check_ui_refresh_thread.join()
         self.__backward_thread.join()
         self.__check_backward_thread.join()
 
