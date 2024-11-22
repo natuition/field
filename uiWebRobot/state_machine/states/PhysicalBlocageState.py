@@ -1,3 +1,4 @@
+import string
 import sys
 import threading
 import time
@@ -52,74 +53,7 @@ class PhysicalBlocageState(State) :
                                                 joystick=False,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
         
-        self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
-        self.socketio.emit('physical_blocage_state', {"status": "refresh"}, namespace='/server', broadcast=True)
-        self.__check_ui_refresh_thread_alive = True
-        self.__check_ui_refresh_thread = threading.Thread(target=self.__check_ui_refresh_thread_tf, daemon=True)
-        self.__check_ui_refresh_thread.start()
-
-        msg = f"[{self.__class__.__name__}] -> reload"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
-        
         if not already_blocked : # If has still not try to go backward
-            try:
-                # Init Vesc
-                if self.vesc_engine is None:
-                    msg = f"[{self.__class__.__name__}] -> initVesc"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                    self.vesc_engine = utilsFunction.initVesc(self.logger)
-                else:
-                    msg = f"[{self.__class__.__name__}] -> no need to initVesc"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
-                    self.logger.write_and_flush(msg + "\n")
-
-                self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
-
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
-                    self.logger.write_and_flush(msg + "\n")
-
-                self.vesc_engine.set_current_rpm(
-                    0, self.vesc_engine.PROPULSION_KEY)
-
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
-                    self.logger.write_and_flush(msg + "\n")
-
-                self.vesc_engine.start_moving(
-                    self.vesc_engine.PROPULSION_KEY,
-                    smooth_acceleration=True,
-                    smooth_deceleration=True)
-
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
-                    self.logger.write_and_flush(msg + "\n")
-
-                # Init smoothie
-                if self.smoothie is None:
-                    msg = f"[{self.__class__.__name__}] -> initSmoothie"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                    try:
-                        self.smoothie = utilsFunction.initSmoothie(self.logger)
-                    except Exception as e:
-                        if "[Timeout sm]" in str(e):
-                            self.smoothie = utilsFunction.initSmoothie(self.logger)
-                        else:
-                            raise e
-                else:
-                    msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
-
             # Init GPS
             self.__gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
             self.__blocagePos = self.__gps.get_last_position()
@@ -130,15 +64,24 @@ class PhysicalBlocageState(State) :
             # Init thread that run the backward
             self.__backward_thread_alive = True
             self.__backward_thread = threading.Thread(target=self.__backward_thread_tf, daemon=True)
-            self.__backward_thread.start()
 
             # Init the thread that get the GPS point and check the position of the robot
             self.__check_backward_thread_alive = True
             self.__check_backward_thread = threading.Thread(target=self.__check_backward_thread_tf, daemon=True)
-            self.__check_backward_thread.start()
+
+            # Init and start thread that init vesc and smoothie, and start backward process
+            self.__init_vesc_smoothie_thread_alive = True
+            self.__init_vesc_smoothie_thread = threading.Thread(target=self.__init_vesc_smoothie_thread_tf, daemon=True)
+            self.__init_vesc_smoothie_thread.start()
 
         
         msg = f"[{self.__class__.__name__}] -> initialized"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
+
+        self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+
+        msg = f"[{self.__class__.__name__}] -> reload"
         self.logger.write_and_flush(msg + "\n")
         print(msg)
 
@@ -172,11 +115,75 @@ class PhysicalBlocageState(State) :
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
             return ErrorState(self.socketio, self.logger, "Violette is totally blocked.")
-
-    def on_socket_data(self, data: dict) -> State:
-        if data["type"] == "physical_blocage_state_refresh" :
-            self.__check_ui_refresh_thread_alive = False
+    
+    def on_socket_data(self, data):
         return self
+    
+    def __init_vesc_smoothie_thread_tf(self) -> None:
+        """
+			Function for initilize the vesc and the smoothie, and running the backward process.
+		""" 
+        try:
+            # Init Vesc
+            if self.vesc_engine is None:
+                msg = f"[{self.__class__.__name__}] -> initVesc"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+                self.vesc_engine = utilsFunction.initVesc(self.logger)
+            else:
+                msg = f"[{self.__class__.__name__}] -> no need to initVesc"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
+                self.logger.write_and_flush(msg + "\n")
+
+            self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
+                self.logger.write_and_flush(msg + "\n")
+
+            self.vesc_engine.set_current_rpm(
+                0, self.vesc_engine.PROPULSION_KEY)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
+                self.logger.write_and_flush(msg + "\n")
+
+            self.vesc_engine.start_moving(
+                self.vesc_engine.PROPULSION_KEY,
+                smooth_acceleration=True,
+                smooth_deceleration=True)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
+                self.logger.write_and_flush(msg + "\n")
+
+            # Init smoothie
+            if self.smoothie is None:
+                msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+                try:
+                    self.smoothie = utilsFunction.initSmoothie(self.logger)
+                except Exception as e:
+                    if "[Timeout sm]" in str(e):
+                        self.smoothie = utilsFunction.initSmoothie(self.logger)
+                    else:
+                        raise e
+            else:
+                msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        
+        self.__backward_thread.start()
+        self.__check_backward_thread.start()
+        self.__init_vesc_smoothie_thread_alive = False
+        
 
     def __backward_thread_tf(self) -> None:  
         """
@@ -206,24 +213,13 @@ class PhysicalBlocageState(State) :
                 utilsFunction.change_state(Events.PHYSICAL_BLOCAGE)
             time.sleep(1)
     
-    def __check_ui_refresh_thread_tf(self) -> None:
-        """
-			Function for checking the ui to refresh it.
-		"""
-        while self.__check_ui_refresh_thread_alive:
-            self.socketio.emit('physical_blocage_state', {"status": "refresh"}, namespace='/server', broadcast=True)
-            time.sleep(0.5)
-
     def __stop_thread(self) -> None:
         """
 			Function for stopping all threads.
 		"""
-        self.__check_ui_refresh_thread_alive = False
-        self.__backward_thread_alive = False
-        self.__check_backward_thread_alive = False
-        self.__check_ui_refresh_thread.join()
-        self.__backward_thread.join()
-        self.__check_backward_thread.join()
-
-
-             
+        if not self.__init_vesc_smoothie_thread_alive :
+            self.__backward_thread_alive = False
+            self.__check_backward_thread_alive = False
+            self.__backward_thread.join()
+            self.__check_backward_thread.join()
+        self.__init_vesc_smoothie_thread.join()

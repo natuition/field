@@ -240,10 +240,10 @@
 		"de": "Es tut uns leid, es ist ein Fehler aufgetreten. Bitte starten Sie VIOLETTE neu."
 	},
 	"Physical_blocage": {
-		"fr": "Le robot est physiquement bloqué. Veuillez déplacer puis redémarrer VIOLETTE.",
-		"en": "The robot is physically blocked. Please move and reboot VIOLETTE.",
-		"nl": "De robot is fysiek geblokkeerd. Verpiaats en herstart VIOLETTE.",
-		"de": "Der Roboter ist physisch blockiert. Bitte bewegen Sie ihn und starten Sie VIOLETTE neu."
+		"fr": "Le robot est physiquement bloqué. Veuillez patienter.",
+		"en": "The robot is physically blocked. Please wait.",
+		"nl": "De robot is fysiek geblokkeerd. Even geduld.",
+		"de": "Der Roboter ist physisch blockiert. Bitte warten Sie."
 	},
 	"AI_selector": {
 		"fr": "Sélection de l'intelligence artificielle :",
