@@ -3,13 +3,12 @@ import sys
 import threading
 import time
 
-from navigation import GPSPoint
-
 sys.path.append('../')
 
 from flask_socketio import SocketIO
 
 from uiWebRobot.state_machine.State import State
+from uiWebRobot.state_machine.states.ResumeState import ResumeState
 from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import utilsFunction
@@ -29,12 +28,13 @@ class PhysicalBlocageState(State) :
             self, 
             socketio: SocketIO, 
             logger: utility.Logger,
-            already_blocked: bool = False,
+            isAudit: bool = False,
             smoothie: adapters.SmoothieAdapter = None,
             vesc_engine : adapters.VescAdapterV4 = None
             ) :
         self.socketio = socketio
         self.logger = logger
+        self.isAudit = isAudit
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
 
@@ -53,26 +53,21 @@ class PhysicalBlocageState(State) :
                                                 joystick=False,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
         
-        if not already_blocked : # If has still not try to go backward
-            # Init GPS
-            self.__gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
-            self.__blocagePos = self.__gps.get_last_position()
-            self.__allPath = [] # store all GPS point during the backward process
+        # Init GPS
+        self.__gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        self.__blocagePos = self.__gps.get_last_position()
+        self.__allPath = [] # store all GPS point during the backward process
 
-            self.__gb = GearboxProtection()
+        self.__gb = GearboxProtection()
 
-            # Init thread that run the backward
-            self.__backward_thread_alive = True
-            self.__backward_thread = threading.Thread(target=self.__backward_thread_tf, daemon=True)
+        # Init thread that run the backward
+        self.__backward_thread_alive = True
+        self.__backward_thread = threading.Thread(target=self.__backward_thread_tf, daemon=True)
 
-            # Init the thread that get the GPS point and check the position of the robot
-            self.__check_backward_thread_alive = True
-            self.__check_backward_thread = threading.Thread(target=self.__check_backward_thread_tf, daemon=True)
-
-            # Init and start thread that init vesc and smoothie, and start backward process
-            self.__init_vesc_smoothie_thread_alive = True
-            self.__init_vesc_smoothie_thread = threading.Thread(target=self.__init_vesc_smoothie_thread_tf, daemon=True)
-            self.__init_vesc_smoothie_thread.start()
+        # Init and start thread that init vesc and smoothie, and start backward process
+        self.__init_vesc_smoothie_thread_alive = True
+        self.__init_vesc_smoothie_thread = threading.Thread(target=self.__init_vesc_smoothie_thread_tf, daemon=True)
+        self.__init_vesc_smoothie_thread.start()
 
         
         msg = f"[{self.__class__.__name__}] -> initialized"
@@ -86,7 +81,7 @@ class PhysicalBlocageState(State) :
         print(msg)
 
     def on_event(self, event: Events) -> State:
-        if event == Events.PHYSICAL_BLOCAGE:
+        if event == Events.CONTINUE_MAIN:
             self.__stop_thread()
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
@@ -98,8 +93,7 @@ class PhysicalBlocageState(State) :
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            #return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
-            return PhysicalBlocageState(self.socketio, self.logger, True)
+            return ResumeState(self.socketio, self.logger, self.isAudit)
         
         else:
             self.__stop_thread()
@@ -181,35 +175,28 @@ class PhysicalBlocageState(State) :
             raise KeyboardInterrupt
         
         self.__backward_thread.start()
-        self.__check_backward_thread.start()
         self.__init_vesc_smoothie_thread_alive = False
-        
 
-    def __backward_thread_tf(self) -> None:  
-        """
-			Function for running the backward process.
-		"""      
-        speed = -config.SI_SPEED_FWD
-        self.vesc_engine.set_target_rpm(speed * config.MULTIPLIER_SI_SPEED_TO_RPM, self.vesc_engine.PROPULSION_KEY)
-        while self.__backward_thread_alive :
-            self.smoothie.custom_move_to(A_F=config.A_F_MAX, A=config.NAV_TURN_WHEELS_CENTER)
-
-    def __check_backward_thread_tf(self) -> None:
+    def __backward_thread_tf(self) -> None:
         """
 			Function for checking the position during the backward process.
 		"""
-        while self.__check_backward_thread_alive :
+        self.vesc_engine.set_target_rpm(-config.SI_SPEED_FWD * config.MULTIPLIER_SI_SPEED_TO_RPM, self.vesc_engine.PROPULSION_KEY)
+        self.vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_engine.PROPULSION_KEY)
+        self.vesc_engine.start_moving(self.vesc_engine.PROPULSION_KEY)
+        while self.__backward_thread_alive :
             current_position = self.__gps.get_last_position()
             msg = f"[{self.__class__.__name__}] -> Current position : {current_position[0]}, {current_position[1]}"
             self.logger.write_and_flush(msg+"\n")
             print(msg)
             self.__allPath.append(current_position)
             self.__gb.store_coord(current_position[0], current_position[1], current_position[2])
-            if self.__gb.is_physically_blocked() :
+            if self.__gb.is_physically_blocked() :                
+                self.vesc_engine.stop_moving(self.vesc_engine.PROPULSION_KEY)
                 utilsFunction.change_state(Events.ERROR)
-                self.__check_backward_thread_alive = False
                 self.__backward_thread_alive = False
             if self.__gb.is_remote(self.__blocagePos) :
+                self.vesc_engine.stop_moving(self.vesc_engine.PROPULSION_KEY)
                 utilsFunction.change_state(Events.PHYSICAL_BLOCAGE)
             time.sleep(1)
     
@@ -219,7 +206,5 @@ class PhysicalBlocageState(State) :
 		"""
         if not self.__init_vesc_smoothie_thread_alive :
             self.__backward_thread_alive = False
-            self.__check_backward_thread_alive = False
             self.__backward_thread.join()
-            self.__check_backward_thread.join()
         self.__init_vesc_smoothie_thread.join()

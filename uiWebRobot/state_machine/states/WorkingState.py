@@ -124,7 +124,7 @@ class WorkingState(State.State):
             else:
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
-            return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.logger)
+            return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.logger, self.isAudit)
         
         else:
             self._main_msg_thread_alive = False
@@ -202,6 +202,9 @@ class WorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
                 if(self.__gearbox_protection.is_physically_blocked() and config.CHECK_PHYSICAL_BLOCAGE) :
+                    message_name = "Physical blocage"
+                    message = "We have dected that the robot is not moving anymore. Please wait."
+                    self.socketio.emit('no_blocking_notification', {"message_name": message_name, "message": message}, namespace='/broadcast', broadcast=True)
                     utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
 
             elif "last_gps_list_file" in data:
