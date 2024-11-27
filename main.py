@@ -2219,7 +2219,7 @@ def main():
 
             myPenetrometryAnalyse = None
             if(config.PENETROMETRY_ANALYSE_MODE):
-                myPenetrometryAnalyse = PenetrometryAnalyse(vesc_engine)
+                myPenetrometryAnalyse = PenetrometryAnalyse(vesc_engine, config.PENETROMETRY_SAVING_MODE)
 
             # try to load field ABCD points
             field_gps_coords = None

@@ -40,11 +40,13 @@ class PenetrometryAnalyse :
         __penetrometry_thread_alive (bool) : Should the thread be alive.
         __penetrometry_thread (Thread) : The thread that gather datas about extractions.
     """
-    def __init__(self, vescAdapter):
+    
+    def __init__(self, vescAdapter, saving_mode: bool):
         """Create a PenetrometryAnalyse object.
 
         Args:
             vescAdapter (VescAdapterV4): The vesc adapter use in main.
+            saving_mode (bool): True if you want to save datas in a file.
         """
         self.__vescAdapter = vescAdapter
 
@@ -54,7 +56,7 @@ class PenetrometryAnalyse :
                                     "avg_motor_current", 
                                     "rpm",] # Name fields according to GetValues message if raess1/PyVESC-FW3.33 (use in this robot)
 
-        self.__is_saving_mode_active = config.PENETROMETRY_SAVING_MODE
+        self.__is_saving_mode_active = saving_mode
         self.__file_name = f"data_{time.strftime('%Y-%m-%d-%H-%M-%S')}.pb" # Timestamp of the class creating for naming the saving file
         self.__file_path = f"/home/violette/field/penetrometry/datas/{self.__file_name}"
 
