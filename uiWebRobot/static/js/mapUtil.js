@@ -70,6 +70,17 @@ function createMap(coords_field, coords_other) {
     }
 
     map.on('load', function () {
+
+        // Loading of pictures for starting and target point for a selected zone
+        map.loadImage('http://' + document.domain + ':' + location.port + '/static/start-image.png', (error, image) => {
+            if (error) throw error;
+            map.addImage('start-img', image);
+        });
+        map.loadImage('http://' + document.domain + ':' + location.port + '/static/focus-image.png', (error, image) => {
+            if (error) throw error;
+            map.addImage('focus-img', image);
+        });
+
         //Other field zone
         if (typeof (map.getSource('other_field')) == "undefined") {
             map.addSource('other_field', {
@@ -184,14 +195,40 @@ function createMap(coords_field, coords_other) {
             });
             map.addLayer({
                 'id': 'field_startLayer',
-                'type': 'circle',
+                'type': 'symbol',
                 'source': 'field_start',
-                'paint': {
-                    'circle-radius': 3,
-                    'circle-color': '#2BFAFA'
+                'layout' : {
+                    'icon-image': 'start-img',
+                    'icon-size': 0.25
                 }
             });
         }
+
+        //Field focus point
+        if (typeof (map.getSource('field_focus')) == "undefined") {
+            map.addSource('field_focus', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': coords_field[0]
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'field_focusLayer',
+                'type': 'symbol',
+                'source': 'field_focus',
+                'layout': {
+                    'icon-image': 'focus-img',
+                    'icon-size': 0.25
+                }
+            });
+        }
+
+
+
         //Instruction_line
         if (typeof (map.getSource('instruction_line')) == "undefined") {
             map.addSource('instruction_line', {
@@ -261,7 +298,7 @@ function createMap(coords_field, coords_other) {
                     'line-cap': 'round',
                 },
                 'paint': {
-                    'line-color': '#e55e5e',
+                    'line-color': '#ff00e0',
                     'line-width': 2
                 }
             });
@@ -284,13 +321,7 @@ function createMap(coords_field, coords_other) {
                 source: "lastPos",
                 paint: {
                     "circle-radius": 5,
-                    "circle-color": [
-                        "match",
-                        ["get", "quality"],
-                        "4",
-                        "#e55e5e", // red for quality 4
-                        "#fbb03b", // orange for other
-                    ],
+                    "circle-color": "#ff00e0",
                 },
             });
         }
@@ -515,6 +546,14 @@ socketMap.on('newField', function (dataServ) {
             'geometry': {
                 'type': 'Point',
                 'coordinates': dataServ["field"][dataServ["field"].length - 1]
+            }
+        });
+
+        map.getSource('field_focus').setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Point',
+                'coordinates': dataServ["field"][1]
             }
         });
 

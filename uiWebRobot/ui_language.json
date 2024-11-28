@@ -652,5 +652,29 @@
 		"en": "Pause",
 		"nl": "Pause",
 		"de": "Pause"
+	},
+	"no_gps": {
+		"fr": "Pas de GPS",
+		"en": "No GPS",
+		"nl": "Geen GPS",
+		"de": "Kein GPS"
+	},
+	"gps_with_rtk": {
+		"fr": "GPS avec RTK",
+		"en": "GPS with RTK",
+		"nl": "GPS met RTK",
+		"de": "GPS mit RTK"
+	},
+	"only_gps": {
+		"fr": "GPS seulement",
+		"en": "Only GPS",
+		"nl": "Alleen GPS",
+		"de": "Nur GPS"
+	},
+	"alert_on_no_gps": {
+		"fr": "Vous ne pouvez pas utiliser cette fonction tant que le GPS n'est pas disponible, veuillez attendre un instant.",
+		"en": "You can not use this function when the GPS is not available, please wait moment.",
+		"nl": "U kunt deze functie niet gebruiken zolang de GPS niet beschikbaar is. Wacht een moment.",
+		"de": "Sie können diese Funktion nicht verwenden, solange GPS nicht verfügbar ist. Bitte warten Sie einen Moment."
 	}
 }

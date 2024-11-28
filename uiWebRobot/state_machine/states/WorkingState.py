@@ -164,8 +164,9 @@ class WorkingState(State.State):
                 self.allPath.append([data[1], data[0]])
                 if self.lastGpsQuality != data[2]:
                     self.lastGpsQuality = data[2]
-                self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map',
-                                   broadcast=True)
+                self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
+                self.socketio.emit('updateGPSQuality', self.lastGpsQuality, namespace='/gps', broadcast=True)
+                
             elif "last_gps_list_file" in data:
                 last_gps_list_file = data["last_gps_list_file"]
                 with open("../" + last_gps_list_file, "r") as gps_his_file:
