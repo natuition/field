@@ -34,6 +34,15 @@ if (stopButton != null) stopButton.addEventListener('click', clickHandler);
 if (wheelButton != null) wheelButton.addEventListener('click', clickHandler);
 if (removeFieldButton != null) removeFieldButton.addEventListener('click', clickHandler);
 
+
+
+// Custom event for updating the gpsQuality from other file, default is "no_gps"
+var gpsQuality = "no_gps"
+window.addEventListener("globalGpsQualityUpdated", (event) => {
+    gpsQuality = event.detail.quality;
+    console.log("GPS Quality updated:", gpsQuality);
+});
+
 if (choose_field_selector != null) {
     choose_field_selector.onchange = (event) => {
         var inputText = event.target.value;
@@ -47,19 +56,31 @@ var reloader = 0;
 
 function clickHandler() {
     if (this.id == "Newfield") {
-        sliderValue = document.getElementById("r1").value
-        socketio.emit('data', { type: "field", value: sliderValue });
+        if(gpsQuality == "no_gps") {
+            alert((ui_languages["alert_on_no_gps"])[ui_language])
+        } else  {
+            sliderValue = document.getElementById("r1").value
+            socketio.emit('data', { type: "field", value: sliderValue });
+        }
     } else if (this.id == "DemoResume") {
         socketio.emit('data', { type: "demo_resume_cmd" });
     } else if (this.id == "ValidateZone") {
         sliderValue = document.getElementById("r1").value
         socketio.emit('data', { type: "validerZone", value: sliderValue });
     } else if (this.id == "Start") {
-        socketio.emit('data', { type: "start", audit: audit });
+        if(gpsQuality == "no_gps") {
+            alert((ui_languages["alert_on_no_gps"])[ui_language])
+        } else  {
+            socketio.emit('data', { type: "start", audit: audit });
+        }
     } else if (this.id == "Stop") {
         socketio.emit('data', { type: "stop" });
     } else if (this.id == "Continue") {
-        socketio.emit('data', { type: "continue", audit: audit });
+        if(gpsQuality == "no_gps") {
+            alert((ui_languages["alert_on_no_gps"])[ui_language])
+        } else  {
+            socketio.emit('data', { type: "continue", audit: audit });
+        }
     } else if (this.id == "Wheel" && !this.classList.contains("disabled-wheel")) {
         if(this.classList.contains("release")) {
             socketio.emit('data', { type: "wheel", status: "unrelease" });
