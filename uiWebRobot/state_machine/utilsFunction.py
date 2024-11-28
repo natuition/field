@@ -52,8 +52,8 @@ def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio, logger: utilit
             lastPos = gps.get_fresh_position()
             if config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART and lastPos[2]!='4':
                 NavigationV3.restart_ntrip_service(logger)
-            socketio.emit('updatePath', json.dumps(
-                [[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            socketio.emit('updateGPSQuality', lastPos[2], namespace='/gps', broadcast=True)
 
 
 def initVesc(logger: utility.Logger):
