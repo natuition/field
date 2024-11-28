@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Convert the value to a integer
         gps_quality_value = parseInt(gps_quality_value, 10);
         if (isNaN(gps_quality_value)) {
-            console.error('Erreur : La valeur de qualité GPS n\'est pas un entier valide.');
+            console.error('Error : The GPS quality value is not a valid integer.');
             return;
         }
 
@@ -31,40 +31,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Change the description of the gps quality
             switch (gps_quality_value) {
-                case 0:
-                    // 0 = Pas de correction valide
+                case 0: // 0 = Pas de correction valide
+                case 6: // 6 = Navigation inertielle (INS)
                     qualityDescription = (ui_languages["no_gps"])[ui_language];
-                    updateGlobalGpsQuality("no_gps")
+                    updateGlobalGpsQuality("no_gps");
                     break;
-                case 1:
-                    // 1 = Fix GPS standard
+                case 1: // 1 = Fix GPS standard
+                case 2: // 2 = Correction différentielle (DGNSS)
+                case 5: // 5 = RTK flottant
                     qualityDescription = (ui_languages["only_gps"])[ui_language];
-                    updateGlobalGpsQuality("only_gps")
+                    updateGlobalGpsQuality("only_gps");
                     break;
-                case 2:
-                    // 2 = Correction différentielle (DGNSS)
-                    qualityDescription = (ui_languages["only_gps"])[ui_language];
-                    updateGlobalGpsQuality("only_gps")
-                    break;
-                case 4:
-                    // 4 = RTK fixe
+                case 4: // 4 = RTK fixe
                     qualityDescription = (ui_languages["gps_with_rtk"])[ui_language];
-                    updateGlobalGpsQuality("gps_with_rtk")
-                    break;
-                case 5:
-                    // 5 = RTK flottant
-                    qualityDescription = (ui_languages["only_gps"])[ui_language];
-                    updateGlobalGpsQuality("only_gps")
-                    break;
-                case 6:
-                    // 6 = Navigation inertielle (INS)
-                    qualityDescription = (ui_languages["no_gps"])[ui_language];
-                    updateGlobalGpsQuality("no_gps")
+                    updateGlobalGpsQuality("gps_with_rtk");
                     break;
                 default:
-                    // Indicateur inconnu
+                    console.warn(`GPS quality value (${gps_quality_value}) not recognized. Falling back to 'no_gps'.`);
                     qualityDescription = (ui_languages["no_gps"])[ui_language];
-                    updateGlobalGpsQuality("no_gps")
+                    updateGlobalGpsQuality("no_gps");
+                    break;
             }
 
             // Update HTML content

@@ -653,12 +653,6 @@
 		"nl": "Pause",
 		"de": "Pause"
 	},
-	"quality_gps": {
-		"fr": "Qualité GPS",
-		"en": "GPS Quality",
-		"nl": "GPS-kwaliteit",
-		"de": "GPS-Qualität"
-	},
 	"no_gps": {
 		"fr": "Pas de GPS",
 		"en": "No GPS",
