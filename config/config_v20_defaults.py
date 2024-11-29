@@ -500,7 +500,15 @@ NTRIP_OUTPUT_BAUDRATE = 115200
 
 NTRIP_RESTART_TIMEOUT = 10
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
-RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
+RTK_ID_SEND = [(1005, 1006), (1124, 1127), (1084, 1087), (1074, 1077)] #Id of the rtk frames that will be sent to the gps
+# 1005 : Stationary RTK reference station ARP
+# 1006 : Stationary RTK reference station ARP with antenna height
+# Origine RTK           MSM4        MSM7
+# BeiDou (Chine)        1124        1127
+# GPS (USA)             1074        1077
+# GLONASS (Russie)      1084        1087
+# Galileo (UE)          1094        1097
+NTRIP_SLEEP_TIME = 60 # Time in seconds between two sessions of getting data (MSM and ARP)
 
 CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 

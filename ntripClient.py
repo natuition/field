@@ -224,18 +224,17 @@ class NtripClient(object):
             exit(1)
         
         list_RTCM_ID_sent = []
-        filters_id = config.RTK_ID_SEND
 
         try:
             while True:
                 data = self.read()
 
                 in_filters_id = False
-                for filter_id in filters_id :
+                for filter_id in config.RTK_ID_SEND :
                     if self.last_id in filter_id:
                         in_filters_id = True
 
-                if not in_filters_id :
+                if not in_filters_id and len(config.RTK_ID_SEND) > 0:
                     continue
 
                 if self.last_id not in list_RTCM_ID_sent:
@@ -243,19 +242,18 @@ class NtripClient(object):
                     print(list_RTCM_ID_sent)
 
                 has_filters = True
-                for filter_id in filters_id :
+                for filter_id in config.RTK_ID_SEND :
                     if not len(set(list_RTCM_ID_sent) & set(filter_id)) > 0:
                         has_filters = False 
 
-                if has_filters:
+                if has_filters and len(config.RTK_ID_SEND) > 0:
                     list_RTCM_ID_sent = []
                     time.sleep(config.NTRIP_SLEEP_TIME)
                     
                 if data is None:
                     continue
                 
-                if self.last_id in config.RTK_ID_SEND or not len(config.RTK_ID_SEND):
-                    ser.write(data)
+                ser.write(data)
 
         except KeyboardInterrupt:
             print("Fermeture des connexions...")
