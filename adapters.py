@@ -1,4 +1,3 @@
-import csv
 import connectors
 import multiprocessing
 import time
@@ -2025,26 +2024,44 @@ class VescAdapterV4:
 
         Implements keeping multiple vesc engines alive and stopping them by a timers if they were set.
         """
-        last_alive_time = time.time()
-        last_set_alive = time.time()
-        with open('logs_time.csv', 'w', newline='') as csvfile:
-            fieldnames=['current_time_s', 'alive_time_loop_gap_ms', 'send_set_alive_gap_ms', 'time_get_value_ms', 'current_rpm', 'detect_stop_propulsion']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            try:
-                while self.__keep_thread_alive:
-                    with self.__locker:
-                        # process each active engine
-                        for engine_key in self.__can_ids:
-                            if not self.__keep_thread_alive:
-                                break
-                            if not self.__is_moving[engine_key]:
-                                continue
-                            # engine movement timeout
-                            if time.time() - self.__start_time[engine_key] >= self.__time_to_move[engine_key] or \
-                                    self.__stop_request[engine_key]:
-                                # immediate engine stop
-                                if not self.__use_smooth_decel[engine_key]:
+        try:
+            while self.__keep_thread_alive:
+                with self.__locker:
+                    # process each active engine
+                    for engine_key in self.__can_ids:
+                        if not self.__keep_thread_alive:
+                            break
+                        if not self.__is_moving[engine_key]:
+                            continue
+                        # engine movement timeout
+                        if time.time() - self.__start_time[engine_key] >= self.__time_to_move[engine_key] or \
+                                self.__stop_request[engine_key]:
+                            # immediate engine stop
+                            if not self.__use_smooth_decel[engine_key]:
+                                try :
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
+                                self.__current_rpm[engine_key] = 0
+                                self.__last_stop_time[engine_key] = time.time()
+                                self.__is_moving[engine_key] = False
+                                self.__stop_request[engine_key] = False
+                            # smooth engine stop (if it's time to check)
+                            elif time.time() >= self.__smooth_decel_next_t[engine_key]:
+                                self.__smooth_decel_next_t[engine_key] = time.time() + config.VESC_SMOOTH_DECEL_TIME_STEP
+
+                                # reduce speed (RPM is bigger than step so step is possible)
+                                if abs(self.__current_rpm[engine_key]) > config.VESC_SMOOTH_DECEL_RPM_STEP:
+                                    self.__current_rpm[engine_key] += -config.VESC_SMOOTH_DECEL_RPM_STEP \
+                                        if self.__current_rpm[engine_key] > 0 else config.VESC_SMOOTH_DECEL_RPM_STEP
+                                    try :
+                                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                            self.__current_rpm[engine_key],
+                                            can_id=self.__can_ids[engine_key])))
+                                    except SerialException :
+                                        self.reconnect_vesc()
+                                # stop engine (current RPM <= RPM step)
+                                else:
                                     try :
                                         self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
                                     except SerialException :
@@ -2053,107 +2070,70 @@ class VescAdapterV4:
                                     self.__last_stop_time[engine_key] = time.time()
                                     self.__is_moving[engine_key] = False
                                     self.__stop_request[engine_key] = False
-                                # smooth engine stop (if it's time to check)
-                                elif time.time() >= self.__smooth_decel_next_t[engine_key]:
-                                    self.__smooth_decel_next_t[engine_key] = time.time() + config.VESC_SMOOTH_DECEL_TIME_STEP
+                        # smooth start engine if needed
+                        elif self.__use_smooth_accel[engine_key] and time.time() >= self.__smooth_accel_next_t[engine_key]:
+                            self.__smooth_accel_next_t[engine_key] = time.time() + config.VESC_SMOOTH_ACCEL_TIME_STEP
 
-                                    # reduce speed (RPM is bigger than step so step is possible)
-                                    if abs(self.__current_rpm[engine_key]) > config.VESC_SMOOTH_DECEL_RPM_STEP:
-                                        self.__current_rpm[engine_key] += -config.VESC_SMOOTH_DECEL_RPM_STEP \
-                                            if self.__current_rpm[engine_key] > 0 else config.VESC_SMOOTH_DECEL_RPM_STEP
-                                        try :
-                                            self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                                self.__current_rpm[engine_key],
-                                                can_id=self.__can_ids[engine_key])))
-                                        except SerialException :
-                                            self.reconnect_vesc()
-                                    # stop engine (current RPM <= RPM step)
-                                    else:
-                                        try :
-                                            self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
-                                        except SerialException :
-                                            self.reconnect_vesc()
-                                        self.__current_rpm[engine_key] = 0
-                                        self.__last_stop_time[engine_key] = time.time()
-                                        self.__is_moving[engine_key] = False
-                                        self.__stop_request[engine_key] = False
-                            # smooth start engine if needed
-                            elif self.__use_smooth_accel[engine_key] and time.time() >= self.__smooth_accel_next_t[engine_key]:
-                                self.__smooth_accel_next_t[engine_key] = time.time() + config.VESC_SMOOTH_ACCEL_TIME_STEP
-
-                                # set engine to target RPM as current-target difference is <= RPM step
-                                if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= \
-                                        config.VESC_SMOOTH_ACCEL_RPM_STEP:
-                                    try :
-                                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                            self.__target_rpm[engine_key],
-                                            can_id=self.__can_ids[engine_key])))
-                                    except SerialException :
-                                        self.reconnect_vesc()
-                                    self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
-                                # increase current RPM by RPM step
-                                else:
-                                    self.__current_rpm[engine_key] += config.VESC_SMOOTH_ACCEL_RPM_STEP \
-                                        if self.__target_rpm[engine_key] > self.__current_rpm[engine_key] \
-                                        else -config.VESC_SMOOTH_ACCEL_RPM_STEP
-                                    try :
-                                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                            self.__current_rpm[engine_key],
-                                            can_id=self.__can_ids[engine_key])))
-                                    except SerialException :
-                                        self.reconnect_vesc()
-
-                        # send alive to each active
-                        if time.time() > self.__next_alive_time:
-                            dict_log_time = {}
-                            dict_log_time["current_time_s"] = round(time.time(), 6)
-                            dict_log_time["alive_time_loop_gap_ms"] = round((time.time() - last_alive_time) * 1000, 6)
-                            last_alive_time = time.time()
-                            self.__next_alive_time = time.time() + 1 / self.__alive_freq
-                            for engine_key in self.__is_moving:
+                            # set engine to target RPM as current-target difference is <= RPM step
+                            if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= \
+                                    config.VESC_SMOOTH_ACCEL_RPM_STEP:
                                 try :
-                                    if self.__is_moving[engine_key]:
-                                        dict_log_time["send_set_alive_gap_ms"] = round((time.time() - last_set_alive) * 1000, 6)
-                                        last_set_alive = time.time()
-                                        self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
-                                    self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-                            
-                                    in_buf = b''
-                                    while self.__ser.in_waiting > 0:
-                                        try:
-                                            start_get_value = time.time()
-                                            in_buf += self.__ser.read(self.__ser.in_waiting)
-                                            dict_log_time["time_get_value_ms"] = round((time.time() - start_get_value) * 1000, 6)
-                                        except Exception as e:
-                                            self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
-                                except SerialException or OSError as e :
-                                    if e.errno == 5 or isinstance(e, SerialException):
-                                        self.reconnect_vesc()
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                        self.__target_rpm[engine_key],
+                                        can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
+                                self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
+                            # increase current RPM by RPM step
+                            else:
+                                self.__current_rpm[engine_key] += config.VESC_SMOOTH_ACCEL_RPM_STEP \
+                                    if self.__target_rpm[engine_key] > self.__current_rpm[engine_key] \
+                                    else -config.VESC_SMOOTH_ACCEL_RPM_STEP
+                                try :
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                        self.__current_rpm[engine_key],
+                                        can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
 
-                                if len(in_buf) != 0:
-                                    response, consumed = pyvesc.decode(in_buf)
-                                    if consumed != 0 and response is not None:
-                                        dict_log_time["current_rpm"] = response.dict["rpm"]
-                                        if response.__dict__["rpm"] == 0 and self.__target_rpm[engine_key] != 0:
-                                            self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
-                                            print(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
-                                            dict_log_time["detect_stop_propulsion"] = True
-                                            try :
-                                                self.__ser.write(
-                                                    pyvesc.encode(
-                                                        pyvesc.SetRPM(
-                                                            self.__target_rpm[engine_key],
-                                                            can_id=self.__can_ids[engine_key]
-                                                        )
+                    # send alive to each active
+                    if time.time() > self.__next_alive_time:
+                        self.__next_alive_time = time.time() + 1 / self.__alive_freq
+                        for engine_key in self.__is_moving:
+                            try :
+                                if self.__is_moving[engine_key]:
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
+                                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+                                in_buf = b''
+                                while self.__ser.in_waiting > 0:
+                                    try:
+                                        in_buf += self.__ser.read(self.__ser.in_waiting)
+                                    except Exception as e:
+                                        self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
+                            except SerialException or OSError as e :
+                                if e.errno == 5 or isinstance(e, SerialException):
+                                    self.reconnect_vesc()
+
+                            if len(in_buf) != 0:
+                                response, consumed = pyvesc.decode(in_buf)
+                                if consumed != 0 and response is not None:
+                                    if response.__dict__["rpm"] == 0 and self.__target_rpm[engine_key] != 0:
+                                        self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
+                                        try :
+                                            self.__ser.write(
+                                                pyvesc.encode(
+                                                    pyvesc.SetRPM(
+                                                        self.__target_rpm[engine_key],
+                                                        can_id=self.__can_ids[engine_key]
                                                     )
                                                 )
-                                            except SerialException :
-                                                self.reconnect_vesc()
-                        writer.writerow(dict_log_time)
-                    # wait for next checking tick
-                    time.sleep(1 / self.__check_freq)
-            except serial.SerialException as ex:
-                print(ex)  # TODO should these exceptions to be ignored?
+                                            )
+                                        except SerialException :
+                                            self.reconnect_vesc()
+                # wait for next checking tick
+                time.sleep(1 / self.__check_freq)
+        except serial.SerialException as ex:
+            print(ex)  # TODO should these exceptions to be ignored?
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
