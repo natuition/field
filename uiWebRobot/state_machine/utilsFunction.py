@@ -170,9 +170,8 @@ def startLiveCam():
 
 def updateFields(field_name):
     field_name_quote = quote(field_name, safe="", encoding='utf-8')
-
+    
     cmd = "ln -sf 'fields/" + field_name_quote + ".txt' ../field.txt"
-
     os.system(cmd)
 
     with open("../field.txt") as file:
@@ -216,3 +215,41 @@ def get_other_field():
                     coords_other.append(coords)
             return coords_other
         return list()
+
+def is_valid_field_file(file_path):
+    """
+    Check if a field file is syntactically valid.
+
+    Args:
+        file_path (str): The path to the file to check.
+
+    Returns:
+        bool: True if the file is valid, False otherwise.
+    """
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        return False
+    try:
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+        # Check if the file is not empty
+        if not lines:
+            return False
+        # Check that the file contains exactly 4 lines
+        if len(lines) != 4:
+            return False
+        for index, line in enumerate(lines):
+            parts = line.strip().split()
+            # Check that each line contains 2 values
+            if len(parts) != 2:
+                return False
+            # Check that each value is a real number
+            try:
+                value1, value2 = map(float, parts)
+            except ValueError:
+                return False
+        return True
+    
+    except Exception as e:
+        print("Error: Syntax validation of the field file failed:", e)
+        return False
