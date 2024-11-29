@@ -50,14 +50,6 @@ if config.RECEIVE_FIELD_FROM_RTK:
 # TODO: temp debug counter
 IMAGES_COUNTER = 0
 
-def load_coordinates(file_path):
-    positions_list = []
-    with open(file_path) as file:
-        for line in file:
-            if line != "":
-                positions_list.append(list(map(float, line.split(" "))))
-    return positions_list
-
 
 def save_gps_coordinates(points: list, file_name: str):
     """
@@ -2162,7 +2154,7 @@ def main():
                         logger_full.write(msg + "\n")
 
                         try:
-                            field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                            field_gps_coords = utility.load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
                         except ValueError:
                             msg = f"Failed to load field '{shortcut_target_path}' due " \
                                   f"to ValueError (file is likely corrupted)"

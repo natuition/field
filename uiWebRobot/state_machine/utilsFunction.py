@@ -15,6 +15,7 @@ import time
 import sys
 sys.path.append('../')
 from navigation import NavigationV3
+from navigation import GPSComputing
 
 
 def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
@@ -216,9 +217,10 @@ def get_other_field():
             return coords_other
         return list()
 
-def is_valid_field_file(file_path):
+
+def is_valid_field_file(file_path : str):
     """
-    Check if a field file is syntactically valid.
+    Check if a field file is valid.
 
     Args:
         file_path (str): The path to the file to check.
@@ -230,26 +232,20 @@ def is_valid_field_file(file_path):
     if not os.path.exists(file_path):
         return False
     try:
-        with open(file_path, 'r') as file:
-            lines = file.readlines()
-        # Check if the file is not empty
-        if not lines:
+        # Check if the file contains the right number of points
+        coords_list = utility.load_coordinates(file_path)
+        if (len(coords_list) not in [4,2]):
             return False
-        # Check that the file contains exactly 4 lines
-        if len(lines) != 4:
-            return False
-        for index, line in enumerate(lines):
-            parts = line.strip().split()
-            # Check that each line contains 2 values
-            if len(parts) != 2:
-                return False
-            # Check that each value is a real number
-            try:
-                value1, value2 = map(float, parts)
-            except ValueError:
-                return False
-        return True
-    
-    except Exception as e:
-        print("Error: Syntax validation of the field file failed:", e)
+        
+        # Check distance between two consecutive points
+        if config.CHECK_MINIMUM_SIZE_FIELD:
+            with GPSComputing as nav:
+                for i in coords_list:
+                    if nav.get_distance(coords_list[i], coords_list[i+1]) <  (config.MINIMUM_SIZE_FIELD * 1000):
+                        return False
+
+    except ValueError as e:
+        print(f"Error : Failed to load field {file_path} due to ValueError (file is likely corrupted)")
         return False
+    
+    return True

@@ -184,16 +184,20 @@ class CreateFieldState(State.State):
             utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
             field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
 
-            fields_list = utilsFunction.load_field_list("../fields")
+            if(utilsFunction.is_valid_field_file(field_name)):
+                fields_list = utilsFunction.load_field_list("../fields")
 
-            if len(fields_list) > 0:
-                coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
+                if len(fields_list) > 0:
+                    coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
+                else:
+                    coords, other_fields, current_field_name = list(), list(), ""
+
+                self.socketio.emit('newField', json.dumps(
+                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
+                    "fields_list": fields_list}), namespace='/map')
             else:
-                coords, other_fields, current_field_name = list(), list(), ""
-
-            self.socketio.emit('newField', json.dumps(
-                {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
-                 "fields_list": fields_list}), namespace='/map')
+                message = "Your working zone is to small, please retry with a bigger one."
+                self.socketio.emit('notification', {"message_name": "not_a_good_zone", "message": message}, namespace='/broadcast', broadcast=True)
 
         return self
 
