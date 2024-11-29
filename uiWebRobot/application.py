@@ -116,6 +116,9 @@ class UIWebRobot:
                         positions_list.append([coords[0], coords[1]])
         except OSError as e:
             return None
+        if len(positions_list) == 0:
+            print(f"Erreur : Le fichier {file_path} est vide.")
+            return None
         return positions_list
 
     @staticmethod
@@ -131,6 +134,7 @@ class UIWebRobot:
         coords = list()
         for coord in corners:
             coords.append([coord[1], coord[0]])
+        print(coords)
         coords.append(coords[0])
         return coords
 
@@ -261,9 +265,9 @@ class UIWebRobot:
             return redirect('/')
         myCoords = [0, 0]
         field = self.get_state_machine().getField()
-        if field is None:
+        if (field is None) or (len(field) == 0):
             field = UIWebRobot.load_coordinates("../field.txt")
-        if field is None:
+        if (field is None) or (len(field) == 0):
             return render_template('map.html', myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
         else:
             coords_other = get_other_field()

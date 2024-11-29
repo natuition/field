@@ -87,7 +87,7 @@ class SmoothieAdapter:
         if config.SEEDER_QUANTITY > 0:
             self.seeder_close()
             res = self.seeder_close()
-            if res != self.RESPONSE_OK:
+            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                 msg = "Couldn't lock seeder during smoothie adapter initialization! Smoothie response:\n" + res
                 print(msg)
 
@@ -95,11 +95,11 @@ class SmoothieAdapter:
             # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
             res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
             self.wait_for_all_actions_done()
-            if res != self.RESPONSE_OK:
+            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                 print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
 
             res = self.ext_calibrate_cork()
-            if res != self.RESPONSE_OK:
+            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                 print("Initial cork calibration was failed, smoothie response:\n", res)  # TODO: what if so??
                 raise Exception("Initial cork calibration was failed!")
 
@@ -610,12 +610,12 @@ class SmoothieAdapter:
                         (rel_x != 0 and rel_y == 0):
                     # X movement
                     res = self.custom_move_for(X_F=X_F, X=X)
-                    if res != self.RESPONSE_OK:
+                    if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                         err_msg = "Couldn't do separate X movement:\n" + res
                         return err_msg
                     # Y movement
                     res = self.custom_move_for(Y_F=Y_F, Y=Y)
-                    if res != self.RESPONSE_OK:
+                    if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                         err_msg = "Couldn't do separate Y movement:\n" + res
                         return err_msg
                     return res
@@ -640,12 +640,12 @@ class SmoothieAdapter:
                         (rel_x != 0 and rel_y == 0):
                     # X movement
                     res = self.custom_move_to(X_F=X_F, X=X)
-                    if res != self.RESPONSE_OK:
+                    if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                         err_msg = "Couldn't do separate X movement:\n" + res
                         return err_msg
                     # Y movement
                     res = self.custom_move_to(Y_F=Y_F, Y=Y)
-                    if res != self.RESPONSE_OK:
+                    if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                         err_msg = "Couldn't do separate Y movement:\n" + res
                         return err_msg
                     return res
@@ -675,12 +675,12 @@ class SmoothieAdapter:
         with self.__sync_locker:
             res = self.custom_move_for(A_F=config.A_F_MAX, A=config.A_MAX)
             self.wait_for_all_actions_done()
-            if res != self.RESPONSE_OK:
+            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                 return res
 
             res = self.custom_move_for(A_F=config.A_F_MAX, A=-(abs(config.A_MIN) + abs(config.A_MAX)))
             self.wait_for_all_actions_done()
-            if res != self.RESPONSE_OK:
+            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                 return res
 
             return self.set_current_coordinates(A=config.A_MIN)
@@ -700,7 +700,7 @@ class SmoothieAdapter:
                     eval("config."+axis_label+"_MAX"), 
                     eval("config."+axis_label+"_AXIS_CALIBRATION_TO_MAX")
                 )
-                if res != self.RESPONSE_OK:
+                if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
                     raise RuntimeError(f"Couldn't calibrate {axis_label} axis, smoothie response:\n" + res)
 
         return self.RESPONSE_OK
