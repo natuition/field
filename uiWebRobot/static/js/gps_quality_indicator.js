@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Variable to store the gps quality description, default is "no_gps"
     let qualityDescription = (ui_languages["no_gps"])[ui_language];
 
+    // Timeout handler for resetting GPS quality
+    let gpsQualityTimeout = null;
+
     // Open connexion with socket '/gps'
     const socketGPS = io.connect('http://' + document.domain + ':' + location.port + '/gps');
 
@@ -24,6 +27,17 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Error : The GPS quality value is not a valid integer.');
             return;
         }
+
+        // Reset to 'no_gps' if no update for 5 seconds
+        if (gpsQualityTimeout) {
+            clearTimeout(gpsQualityTimeout);
+        }
+        gpsQualityTimeout = setTimeout(function () {
+            console.warn("No GPS quality update received for 5 seconds. Reset to 'no_gps'.");
+            lastGPSQuality = 0;
+            qualityDescription = (ui_languages["no_gps"])[ui_language];
+            updateGlobalGpsQuality("no_gps");
+        }, 5000);
 
         // Modify only if new quality value isn't the same as old quality value
         if (gps_quality_value != lastGPSQuality) {
