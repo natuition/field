@@ -182,9 +182,9 @@ class CreateFieldState(State.State):
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             #patch bug field
             utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
-            field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
+            field_path, field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
 
-            if(utilsFunction.is_valid_field_file(field_name)):
+            if utilsFunction.is_valid_field_file(field_path):
                 fields_list = utilsFunction.load_field_list("../fields")
 
                 if len(fields_list) > 0:
@@ -196,6 +196,8 @@ class CreateFieldState(State.State):
                     {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
                     "fields_list": fields_list}), namespace='/map')
             else:
+                if os.path.exists(field_path):
+                    os.remove(field_path)
                 message = "Your working zone is to small, please retry with a bigger one."
                 self.socketio.emit('notification', {"message_name": "not_a_good_zone", "message": message}, namespace='/broadcast', broadcast=True)
 
@@ -316,7 +318,7 @@ class FieldCreator:
         self.logger.write_and_flush(msg + "\n")
         print(msg)
         utilsFunction.save_gps_coordinates(self.field, path)
-        return unquote(fieldName[:-4], encoding='utf-8')
+        return (path, unquote(fieldName[:-4], encoding='utf-8'))
 
     def manoeuvre(self):
 
