@@ -197,7 +197,7 @@ function createMap(coords_field, coords_other) {
                 'id': 'field_startLayer',
                 'type': 'symbol',
                 'source': 'field_start',
-                'layout' : {
+                'layout': {
                     'icon-image': 'start-img',
                     'icon-size': 0.25
                 }
@@ -212,7 +212,7 @@ function createMap(coords_field, coords_other) {
                     'type': 'Feature',
                     'geometry': {
                         'type': 'Point',
-                        'coordinates': coords_field[0]
+                        'coordinates': coords_field[1]
                     }
                 }
             });
