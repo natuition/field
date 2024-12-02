@@ -36,24 +36,25 @@
 
         <header class="header header__begin">
             <div class="header__color"></div>
-                <div class="header_top_info">
-                    <div class="header_logo_container">
-                        <img src="{{ url_for('static', filename='logo_blanc.svg') }}" alt="Logo Natuition" class="header_logo_img">
-                    </div>
-                    <div class="info_container">
-                        <img src="{{ url_for('static', filename='satellite.svg') }}" alt="GPS Icon" class="gps_icon">
-                        <p id="gps_quality_indicator_text"/>
-                    </div>
-                    <div class="info_container">
-                        <p id="voltage_indicator" bumper_disable="false">
-                            <i class="fas fa-spinner fa-spin" style="color: #fff;"></i>
-                        </p>
-                    </div>
-                    <div class="info_container" onclick="location.href='/setting'">
-                        <p>{{ sn }}</p>
-                    </div>
+            <div class="header_top_info">
+                <div class="header_logo_container">
+                    <img src="{{ url_for('static', filename='logo_blanc.svg') }}" alt="Logo Natuition"
+                        class="header_logo_img">
                 </div>
-            
+                <div class="info_container">
+                    <img src="{{ url_for('static', filename='satellite.svg') }}" alt="GPS Icon" class="gps_icon">
+                    <p id="gps_quality_indicator_text" />
+                </div>
+                <div class="header__info--voltage">
+                    <p id="voltage_indicator" bumper_disable="false">
+                        <i class="fas fa-spinner fa-spin" style="color: #fff;"></i>
+                    </p>
+                </div>
+                <div class="header__info--model" onclick="location.href='/setting'">
+                    <p>{{ sn }}</p>
+                </div>
+            </div>
+
             <div class="header__map">
                 <iframe id="map__header" src="/map">
                     <p>Votre navigateur ne supporte aucune iframe !</p>

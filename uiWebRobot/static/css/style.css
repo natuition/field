@@ -68,12 +68,14 @@ body {
 .header__info--model,
 .header__info--voltage {
     background-color: #58b166;
-    border-radius: 20px;
-    padding: 10px 20px;
+    border-radius: 10px;
+    padding: 5px 10px;
 }
 
 .header__info--voltage {
-    margin-right: 10px;
+    margin: 0px 5px;
+    width: 70px;
+    text-align: center
 }
 
 .header__info--model p,
@@ -909,6 +911,10 @@ select {
 .header_logo_img {
     width: 50px;
     height: 50px;
+}
+
+.header_logo_container {
+    flex-grow: 2;
 }
 
 .gps_icon {
