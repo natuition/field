@@ -509,7 +509,7 @@ RTK_ID_SEND = [(1005, 1006), (1124, 1127), (1084, 1087), (1074, 1077)] #Id of th
 # GPS (USA)             1074        1077
 # GLONASS (Russie)      1084        1087
 # Galileo (UE)          1094        1097
-NTRIP_SLEEP_TIME = 30 # Time in seconds between two sessions of getting data (MSM and ARP)
+NTRIP_SLEEP_TIME = 10 # Time in seconds between two sessions of getting data (MSM and ARP)
 
 CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 
