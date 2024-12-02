@@ -184,7 +184,7 @@ class CreateFieldState(State.State):
             utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
             field_path, field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
 
-            if utilsFunction.is_valid_field_file(field_path):
+            if utilsFunction.is_valid_field_file(field_path, self.logger):
                 fields_list = utilsFunction.load_field_list("../fields")
 
                 if len(fields_list) > 0:

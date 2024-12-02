@@ -218,7 +218,7 @@ def get_other_field():
         return list()
 
 
-def is_valid_field_file(file_path : str):
+def is_valid_field_file(file_path : str, logger: utility.Logger):
     """
     Check if a field file is valid.
 
@@ -230,22 +230,33 @@ def is_valid_field_file(file_path : str):
     """
     # Check if the file exists
     if not os.path.exists(file_path):
+        msg = f"Error : Field validation, the file does not exist ({file_path})."
+        logger.write(msg + "\n")
+        print(msg)
         return False
     try:
         # Check if the file contains the right number of points
         coords_list = utility.load_coordinates(file_path)
         if (len(coords_list) not in [4,2]):
+            msg = f"Error : Field validation, the file does not have the right number of line ({len(coords_list)})."
+            logger.write(msg + "\n")
+            print(msg)
             return False
         
         # Check distance between two consecutive points
         if config.CHECK_MINIMUM_SIZE_FIELD:
-            with GPSComputing as nav:
-                for i in coords_list:
-                    if nav.get_distance(coords_list[i], coords_list[i+1]) <  (config.MINIMUM_SIZE_FIELD * 1000):
-                        return False
+            nav = GPSComputing()
+            for i in range(len(coords_list) - 1):
+                if nav.get_distance(coords_list[i], coords_list[i+1]) <  (config.MINIMUM_SIZE_FIELD * 1000):
+                    msg = f"Field validation, the file have a field to small, not saving it."
+                    logger.write(msg + "\n")
+                    print(msg)
+                    return False
 
     except ValueError as e:
-        print(f"Error : Failed to load field {file_path} due to ValueError (file is likely corrupted)")
+        msg = f"Error : Failed to load field {file_path} due to ValueError (file is likely corrupted)."
+        logger.write(msg + "\n")
+        print(msg)
         return False
     
     return True
