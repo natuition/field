@@ -660,16 +660,16 @@
 		"de": "Kein GPS"
 	},
 	"gps_with_rtk": {
-		"fr": "GPS avec RTK",
-		"en": "GPS with RTK",
-		"nl": "GPS met RTK",
-		"de": "GPS mit RTK"
+		"fr": "RTK",
+		"en": "RTK",
+		"nl": "RTK",
+		"de": "RTK"
 	},
 	"only_gps": {
-		"fr": "GPS seulement",
-		"en": "Only GPS",
-		"nl": "Alleen GPS",
-		"de": "Nur GPS"
+		"fr": "GPS",
+		"en": "GPS",
+		"nl": "GPS",
+		"de": "GPS"
 	},
 	"alert_on_no_gps": {
 		"fr": "Vous ne pouvez pas utiliser cette fonction tant que le GPS n'est pas disponible, veuillez attendre un instant.",
