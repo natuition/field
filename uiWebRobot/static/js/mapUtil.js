@@ -11,6 +11,29 @@ var lastPathCoords = [];
 
 var firstFocus = false
 
+function haversineDistanceM(lat1Deg, lon1Deg, lat2Deg, lon2Deg) {
+    function toRad(degree) {
+        return degree * Math.PI / 180;
+    }
+
+    const lat1 = toRad(lat1Deg);
+    const lon1 = toRad(lon1Deg);
+    const lat2 = toRad(lat2Deg);
+    const lon2 = toRad(lon2Deg);
+
+    const { sin, cos, sqrt, atan2 } = Math;
+
+    const R = 6371; // earth radius in km 
+    const dLat = lat2 - lat1;
+    const dLon = lon2 - lon1;
+    const a = sin(dLat / 2) * sin(dLat / 2)
+        + cos(lat1) * cos(lat2)
+        * sin(dLon / 2) * sin(dLon / 2);
+    const c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    const d = R * c;
+    return d * 1000; // distance in m
+}
+
 window.onload = () => {
     if (typeof coords_field != "undefined") {
         if (typeof coords_other != "undefined") {
@@ -70,16 +93,6 @@ function createMap(coords_field, coords_other) {
     }
 
     map.on('load', function () {
-
-        // Loading of pictures for starting and target point for a selected zone
-        map.loadImage('http://' + document.domain + ':' + location.port + '/static/start-image.png', (error, image) => {
-            if (error) throw error;
-            map.addImage('start-img', image);
-        });
-        map.loadImage('http://' + document.domain + ':' + location.port + '/static/focus-image.png', (error, image) => {
-            if (error) throw error;
-            map.addImage('focus-img', image);
-        });
 
         //Other field zone
         if (typeof (map.getSource('other_field')) == "undefined") {
@@ -182,52 +195,43 @@ function createMap(coords_field, coords_other) {
             });
         }
         //Field start point
-        if (typeof (map.getSource('field_start')) == "undefined") {
-            map.addSource('field_start', {
-                'type': 'geojson',
-                'data': {
-                    'type': 'Feature',
-                    'geometry': {
-                        'type': 'Point',
-                        'coordinates': coords_field[coords_field.length - 1]
+        map.loadImage('http://' + document.domain + ':' + location.port + '/static/nav.png', (error, image) => {
+            if (error) throw error;
+            map.addImage('nav-img', image);
+
+            var degrees = Math.atan2(coords_field[1][0] - coords_field[coords_field.length - 1][0], coords_field[1][1] - coords_field[coords_field.length - 1][1]) * 180 / Math.PI;
+
+            if (typeof (map.getSource('field_start')) == "undefined") {
+                map.addSource('field_start', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': coords_field[coords_field.length - 1]
+                        },
+                        "properties": {
+                            'rotate': degrees
+                        },
                     }
-                }
-            });
-            map.addLayer({
-                'id': 'field_startLayer',
-                'type': 'symbol',
-                'source': 'field_start',
-                'layout': {
-                    'icon-image': 'start-img',
-                    'icon-size': 0.25
-                }
-            });
-        }
-
-        //Field focus point
-        if (typeof (map.getSource('field_focus')) == "undefined") {
-            map.addSource('field_focus', {
-                'type': 'geojson',
-                'data': {
-                    'type': 'Feature',
-                    'geometry': {
-                        'type': 'Point',
-                        'coordinates': coords_field[1]
+                });
+                map.addLayer({
+                    'id': 'field_startLayer',
+                    'type': 'symbol',
+                    'source': 'field_start',
+                    /*'layout': {
+                        'icon-image': 'start-img',
+                        'icon-size': 0.25
+                    }*/
+                    'layout': {
+                        'icon-rotate': ['get', 'rotate'],
+                        'icon-rotation-alignment': 'map',
+                        'icon-image': 'nav-img',
+                        'icon-size': 0.3
                     }
-                }
-            });
-            map.addLayer({
-                'id': 'field_focusLayer',
-                'type': 'symbol',
-                'source': 'field_focus',
-                'layout': {
-                    'icon-image': 'focus-img',
-                    'icon-size': 0.25
-                }
-            });
-        }
-
-
+                });
+            }
+        });
 
         //Instruction_line
         if (typeof (map.getSource('instruction_line')) == "undefined") {
@@ -326,10 +330,6 @@ function createMap(coords_field, coords_other) {
             });
         }
 
-        socketMap.on('updateLastPath', function (dataServ) {
-            lastPathCoords = JSON.parse(dataServ);
-        });
-
         socketMap.on('updatePath', function (dataServ) {
             dataServ = JSON.parse(dataServ)
             var coords = dataServ[0]
@@ -367,6 +367,10 @@ function createMap(coords_field, coords_other) {
                 map.panTo(last_coord);
                 firstFocus = true;
             }
+        });
+
+        socketMap.on('updateLastPath', function (dataServ) {
+            lastPathCoords = JSON.parse(dataServ);
         });
 
         socketio.emit('data', { type: "getLastPath" });
@@ -541,20 +545,19 @@ socketMap.on('newField', function (dataServ) {
             }
         });
 
+        var start_point = dataServ["field"][dataServ["field"].length - 1];
+        var end_point = dataServ["field"][1];
+        var degrees = Math.atan2(end_point[0] - start_point[0], end_point[1] - start_point[1]) * 180 / Math.PI
+
         map.getSource('field_start').setData({
             'type': 'Feature',
             'geometry': {
                 'type': 'Point',
-                'coordinates': dataServ["field"][dataServ["field"].length - 1]
-            }
-        });
-
-        map.getSource('field_focus').setData({
-            'type': 'Feature',
-            'geometry': {
-                'type': 'Point',
-                'coordinates': dataServ["field"][1]
-            }
+                'coordinates': start_point
+            },
+            "properties": {
+                'rotate': degrees
+            },
         });
 
         if (dataServ["field"].length > 0) {
