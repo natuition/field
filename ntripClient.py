@@ -135,6 +135,8 @@ class NtripClient(object):
                     mps = bytearray(mps, 'ascii')
                 try:
                     self.socket.sendall(mps)
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
                 except Exception:
                     self.socket = None
                     return None
@@ -173,6 +175,8 @@ class NtripClient(object):
         while True:
             try:
                 data = self.socket.recv(1)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
             except ssl.SSLWantReadError:
                     return None
             except IOError as e:
@@ -206,6 +210,8 @@ class NtripClient(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             error_indicator = sock.connect_ex((self.caster, self.port))
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception:
             return False
         if error_indicator == 0:
@@ -281,6 +287,8 @@ if __name__ == '__main__':
                 ntripArgs['lat'] = pos[0]
                 ntripArgs['long'] = pos[1]
                 print(f"Current latitude : {pos[0]}, longitude : {pos[1]} for send to ntrip.")
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
             except Exception as e:
                 print("Error not found coords ! ",e)
                 exit(1)

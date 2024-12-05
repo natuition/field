@@ -1984,6 +1984,8 @@ class VescAdapterV4:
                     self.__ser.flushOutput()
                     self.__ser.timeout = 5
                     print("It is reconnected!")
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
                 except Exception as e:
                     print(f"Could not open port ({e}).")
                     time.sleep(1)
@@ -2108,6 +2110,8 @@ class VescAdapterV4:
                                 while self.__ser.in_waiting > 0:
                                     try:
                                         in_buf += self.__ser.read(self.__ser.in_waiting)
+                                    except KeyboardInterrupt:
+                                        raise KeyboardInterrupt
                                     except Exception as e:
                                         self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
                             except SerialException or OSError as e :

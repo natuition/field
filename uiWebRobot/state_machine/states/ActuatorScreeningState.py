@@ -94,6 +94,8 @@ class ActuatorScreeningState(State.State):
                 time.sleep(0.01)
             if ActuatorScreeningState.DATA_IN_CSV:
                 csvfile.close()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception as e:
             print(e)
 

@@ -90,6 +90,8 @@ class WaitWorkingState(State.State):
                 print(msg)
                 try:
                     self.smoothie = utilsFunction.initSmoothie(self.logger)
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
                 except Exception as e:
                     if "[Timeout sm]" in str(e):
                         self.smoothie = utilsFunction.initSmoothie(self.logger)

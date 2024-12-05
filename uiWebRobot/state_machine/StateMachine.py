@@ -32,6 +32,8 @@ class StateMachine:
 
         try:
             newState = self.currentState.on_event(event)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception as e:
             self.logger.write_and_flush("[Error] "+str(e)+"\n")
             newState = ErrorState(self.socketio,self.logger,str(e))
@@ -49,6 +51,8 @@ class StateMachine:
     def on_socket_data(self, data):
         try:
             self.currentState = self.currentState.on_socket_data(data)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception as e:
             self.logger.write_and_flush("[Error] "+str(e)+"\n")
             self.change_current_state(ErrorState(self.socketio,self.logger,str(e)))
