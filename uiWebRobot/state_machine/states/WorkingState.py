@@ -38,25 +38,6 @@ class WorkingState(State.State):
         self.last_path_all_points = list()
         self.previous_sessions_working_time = None
 
-        msg = f"Audit mode enable : {isAudit}"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
-
-        msg = f"[{self.__class__.__name__}] -> Création queue de message ui main"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
-
-        try:
-            posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            pass
-
-        self._main_msg_thread_alive = True
-        self._main_msg_thread = threading.Thread(target=self._main_msg_thread_tf, daemon=True)
-        self._main_msg_thread.start()
-
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
                                                 continueButton=ButtonState.DISABLE,
@@ -78,10 +59,36 @@ class WorkingState(State.State):
 
         self.field = None
         self.lastGpsQuality = "1"
+        
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Creating the message queue between main and ui."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+        
+        try:
+            posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Message queue exist : unlink..."
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            pass
+        self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
+        
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Creating thread to read messages sent by main."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+        self._main_msg_thread_alive = True
+        self._main_msg_thread = threading.Thread(target=self._main_msg_thread_tf, daemon=True)
+        self._main_msg_thread.start()
 
-        msg = f"[{self.__class__.__name__}] -> Lancement main"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Launching main."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
         self.main = utilsFunction.startMain()
         self.timeStartMain = datetime.now(timezone.utc)
 
@@ -89,11 +96,41 @@ class WorkingState(State.State):
         if event == Events.Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
+            
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Kill main and stop thread"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+            
             os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
-            self.main.wait()
-            os.system("sudo systemctl restart nvargus-daemon")
             self._main_msg_thread_alive = False
+            
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Wait main"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+            
+            self.main.wait()
+            
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Restart camera"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+            
+            os.system("sudo systemctl restart nvargus-daemon")
+            
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Wait main thread"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+            
             self._main_msg_thread.join()
+            
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Send validate stop"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+            
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
@@ -139,7 +176,6 @@ class WorkingState(State.State):
         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
     def _main_msg_thread_tf(self):
-        self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
         while self._main_msg_thread_alive:
             try:
                 msg = self.msgQueue.receive(timeout=2)
@@ -148,9 +184,10 @@ class WorkingState(State.State):
             data = json.loads(msg[0])
             if "start" in data:
                 if data["start"]:
-                    msg = f"[{self.__class__.__name__}] -> Main lancé !"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
+                    if config.UI_VERBOSE_LOGGING:
+                        msg = f"[{self.__class__.__name__}] -> Main started !"
+                        self.logger.write_and_flush(msg + "\n")
+                        print(msg)
                     self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit,
                                                      "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
                                        namespace='/button', broadcast=True)
@@ -189,13 +226,15 @@ class WorkingState(State.State):
                 self.allPath.clear()
             elif "input_voltage" in data:
                 utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
-        msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        if config.UI_VERBOSE_LOGGING:        
+            msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
         self.msgQueue.close()
-        msg = f"[{self.__class__.__name__}] -> Unlink msgQueue..."
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Unlink msgQueue..."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
         try:
             self.msgQueue.unlink()
         except posix_ipc.ExistentialError:

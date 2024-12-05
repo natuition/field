@@ -49,11 +49,12 @@ class WaitWorkingState(State.State):
 
         try:
             if self.vesc_engine is None:
-                msg = f"[{self.__class__.__name__}] -> initVesc"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> initVesc"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                 self.vesc_engine = utilsFunction.initVesc(self.logger)
-            else:
+            elif config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> no need to initVesc"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
@@ -85,9 +86,10 @@ class WaitWorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
 
             if self.smoothie is None:
-                msg = f"[{self.__class__.__name__}] -> initSmoothie"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                 try:
                     self.smoothie = utilsFunction.initSmoothie(self.logger)
                 except KeyboardInterrupt:
@@ -97,7 +99,7 @@ class WaitWorkingState(State.State):
                         self.smoothie = utilsFunction.initSmoothie(self.logger)
                     else:
                         raise e
-            else:
+            elif config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)

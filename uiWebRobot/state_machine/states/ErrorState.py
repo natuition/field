@@ -18,9 +18,10 @@ class ErrorState(State.State):
         self.socketio = socketio
         self.logger = logger
         self.reason = reason
-        msg = f"[{self.__class__.__name__}] -> Error"
-        self.logger.write_and_flush(msg+"\n")
-        print(msg)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Error"
+            self.logger.write_and_flush(msg+"\n")
+            print(msg)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
@@ -35,9 +36,10 @@ class ErrorState(State.State):
 
         self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
 
-        msg = f"[{self.__class__.__name__}] -> Reload web page !"
-        self.logger.write_and_flush(msg+"\n")
-        print(msg)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Reload web page !"
+            self.logger.write_and_flush(msg+"\n")
+            print(msg)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject
