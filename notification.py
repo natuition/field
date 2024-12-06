@@ -465,7 +465,7 @@ class NotificationClient:
             except:
                 pass
             if not self.__treated_weed_types_are_init and self.__keep_data_sender_th_alive:
-                time.sleep(0.5)
+                time.sleep(5)
 
         # send current field
         while not self.__field_is_init and self.__keep_data_sender_th_alive:
@@ -476,7 +476,7 @@ class NotificationClient:
             except:
                 pass
             if not self.__field_is_init and self.__keep_data_sender_th_alive:
-                time.sleep(0.5)
+                time.sleep(1)
 
         # send current session
         while self.__session_id is None and self.__keep_data_sender_th_alive:
