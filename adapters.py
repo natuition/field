@@ -11,7 +11,7 @@ import threading
 import serial
 import pyvesc
 import re
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 from serial import SerialException
 
 
@@ -1486,9 +1486,10 @@ class VescAdapterV3:
             self.__gpio_stoppers_pins[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOPPER_PIN
             if self.__gpio_stoppers_pins[self.PROPULSION_KEY] is not None:
                 if not gpio_is_initialized:
-                    GPIO.setmode(GPIO.BOARD)
-                    gpio_is_initialized = True
-                GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
+                    raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
+                    #GPIO.setmode(GPIO.BOARD)
+                    #gpio_is_initialized = True
+                #GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
 
         # init EXTRACTION vesc
         if config.VESC_ALLOW_EXTRACTION:
@@ -1508,9 +1509,10 @@ class VescAdapterV3:
                 self.__gpio_stoppers_pins[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOPPER_PIN
                 if self.__gpio_stoppers_pins[self.EXTRACTION_KEY] is not None:
                     if not gpio_is_initialized:
-                        GPIO.setmode(GPIO.BOARD)
-                        gpio_is_initialized = True
-                    GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
+                        raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
+                        #GPIO.setmode(GPIO.BOARD)
+                        #gpio_is_initialized = True
+                    #GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
             else:
                 # TODO what robot should do if initialization was failed?
                 print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
@@ -1577,13 +1579,13 @@ class VescAdapterV3:
 
         for engine_key in self.__can_ids:
             self.stop_moving(engine_key)
-            if self.__gpio_stoppers_pins[engine_key] is not None:
-                GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
-                if not cleanup_gpio:
-                    cleanup_gpio = True
+            #if self.__gpio_stoppers_pins[engine_key] is not None:
+                #GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
+                #if not cleanup_gpio:
+                    #cleanup_gpio = True
 
-        if cleanup_gpio:
-            GPIO.cleanup()
+        #if cleanup_gpio:
+            #GPIO.cleanup()
 
         self._movement_ctrl_th.join(1)
         self.__ser.close()
@@ -1712,8 +1714,8 @@ class VescAdapterV3:
 
         end_t = time.time() + timeout if timeout is not None else float("inf")
         while self.__is_moving[engine_key]:
-            if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
-                return True
+            #if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
+                #return True
             if time.time() > end_t:
                 if stop_engine_if_timeout:
                     self.stop_moving(engine_key)
@@ -1857,9 +1859,10 @@ class VescAdapterV4:
             self.__gpio_stoppers_pins[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOPPER_PIN
             if self.__gpio_stoppers_pins[self.PROPULSION_KEY] is not None:
                 if not gpio_is_initialized:
-                    GPIO.setmode(GPIO.BOARD)
-                    gpio_is_initialized = True
-                GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
+                    raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
+                    #GPIO.setmode(GPIO.BOARD)
+                    #gpio_is_initialized = True
+                #GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
 
         # init EXTRACTION vesc
         if config.VESC_ALLOW_EXTRACTION:
@@ -1885,9 +1888,10 @@ class VescAdapterV4:
                 self.__gpio_stoppers_pins[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOPPER_PIN
                 if self.__gpio_stoppers_pins[self.EXTRACTION_KEY] is not None:
                     if not gpio_is_initialized:
-                        GPIO.setmode(GPIO.BOARD)
-                        gpio_is_initialized = True
-                    GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
+                        raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
+                        #GPIO.setmode(GPIO.BOARD)
+                        #gpio_is_initialized = True
+                    #GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
             else:
                 # TODO what robot should do if initialization was failed?
                 print(f"[{self.__class__.__name__}] -> Extraction vesc initialization fail: couldn't determine extraction vesc ID.")
@@ -1948,13 +1952,13 @@ class VescAdapterV4:
 
             for engine_key in self.__can_ids:
                 self.stop_moving(engine_key)
-                if self.__gpio_stoppers_pins[engine_key] is not None:
-                    GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
-                    if not cleanup_gpio:
-                        cleanup_gpio = True
+                #if self.__gpio_stoppers_pins[engine_key] is not None:
+                    #GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
+                    #if not cleanup_gpio:
+                        #cleanup_gpio = True
 
-            if cleanup_gpio:
-                GPIO.cleanup()
+            #if cleanup_gpio:
+                #GPIO.cleanup()
 
             self._movement_ctrl_th.join(1)
             self.__ser.close()
@@ -2220,10 +2224,10 @@ class VescAdapterV4:
             with self.__locker:
                 if not self.__is_moving[engine_key]:
                     return False
-            if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
-                if stop_engine_if_stopper_hit:
-                    self.stop_moving(engine_key)
-                return True
+            #if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
+                #if stop_engine_if_stopper_hit:
+                    #self.stop_moving(engine_key)
+                #return True
             if time.time() > end_t:
                 if stop_engine_if_timeout:
                     self.stop_moving(engine_key)
