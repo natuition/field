@@ -25,14 +25,14 @@ class SmoothieAdapter:
 
     def __init__(self, smoothie_host, calibration_at_init=True):
         if type(smoothie_host) is not str:
-            raise TypeError("invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
+            raise TypeError(f"[{self.__class__.__name__}] -> invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
 
         if config.SMOOTHIE_BACKEND == 1:
             self.__smc = connectors.SmoothieV11TelnetConnector(smoothie_host)
         elif config.SMOOTHIE_BACKEND == 2:
             self.__smc = connectors.SmoothieV11SerialConnector(smoothie_host, config.SMOOTHIE_BAUDRATE)
         else:
-            raise ValueError("wrong config.SMOOTHIE_BACKEND value: " + str(smoothie_host))
+            raise ValueError(f"[{self.__class__.__name__}] -> wrong config.SMOOTHIE_BACKEND value: " + str(smoothie_host))
 
         self.__sync_locker = multiprocessing.RLock()
         self.__x_cur = multiprocessing.Value("d", 0)
@@ -69,17 +69,17 @@ class SmoothieAdapter:
         res = None
         for i in range(3):
             res = self.switch_to_relative()
-            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
-                msg = f"Attempt {i + 1} of switching smoothie to relative is failed, smoothie response:\n{res}"
+            if SmoothieAdapter.check_res_smoothie(res):
+                msg = f"[{self.__class__.__name__}] -> Attempt {i + 1} of switching smoothie to relative is failed, smoothie response:\n{res}"
                 print(msg)
             else:
                 if(res == self.RESPONSE_OK):
-                    print(f"La smoothie est passée en mode relatif sans aucune detection de bug. La réponse était : {res}")
+                    print(f"[{self.__class__.__name__}] -> The Smoothie switched to relative mode without detecting any bugs. The response was: {res}")
                 else:
-                    print(f"Un bug a été détécté lors du passage de la smoothie en mode relatif mais pris en compte par la correction de bug. La réponse était {res}")
+                    print(f"[{self.__class__.__name__}] -> A bug was detected during the Smoothie's switch to relative mode, but it was handled by the bug fix. The response was: {res}")
                 break
         else:
-            msg = f"All attempts of switching smoothie to relative were failed! Last smoothie's response:\n{res}"
+            msg = f"[{self.__class__.__name__}] -> All attempts of switching smoothie to relative were failed! Last smoothie's response:\n{res}"
             print(msg)
             raise Exception(msg)
         #> Code patché rapidement pour la démo
@@ -87,19 +87,19 @@ class SmoothieAdapter:
         if config.SEEDER_QUANTITY > 0:
             self.seeder_close()
             res = self.seeder_close()
-            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
-                msg = "Couldn't lock seeder during smoothie adapter initialization! Smoothie response:\n" + res
+            if SmoothieAdapter.check_res_smoothie(res):
+                msg = f"[{self.__class__.__name__}] -> Couldn't lock seeder during smoothie adapter initialization! Smoothie response:\n" + res
                 print(msg)
 
         if calibration_at_init:
             # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
             res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
             self.wait_for_all_actions_done()
-            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
+            if SmoothieAdapter.check_res_smoothie(res):
                 print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
 
             res = self.ext_calibrate_cork()
-            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
+            if SmoothieAdapter.check_res_smoothie(res):
                 print("Initial cork calibration was failed, smoothie response:\n", res)  # TODO: what if so??
                 raise Exception("Initial cork calibration was failed!")
 
@@ -111,6 +111,10 @@ class SmoothieAdapter:
 
     def disconnect(self):
         self.__smc.disconnect()
+        
+    @staticmethod
+    def check_res_smoothie(res):
+        return (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res))
 
     @property
     def is_disconnect(self):
@@ -189,9 +193,9 @@ class SmoothieAdapter:
     def set_current_coordinates(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
         with self.__sync_locker:
             if self.__check_arg_types([type(None)], X, Y, Z, A, B, C):
-                raise TypeError("at least one axis shouldn't be None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one axis shouldn't be None")
             if not self.__check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
-                raise TypeError("incorrect axis current value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect axis current value(s) type(s)")
 
             g_code = "G92"
 
@@ -266,9 +270,9 @@ class SmoothieAdapter:
     @staticmethod
     def compare_coordinates(coordinates_a, coordinates_b, precision=1e-10):
         if type(coordinates_a) != dict or type(coordinates_b) != dict:
-            raise AttributeError("coordinates should be stored in dict")
+            raise AttributeError(f"[{self.__class__.__name__}] -> coordinates should be stored in dict")
         if len(coordinates_a) != len(coordinates_b):
-            raise AttributeError("coordinates dicts should have similar items count")
+            raise AttributeError(f"[{self.__class__.__name__}] -> coordinates dicts should have similar items count")
 
         for key in coordinates_a:
             if abs(coordinates_a[key] - coordinates_b[key]) > precision:
@@ -296,15 +300,15 @@ class SmoothieAdapter:
         with self.__sync_locker:
             # check given forces
             if self.__check_arg_types([type(None)], X_F, Y_F, Z_F, A_F, B_F, C_F):
-                raise TypeError("at least one given force value shouldn't be a None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one given force value shouldn't be a None")
             if not self.__check_arg_types([float, int, type(None)], X_F, Y_F, Z_F, A_F, B_F, C_F):
-                raise TypeError("incorrect force value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect force value(s) type(s)")
 
             # check given axes
             if self.__check_arg_types([type(None)], X, Y, Z, A, B, C):
-                raise TypeError("at least one given axis value shouldn't be a None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one given axis value shouldn't be a None")
             if not self.__check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
-                raise TypeError("incorrect axis value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect axis value(s) type(s)")
 
             # apply min of given forces (and pass by Nones)
             min_f_msg = "(min force value applied)"
@@ -451,15 +455,15 @@ class SmoothieAdapter:
         with self.__sync_locker:
             # check given forces
             if self.__check_arg_types([type(None)], X_F, Y_F, Z_F, A_F, B_F, C_F):
-                raise TypeError("at least one given force value shouldn't be a None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one given force value shouldn't be a None")
             if not self.__check_arg_types([float, int, type(None)], X_F, Y_F, Z_F, A_F, B_F, C_F):
-                raise TypeError("incorrect force value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect force value(s) type(s)")
 
             # check given axes
             if self.__check_arg_types([type(None)], X, Y, Z, A, B, C):
-                raise TypeError("at least one given axis value shouldn't be a None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one given axis value shouldn't be a None")
             if not self.__check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
-                raise TypeError("incorrect axis value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect axis value(s) type(s)")
 
             # apply min of given forces (and pass by Nones)
             min_f_msg = "(min force value applied)"
@@ -610,13 +614,13 @@ class SmoothieAdapter:
                         (rel_x != 0 and rel_y == 0):
                     # X movement
                     res = self.custom_move_for(X_F=X_F, X=X)
-                    if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
-                        err_msg = "Couldn't do separate X movement:\n" + res
+                    if SmoothieAdapter.check_res_smoothie(res):
+                        err_msg = f"[{self.__class__.__name__}] -> Couldn't do separate X movement:\n" + res
                         return err_msg
                     # Y movement
                     res = self.custom_move_for(Y_F=Y_F, Y=Y)
-                    if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
-                        err_msg = "Couldn't do separate Y movement:\n" + res
+                    if SmoothieAdapter.check_res_smoothie(res):
+                        err_msg = f"[{self.__class__.__name__}] -> Couldn't do separate Y movement:\n" + res
                         return err_msg
                     return res
             return self.custom_move_for(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
@@ -640,13 +644,13 @@ class SmoothieAdapter:
                         (rel_x != 0 and rel_y == 0):
                     # X movement
                     res = self.custom_move_to(X_F=X_F, X=X)
-                    if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
-                        err_msg = "Couldn't do separate X movement:\n" + res
+                    if SmoothieAdapter.check_res_smoothie(res):
+                        err_msg = f"[{self.__class__.__name__}] -> Couldn't do separate X movement:\n" + res
                         return err_msg
                     # Y movement
                     res = self.custom_move_to(Y_F=Y_F, Y=Y)
-                    if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
-                        err_msg = "Couldn't do separate Y movement:\n" + res
+                    if SmoothieAdapter.check_res_smoothie(res):
+                        err_msg = f"[{self.__class__.__name__}] -> Couldn't do separate Y movement:\n" + res
                         return err_msg
                     return res
             return self.custom_move_to(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
@@ -675,12 +679,12 @@ class SmoothieAdapter:
         with self.__sync_locker:
             res = self.custom_move_for(A_F=config.A_F_MAX, A=config.A_MAX)
             self.wait_for_all_actions_done()
-            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
+            if SmoothieAdapter.check_res_smoothie(res):
                 return res
 
             res = self.custom_move_for(A_F=config.A_F_MAX, A=-(abs(config.A_MIN) + abs(config.A_MAX)))
             self.wait_for_all_actions_done()
-            if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
+            if SmoothieAdapter.check_res_smoothie(res):
                 return res
 
             return self.set_current_coordinates(A=config.A_MIN)
@@ -688,7 +692,7 @@ class SmoothieAdapter:
     def ext_calibrate_cork(self):
 
         if not set(config.CALIBRATION_ORDER).issubset(set(["X", "Y", "Z", "A", "B", "C"])):
-            raise ValueError("unsupported axis label or wrong type")
+            raise ValueError(f"[{self.__class__.__name__}] -> unsupported axis label or wrong type")
 
         for axis_label in config.CALIBRATION_ORDER:
                 
@@ -700,7 +704,7 @@ class SmoothieAdapter:
                     eval("config."+axis_label+"_MAX"), 
                     eval("config."+axis_label+"_AXIS_CALIBRATION_TO_MAX")
                 )
-                if (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res)):
+                if SmoothieAdapter.check_res_smoothie(res):
                     raise RuntimeError(f"Couldn't calibrate {axis_label} axis, smoothie response:\n" + res)
 
         return self.RESPONSE_OK
@@ -722,7 +726,7 @@ class SmoothieAdapter:
             if self.RESPONSE_HOMING_FAILED in response:
                 for i in range(config.RETRY_CORK_UP_MIN, config.RETRY_CORK_UP_MAX+config.RETRY_CORK_UP_STEP, config.RETRY_CORK_UP_STEP):
                     response = self.__smc.read_some()
-                    msg = f"Homing failed during cork up, retry with Z{i} down before up."
+                    msg = f"[{self.__class__.__name__}] -> Homing failed during cork up, retry with Z{i} down before up."
                     print(msg)
                     response = self.reset_halted_state()
                     if self.RESPONSE_AFTER_M999 in response:
@@ -747,7 +751,7 @@ class SmoothieAdapter:
 
         else:
             raise RuntimeError(
-                "picking up corkscrew with stoppers usage requires Z axis calibration permission in config"
+                f"[{self.__class__.__name__}] -> picking up corkscrew with stoppers usage requires Z axis calibration permission in config"
             )
 
     @staticmethod
@@ -759,9 +763,9 @@ class SmoothieAdapter:
         """
 
         if axis_label not in ["X", "Y", "Z", "A", "B", "C"]:
-            raise ValueError("unsupported axis label or wrong type")
+            raise ValueError(f"[{self.__class__.__name__}] -> unsupported axis label or wrong type")
         if not SmoothieAdapter.__check_arg_types([int, float], mm_axis_val):
-            raise TypeError("axis_value should be float or int")
+            raise TypeError(f"[{self.__class__.__name__}] -> axis_value should be float or int")
 
         if mm_axis_val == 0:
             return mm_axis_val
@@ -788,41 +792,41 @@ class SmoothieAdapter:
         """
 
         if axis_label not in ["X", "Y", "Z", "A", "B", "C"]:
-            raise ValueError("unsupported axis label or wrong type")
+            raise ValueError(f"[{self.__class__.__name__}] -> unsupported axis label or wrong type")
         if not SmoothieAdapter.__check_arg_types([int, float], sm_axis_val):
-            raise TypeError("axis_value should be float or int")
+            raise TypeError(f"[{self.__class__.__name__}] -> axis_value should be float or int")
 
         if sm_axis_val == 0:
             return sm_axis_val
 
         if axis_label == "X":
             if config.X_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.X_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{self.__class__.__name__}] -> config.X_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.X_COEFFICIENT_TO_MM
 
         if axis_label == "Y":
             if config.Y_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.Y_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{self.__class__.__name__}] -> config.Y_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.Y_COEFFICIENT_TO_MM
 
         if axis_label == "Z":
             if config.Z_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.Z_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{self.__class__.__name__}] -> config.Z_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.Z_COEFFICIENT_TO_MM
 
         if axis_label == "A":
             if config.A_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.A_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{self.__class__.__name__}] -> config.A_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.A_COEFFICIENT_TO_MM
 
         if axis_label == "B":
             if config.B_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.B_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{self.__class__.__name__}] -> config.B_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.B_COEFFICIENT_TO_MM
 
         if axis_label == "C":
             if config.C_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.C_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{self.__class__.__name__}] -> config.C_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.C_COEFFICIENT_TO_MM
 
     @staticmethod
@@ -830,11 +834,11 @@ class SmoothieAdapter:
         """Returns True if all given variables (*args) types are in given types list, False otherwise
         """
         if len(args) < 1:
-            raise TypeError("item(s) to check is missed")
+            raise TypeError(f"[{self.__class__.__name__}] -> item(s) to check is missed")
         if type(types) is not list:
-            raise TypeError("expected list of types, received " + str(type(types)))
+            raise TypeError(f"[{self.__class__.__name__}] -> expected list of types, received " + str(type(types)))
         if len(types) < 1:
-            raise ValueError("list of types should contain at least one item")
+            raise ValueError(f"[{self.__class__.__name__}] -> list of types should contain at least one item")
 
         for arg in args:
             if type(arg) not in types:
@@ -849,10 +853,10 @@ class SmoothieAdapter:
         """
 
         if cur_axis_val + mov_axis_val > key_max:
-            return "Value {0} for {1} goes beyond max acceptable range of {3} = {2}, as current value is {4}" \
+            return f"[{self.__class__.__name__}] -> Value {0} for {1} goes beyond max acceptable range of {3} = {2}, as current value is {4}" \
                 .format(mov_axis_val, key_label, key_max, key_max_label, cur_axis_val)
         if cur_axis_val + mov_axis_val < key_min:
-            return "Value {0} for {1} goes beyond min acceptable range of {3} = {2}, as current value is {4}" \
+            return f"[{self.__class__.__name__}] -> Value {0} for {1} goes beyond min acceptable range of {3} = {2}, as current value is {4}" \
                 .format(mov_axis_val, key_label, key_min, key_min_label, cur_axis_val)
         return None
 
@@ -1197,7 +1201,7 @@ class CameraAdapterIMX219_170:
             # image = cv.imread('test.jpg') #fake image for debug
             return image
         else:
-            raise RuntimeError("Unable to open camera")
+            raise RuntimeError(f"[{self.__class__.__name__}] -> Unable to open camera")
 
 
 class VideoCaptureNoBuffer:
@@ -1834,7 +1838,7 @@ class VescAdapterV4:
         # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
         if config.VESC_ALLOW_PROPULSION:
             if config.VESC_PROPULSION_AUTODETECT_CAN_ID:
-                raise NotImplementedError("can id detection is not confirmed to work fine")
+                raise NotImplementedError(f"[{self.__class__.__name__}] -> Can id detection is not confirmed to work fine.")
             else:
                 prop_can_id = config.VESC_PROPULSION_CAN_ID
             self.__can_ids[self.PROPULSION_KEY] = prop_can_id  # parent vesc has ID=None
@@ -1886,7 +1890,7 @@ class VescAdapterV4:
                     GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
             else:
                 # TODO what robot should do if initialization was failed?
-                print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
+                print(f"[{self.__class__.__name__}] -> Extraction vesc initialization fail: couldn't determine extraction vesc ID.")
         # init any new vescs (add vesc init code here)
         # ...
 
@@ -1922,7 +1926,7 @@ class VescAdapterV4:
             self.stop_moving(self.EXTRACTION_KEY)
             if not res:
                 # TODO what robot should do if calibration was failed (there was no stopper hit)?
-                print("Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!)")
+                print(f"[{self.__class__.__name__}] -> Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!).")
         # do any new calibrations (add vesc calibration code here)
         # ...
         self.__last_reconnect_time = time.time() - 60
@@ -1966,13 +1970,13 @@ class VescAdapterV4:
 
             smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
             while not "vesc" in smoothie_vesc_addr:
-                msg = "Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
+                msg = f"[{self.__class__.__name__}] -> Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
                 print(msg)
                 time.sleep(1)
                 smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
                 
             vesc_address = smoothie_vesc_addr["vesc"]
-            msg = f"Finding vesc's USB address at '{vesc_address}'."
+            msg = f"[{self.__class__.__name__}] -> Finding vesc's USB address at '{vesc_address}'."
             print(msg)
             
             could_open_port = False
@@ -1983,11 +1987,11 @@ class VescAdapterV4:
                     self.__ser.flushInput()
                     self.__ser.flushOutput()
                     self.__ser.timeout = 5
-                    print("It is reconnected!")
+                    print(f"[{self.__class__.__name__}] -> It is reconnected!")
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except Exception as e:
-                    print(f"Could not open port ({e}).")
+                    print(f"[{self.__class__.__name__}] -> Could not open port ({e}).")
                     time.sleep(1)
 
     def get_unregistered_can_id(self):
@@ -2137,7 +2141,7 @@ class VescAdapterV4:
                 # wait for next checking tick
                 time.sleep(1 / self.__check_freq)
         except serial.SerialException as ex:
-            print(ex)  # TODO should these exceptions to be ignored?
+            print(f"[{self.__class__.__name__}] -> {ex}")  # TODO should these exceptions to be ignored?
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
@@ -2192,7 +2196,7 @@ class VescAdapterV4:
             time.sleep(1 / self.__check_freq)
 
     def wait_for_stop_any(self, timeout=None):
-        raise NotImplementedError("this feature is not implemented yet")
+        raise NotImplementedError(f"[{self.__class__.__name__}] -> This feature is not implemented yet")
 
     def wait_for_stopper_hit(self,
                              engine_key,
@@ -2207,7 +2211,7 @@ class VescAdapterV4:
 
         if self.__gpio_stoppers_pins[engine_key] is None:
             self.stop_moving(engine_key)
-            raise RuntimeError("stopper usage is not allowed in config \
+            raise RuntimeError(f"[{self.__class__.__name__}] -> Stopper usage is not allowed in config \
                 (engine movement is terminated to prevent occasional damage cause)")
 
         end_t = time.time() + timeout if timeout is not None else float("inf")
@@ -2227,7 +2231,7 @@ class VescAdapterV4:
             time.sleep(1 / self.__stopper_check_freq)
 
     def wait_for_stopper_hit_any(self):
-        raise NotImplementedError("this feature is not implemented yet")
+        raise NotImplementedError(f"[{self.__class__.__name__}] -> This feature is not implemented yet")
 
     def set_current_rpm(self, rpm, engine_key):
         """Set as current and apply given RPM on specified by engine_key vesc engine.
@@ -2238,7 +2242,7 @@ class VescAdapterV4:
         """
 
         if not isinstance(rpm, (int, float)):
-            msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> rpm must be int or float, got {type(rpm).__name__} instead"
             raise TypeError(msg)
 
         with self.__locker:
@@ -2256,7 +2260,7 @@ class VescAdapterV4:
         strong jerk during the start.
         """
         if not isinstance(rpm, (int, float)):
-            msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> rpm must be int or float, got {type(rpm).__name__} instead"
             raise TypeError(msg)
 
         with self.__locker:
@@ -2264,10 +2268,10 @@ class VescAdapterV4:
 
     def set_time_to_move(self, time_to_move, engine_key):
         if not isinstance(time_to_move, (int, float)):
-            msg = f"time_to_move must be int or float, got {type(time_to_move).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> time_to_move must be int or float, got {type(time_to_move).__name__} instead"
             raise TypeError(msg)
         if time_to_move < 0:
-            msg = f"time_to_move must be >= 0, got {str(time_to_move)} instead"
+            msg = f"[{self.__class__.__name__}] -> time_to_move must be >= 0, got {str(time_to_move)} instead"
             raise ValueError(msg)
 
         with self.__locker:
@@ -2275,10 +2279,10 @@ class VescAdapterV4:
 
     def set_alive_freq(self, alive_freq):
         if not isinstance(alive_freq, (int, float)):
-            msg = f"alive_freq must be int or float, got {type(alive_freq).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> alive_freq must be int or float, got {type(alive_freq).__name__} instead"
             raise TypeError(msg)
         if alive_freq < 0:
-            msg = f"alive_freq must be >= 0, got {str(alive_freq)} instead"
+            msg = f"[{self.__class__.__name__}] -> alive_freq must be >= 0, got {str(alive_freq)} instead"
             raise ValueError(msg)
 
         with self.__locker:
@@ -2286,10 +2290,10 @@ class VescAdapterV4:
 
     def set_check_freq(self, check_freq):
         if not isinstance(check_freq, (int, float)):
-            msg = f"check_freq must be int or float, got {type(check_freq).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> check_freq must be int or float, got {type(check_freq).__name__} instead"
             raise TypeError(msg)
         if check_freq < 0:
-            msg = f"check_freq must be >= 0, got {str(check_freq)} instead"
+            msg = f"[{self.__class__.__name__}] -> check_freq must be >= 0, got {str(check_freq)} instead"
             raise ValueError(msg)
 
         with self.__locker:
@@ -2297,7 +2301,7 @@ class VescAdapterV4:
 
     def set_smooth_acceleration(self, smooth_acceleration: bool, engine_key):
         if not isinstance(smooth_acceleration, bool):
-            msg = f"smooth_acceleration must be bool, got {type(smooth_acceleration).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> smooth_acceleration must be bool, got {type(smooth_acceleration).__name__} instead"
             raise TypeError(msg)
 
         with self.__locker:
@@ -2305,7 +2309,7 @@ class VescAdapterV4:
 
     def set_smooth_deceleration(self, smooth_deceleration: bool, engine_key):
         if not isinstance(smooth_deceleration, bool):
-            msg = f"smooth_deceleration must be bool, got {type(smooth_deceleration).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> smooth_deceleration must be bool, got {type(smooth_deceleration).__name__} instead"
             raise TypeError(msg)
 
         with self.__locker:
@@ -2406,9 +2410,9 @@ class GPSUbloxAdapter:
 
     def __init__(self, ser_port: str, ser_baudrate: int, last_pos_count: int):
         if not isinstance(last_pos_count, int):
-            raise TypeError(f"last_pos_count must be int, got {type(last_pos_count).__name__} instead")
+            raise TypeError(f"[{self.__class__.__name__}] -> last_pos_count must be int, got {type(last_pos_count).__name__} instead")
         if last_pos_count < 1:
-            raise ValueError(f"last_pos_count shouldn't be less than 1, got {last_pos_count} instead")
+            raise ValueError(f"[{self.__class__.__name__}] -> last_pos_count shouldn't be less than 1, got {last_pos_count} instead")
 
         self._position_is_fresh = False
         self._last_pos_count = last_pos_count
@@ -2567,7 +2571,7 @@ class GPSUbloxAdapter:
                     self._last_pos_container.append(position)
                     self._position_is_fresh = True
         except serial.SerialException as ex:
-            print("Ublox reading error:", ex)
+            print(f"[{self.__class__.__name__}] -> Ublox reading error:", ex)
 
     def _read_from_gps(self):
         """Returns GPS coordinates of the current position"""
@@ -2672,7 +2676,7 @@ class GPSUbloxAdapterWithoutThread:
         """Waits until at least one position is stored, returns list of last saved positions copies at the moment of
         call (reference type safe)"""
 
-        raise NotImplementedError("Test without list")
+        raise NotImplementedError(f"[{self.__class__.__name__}] -> Test without list")
 
     def _read_from_gps(self):
         """Returns GPS coordinates of the current position"""
