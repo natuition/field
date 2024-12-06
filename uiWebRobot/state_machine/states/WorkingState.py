@@ -8,6 +8,7 @@ import threading
 from datetime import datetime, timezone
 import os
 import json
+import time
 
 from state_machine import State
 from state_machine.states import WaitWorkingState
@@ -73,9 +74,20 @@ class WorkingState(State.State):
                 print(msg)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
-        except:
+        except posix_ipc.ExistentialError:
             pass
-        self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
+        except Exception as e:
+            msg = f"[{self.__class__.__name__}] -> <{e.__class__.__name__}> : {str(e)}."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+        try:
+            self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            msg = f"[{self.__class__.__name__}] -> <{e.__class__.__name__}> : {str(e)}."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
         
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Creating thread to read messages sent by main."
@@ -91,6 +103,7 @@ class WorkingState(State.State):
             print(msg)
         self.main = utilsFunction.startMain()
         self.timeStartMain = datetime.now(timezone.utc)
+        self.__main_not_received_stop = True
 
     def on_event(self, event):
         if event == Events.Events.STOP:
@@ -98,12 +111,17 @@ class WorkingState(State.State):
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
             
             if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Kill main and stop thread"
+                msg = f"[{self.__class__.__name__}] -> Kill main"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
             
-            os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
-            self._main_msg_thread_alive = False
+            while self.__main_not_received_stop:
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> Send KeyboardInterrupt to main"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
+                os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+                time.sleep(3)
             
             if config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> Wait main"
@@ -118,6 +136,12 @@ class WorkingState(State.State):
                 print(msg)
             
             os.system("sudo systemctl restart nvargus-daemon")
+            
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Try to stop main thread if alive"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+            self._main_msg_thread_alive = False
             
             if config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> Wait main thread"
@@ -179,53 +203,66 @@ class WorkingState(State.State):
         while self._main_msg_thread_alive:
             try:
                 msg = self.msgQueue.receive(timeout=2)
-            except posix_ipc.BusyError:
-                continue
-            data = json.loads(msg[0])
-            if "start" in data:
-                if data["start"]:
-                    if config.UI_VERBOSE_LOGGING:
-                        msg = f"[{self.__class__.__name__}] -> Main started !"
+                data = json.loads(msg[0])
+                if "stopping" in data:
+                    if data["stopping"]:
+                        self._main_msg_thread_alive = False
+                        self.__main_not_received_stop = False
+                        msg = f"[{self.__class__.__name__}] -> Receved main stopping !"
                         self.logger.write_and_flush(msg + "\n")
                         print(msg)
-                    self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit,
-                                                     "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
-                                       namespace='/button', broadcast=True)
-            elif "datacollector" in data:
-                self.detected_plants = data["datacollector"][0]
-                self.extracted_plants = data["datacollector"][1]
-                self.previous_sessions_working_time = data["datacollector"][2]
-                self.sendLastStatistics()
-            elif "last_gps" in data:
-                data = data["last_gps"]
-                self.allPath.append([data[1], data[0]])
-                if self.lastGpsQuality != data[2]:
-                    self.lastGpsQuality = data[2]
-                self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
-                self.socketio.emit('updateGPSQuality', self.lastGpsQuality, namespace='/gps', broadcast=True)
-                
-            elif "last_gps_list_file" in data:
-                last_gps_list_file = data["last_gps_list_file"]
-                with open("../" + last_gps_list_file, "r") as gps_his_file:
-                    self.last_path_all_points.append(list())
-                    for line in gps_his_file.readlines():
-                        if line.startswith("[") and line.endswith("]\n"):
-                            parsed_point = line[1:-1].split(", ")
-                            self.last_path_all_points[-1].append([float(parsed_point[1]), float(parsed_point[0])])
-                        else:
-                            self.last_path_all_points.append(list())
-                self.socketio.emit('updateLastPath', 
-                                   json.dumps(self.last_path_all_points), 
-                                   namespace='/map',
-                                   broadcast=True)
-            elif "display_instruction_path" in data:
-                data = data["display_instruction_path"]
-                self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]),
-                                   namespace='/map', broadcast=True)
-            elif "clear_path" in data:
-                self.allPath.clear()
-            elif "input_voltage" in data:
-                utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
+                        continue
+                elif "start" in data:
+                    if data["start"]:
+                        if config.UI_VERBOSE_LOGGING:
+                            msg = f"[{self.__class__.__name__}] -> Main started !"
+                            self.logger.write_and_flush(msg + "\n")
+                            print(msg)
+                        self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit,
+                                                        "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
+                                        namespace='/button', broadcast=True)
+                elif "datacollector" in data:
+                    self.detected_plants = data["datacollector"][0]
+                    self.extracted_plants = data["datacollector"][1]
+                    self.previous_sessions_working_time = data["datacollector"][2]
+                    self.sendLastStatistics()
+                elif "last_gps" in data:
+                    data = data["last_gps"]
+                    self.allPath.append([data[1], data[0]])
+                    if self.lastGpsQuality != data[2]:
+                        self.lastGpsQuality = data[2]
+                    self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
+                    self.socketio.emit('updateGPSQuality', self.lastGpsQuality, namespace='/gps', broadcast=True)
+                    
+                elif "last_gps_list_file" in data:
+                    last_gps_list_file = data["last_gps_list_file"]
+                    with open("../" + last_gps_list_file, "r") as gps_his_file:
+                        self.last_path_all_points.append(list())
+                        for line in gps_his_file.readlines():
+                            if line.startswith("[") and line.endswith("]\n"):
+                                parsed_point = line[1:-1].split(", ")
+                                self.last_path_all_points[-1].append([float(parsed_point[1]), float(parsed_point[0])])
+                            else:
+                                self.last_path_all_points.append(list())
+                    self.socketio.emit('updateLastPath', 
+                                    json.dumps(self.last_path_all_points), 
+                                    namespace='/map',
+                                    broadcast=True)
+                elif "display_instruction_path" in data:
+                    data = data["display_instruction_path"]
+                    self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]),
+                                    namespace='/map', broadcast=True)
+                elif "clear_path" in data:
+                    self.allPath.clear()
+                elif "input_voltage" in data:
+                    utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
+            except posix_ipc.BusyError:
+                continue
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                print(f"[{self.__class__.__name__}] -> Error during queue receive : {e}.")
+                continue
         if config.UI_VERBOSE_LOGGING:        
             msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
             self.logger.write_and_flush(msg + "\n")

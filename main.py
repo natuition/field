@@ -2732,6 +2732,8 @@ def main():
                         try:
                             start_position = utility.average_point(
                                 gps, trajectory_saver, nav)
+                        except KeyboardInterrupt:
+                            raise KeyboardInterrupt
                         except:
                             pass
                         if ui_msg_queue is not None:
@@ -2781,6 +2783,8 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
         notification.close()
+        if ui_msg_queue is not None:
+            ui_msg_queue.send(json.dumps({"stopping": True}))
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     except Exception as e:
