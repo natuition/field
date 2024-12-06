@@ -88,7 +88,7 @@ class SmoothieAdapter:
             self.seeder_close()
             res = self.seeder_close()
             if SmoothieAdapter.check_res_smoothie(res):
-                msg = f"[{self.__class__.__name__}] -> Couldn't lock seeder during smoothie adapter initialization! Smoothie response:\n" + res
+                msg = f"[{self.__class__.__name__}] -> Couldn't lock seeder during smoothie adapter initialization! Smoothie response: {res}"
                 print(msg)
 
         if calibration_at_init:
