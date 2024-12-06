@@ -2923,6 +2923,6 @@ def main():
 
         print("Safe disable is done.")
 
-
 if __name__ == '__main__':
     main()
+    exit(0)
