@@ -9,7 +9,6 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine import State
 from state_machine.FrontEndObjects import FrontEndObjects
-from shared_class.robot_synthesis import RobotSynthesis
 from notification import RobotStateClient
 
 
@@ -26,7 +25,7 @@ class StateMachine:
 
     def on_event(self, event: Events.Events):
         print()
-        msg = f"{self.currentState} received event : {event}."
+        msg = f"[{self.__class__.__name__}] -> {self.currentState} received event : {event}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
 
@@ -60,7 +59,7 @@ class StateMachine:
     def change_current_state(self, newState):
         self.currentState = newState
         self.__robot_state_client.set_robot_state(self.currentState.robot_synthesis_value)
-        msg = f"Current state : {self.currentState}."
+        msg = f"[{self.__class__.__name__}] -> New state : {self.currentState}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
 
@@ -83,6 +82,6 @@ class ErrorLogger:
     def __init__(self, logger: utility.Logger):
         self.logger = logger
 
-    def write (self, s):
+    def write(self, s):
         print(s)
         self.logger.write_and_flush(s+"\n")
