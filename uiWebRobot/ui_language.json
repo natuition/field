@@ -299,6 +299,12 @@
 		"nl": "Detectie:",
 		"de": "Erkennung"
 	},
+	"Demonstration:": {
+		"fr": "Démonstration :",
+		"en": "Demonstration:",
+		"nl": "Demonstratie:",
+		"de": "Demonstration:"
+	},
 	"Periphery mod:": {
 		"fr": "Module périphérique :",
 		"en": "Periphery mod:",
@@ -322,6 +328,18 @@
 		"en": "Threshold",
 		"nl": "Drempel",
 		"de": "Schwelle"
+	},
+	"Peripheral threshold": {
+		"fr": "Seuil du module périphérique :",
+		"en": "Threshold of the peripheral module:",
+		"nl": "Drempel van de perifere module:",
+		"de": "Schwelle des Peripheriemoduls:"
+	},
+	"Precise threshold": {
+		"fr": "Seuil du module précis :",
+		"en": "Threshold of the precise module:",
+		"nl": "Drempel van de precieze module:",
+		"de": "Schwelle des präzisen Moduls:"
 	},
 	"Mono": {
 		"fr": "Mono",
