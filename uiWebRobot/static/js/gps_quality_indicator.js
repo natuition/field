@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Listenning event on 'updateGPSQuality'
     socketGPS.on('updateGPSQuality', function (gps_quality_value) {
-        console.log(gps_quality_value);
+        //console.log(gps_quality_value);
         // Convert the value to a integer
         gps_quality_value = parseInt(gps_quality_value, 10);
         if (isNaN(gps_quality_value)) {
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Update HTML content
             qualityTextElement.textContent = qualityDescription;
-            console.log(`Qualité GPS mise à jour : ${qualityDescription}`);
+            console.log(`GPS quality updated : ${qualityDescription}`);
             $("#gps_quality_indicator_text").parent().css("background-color", background_color);
 
         }
