@@ -676,5 +676,11 @@
 		"en": "You can not use this function when the GPS is not available, please wait moment.",
 		"nl": "U kunt deze functie niet gebruiken zolang de GPS niet beschikbaar is. Wacht een moment.",
 		"de": "Sie können diese Funktion nicht verwenden, solange GPS nicht verfügbar ist. Bitte warten Sie einen Moment."
+	},
+	"working_zone_too_small": {
+		"fr": "Votre zone de travail est trop petite, veuillez réessayer avec une zone plus grande.",
+		"en": "Your working zone is too small, please retry with a bigger one.",
+		"nl": "Uw werkgebied is te klein, probeer het opnieuw met een groter gebied.",
+		"de": "Ihr Arbeitsbereich ist zu klein, bitte versuchen Sie es mit einem größeren Bereich erneut."
 	}
 }
