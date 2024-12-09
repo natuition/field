@@ -191,7 +191,7 @@ class CreateFieldState(State.State):
         elif data["type"] == "field_name":
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             #patch bug field
-            utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
+            #utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
             field_path, field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
 
             if utilsFunction.is_valid_field_file(field_path, self.logger):

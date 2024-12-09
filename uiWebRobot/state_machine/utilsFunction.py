@@ -192,9 +192,9 @@ def load_field_list(dir_path):
         field_list = []
         for file in os.listdir(dir_path):
             if file.endswith(".txt"):
-                if file != "tmp.txt":
-                    field_list.append(
-                        unquote(file.split(".txt")[0], encoding='utf-8'))
+                #if file != "tmp.txt":
+                field_list.append(
+                    unquote(file.split(".txt")[0], encoding='utf-8'))
         return field_list
 
 def get_other_field():
