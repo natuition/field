@@ -267,12 +267,12 @@ class SmoothieAdapter:
                     coordinates[coord[0]] = self.smoothie_to_mm(coordinates[coord[0]], coord[0])
             return coordinates
 
-    @staticmethod
-    def compare_coordinates(coordinates_a, coordinates_b, precision=1e-10):
+    @classmethod
+    def compare_coordinates(cls, coordinates_a, coordinates_b, precision=1e-10):
         if type(coordinates_a) != dict or type(coordinates_b) != dict:
-            raise AttributeError(f"[{self.__class__.__name__}] -> coordinates should be stored in dict")
+            raise AttributeError(f"[{cls.__name__}] -> coordinates should be stored in dict")
         if len(coordinates_a) != len(coordinates_b):
-            raise AttributeError(f"[{self.__class__.__name__}] -> coordinates dicts should have similar items count")
+            raise AttributeError(f"[{cls.__name__}] -> coordinates dicts should have similar items count")
 
         for key in coordinates_a:
             if abs(coordinates_a[key] - coordinates_b[key]) > precision:
@@ -754,8 +754,8 @@ class SmoothieAdapter:
                 f"[{self.__class__.__name__}] -> picking up corkscrew with stoppers usage requires Z axis calibration permission in config"
             )
 
-    @staticmethod
-    def mm_to_smoothie(mm_axis_val, axis_label: str):
+    @classmethod
+    def mm_to_smoothie(cls, mm_axis_val, axis_label: str):
         """Converts given mms value to smoothie value applying (multiplying) coefficient corresponding to given axis
         label
 
@@ -763,9 +763,9 @@ class SmoothieAdapter:
         """
 
         if axis_label not in ["X", "Y", "Z", "A", "B", "C"]:
-            raise ValueError(f"[{self.__class__.__name__}] -> unsupported axis label or wrong type")
+            raise ValueError(f"[{cls.__name__}] -> unsupported axis label or wrong type")
         if not SmoothieAdapter.__check_arg_types([int, float], mm_axis_val):
-            raise TypeError(f"[{self.__class__.__name__}] -> axis_value should be float or int")
+            raise TypeError(f"[{cls.__name__}] -> axis_value should be float or int")
 
         if mm_axis_val == 0:
             return mm_axis_val
@@ -783,8 +783,8 @@ class SmoothieAdapter:
         if axis_label == "C":
             return mm_axis_val * config.C_COEFFICIENT_TO_MM
 
-    @staticmethod
-    def smoothie_to_mm(sm_axis_val, axis_label: str):
+    @classmethod
+    def smoothie_to_mm(cls, sm_axis_val, axis_label: str):
         """Converts given smoothie value to mms value applying (dividing) coefficient corresponding to given axis
         label
 
@@ -792,83 +792,83 @@ class SmoothieAdapter:
         """
 
         if axis_label not in ["X", "Y", "Z", "A", "B", "C"]:
-            raise ValueError(f"[{self.__class__.__name__}] -> unsupported axis label or wrong type")
+            raise ValueError(f"[{cls.__name__}] -> unsupported axis label or wrong type")
         if not SmoothieAdapter.__check_arg_types([int, float], sm_axis_val):
-            raise TypeError(f"[{self.__class__.__name__}] -> axis_value should be float or int")
+            raise TypeError(f"[{cls.__name__}] -> axis_value should be float or int")
 
         if sm_axis_val == 0:
             return sm_axis_val
 
         if axis_label == "X":
             if config.X_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{self.__class__.__name__}] -> config.X_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.X_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.X_COEFFICIENT_TO_MM
 
         if axis_label == "Y":
             if config.Y_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{self.__class__.__name__}] -> config.Y_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.Y_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.Y_COEFFICIENT_TO_MM
 
         if axis_label == "Z":
             if config.Z_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{self.__class__.__name__}] -> config.Z_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.Z_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.Z_COEFFICIENT_TO_MM
 
         if axis_label == "A":
             if config.A_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{self.__class__.__name__}] -> config.A_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.A_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.A_COEFFICIENT_TO_MM
 
         if axis_label == "B":
             if config.B_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{self.__class__.__name__}] -> config.B_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.B_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.B_COEFFICIENT_TO_MM
 
         if axis_label == "C":
             if config.C_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{self.__class__.__name__}] -> config.C_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.C_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.C_COEFFICIENT_TO_MM
 
-    @staticmethod
-    def __check_arg_types(types: list, *args):
+    @classmethod
+    def __check_arg_types(cls, types: list, *args):
         """Returns True if all given variables (*args) types are in given types list, False otherwise
         """
         if len(args) < 1:
-            raise TypeError(f"[{self.__class__.__name__}] -> item(s) to check is missed")
+            raise TypeError(f"[{cls.__name__}] -> item(s) to check is missed")
         if type(types) is not list:
-            raise TypeError(f"[{self.__class__.__name__}] -> expected list of types, received " + str(type(types)))
+            raise TypeError(f"[{cls.__name__}] -> expected list of types, received " + str(type(types)))
         if len(types) < 1:
-            raise ValueError(f"[{self.__class__.__name__}] -> list of types should contain at least one item")
+            raise ValueError(f"[{cls.__name__}] -> list of types should contain at least one item")
 
         for arg in args:
             if type(arg) not in types:
                 return False
         return True
 
-    @staticmethod
-    def __validate_axis(cur_axis_val, mov_axis_val, key_label, key_min, key_max, key_min_label, key_max_label):
+    @classmethod
+    def __validate_axis(cls, cur_axis_val, mov_axis_val, key_label, key_min, key_max, key_min_label, key_max_label):
         """Checks if given axis movement can be done. Returns None if value is ok, info/error message otherwise.
 
         Receives smoothie values (may be not in mms).
         """
 
         if cur_axis_val + mov_axis_val > key_max:
-            return f"[{self.__class__.__name__}] -> Value {0} for {1} goes beyond max acceptable range of {3} = {2}, as current value is {4}" \
+            return f"[{cls.__name__}] -> Value {0} for {1} goes beyond max acceptable range of {3} = {2}, as current value is {4}" \
                 .format(mov_axis_val, key_label, key_max, key_max_label, cur_axis_val)
         if cur_axis_val + mov_axis_val < key_min:
-            return f"[{self.__class__.__name__}] -> Value {0} for {1} goes beyond min acceptable range of {3} = {2}, as current value is {4}" \
+            return f"[{cls.__name__}] -> Value {0} for {1} goes beyond min acceptable range of {3} = {2}, as current value is {4}" \
                 .format(mov_axis_val, key_label, key_min, key_min_label, cur_axis_val)
         return None
 
-    @staticmethod
-    def __validate_force(value, key_label, key_min, key_max, key_min_label, key_max_label):
+    @classmethod
+    def __validate_force(cls, value, key_label, key_min, key_max, key_min_label, key_max_label):
         """Checks if given force can be applied. Returns None if value is ok, info/error message otherwise.
         """
 
         if value > key_max:
-            return f"Value {value} for {key_label} goes beyond max acceptable range of {key_max_label} = {key_max}"
+            return f"[{cls.__name__}] -> Value {value} for {key_label} goes beyond max acceptable range of {key_max_label} = {key_max}"
         if value < key_min:
-            return f"Value {value} for {key_label} goes beyond min acceptable range of {key_min_label} = {key_min}"
+            return f"[{cls.__name__}] -> Value {value} for {key_label} goes beyond min acceptable range of {key_min_label} = {key_min}"
         return None
 
     def __calibrate_axis(self,
