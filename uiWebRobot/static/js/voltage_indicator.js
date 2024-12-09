@@ -1,5 +1,4 @@
 const socketVoltage = io.connect('http://' + document.domain + ':' + location.port + '/voltage');
-
 socketVoltage.on('update', function (data) {
     var voltage_indicator = document.getElementById("voltage_indicator")
     if (voltage_indicator != null) {
@@ -12,11 +11,13 @@ socketVoltage.on('update', function (data) {
                 voltage_indicator.setAttribute("bumper_disable", true);
             }
             $("#voltage_indicator").parent().css("background-color", "#58b166");
+            $("#voltage_indicator").parent().css("width", "70px");
         }
         else {
             voltage_indicator.innerHTML = "Bumper !";
             voltage_indicator.setAttribute("bumper_disable", false);
             $("#voltage_indicator").parent().css("background-color", "#FF3232");
+            $("#voltage_indicator").parent().css("width", "95px");
         }
         if (typeof activateNext !== "undefined") {
             activateNext();

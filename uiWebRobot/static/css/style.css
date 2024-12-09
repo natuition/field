@@ -69,14 +69,14 @@ body {
 .header__info--voltage {
     background-color: #58b166;
     border-radius: 10px;
-    padding: 8px 5px;
+    padding: 8px;
     font-weight: 700;
+    text-align: center;
 }
 
 .header__info--voltage {
     margin: 0px 5px;
     width: 70px;
-    text-align: center
 }
 
 .header__info--model p,
