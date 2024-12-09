@@ -40,7 +40,7 @@ if (removeFieldButton != null) removeFieldButton.addEventListener('click', click
 var gpsQuality = "no_gps"
 window.addEventListener("globalGpsQualityUpdated", (event) => {
     gpsQuality = event.detail.quality;
-    console.log("GPS Quality updated:", gpsQuality);
+    //console.log("GPS Quality updated:", gpsQuality);
 });
 
 if (choose_field_selector != null) {
@@ -56,9 +56,9 @@ var reloader = 0;
 
 function clickHandler() {
     if (this.id == "Newfield") {
-        if(gpsQuality == "no_gps") {
+        if (gpsQuality == "no_gps") {
             alert((ui_languages["alert_on_no_gps"])[ui_language])
-        } else  {
+        } else {
             sliderValue = document.getElementById("r1").value
             socketio.emit('data', { type: "field", value: sliderValue });
         }
@@ -68,21 +68,21 @@ function clickHandler() {
         sliderValue = document.getElementById("r1").value
         socketio.emit('data', { type: "validerZone", value: sliderValue });
     } else if (this.id == "Start") {
-        if(gpsQuality == "no_gps") {
+        if (gpsQuality == "no_gps") {
             alert((ui_languages["alert_on_no_gps"])[ui_language])
-        } else  {
+        } else {
             socketio.emit('data', { type: "start", audit: audit });
         }
     } else if (this.id == "Stop") {
         socketio.emit('data', { type: "stop" });
     } else if (this.id == "Continue") {
-        if(gpsQuality == "no_gps") {
+        if (gpsQuality == "no_gps") {
             alert((ui_languages["alert_on_no_gps"])[ui_language])
-        } else  {
+        } else {
             socketio.emit('data', { type: "continue", audit: audit });
         }
     } else if (this.id == "Wheel" && !this.classList.contains("disabled-wheel")) {
-        if(this.classList.contains("release")) {
+        if (this.classList.contains("release")) {
             socketio.emit('data', { type: "wheel", status: "unrelease" });
         }
         else {
@@ -111,14 +111,14 @@ socketButton.on('wheel', function (dataServ) {
     if (dataServ == "release") {
         $('#Wheel').addClass('release');
         $('#Wheel').removeClass('unrelease');
-        $('#Wheel').attr("src","/static/unlock.png");
-        $('#Wheel').attr("style","margin-left:5px");
+        $('#Wheel').attr("src", "/static/unlock.png");
+        $('#Wheel').attr("style", "margin-left:5px");
     }
     else {
         $('#Wheel').addClass('unrelease');
         $('#Wheel').removeClass('release');
-        $('#Wheel').attr("src","/static/lock.png");
-        $('#Wheel').attr("style","margin-right:5px");
+        $('#Wheel').attr("src", "/static/lock.png");
+        $('#Wheel').attr("style", "margin-right:5px");
     }
 }
 );
@@ -266,7 +266,7 @@ socketButton.on('field', function (dataServ) {
         $('#Newfield').addClass('active');
         $('#Newfield').attr('disabled', '');
         $('#r1').attr('disabled', '');
- 
+
         $('#RemoveField').addClass('disabled');
         $('#RemoveField').attr('disabled', '');
 
@@ -328,7 +328,7 @@ socketButton.on('field', function (dataServ) {
         $('#Start').removeAttr('disabled');
         $('#Start').removeClass('disabled');
         //$('#Audit').removeClass('disable-switcher-audit');
-        
+
         $('#RemoveField').removeAttr('disabled');
         $('#RemoveField').removeClass('disabled');
 

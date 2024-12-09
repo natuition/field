@@ -200,8 +200,12 @@ function createMap(coords_field, coords_other) {
                 });
             }
             //Field start point
-            var degrees = Math.atan2(coords_field[1][0] - coords_field[coords_field.length - 1][0], coords_field[1][1] - coords_field[coords_field.length - 1][1]) * 180 / Math.PI;
-
+            var degrees = 0;
+            var start_point_start_btn = [];
+            if (coords_field.length > 0) {
+                degrees = Math.atan2(coords_field[1][0] - coords_field[coords_field.length - 1][0], coords_field[1][1] - coords_field[coords_field.length - 1][1]) * 180 / Math.PI;
+                start_point_start_btn = coords_field[coords_field.length - 1];
+            }
             if (typeof (map.getSource('field_start')) == "undefined") {
                 map.addSource('field_start', {
                     'type': 'geojson',
@@ -209,7 +213,7 @@ function createMap(coords_field, coords_other) {
                         'type': 'Feature',
                         'geometry': {
                             'type': 'Point',
-                            'coordinates': coords_field[coords_field.length - 1]
+                            'coordinates': start_point_start_btn
                         },
                         "properties": {
                             'rotate': degrees

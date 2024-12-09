@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Update HTML content
             qualityTextElement.textContent = qualityDescription;
-            console.log(`GPS quality updated : ${qualityDescription}`);
+            console.log(`GPS quality updated : ${qualityDescription} <${gps_quality_value}>`);
             $("#gps_quality_indicator_text").parent().css("background-color", background_color);
 
         }
