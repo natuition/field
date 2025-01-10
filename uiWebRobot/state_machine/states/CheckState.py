@@ -39,6 +39,7 @@ class CheckState(State.State):
         self.logger.write_and_flush(msg + "\n")
         print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
+        self.vesc_engine.close()
         del self.vesc_engine
         self.vesc_engine = utilsFunction.initVesc(self.logger)
 
