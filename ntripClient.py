@@ -222,10 +222,35 @@ class NtripClient(object):
         except serial.SerialException:
             NtripError(f"Error to connection to '{self.output}' at {self.baudrate} !")
             exit(1)
+        
+        list_RTCM_ID_sent = []
+        filters_id = config.RTK_ID_SEND
 
         try:
             while True:
                 data = self.read()
+
+                in_filters_id = False
+                for filter_id in filters_id :
+                    if self.last_id in filter_id:
+                        in_filters_id = True
+
+                if not in_filters_id :
+                    continue
+
+                if self.last_id not in list_RTCM_ID_sent:
+                    list_RTCM_ID_sent.append(self.last_id)
+                    print(list_RTCM_ID_sent)
+
+                has_filters = True
+                for filter_id in filters_id :
+                    if not len(set(list_RTCM_ID_sent) & set(filter_id)) > 0:
+                        has_filters = False 
+
+                if has_filters:
+                    list_RTCM_ID_sent = []
+                    time.sleep(config.NTRIP_SLEEP_TIME)
+                    
                 if data is None:
                     continue
                 

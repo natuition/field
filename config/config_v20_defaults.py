@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.10"
+CONFIG_VERSION = "2.2.1"
 
 
 # ======================================================================================================================
@@ -26,6 +26,7 @@ CONFIG_VERSION = "0.20.10"
 # PATHS SETTINGS
 # PREDICTION SETTINGS
 # NAVIGATION TEST MODE SETTINGS
+# PHYSICAL BLOCAGE SETTINGS
 # UNSORTED KEYS
 # ======================================================================================================================
 
@@ -197,13 +198,14 @@ VESC_BAUDRATE = 115200
 
 VESC_RPM_SLOW = -2500
 VESC_MOVING_TIME = float("inf")
-VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when moving
-VESC_CHECK_FREQ = 0.001  # freq of checking need to stop
+VESC_ALIVE_FREQ = 4 # freq of sending "keep working" signal to engines when moving in herz
+VESC_CHECK_FREQ = 1000  # freq of checking need to stop in herz
 FAST_TO_SLOW_TIME = 5
-VESC_STOPPER_CHECK_FREQ = 0.001
+VESC_STOPPER_CHECK_FREQ = 1000 # in herz
+VESC_TIMEOUT_READ = 0.01 # time in seconds of trying to read the serial
 
 INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
-FREQUENCY_INCREMENTAL_RPM = 0.025  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
+FREQUENCY_INCREMENTAL_RPM = 40  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
 STEP_INCREMENTAL_RPM = 500 # RPM step max by tick defined by RPM_FREQUENCY
 # int; bumper is considered pressed if voltage is getting lesser (not equal) than this value
 VESC_BUMBER_TRIGGER_VOLTAGE = 1
@@ -325,8 +327,8 @@ CORK_CALIBRATION_MIN_TIME = 3600
 CALIBRATION_ORDER = ["Z", "Y", "X", "A", "B", "C"]
 
 # DIRECTION WHEELS
-A_MIN = -6 
-A_MAX = 6 
+A_MIN = -11 
+A_MAX = 11 
 #NOT USED
 B_MIN = -float("inf")
 B_MAX = float("inf")
@@ -435,7 +437,7 @@ ROBOT_SYNTHESIS_PORT = 2006
 DATAGATHERING_HOST = "172.16.0.10"
 DATAGATHERING_PORT = 8080
 
-LIFE_LINE_PIN = 77 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
+LIFE_LINE_PIN = 78 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
@@ -500,7 +502,15 @@ NTRIP_OUTPUT_BAUDRATE = 115200
 
 NTRIP_RESTART_TIMEOUT = 10
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
-RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
+RTK_ID_SEND = [(1005, 1006), (1124, 1127), (1084, 1087), (1074, 1077)] #Id of the rtk frames that will be sent to the gps
+# 1005 : Stationary RTK reference station ARP
+# 1006 : Stationary RTK reference station ARP with antenna height
+# Origine RTK           MSM4        MSM7
+# BeiDou (Chine)        1124        1127
+# GPS (USA)             1074        1077
+# GLONASS (Russie)      1084        1087
+# Galileo (UE)          1094        1097
+NTRIP_SLEEP_TIME = 10 # Time in seconds between two sessions of getting data (MSM and ARP)
 
 CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 
@@ -565,7 +575,7 @@ PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 PRECISE_CONFIDENCE_THRESHOLD = 0.1
 PRECISE_INPUT_SIZE = (832, 832)
 PRECISE_CLASSES_FILE = "yolo/Y0016.names"
-PRECISE_MODEL_PATH = "yolo/Y0016_832_832.trt"  # for TRT wrapper
+PRECISE_MODEL_PATH = "yolo/Y0016_832_832.trt"
 
 PRECISE_HIER_THRESHOLD = 0.5
 PRECISE_NMS_THRESHOLD = 0.4
@@ -665,6 +675,15 @@ POINT_A = [[46.1579425, -1.1344245], -0.5] #Point coordinate for test navigation
 POINT_B = [[46.1577957, -1.1347992], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
 
+
+# ======================================================================================================================
+# PHYSICAL BLOCAGE SETTINGS
+# ======================================================================================================================
+CHECK_PHYSICAL_BLOCAGE = False # Allow to stop the robot when it is physically blocked.
+MIN_NB_VALID_DISTANCES = 10 # Min number of coordinates required to determine whether the robot is physically blocked.
+MAX_NB_COORDS_STORED = 20 # Max number of stored coordinates.
+MIN_SPEED = 100 # Min speed required to determinate that the robot is unmoving (in millimeters per second).
+REVERSING_DISTANCE = 5000 # Distance that the robot will do backward after detecting a physical blocage
 
 # ======================================================================================================================
 # UNSORTED KEYS

@@ -1605,12 +1605,12 @@ class VescAdapterV3:
                         self.__is_moving[engine_key] = False
                 # send alive to each active
                 if time.time() > self.__next_alive_time:
-                    self.__next_alive_time = time.time() + self.__alive_freq
+                    self.__next_alive_time = time.time() + 1/self.__alive_freq
                     for engine_key in self.__is_moving:
                         if self.__is_moving[engine_key]:
                             self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
                 # wait for next checking tick
-                time.sleep(self.__check_freq)
+                time.sleep(1/self.__check_freq)
         except serial.SerialException as ex:
             print(ex)
 
@@ -1638,7 +1638,7 @@ class VescAdapterV3:
                             new_rpm = future_rpm-current_rpm
                         self.__current_rpm[engine_key] += new_rpm
                         self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__current_rpm[engine_key], can_id=self.__can_ids[engine_key])))
-                time.sleep(config.FREQUENCY_INCREMENTAL_RPM)
+                time.sleep(1/config.FREQUENCY_INCREMENTAL_RPM)
         except serial.SerialException as ex:
             print(ex)
 
@@ -1665,7 +1665,7 @@ class VescAdapterV3:
         while self.__is_moving[engine_key]:
             if timeout is not None and time.time() > end_t:
                 return False
-            time.sleep(self.__check_freq)
+            time.sleep(1/self.__check_freq)
         return True
 
     def wait_for_stop_any(self, timeout=None):
@@ -1692,7 +1692,7 @@ class VescAdapterV3:
                 if stop_engine_if_timeout:
                     self.stop_moving(engine_key)
                 return False
-            time.sleep(self.__stopper_check_freq)
+            time.sleep(1/self.__stopper_check_freq)
         return False
 
     def wait_for_stopper_hit_any(self):
@@ -1802,7 +1802,7 @@ class VescAdapterV4:
         self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
         self.__ser.flushInput()
         self.__ser.flushOutput()
-        self.__ser.timeout = 5
+        self.__ser.timeout = config.VESC_TIMEOUT_READ
 
         # INIT ALL ALLOWED VESCS HERE
         # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
@@ -2018,7 +2018,7 @@ class VescAdapterV4:
 
                     # send alive to each active
                     if time.time() > self.__next_alive_time:
-                        self.__next_alive_time = time.time() + self.__alive_freq
+                        self.__next_alive_time = time.time() + 1 / self.__alive_freq
                         for engine_key in self.__is_moving:
                             if self.__is_moving[engine_key]:
                                 self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
@@ -2044,7 +2044,7 @@ class VescAdapterV4:
                                             )
                                         )
                 # wait for next checking tick
-                time.sleep(self.__check_freq)
+                time.sleep(1 / self.__check_freq)
         except serial.SerialException as ex:
             print(ex)  # TODO should these exceptions to be ignored?
 
@@ -2092,7 +2092,7 @@ class VescAdapterV4:
                     return True
             if timeout is not None and time.time() > end_t:
                 return False
-            time.sleep(self.__check_freq)
+            time.sleep(1/self.__check_freq)
 
     def wait_for_stop_any(self, timeout=None):
         raise NotImplementedError("this feature is not implemented yet")
@@ -2127,7 +2127,7 @@ class VescAdapterV4:
                 if stop_engine_if_timeout:
                     self.stop_moving(engine_key)
                 return False
-            time.sleep(self.__stopper_check_freq)
+            time.sleep(1/self.__stopper_check_freq)
 
     def wait_for_stopper_hit_any(self):
         raise NotImplementedError("this feature is not implemented yet")
