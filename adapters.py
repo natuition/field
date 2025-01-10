@@ -2328,6 +2328,7 @@ class GPSUbloxAdapter:
 
     def close(self):
         self._keep_thread_alive = False
+        self._reader_thread.join()
         if self._serial.is_open:
             self._serial.close()
 
