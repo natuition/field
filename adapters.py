@@ -2113,39 +2113,44 @@ class VescAdapterV4:
                             try :
                                 if self.__is_moving[engine_key]:
                                     self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
-                                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-                                in_buf = b''
-                                while self.__ser.in_waiting > 0:
-                                    try:
-                                        in_buf += self.__ser.read(self.__ser.in_waiting)
-                                    except KeyboardInterrupt:
-                                        raise KeyboardInterrupt
-                                    except Exception as e:
-                                        self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
+                                    
+                                vesc_rpm = self.__get_rpm_sensor_data(engine_key)
+                                
+                                if vesc_rpm is not None:
+                                    if vesc_rpm == 0 and self.__current_rpm[engine_key] != 0:
+                                        self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
+                                        self.__ser.write(
+                                            pyvesc.encode(
+                                                pyvesc.SetRPM(
+                                                    self.__current_rpm[engine_key],
+                                                    can_id=self.__can_ids[engine_key]
+                                                )
+                                            )
+                                        )
+                                        
                             except SerialException or OSError as e :
                                 if e.errno == 5 or isinstance(e, SerialException):
                                     self.reconnect_vesc()
-
-                            if len(in_buf) != 0:
-                                response, consumed = pyvesc.decode(in_buf)
-                                if consumed != 0 and response is not None:
-                                    if response.__dict__["rpm"] == 0 and self.__target_rpm[engine_key] != 0:
-                                        self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
-                                        try :
-                                            self.__ser.write(
-                                                pyvesc.encode(
-                                                    pyvesc.SetRPM(
-                                                        self.__target_rpm[engine_key],
-                                                        can_id=self.__can_ids[engine_key]
-                                                    )
-                                                )
-                                            )
-                                        except SerialException :
-                                            self.reconnect_vesc()
                 # wait for next checking tick
                 time.sleep(1 / self.__check_freq)
         except serial.SerialException as ex:
             print(f"[{self.__class__.__name__}] -> {ex}")  # TODO should these exceptions to be ignored?
+            
+    def __get_rpm_sensor_data(self, engine_key):
+        self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+        in_buf = b''
+        while self.__ser.in_waiting > 0:
+            try:
+                in_buf += self.__ser.read(self.__ser.in_waiting)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
+        if len(in_buf) != 0:
+            response, consumed = pyvesc.decode(in_buf)
+            if consumed != 0 and response is not None:
+                return response.__dict__["rpm"]
+        return None
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
@@ -2167,7 +2172,7 @@ class VescAdapterV4:
                 self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
             self.__is_moving[engine_key] = True
 
-    def stop_moving(self, engine_key, smooth_deceleration: bool = False):
+    def stop_moving(self, engine_key, smooth_deceleration: bool = False):        
         with self.__locker:
             self.__use_smooth_decel[engine_key] = smooth_deceleration
 
