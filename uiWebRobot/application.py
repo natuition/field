@@ -286,11 +286,13 @@ class UIWebRobot:
 
         currentState: CalibrateState = self.get_state_machine().currentState
 
+        """
         if request.method == 'POST':
             if not currentState.checkPassword(request.form['password']):
                 return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), password_wrong=True)
             else:
                 currentState.getStatusOfControls()["currentHTML"] = "CalibrateDetect.html"
+        """
         return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language())
 
     def actuator_screening(self):
