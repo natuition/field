@@ -105,8 +105,8 @@ class CameraCalibration:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame = cv2.GaussianBlur(frame, (21, 21), cv2.BORDER_DEFAULT)
 
-        all_circles = cv2.HoughCircles(
-            frame, cv2.HOUGH_GRADIENT, 0.9, 2500, param1=30, param2=10, minRadius=30, maxRadius=50)
+        #all_circles = cv2.HoughCircles(frame, cv2.HOUGH_GRADIENT, 0.9, 2500, param1=30, param2=10, minRadius=25, maxRadius=50)
+        all_circles = cv2.HoughCircles(frame, cv2.HOUGH_GRADIENT, 1, 10000, param1=30, param2=5, minRadius=25, maxRadius=40)
         all_circles_rounded = np.uint16(np.around(all_circles))
         print('I have found ' + str(all_circles_rounded.shape[1]) + ' circles')
         if len(all_circles_rounded) == 1:
@@ -116,17 +116,16 @@ class CameraCalibration:
         else:
             print("Warning we found multiple circles.")
         for i in all_circles_rounded[0, :]:
-            cv2.circle(img_origine, (i[0], i[1]), i[2], (102, 0, 204), 3)
-            cv2.circle(img_origine, (i[0], i[1]), 2, (102, 0, 204), 3)
+            cv2.circle(img_origine, (i[0], i[1]), i[2], (102, 0, 204), 2)
+            cv2.circle(img_origine, (i[0], i[1]), 2, (102, 0, 204), 2)
+            cv2.line(img_origine, (i[0], i[1]-i[2]), (i[0], i[1]+i[2]), (102, 0, 204), 1)
+            cv2.line(img_origine, (i[0]-i[2], i[1]), (i[0]+i[2], i[1]), (102, 0, 204), 1)
             cv2.ellipse(img_origine, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), (
                 config.UNDISTORTED_ZONE_RADIUS, config.UNDISTORTED_ZONE_RADIUS), 0, 270, 360, (204, 0, 102), 3)
             cv2.line(img_origine, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), (config.SCENE_CENTER_X +
                      config.UNDISTORTED_ZONE_RADIUS, config.SCENE_CENTER_Y), (204, 0, 102), 3)
             cv2.line(img_origine, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), (config.SCENE_CENTER_X,
                      config.SCENE_CENTER_Y - config.UNDISTORTED_ZONE_RADIUS), (204, 0, 102), 3)
-            cv2.circle(img_origine, (config.SCENE_CENTER_X,
-                       config.SCENE_CENTER_Y), 2, (204, 0, 102), 3)
-
         if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS) and self.target_x >= config.SCENE_CENTER_X and self.target_y <= config.SCENE_CENTER_Y:
             finalMsg = (True, "Target is in undistorted zone :")
         else:
@@ -331,11 +330,8 @@ def main():
     res = cameraCalibration.offset_calibration_step_detect()
     with open(os.getcwd() + "/target_coords.json", 'w') as f:
         json.dump({"x": cameraCalibration.target_x,
-                  "y": cameraCalibration.target_y}, f)
-    if "is not" in res[1]:
-        exit(1)
-    else:
-        exit(0)
+                "y": cameraCalibration.target_y}, f)
+    print(json.dumps({"result":res}))
 
 
 if __name__ == "__main__":

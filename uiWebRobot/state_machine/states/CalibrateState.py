@@ -14,6 +14,8 @@ import utility
 import adapters
 import hashlib
 import json
+import os
+import subprocess
 
 
 # This state corresponds when the robot is calibrate of plant targeting precision.
@@ -60,23 +62,23 @@ class CalibrateState(State.State):
 
     def on_event(self, event):
         if event == Events.CALIBRATION_DETECT:
-            # while self.__coins_in_undistorted_zone is None:
-            # res = subprocess.run("python3 cameraCalibration.py", stderr=subprocess.DEVNULL, shell=True, cwd=os.getcwd().split("/uiWebRobot")[0]+"/deployement")
-            # if res.returncode in [0, 1]:
-            #    restart = False
-            res = self.cameraCalibration.offset_calibration_step_detect(
-                "../deployement")
+            ps = subprocess.Popen("export OPENCV_LOG_LEVEL=0 && python3 cameraCalibration.py", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.getcwd().split("/uiWebRobot")[0]+"/deployement")
+            output, error = ps.communicate()
+            lines = output.decode('utf-8').splitlines()
+            if not lines :
+                print(error)
+            for line in lines:
+                if '"result":' in line:
+                    tmp_res = json.loads(line)
+            res=tmp_res["result"]
             self.__coins_in_undistorted_zone = res[0]
-            with open("../deployement/target_coords.json", 'w') as f:
-                json.dump({"x": self.cameraCalibration.target_x,
-                           "y": self.cameraCalibration.target_y}, f)
             with open('../deployement/target_detection.jpg', 'rb') as f:
                 image_data = f.read()
             self.socketio.emit('image', {
-                               'image_data': image_data, "label": "ok" if self.__coins_in_undistorted_zone else "nok"}, namespace='/server', broadcast=True)
+                               'image_data': image_data, "label": self.__coins_in_undistorted_zone}, namespace='/server', broadcast=True)
             return self
         elif event == Events.CALIBRATION_MOVE:
-            # self.cameraCalibration.set_targets("../deployement/")
+            self.cameraCalibration.set_targets("../deployement/")
 
             # GO TO COINS
             if self.__coins_in_undistorted_zone:

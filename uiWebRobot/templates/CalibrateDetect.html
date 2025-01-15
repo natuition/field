@@ -56,10 +56,10 @@
         </div>
         <div id="label_detection_div" class="d-none justify-content-center align-items-center"
             style="margin: 0 auto; padding: 10px 0;">
-            <label id="fig_image_txt_ok" class="d-none form-check-label">
+            <label id="fig_image_txt_true" class="d-none form-check-label">
                 {{(ui_languages["Is in undistorted zone"])[ui_language]}}
             </label>
-            <label id="fig_image_txt_nok" class="d-none form-check-label">
+            <label id="fig_image_txt_false" class="d-none form-check-label">
                 {{(ui_languages["Is not in undistorted zone"])[ui_language]}}
             </label>
         </div>
@@ -109,8 +109,8 @@
         }
 
         socketio.on('image', function (data) {
-            $('#fig_image_txt_ok').addClass('d-none');
-            $('#fig_image_txt_nok').addClass('d-none');
+            $('#fig_image_txt_true').addClass('d-none');
+            $('#fig_image_txt_false').addClass('d-none');
             var arrayBufferView = new Uint8Array(data['image_data']);
             var blob = new Blob([arrayBufferView], { type: "image/jpeg" });
             var img_url = URL.createObjectURL(blob);
@@ -123,7 +123,7 @@
             $('#label_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
             $('#img_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
             $('#fig_image_txt_' + data['label']).removeClass('d-none');
-            if (data['label'] == "ok") {
+            if (data['label']) {
                 $('#validate').removeClass('d-none');
             } else {
                 $('#validate').addClass('d-none');

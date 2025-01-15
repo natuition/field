@@ -330,7 +330,7 @@
 		"de": "Schwelle"
 	},
 	"Peripheral threshold": {
-		"fr": "Seuil du module périphérique :",
+		"fr": "Seuil du module périphérique&nbsp;:",
 		"en": "Threshold of the peripheral module:",
 		"nl": "Drempel van de perifere module:",
 		"de": "Schwelle des Peripheriemoduls:"
