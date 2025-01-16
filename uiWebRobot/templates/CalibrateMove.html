@@ -58,50 +58,55 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
-        <label class="form-check-label" for="xDone">
-            {{(ui_languages["Move extraction tool to target"])[ui_language]}}:
-        </label>
-    </div>
+    <section id="arrows_container" class="d-none">
 
-    <div class="d-flex flex-column justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
-        <div class="d-flex justify-content-center align-items-center">
-            <button type="button" id="y_add" class="btn btn-outline-secondary btn-xl" onclick="moveAxisXY('y',1)"
-                disabled>
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
-                    class="bi bi-arrow-up" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd"
-                        d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5" />
-                </svg>
-            </button>
+        <div class="d-flex justify-content-center align-items-center" style="margin: 0 auto; padding: 10px 0;">
+            <label class="form-check-label" for="xDone">
+                {{(ui_languages["Move extraction tool to target"])[ui_language]}}:
+            </label>
         </div>
-        <div class="btn-group" role="group">
-            <button type="button" id="x_remove" class="btn btn-outline-secondary btn-xl" onclick="moveAxisXY('x',-1)"
-                disabled style="margin: 10px 10px 0 0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
-                    class="bi bi-arrow-left" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd"
-                        d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8" />
-                </svg>
-            </button>
-            <button type="button" id="y_remove" class="btn btn-outline-secondary btn-xl" onclick="moveAxisXY('y',-1)"
-                disabled style="margin: 10px 10px 0 0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
-                    class="bi bi-arrow-down" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd"
-                        d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1" />
-                </svg>
-            </button>
-            <button type="button" id="x_add" class="btn btn-outline-secondary btn-xl" onclick="moveAxisXY('x',1)"
-                disabled style="margin: 10px 0 0 0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
-                    class="bi bi-arrow-right" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd"
-                        d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8" />
-                </svg>
-            </button>
+
+        <div class="d-flex flex-column justify-content-center align-items-center"
+            style="margin: 0 auto; padding: 10px 0;">
+            <div class="d-flex justify-content-center align-items-center">
+                <button type="button" id="y_add" class="btn btn-outline-secondary btn-xl" onclick="moveAxisXY('y',1)"
+                    disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
+                        class="bi bi-arrow-up" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5" />
+                    </svg>
+                </button>
+            </div>
+            <div class="btn-group" role="group">
+                <button type="button" id="x_remove" class="btn btn-outline-secondary btn-xl"
+                    onclick="moveAxisXY('x',-1)" disabled style="margin: 10px 10px 0 0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
+                        class="bi bi-arrow-left" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8" />
+                    </svg>
+                </button>
+                <button type="button" id="y_remove" class="btn btn-outline-secondary btn-xl"
+                    onclick="moveAxisXY('y',-1)" disabled style="margin: 10px 10px 0 0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
+                        class="bi bi-arrow-down" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1" />
+                    </svg>
+                </button>
+                <button type="button" id="x_add" class="btn btn-outline-secondary btn-xl" onclick="moveAxisXY('x',1)"
+                    disabled style="margin: 10px 0 0 0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
+                        class="bi bi-arrow-right" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8" />
+                    </svg>
+                </button>
+            </div>
         </div>
-    </div>
+
+    </section>
 
     <div id="button_div" class="d-flex justify-content-center align-items-center"
         style="margin: 0 auto; padding: 10px 0;">
@@ -135,6 +140,7 @@
 
         function runMoveToTarget() {
             $('.btn').attr({ disabled: true });
+            $('#arrows_container').addClass("d-none");
             $('#run_move').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> En cours...');
             socketio.emit('data', { type: "run_move_to_target" })
         }
@@ -142,6 +148,7 @@
         socketio.on('move', function (data) {
             if (data["move"]) {
                 $('.btn').removeAttr("disabled");
+                $('#arrows_container').removeClass("d-none");
                 $('#run_move').attr({ disabled: true });
                 $('#run_move').html('Fait');
             }
@@ -149,6 +156,7 @@
 
         socketio.on('save_applied', function (data) {
             $('.btn').attr({ disabled: true });
+            $('#arrows_container').addClass("d-none");
             $('#alert').removeClass('d-none');
             $('#run_move').html('Lancer');
             $('#run_move').removeAttr("disabled");
