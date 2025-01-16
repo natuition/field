@@ -157,6 +157,7 @@ last_angle_wheels.txt
 nn_comparison.py
 yolo/Y0016.conf
 deployement/target_coords.json
+deployement/go_to_coins_images/*
 deployement/target_detection.jpg
 uiWebRobot/target_detection.jpg
 
