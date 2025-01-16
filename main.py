@@ -20,76 +20,10 @@ import json
 import glob
 import importlib
 import subprocess
-import datetime
-import shutil
-import pytz
 
-
-# load config, if failed - copy and load config backups until success or no more backups
-def is_config_empty(config_full_path: str):
-    with open(config_full_path, "r") as config_file:
-        for line in config_file:
-            if line not in ["", "\n"]:
-                return False
-    return True
-
-
-try:
-    if not os.path.isfile("config/config.py"):
-        raise Exception("config file is not exist")
-
-    if is_config_empty("config/config.py"):
-        raise Exception("config file is empty")
-
-    from config import config
-except KeyboardInterrupt:
-    raise KeyboardInterrupt
-except Exception as exc:
-    print(f"Failed to load current config.py! ({str(exc)})")
-
-    # load config backups
-    config_backups = [path for path in glob.glob(
-        "configBackup/*.py") if "config" in path]
-    for i in range(len(config_backups)):
-        ds = config_backups[i].split("_")[1:]  # date structure
-        ds.extend(ds.pop(-1).split(":"))
-        ds[-1] = ds[-1][:ds[-1].find(".")]
-        config_backups[i] = [
-            config_backups[i],
-            datetime.datetime(
-                day=int(ds[0]),
-                month=int(ds[1]),
-                year=int(ds[2]),
-                hour=int(ds[3]),
-                minute=int(ds[4]),
-                second=int(ds[5])
-            ).timestamp()
-        ]
-    # make last backups to be placed and used first
-    config_backups.sort(key=lambda item: item[1], reverse=True)
-
-    # try to find and set as current last valid config
-    for config_backup in config_backups:
-        try:
-            os.rename(
-                "config/config.py",
-                f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
-                f"_config.py")
-            shutil.copy(config_backup[0], "config/config.py")
-
-            if is_config_empty("config/config.py"):
-                raise Exception("config file is empty")
-
-            from config import config
-            print("Successfully loaded config:", config_backup[0])
-            break
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            pass
-    else:
-        print("Couldn't find proper 'config.py' file in 'config' and 'configBackup' directories!")
-        exit()
+import safe_import_of_config
+safe_import_of_config.make_import()
+from config import config
 
 import adapters
 import navigation
@@ -115,14 +49,6 @@ if config.RECEIVE_FIELD_FROM_RTK:
 """
 # TODO: temp debug counter
 IMAGES_COUNTER = 0
-
-def load_coordinates(file_path):
-    positions_list = []
-    with open(file_path) as file:
-        for line in file:
-            if line != "":
-                positions_list.append(list(map(float, line.split(" "))))
-    return positions_list
 
 
 def save_gps_coordinates(points: list, file_name: str):
@@ -2228,7 +2154,7 @@ def main():
                         logger_full.write(msg + "\n")
 
                         try:
-                            field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                            field_gps_coords = utility.load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
                         except ValueError:
                             msg = f"Failed to load field '{shortcut_target_path}' due " \
                                   f"to ValueError (file is likely corrupted)"
@@ -2806,6 +2732,8 @@ def main():
                         try:
                             start_position = utility.average_point(
                                 gps, trajectory_saver, nav)
+                        except KeyboardInterrupt:
+                            raise KeyboardInterrupt
                         except:
                             pass
                         if ui_msg_queue is not None:
@@ -2855,6 +2783,8 @@ def main():
         print(msg)
         logger_full.write(msg + "\n")
         notification.close()
+        if ui_msg_queue is not None:
+            ui_msg_queue.send(json.dumps({"stopping": True}))
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     except Exception as e:
@@ -2997,6 +2927,6 @@ def main():
 
         print("Safe disable is done.")
 
-
 if __name__ == '__main__':
     main()
+    exit(0)

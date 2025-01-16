@@ -15,6 +15,7 @@ import time
 import sys
 sys.path.append('../')
 from navigation import NavigationV3
+from navigation import GPSComputing
 
 
 def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
@@ -52,8 +53,8 @@ def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio, logger: utilit
             lastPos = gps.get_fresh_position()
             if config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART and lastPos[2]!='4':
                 NavigationV3.restart_ntrip_service(logger)
-            socketio.emit('updatePath', json.dumps(
-                [[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            socketio.emit('updateGPSQuality', lastPos[2], namespace='/gps', broadcast=True)
 
 
 def initVesc(logger: utility.Logger):
@@ -170,9 +171,8 @@ def startLiveCam():
 
 def updateFields(field_name):
     field_name_quote = quote(field_name, safe="", encoding='utf-8')
-
+    
     cmd = "ln -sf 'fields/" + field_name_quote + ".txt' ../field.txt"
-
     os.system(cmd)
 
     with open("../field.txt") as file:
@@ -192,9 +192,9 @@ def load_field_list(dir_path):
         field_list = []
         for file in os.listdir(dir_path):
             if file.endswith(".txt"):
-                if file != "tmp.txt":
-                    field_list.append(
-                        unquote(file.split(".txt")[0], encoding='utf-8'))
+                #if file != "tmp.txt":
+                field_list.append(
+                    unquote(file.split(".txt")[0], encoding='utf-8'))
         return field_list
 
 def get_other_field():
@@ -216,3 +216,47 @@ def get_other_field():
                     coords_other.append(coords)
             return coords_other
         return list()
+
+
+def is_valid_field_file(file_path : str, logger: utility.Logger):
+    """
+    Check if a field file is valid.
+
+    Args:
+        file_path (str): The path to the file to check.
+
+    Returns:
+        bool: True if the file is valid, False otherwise.
+    """
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        msg = f"[Field file validator] -> Field validation, the file does not exist ({file_path})."
+        logger.write(msg + "\n")
+        print(msg)
+        return False
+    try:
+        # Check if the file contains the right number of points
+        coords_list = utility.load_coordinates(file_path)
+        if (len(coords_list) not in [4,2]):
+            msg = f"[Field file validator] -> Field validation, the file does not have the right number of line ({len(coords_list)})."
+            logger.write(msg + "\n")
+            print(msg)
+            return False
+        
+        # Check distance between two consecutive points
+        if config.CHECK_MINIMUM_SIZE_FIELD:
+            nav = GPSComputing()
+            for i in range(len(coords_list) - 1):
+                if nav.get_distance(coords_list[i], coords_list[i+1]) <  (config.MINIMUM_SIZE_FIELD * 1000):
+                    msg = f"[Field file validator] -> Field validation, the file have a field to small, not saving it."
+                    logger.write(msg + "\n")
+                    print(msg)
+                    return False
+
+    except ValueError as e:
+        msg = f"[Field file validator] -> Failed to load field {file_path} due to ValueError (file is likely corrupted)."
+        logger.write(msg + "\n")
+        print(msg)
+        return False
+    
+    return True

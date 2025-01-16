@@ -299,6 +299,12 @@
 		"nl": "Detectie:",
 		"de": "Erkennung"
 	},
+	"Demonstration:": {
+		"fr": "Démonstration :",
+		"en": "Demonstration:",
+		"nl": "Demonstratie:",
+		"de": "Demonstration:"
+	},
 	"Periphery mod:": {
 		"fr": "Module périphérique :",
 		"en": "Periphery mod:",
@@ -322,6 +328,18 @@
 		"en": "Threshold",
 		"nl": "Drempel",
 		"de": "Schwelle"
+	},
+	"Peripheral threshold": {
+		"fr": "Seuil du module périphérique :",
+		"en": "Threshold of the peripheral module:",
+		"nl": "Drempel van de perifere module:",
+		"de": "Schwelle des Peripheriemoduls:"
+	},
+	"Precise threshold": {
+		"fr": "Seuil du module précis :",
+		"en": "Threshold of the precise module:",
+		"nl": "Drempel van de precieze module:",
+		"de": "Schwelle des präzisen Moduls:"
 	},
 	"Mono": {
 		"fr": "Mono",
@@ -652,5 +670,35 @@
 		"en": "Pause",
 		"nl": "Pause",
 		"de": "Pause"
+	},
+	"no_gps": {
+		"fr": "Pas de GPS",
+		"en": "No GPS",
+		"nl": "Geen GPS",
+		"de": "Kein GPS"
+	},
+	"gps_with_rtk": {
+		"fr": "RTK",
+		"en": "RTK",
+		"nl": "RTK",
+		"de": "RTK"
+	},
+	"only_gps": {
+		"fr": "GPS",
+		"en": "GPS",
+		"nl": "GPS",
+		"de": "GPS"
+	},
+	"alert_on_no_gps": {
+		"fr": "Vous ne pouvez pas utiliser cette fonction tant que le GPS n'est pas disponible, veuillez attendre un instant.",
+		"en": "You can not use this function when the GPS is not available, please wait moment.",
+		"nl": "U kunt deze functie niet gebruiken zolang de GPS niet beschikbaar is. Wacht een moment.",
+		"de": "Sie können diese Funktion nicht verwenden, solange GPS nicht verfügbar ist. Bitte warten Sie einen Moment."
+	},
+	"working_zone_too_small": {
+		"fr": "Votre zone de travail est trop petite, veuillez réessayer avec une zone plus grande.",
+		"en": "Your working zone is too small, please retry with a bigger one.",
+		"nl": "Uw werkgebied is te klein, probeer het opnieuw met een groter gebied.",
+		"de": "Ihr Arbeitsbereich ist zu klein, bitte versuchen Sie es mit einem größeren Bereich erneut."
 	}
 }

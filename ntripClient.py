@@ -135,6 +135,8 @@ class NtripClient(object):
                     mps = bytearray(mps, 'ascii')
                 try:
                     self.socket.sendall(mps)
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
                 except Exception:
                     self.socket = None
                     return None
@@ -173,6 +175,8 @@ class NtripClient(object):
         while True:
             try:
                 data = self.socket.recv(1)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
             except ssl.SSLWantReadError:
                     return None
             except IOError as e:
@@ -206,6 +210,8 @@ class NtripClient(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             error_indicator = sock.connect_ex((self.caster, self.port))
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception:
             return False
         if error_indicator == 0:
@@ -222,15 +228,38 @@ class NtripClient(object):
         except serial.SerialException:
             NtripError(f"Error to connection to '{self.output}' at {self.baudrate} !")
             exit(1)
+        
+        list_RTCM_ID_sent = []
 
         try:
             while True:
                 data = self.read()
+
+                in_filters_id = False
+                for filter_id in config.RTK_ID_SEND :
+                    if self.last_id in filter_id:
+                        in_filters_id = True
+
+                if not in_filters_id and len(config.RTK_ID_SEND) > 0:
+                    continue
+
+                if self.last_id not in list_RTCM_ID_sent:
+                    list_RTCM_ID_sent.append(self.last_id)
+                    print(list_RTCM_ID_sent)
+
+                has_filters = True
+                for filter_id in config.RTK_ID_SEND :
+                    if not len(set(list_RTCM_ID_sent) & set(filter_id)) > 0:
+                        has_filters = False 
+
+                if has_filters and len(config.RTK_ID_SEND) > 0:
+                    list_RTCM_ID_sent = []
+                    time.sleep(config.NTRIP_SLEEP_TIME)
+                    
                 if data is None:
                     continue
                 
-                if self.last_id in config.RTK_ID_SEND or not len(config.RTK_ID_SEND):
-                    ser.write(data)
+                ser.write(data)
 
         except KeyboardInterrupt:
             print("Fermeture des connexions...")
@@ -258,6 +287,8 @@ if __name__ == '__main__':
                 ntripArgs['lat'] = pos[0]
                 ntripArgs['long'] = pos[1]
                 print(f"Current latitude : {pos[0]}, longitude : {pos[1]} for send to ntrip.")
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
             except Exception as e:
                 print("Error not found coords ! ",e)
                 exit(1)

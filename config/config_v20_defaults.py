@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.10"
+CONFIG_VERSION = "2.1.1"
 
 
 # ======================================================================================================================
@@ -176,8 +176,8 @@ VESC_CORK_PICKUP_MAX_TRIES = 3
 
 AVOID_CORK_VIEW_OBSCURING = True  # is True: adds offsets to control points to make a plant to be at the top half of the undistorted zone
 
-EXTRACTIONS_FULL_CYCLES = 2  # count of full extraction loops called after periphery NN detection (should be >= 1)
-EXTRACTION_TUNING_MAX_COUNT = 3 # Number of try to get closer to a plant
+EXTRACTIONS_FULL_CYCLES = 1  # count of full extraction loops called after periphery NN detection (should be >= 1)
+EXTRACTION_TUNING_MAX_COUNT = 2 # Number of try to get closer to a plant
 
 SEEK_DELTA_DISTANCE = 25  # mm; if weed is lost after tuning/getting closer - we do 3 shifts for that value (down, left, right) and trying to find it
 MYOPIA_PATCH = True
@@ -197,10 +197,11 @@ VESC_BAUDRATE = 115200
 
 VESC_RPM_SLOW = -2500
 VESC_MOVING_TIME = float("inf")
-VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when moving
-VESC_CHECK_FREQ = 0.001  # freq of checking need to stop
+VESC_ALIVE_FREQ = 4  # freq in herz of sending "keep working" signal to engines when moving
+VESC_CHECK_FREQ = 1000  # freq in herz of checking need to stop
 FAST_TO_SLOW_TIME = 5
-VESC_STOPPER_CHECK_FREQ = 0.001
+VESC_STOPPER_CHECK_FREQ = 1000 # freq in herz
+VESC_TIMEOUT_READ = 0.05 # timeout in seconds of trying to read the serial
 
 INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
 FREQUENCY_INCREMENTAL_RPM = 0.025  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
@@ -232,7 +233,7 @@ VESC_EXTRACTION_CALIBRATION_MAX_TIME = 2 # seconds; max time needed to reach sto
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM = 2500  
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_TIME = 0.3 # seconds; calibration small movement down time (calibration "Z-5" fix) 
 VESC_EXTRACTION_AUTODETECT_CAN_ID = False # set to False to use vesc can id from this config, set to True to try detect vesc can id during initialization
-VESC_EXTRACTION_CAN_ID = 0 # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
+VESC_EXTRACTION_CAN_ID = 2 # this can id will be used if VESC_EXTRACTION_AUTODETECT_CAN_ID is set to False
 
 VESC_SMOOTH_ACCEL_RPM_STEP = 2500
 VESC_SMOOTH_ACCEL_TIME_STEP = 0.1  
@@ -325,8 +326,8 @@ CORK_CALIBRATION_MIN_TIME = 3600
 CALIBRATION_ORDER = ["Z", "Y", "X", "A", "B", "C"]
 
 # DIRECTION WHEELS
-A_MIN = -6 
-A_MAX = 6 
+A_MIN = -11
+A_MAX = 11
 #NOT USED
 B_MIN = -float("inf")
 B_MAX = float("inf")
@@ -439,7 +440,7 @@ LIFE_LINE_PIN = 77 #77 for lifeline with nvidia board (board pin 38) | 78 for mo
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
-UI_LANGUAGE = "fr" 
+UI_LANGUAGE = "en"
 
 SLIDER_CREATE_FIELD_MIN = 15 #minimum of the slider allowing to configure the second segment of the terrain on the ui.
 SLIDER_CREATE_FIELD_MAX = 150 #maximum of the slider allowing to configure the second segment of the terrain on the ui
@@ -500,7 +501,15 @@ NTRIP_OUTPUT_BAUDRATE = 115200
 
 NTRIP_RESTART_TIMEOUT = 10
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
-RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
+RTK_ID_SEND = [(1005, 1006), (1124, 1127), (1084, 1087), (1074, 1077)] #Id of the rtk frames that will be sent to the gps
+# 1005 : Stationary RTK reference station ARP
+# 1006 : Stationary RTK reference station ARP with antenna height
+# Origine RTK           MSM4        MSM7
+# BeiDou (Chine)        1124        1127
+# GPS (USA)             1074        1077
+# GLONASS (Russie)      1084        1087
+# Galileo (UE)          1094        1097
+NTRIP_SLEEP_TIME = 10 # Time in seconds between two sessions of getting data (MSM and ARP)
 
 CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 
@@ -632,6 +641,8 @@ CORK_TO_CAMERA_DISTANCE_Y = 30  # distance between camera and cork on the robot,
 # PATHS SETTINGS
 # ======================================================================================================================
 INPUT_GPS_FIELD_FILE = "field.txt"
+MINIMUM_SIZE_FIELD = 15 # Size minimum of a field (in meter)
+CHECK_MINIMUM_SIZE_FIELD = True # Do check if a field is bigger than the minimum
 OUTPUT_GPS_HISTORY_FILE = "gps_history.txt"
 DARKNET_LIB_DIR_PATH = "/home/violette/field/darknet/"
 STATISTICS_OUTPUT_FILE = "statistics.txt"

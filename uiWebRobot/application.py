@@ -1,6 +1,9 @@
 import sys
 sys.path.append('../')
 
+import safe_import_of_config
+safe_import_of_config.make_import("../config", "../configBackup")
+
 from state_machine.Events import Events
 from state_machine.utilsFunction import *
 from state_machine.StateMachine import StateMachine
@@ -23,7 +26,6 @@ from uiWebRobot.setting_page import SettingPageManager
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from config import config
 from uiWebRobot.state_machine.states import *
 import traceback
 
@@ -47,9 +49,9 @@ class UIWebRobot:
 
 
     def exit(self):
-        print("Send RobotSynthesis...")
+        print(f"[{self.__class__.__name__}] -> Send RobotSynthesis...")
         self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
-        print("Sent ✅")
+        print(f"[{self.__class__.__name__}] -> Sent ✅")
 
     def __init_socketio(self):
         self.__socketio.on_event(
@@ -73,6 +75,7 @@ class UIWebRobot:
         self.__app.add_url_rule("/restart_ui", view_func=self.restart_ui)
         self.__app.add_url_rule("/calibrate", view_func=self.calibrate, methods=['GET', 'POST'])
         self.__app.add_url_rule("/actuator_screening", view_func=self.actuator_screening)
+        self.__app.add_url_rule("/run_life_line", view_func=self.run_life_line)
 
     def __setting_flask(self):
         self.__app.register_error_handler(Exception, self.handle_exception)
@@ -83,7 +86,7 @@ class UIWebRobot:
         Payload.max_decode_packets = 500
 
     def __reload_config(self):
-        print("Reload config in application.py...")
+        print(f"[{self.__class__.__name__}] -> Reload config in application.py...")
         spec = importlib.util.spec_from_file_location(
             "config.name", "../config/config.py")
         self.__config = importlib.util.module_from_spec(spec)
@@ -102,8 +105,7 @@ class UIWebRobot:
     def get_state_machine(self) -> StateMachine:
         return self.__stateMachine
 
-    @staticmethod
-    def load_coordinates(file_path):
+    def load_coordinates(self, file_path):
         positions_list = []
         try:
             with open(file_path) as file:
@@ -112,6 +114,9 @@ class UIWebRobot:
                         coords = list(map(float, line.split(" ")))
                         positions_list.append([coords[0], coords[1]])
         except OSError as e:
+            return None
+        if len(positions_list) == 0:
+            print(f"[{self.__class__.__name__}] -> Erreur : Le fichier {file_path} est vide.")
             return None
         return positions_list
 
@@ -248,8 +253,10 @@ class UIWebRobot:
             self.__socketio, self.__ui_languages, self.__config, self.__reload_config)
         try:
             return render_template('UISetting.html', sn=sn, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), now=datetime.now().strftime("%H_%M_%S_%f"), setting_page_generate=setting_page_manager.generate_html())
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception as e:
-            print(f"Error : {e}")
+            print(f"[{self.__class__.__name__}] -> Error : {e}")
             traceback.print_exc()
             return redirect('/')
 
@@ -258,9 +265,9 @@ class UIWebRobot:
             return redirect('/')
         myCoords = [0, 0]
         field = self.get_state_machine().getField()
-        if field is None:
-            field = UIWebRobot.load_coordinates("../field.txt")
-        if field is None:
+        if (field is None) or (len(field) == 0):
+            field = self.load_coordinates("../field.txt")
+        if (field is None) or (len(field) == 0):
             return render_template('map.html', myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
         else:
             coords_other = get_other_field()
@@ -367,10 +374,15 @@ class UIWebRobot:
         os.system('sudo systemctl restart UI')
         return None
 
+    def run_life_line(self):
+        utility.life_line_reset()
+        return "Restarting equipment on the current life line."
+
     def handle_exception(self, e):
         # pass through HTTP errors
 
         if isinstance(e, HTTPException):
+            print(f"[{self.__class__.__name__}] -> Error handled : {e}.")
             return e
 
         # now you're handling non-HTTP exceptions only
@@ -380,7 +392,7 @@ class UIWebRobot:
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        print(f"Error handled : {exc_type} : {exc_value}.")
+        print(f"[{self.__class__.__name__}] -> Error handled : {exc_type} : {exc_value}.")
         traceback.print_exception(exc_type, exc_value, exc_traceback)
         return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=f"{str(exc_type)} : {exc_value}"), 500
 
@@ -395,9 +407,9 @@ def main():
                        debug=True, use_reloader=False)
     finally:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
+            print("[UIWebRobot] -> Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
-        print("Closing app...")
 
 
 if __name__ == "__main__":

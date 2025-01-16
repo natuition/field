@@ -25,9 +25,10 @@ class CheckState(State.State):
         self.cam = None
 
         try:
-            msg = f"[{self.__class__.__name__}] -> startLiveCam"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> startLiveCam"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
             self.cam = utilsFunction.startLiveCam()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
@@ -36,11 +37,17 @@ class CheckState(State.State):
 
         self.field = None
 
-        msg = f"[{self.__class__.__name__}] -> initVesc"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> initVesc"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
+        self.vesc_engine.close()
         del self.vesc_engine
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Close and recreate vesc"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
 
         self.__voltage_thread_alive = True

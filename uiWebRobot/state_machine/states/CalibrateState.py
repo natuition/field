@@ -35,14 +35,16 @@ class CalibrateState(State.State):
         
         try:
             if self.smoothie is None:
-                msg = f"[{self.__class__.__name__}] -> initSmoothie"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                 self.smoothie = utilsFunction.initSmoothie(self.logger)
 
-            msg = f"[{self.__class__.__name__}] -> initCameraCalibration"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> initCameraCalibration"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
             self.cameraCalibration = CameraCalibration()
         except KeyboardInterrupt:
             raise KeyboardInterrupt

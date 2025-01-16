@@ -9,7 +9,6 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine import State
 from state_machine.FrontEndObjects import FrontEndObjects
-from shared_class.robot_synthesis import RobotSynthesis
 from notification import RobotStateClient
 
 
@@ -25,15 +24,16 @@ class StateMachine:
         self.change_current_state(CheckState(socketio,self.logger))
 
     def on_event(self, event: Events.Events):
-        print()
-        msg = f"{self.currentState} received event : {event}."
+        msg = f"[{self.__class__.__name__}] -> {self.currentState} received event : {event}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
 
         try:
             newState = self.currentState.on_event(event)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception as e:
-            self.logger.write_and_flush("[Error] "+str(e)+"\n")
+            self.logger.write_and_flush(f"[{self.__class__.__name__}] -> [Error on_event] <{e.__class__.__name__}> : "+str(e)+"\n")
             newState = ErrorState(self.socketio,self.logger,str(e))
 
         if newState is None:
@@ -49,14 +49,16 @@ class StateMachine:
     def on_socket_data(self, data):
         try:
             self.currentState = self.currentState.on_socket_data(data)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception as e:
-            self.logger.write_and_flush("[Error] "+str(e)+"\n")
+            self.logger.write_and_flush(f"[{self.__class__.__name__}] -> [Error on_socket_data] <{e.__class__.__name__}> : "+str(e)+"\n")
             self.change_current_state(ErrorState(self.socketio,self.logger,str(e)))
     
     def change_current_state(self, newState):
         self.currentState = newState
         self.__robot_state_client.set_robot_state(self.currentState.robot_synthesis_value)
-        msg = f"Current state : {self.currentState}."
+        msg = f"[{self.__class__.__name__}] -> New state : {self.currentState}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
 
@@ -79,6 +81,6 @@ class ErrorLogger:
     def __init__(self, logger: utility.Logger):
         self.logger = logger
 
-    def write (self, s):
+    def write(self, s):
         print(s)
         self.logger.write_and_flush(s+"\n")

@@ -22,11 +22,11 @@ class StartingState(State.State):
         self.isAudit = isAudit
 
         self.socketio.emit('start', {"status": "pushed"}, namespace='/button', broadcast=True)
-        msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{False},AUDIT_MODE:{isAudit})"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Edit config file (CONTINUE_PREVIOUS_PATH:{False})"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
         utilsFunction.changeConfigValue("CONTINUE_PREVIOUS_PATH", False)
-        utilsFunction.changeConfigValue("AUDIT_MODE", isAudit)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.CHARGING,
