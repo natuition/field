@@ -52,7 +52,7 @@
         style="margin: 0 auto; padding: 10px 0;">
         <label class="form-check-label">{{(ui_languages["Move to target label"])[ui_language]}} :</label>
         <div class="btn-group-vertical m-1">
-            <button type="button" id="run_move" class="btn btn-outline-secondary"
+            <button type="button" id="run_move" class="btn btn-dark"
                 onclick="runMoveToTarget();">{{(ui_languages["Run"])[ui_language]}}
             </button>
         </div>
@@ -115,7 +115,7 @@
                 onclick="cancelHandler();">{{(ui_languages["Quit"])[ui_language]}}</button>
         </div>
         <span id="pick_up_target" class="d-none">{{(ui_languages["Pick up target"])[ui_language]}}</span>
-        <div class="btn-group-vertical m-1">
+        <div id="save_btn" class="btn-group-vertical m-1 d-none">
             <button type="button" id="save" class="btn btn-outline-success btn-lg"
                 onclick="save();">{{(ui_languages["Save"])[ui_language]}}</button>
         </div>
@@ -149,6 +149,7 @@
             if (data["move"]) {
                 $('.btn').removeAttr("disabled");
                 $('#arrows_container').removeClass("d-none");
+                $('#save_btn').removeClass("d-none");
                 $('#run_move').attr({ disabled: true });
                 $('#run_move').html('Fait');
             }
@@ -156,6 +157,7 @@
 
         socketio.on('save_applied', function (data) {
             $('.btn').attr({ disabled: true });
+            $('#save_btn').addClass("d-none");
             $('#arrows_container').addClass("d-none");
             $('#alert').removeClass('d-none');
             $('#run_move').html('Lancer');

@@ -16,8 +16,12 @@
         }
 
         #fig_image:hover {
-            /*transform: scale(2);*/
-            object-fit: none;
+            transform: scale(2.25) translateX(-50px);
+            /*object-fit: cover;*/
+        }
+
+        #img_detection_div {
+            overflow: hidden;
         }
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
@@ -51,8 +55,8 @@
             </div>
         </div>
         <div id="img_detection_div" class="d-none justify-content-center align-items-center"
-            style="margin: 0 auto; padding: 10px 0;">
-            <img id="fig_image" class="d-none" style="width: 80%; aspect-ratio: 16/9; margin: 0 auto;">
+            style="padding: 10px 0; width:80%">
+            <img id="fig_image" class="d-none" style="width: 100%; aspect-ratio: 16/9;">
         </div>
         <div id="label_detection_div" class="d-none justify-content-center align-items-center"
             style="margin: 0 auto; padding: 10px 0;">
