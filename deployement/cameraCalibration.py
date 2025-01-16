@@ -30,6 +30,8 @@ class CameraCalibration:
         self.crop_h_to = config.CROP_H_TO
         self.target_x = None
         self.target_y = None
+        self.target_x_mm = None
+        self.target_y_mm = None
 
     def focus_adjustment_step(self):
         os.system("sudo systemctl restart nvargus-daemon")
@@ -64,42 +66,47 @@ class CameraCalibration:
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
             frame = camera.get_image()
             img_origine = frame.copy()
-            frame = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
-            frame = cv2.GaussianBlur(frame, (21,21), cv2.BORDER_DEFAULT)
-            all_circles = cv2.HoughCircles(frame,cv2.HOUGH_GRADIENT,0.9, 2500, param1 = 30, param2 = 10, minRadius = 1200, maxRadius = 1300)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame = cv2.GaussianBlur(frame, (21, 21), cv2.BORDER_DEFAULT)
+            all_circles = cv2.HoughCircles(
+                frame, cv2.HOUGH_GRADIENT, 0.9, 2500, param1=30, param2=10, minRadius=1200, maxRadius=1300)
             all_circles_rounded = np.uint16(np.around(all_circles))
-            print('I have found ' + str(all_circles_rounded.shape[1]) + ' circles')
+            print('I have found ' +
+                  str(all_circles_rounded.shape[1]) + ' circles')
             if len(all_circles_rounded) == 1:
                 self.max_res_scene_center_x = all_circles_rounded[0][0][0]
                 self.max_res_scene_center_y = all_circles_rounded[0][0][1]
                 self.set_crop_values()
-                #circle_rad = all_circles_rounded[0][0][2]
+                # circle_rad = all_circles_rounded[0][0][2]
             else:
                 print("Warning we found multiple circles.")
             for i in all_circles_rounded[0, :]:
-                cv2.circle(img_origine, (i[0],i[1]),i[2],(204,0,102),3)
+                cv2.circle(img_origine, (i[0], i[1]), i[2], (204, 0, 102), 3)
 
-            image_saver.save_image(img_origine, "./", specific_name="scene_center")
+            image_saver.save_image(
+                img_origine, "./", specific_name="scene_center")
 
-    def offset_calibration_step_detect(self):
+    def offset_calibration_step_detect(self, image_location=os.getcwd()):
+        finalMsg = (None, "")
         image_saver = utility.ImageSaver()
-        with adapters.CameraAdapterIMX219_170(  self.crop_w_from ,self.crop_w_to, self.crop_h_from, 
-                                                self.crop_h_to, config.CV_ROTATE_CODE,
-                                                config.ISP_DIGITAL_GAIN_RANGE_FROM,
-                                                config.ISP_DIGITAL_GAIN_RANGE_TO,
-                                                config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                                config.EXPOSURE_TIME_RANGE_FROM/5, config.EXPOSURE_TIME_RANGE_TO/5,
-                                                config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
-                                                config.CAMERA_H, config.CAMERA_FRAMERATE,
-                                                config.CAMERA_FLIP_METHOD) as camera:
+        with adapters.CameraAdapterIMX219_170(self.crop_w_from, self.crop_w_to, self.crop_h_from,
+                                              self.crop_h_to, config.CV_ROTATE_CODE,
+                                              config.ISP_DIGITAL_GAIN_RANGE_FROM,
+                                              config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                              config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                              config.EXPOSURE_TIME_RANGE_FROM / 5, config.EXPOSURE_TIME_RANGE_TO / 5,
+                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
+                                              config.CAMERA_FLIP_METHOD) as camera:
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
             frame = camera.get_image()
 
         img_origine = frame.copy()
-        frame = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
-        frame = cv2.GaussianBlur(frame, (21,21), cv2.BORDER_DEFAULT)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.GaussianBlur(frame, (21, 21), cv2.BORDER_DEFAULT)
 
-        all_circles = cv2.HoughCircles(frame,cv2.HOUGH_GRADIENT,0.9, 2500, param1 = 30, param2 = 10, minRadius = 30, maxRadius = 50)
+        #all_circles = cv2.HoughCircles(frame, cv2.HOUGH_GRADIENT, 0.9, 2500, param1=30, param2=10, minRadius=25, maxRadius=50)
+        all_circles = cv2.HoughCircles(frame, cv2.HOUGH_GRADIENT, 1, 10000, param1=30, param2=5, minRadius=25, maxRadius=40)
         all_circles_rounded = np.uint16(np.around(all_circles))
         print('I have found ' + str(all_circles_rounded.shape[1]) + ' circles')
         if len(all_circles_rounded) == 1:
@@ -109,39 +116,91 @@ class CameraCalibration:
         else:
             print("Warning we found multiple circles.")
         for i in all_circles_rounded[0, :]:
-            cv2.circle(img_origine, (i[0],i[1]),i[2],(102,0,204),3)
-            cv2.circle(img_origine, (i[0],i[1]),2,(102,0,204),3)
-            cv2.ellipse(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),(config.UNDISTORTED_ZONE_RADIUS,config.UNDISTORTED_ZONE_RADIUS),0,270,360,(204,0,102),3)
-            cv2.line(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y), (config.SCENE_CENTER_X+config.UNDISTORTED_ZONE_RADIUS,config.SCENE_CENTER_Y), (204,0,102), 3) 
-            cv2.line(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y), (config.SCENE_CENTER_X,config.SCENE_CENTER_Y-config.UNDISTORTED_ZONE_RADIUS), (204,0,102), 3) 
-            cv2.circle(img_origine, (config.SCENE_CENTER_X,config.SCENE_CENTER_Y),2,(204,0,102),3)
-
-        if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS) and self.target_x>=config.SCENE_CENTER_X and self.target_y<=config.SCENE_CENTER_Y:
-            finalMsg = "Target is in undistorted zone :"
+            cv2.circle(img_origine, (i[0], i[1]), i[2], (102, 0, 204), 2)
+            cv2.circle(img_origine, (i[0], i[1]), 2, (102, 0, 204), 2)
+            cv2.line(img_origine, (i[0], i[1]-i[2]), (i[0], i[1]+i[2]), (102, 0, 204), 1)
+            cv2.line(img_origine, (i[0]-i[2], i[1]), (i[0]+i[2], i[1]), (102, 0, 204), 1)
+            cv2.ellipse(img_origine, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), (
+                config.UNDISTORTED_ZONE_RADIUS, config.UNDISTORTED_ZONE_RADIUS), 0, 270, 360, (204, 0, 102), 3)
+            cv2.line(img_origine, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), (config.SCENE_CENTER_X +
+                     config.UNDISTORTED_ZONE_RADIUS, config.SCENE_CENTER_Y), (204, 0, 102), 3)
+            cv2.line(img_origine, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), (config.SCENE_CENTER_X,
+                     config.SCENE_CENTER_Y - config.UNDISTORTED_ZONE_RADIUS), (204, 0, 102), 3)
+        if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS) and self.target_x >= config.SCENE_CENTER_X and self.target_y <= config.SCENE_CENTER_Y:
+            finalMsg = (True, "Target is in undistorted zone :")
         else:
-            finalMsg = "Target isn't in undistorted zone :"
+            finalMsg = (False, "Target is not in undistorted zone :")
 
-        image_saver.save_image(img_origine, os.getcwd()+"/", specific_name="target_detection")
+        image_saver.save_image(
+            img_origine, image_location + "/", specific_name="target_detection")
 
         print(f"Save here : {os.getcwd()}")
 
         return finalMsg
-    
+
     def set_targets(self, dir):
-        with open(dir+"/target_coords.json") as f:
+        with open(dir + "/target_coords.json") as f:
             targets = json.load(f)
         self.target_x = targets["x"]
         self.target_y = targets["y"]
+
+    def go_to_coins(self, smoothie, image_location=os.getcwd()):
+        """
+        utility.create_directories(f"{image_location}go_to_coins_images")
+        image_saver = utility.ImageSaver()
+        with adapters.CameraAdapterIMX219_170(self.crop_w_from, self.crop_w_to, self.crop_h_from,
+                                              self.crop_h_to, config.CV_ROTATE_CODE,
+                                              config.ISP_DIGITAL_GAIN_RANGE_FROM,
+                                              config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                              config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                              config.EXPOSURE_TIME_RANGE_FROM / 5, config.EXPOSURE_TIME_RANGE_TO / 5,
+                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
+                                              config.CAMERA_FLIP_METHOD) as camera:
+            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+            frame = camera.get_image()
+            
+            time_start = utility.get_current_time().replace(" ","_")
+            cv2.circle(frame, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), 2, (255, 0, 0), 2)
+            cv2.circle(frame, (int(self.target_x), int(self.target_y)), 2, (0, 255, 0), 2)
+            image_saver.save_image(frame, image_location + "go_to_coins_images/", specific_name=time_start)
+            uid = pwd.getpwnam("violette").pw_uid
+            gid = grp.getgrnam("violette").gr_gid
+            os.chown(f"{image_location}go_to_coins_images/{time_start}.jpg", uid, gid)
+        """
+            
+        x = float(abs((self.target_x - config.SCENE_CENTER_X) /
+                      config.ONE_MM_IN_PX))
+        y = float(abs((self.target_y - config.SCENE_CENTER_Y) /
+                      config.ONE_MM_IN_PX))
         
+        res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                  Y_F=config.Y_F_MAX,
+                                                  X=smoothie.smoothie_to_mm(
+                                                      x, "X"),
+                                                  Y=smoothie.smoothie_to_mm(y, "Y"))
+        if res != smoothie.RESPONSE_OK:
+            msg = "INIT: Failed to move camera, smoothie response:\n" + res
+            print(msg)
+            exit(1)
+        smoothie.wait_for_all_actions_done()
+
+        coords = smoothie.get_adapter_current_coordinates()
+        self.target_x_mm = coords["X"]
+        self.target_y_mm = coords["Y"]
+
     def offset_calibration_step_move(self, smoothie):
         if self.target_x and self.target_y:
             if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
-                x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
-                y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
-                res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
-                                                            Y_F=config.Y_F_MAX,
-                                                            X=smoothie.smoothie_to_mm(x, "X"),
-                                                            Y=smoothie.smoothie_to_mm(y, "Y"))
+                x = float(abs((self.target_x - config.SCENE_CENTER_X) /
+                          config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_X
+                y = float(abs((self.target_y - config.SCENE_CENTER_Y) /
+                          config.ONE_MM_IN_PX)) + config.CORK_TO_CAMERA_DISTANCE_Y
+                res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                          Y_F=config.Y_F_MAX,
+                                                          X=smoothie.smoothie_to_mm(
+                                                              x, "X"),
+                                                          Y=smoothie.smoothie_to_mm(y, "Y"))
                 if res != smoothie.RESPONSE_OK:
                     msg = "INIT: Failed to move camera, smoothie response:\n" + res
                     print(msg)
@@ -151,12 +210,31 @@ class CameraCalibration:
     def offset_calibration_step_move_with_distance(self, smoothie, cork_to_camera_distance_x, cork_to_camera_distance_y):
         if self.target_x and self.target_y:
             if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
-                x = float(abs((self.target_x-config.SCENE_CENTER_X)/config.ONE_MM_IN_PX)) + cork_to_camera_distance_x
-                y = float(abs((self.target_y-config.SCENE_CENTER_Y)/config.ONE_MM_IN_PX)) + cork_to_camera_distance_y
-                res = smoothie.custom_separate_xy_move_to(  X_F=config.X_F_MAX,
-                                                            Y_F=config.Y_F_MAX,
-                                                            X=smoothie.smoothie_to_mm(x, "X"),
-                                                            Y=smoothie.smoothie_to_mm(y, "Y"))
+                x = float(abs((self.target_x - config.SCENE_CENTER_X) /
+                          config.ONE_MM_IN_PX)) + cork_to_camera_distance_x
+                y = float(abs((self.target_y - config.SCENE_CENTER_Y) /
+                          config.ONE_MM_IN_PX)) + cork_to_camera_distance_y
+                res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                          Y_F=config.Y_F_MAX,
+                                                          X=smoothie.smoothie_to_mm(
+                                                              x, "X"),
+                                                          Y=smoothie.smoothie_to_mm(y, "Y"))
+                if res != smoothie.RESPONSE_OK:
+                    msg = "INIT: Failed to move camera, smoothie response:\n" + res
+                    print(msg)
+                    exit(1)
+                smoothie.wait_for_all_actions_done()
+
+    def offset_calibration_step_move_with_distance_from_coins(self, smoothie, cork_to_camera_distance_x, cork_to_camera_distance_y):
+        if self.target_x_mm and self.target_y_mm:
+            if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
+                x = self.target_x_mm + cork_to_camera_distance_x
+                y = self.target_y_mm + cork_to_camera_distance_y
+                res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+                                                          Y_F=config.Y_F_MAX,
+                                                          X=smoothie.smoothie_to_mm(
+                                                              x, "X"),
+                                                          Y=smoothie.smoothie_to_mm(y, "Y"))
                 if res != smoothie.RESPONSE_OK:
                     msg = "INIT: Failed to move camera, smoothie response:\n" + res
                     print(msg)
@@ -164,21 +242,9 @@ class CameraCalibration:
                 smoothie.wait_for_all_actions_done()
 
     def __startLiveCam(self):
-        camSP = subprocess.Popen("python3 serveurCamLive.py False", stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
+        camSP = subprocess.Popen("python3 serveurCamLive.py False", stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 stdin=subprocess.PIPE, cwd=os.getcwd().split("/deployement")[0], shell=True, preexec_fn=os.setsid)
         return camSP
-
-    def __get_smoothie_vesc_addresses(self):
-        smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
-        if config.SMOOTHIE_BACKEND == 1:
-            smoothie_address = config.SMOOTHIE_HOST
-        else:
-            if "smoothie" in smoothie_vesc_addr:
-                smoothie_address = smoothie_vesc_addr["smoothie"]
-            else:
-                msg = "Couldn't get smoothie's USB address!"
-                print(msg)
-                exit(1)
-        return smoothie_address
 
     @staticmethod
     def __changeConfigValue(path: str, value):
@@ -270,9 +336,12 @@ class CameraCalibration:
                 self.scene_center_y + point[1]
             ])
 
-        CameraCalibration.__changeConfigValue("SCENE_CENTER_X", self.scene_center_x)
-        CameraCalibration.__changeConfigValue("SCENE_CENTER_Y", self.scene_center_y)
-        CameraCalibration.__changeConfigValue("WORKING_ZONE_POLY_POINTS", abs_poly_points)
+        CameraCalibration.__changeConfigValue(
+            "SCENE_CENTER_X", self.scene_center_x)
+        CameraCalibration.__changeConfigValue(
+            "SCENE_CENTER_Y", self.scene_center_y)
+        CameraCalibration.__changeConfigValue(
+            "WORKING_ZONE_POLY_POINTS", abs_poly_points)
         CameraCalibration.__changeConfigValue("CROP_W_FROM", self.crop_w_from)
         CameraCalibration.__changeConfigValue("CROP_W_TO", self.crop_w_to)
         CameraCalibration.__changeConfigValue("CROP_H_FROM", self.crop_h_from)
@@ -284,12 +353,10 @@ def main():
     os.system("sudo systemctl restart nvargus-daemon")
     cameraCalibration: CameraCalibration = CameraCalibration()
     res = cameraCalibration.offset_calibration_step_detect()
-    with open(os.getcwd()+"/target_coords.json", 'w') as f:
-        json.dump({"x": cameraCalibration.target_x, "y":cameraCalibration.target_y}, f)
-    if "isn't" in res:
-        exit(1)
-    else:
-        exit(0)
+    with open(os.getcwd() + "/target_coords.json", 'w') as f:
+        json.dump({"x": cameraCalibration.target_x,
+                "y": cameraCalibration.target_y}, f)
+    print(json.dumps({"result":res}))
 
 
 if __name__ == "__main__":
