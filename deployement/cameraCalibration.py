@@ -144,11 +144,37 @@ class CameraCalibration:
         self.target_x = targets["x"]
         self.target_y = targets["y"]
 
-    def go_to_coins(self, smoothie):
+    def go_to_coins(self, smoothie, image_location=os.getcwd()):
+        utility.create_directories(f"{image_location}/go_to_coins_images")
+        image_saver = utility.ImageSaver()
+        
+        with adapters.CameraAdapterIMX219_170(self.crop_w_from, self.crop_w_to, self.crop_h_from,
+                                              self.crop_h_to, config.CV_ROTATE_CODE,
+                                              config.ISP_DIGITAL_GAIN_RANGE_FROM,
+                                              config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                              config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                              config.EXPOSURE_TIME_RANGE_FROM / 5, config.EXPOSURE_TIME_RANGE_TO / 5,
+                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
+                                              config.CAMERA_FLIP_METHOD) as camera:
+            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+            frame = camera.get_image()
+            
+            time_start = utility.get_current_time()
+            time_start = time_start.replace(" ","_")
+            cv2.circle(frame, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), 2, (255, 0, 0), 2)
+            cv2.circle(frame, (int(self.target_x), int(self.target_y)), 2, (0, 255, 0), 2)
+            image_saver.save_image(frame, image_location + "go_to_coins_images/", specific_name=time_start)
+            uid = pwd.getpwnam("violette").pw_uid
+            gid = grp.getgrnam("violette").gr_gid
+            os.chown(f"{image_location}go_to_coins_images/{time_start}.jpg", uid, gid)
+            
+            
         x = float(abs((self.target_x - config.SCENE_CENTER_X) /
                       config.ONE_MM_IN_PX))
         y = float(abs((self.target_y - config.SCENE_CENTER_Y) /
                       config.ONE_MM_IN_PX))
+        
         res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                                   Y_F=config.Y_F_MAX,
                                                   X=smoothie.smoothie_to_mm(
@@ -163,6 +189,25 @@ class CameraCalibration:
         coords = smoothie.get_adapter_current_coordinates()
         self.target_x_mm = coords["X"]
         self.target_y_mm = coords["Y"]
+        
+        with adapters.CameraAdapterIMX219_170(self.crop_w_from, self.crop_w_to, self.crop_h_from,
+                                              self.crop_h_to, config.CV_ROTATE_CODE,
+                                              config.ISP_DIGITAL_GAIN_RANGE_FROM,
+                                              config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                              config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                              config.EXPOSURE_TIME_RANGE_FROM / 5, config.EXPOSURE_TIME_RANGE_TO / 5,
+                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
+                                              config.CAMERA_FLIP_METHOD) as camera:
+            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+            frame = camera.get_image()
+
+            time_start = utility.get_current_time()
+            cv2.circle(frame, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), 2, (255, 0, 0), 2)
+            image_saver.save_image(frame, image_location + "go_to_coins_images/", specific_name=time_start)
+            uid = pwd.getpwnam("violette").pw_uid
+            gid = grp.getgrnam("violette").gr_gid
+            os.chown(f"{image_location}go_to_coins_images/{time_start}.jpg", uid, gid)
 
     def offset_calibration_step_move(self, smoothie):
         if self.target_x and self.target_y:

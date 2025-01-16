@@ -82,7 +82,7 @@ class CalibrateState(State.State):
 
             # GO TO COINS
             if self.__coins_in_undistorted_zone:
-                self.cameraCalibration.go_to_coins(self.smoothie)
+                self.cameraCalibration.go_to_coins(self.smoothie,"../deployement/")
 
             self.statusOfUIObject["currentHTML"] = "CalibrateMove.html"
             self.socketio.emit(
