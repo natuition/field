@@ -145,9 +145,9 @@ class CameraCalibration:
         self.target_y = targets["y"]
 
     def go_to_coins(self, smoothie, image_location=os.getcwd()):
+        """
         utility.create_directories(f"{image_location}go_to_coins_images")
         image_saver = utility.ImageSaver()
-        
         with adapters.CameraAdapterIMX219_170(self.crop_w_from, self.crop_w_to, self.crop_h_from,
                                               self.crop_h_to, config.CV_ROTATE_CODE,
                                               config.ISP_DIGITAL_GAIN_RANGE_FROM,
@@ -167,7 +167,7 @@ class CameraCalibration:
             uid = pwd.getpwnam("violette").pw_uid
             gid = grp.getgrnam("violette").gr_gid
             os.chown(f"{image_location}go_to_coins_images/{time_start}.jpg", uid, gid)
-            
+        """
             
         x = float(abs((self.target_x - config.SCENE_CENTER_X) /
                       config.ONE_MM_IN_PX))
