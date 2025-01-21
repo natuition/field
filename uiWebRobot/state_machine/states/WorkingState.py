@@ -169,12 +169,55 @@ class WorkingState(State.State):
         elif event == Events.Events.PHYSICAL_BLOCAGE:
             self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
-            os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Kill main"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
+            while self.__main_not_received_stop:
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> Send KeyboardInterrupt to main"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
+                os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+                time.sleep(3)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Wait main"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+                  
             self.main.wait()
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Restart camera"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
             os.system("sudo systemctl restart nvargus-daemon")
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Try to stop main thread if alive"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
             self._main_msg_thread_alive = False
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Wait main thread"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
             self._main_msg_thread.join()
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Send validate stop"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+
             self.socketio.emit('stop', {"status": "finish"}, namespace='/server', broadcast=True)
+
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
             else:
@@ -229,9 +272,10 @@ class WorkingState(State.State):
                     if data["stopping"]:
                         self._main_msg_thread_alive = False
                         self.__main_not_received_stop = False
-                        msg = f"[{self.__class__.__name__}] -> Receved main stopping !"
-                        self.logger.write_and_flush(msg + "\n")
-                        print(msg)
+                        if config.UI_VERBOSE_LOGGING: 
+                            msg = f"[{self.__class__.__name__}] -> Receved main stopping !"
+                            self.logger.write_and_flush(msg + "\n")
+                            print(msg)
                         continue
 
                 elif "start" in data:
