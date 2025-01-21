@@ -174,6 +174,7 @@ class UIWebRobot:
         ]
         msg_socket_to_event = [
             Events.Events.STOP, 
+            Events.Events.ERROR, 
             Events.Events.CALIBRATION_DETECT,
             Events.Events.CALIBRATION_MOVE,
             Events.Events.START_MAIN,
@@ -196,7 +197,8 @@ class UIWebRobot:
             "getField", 
             "getStats", 
             "getLastPath", 
-            "create_field"
+            "create_field",
+            "wait_working_state_refresh"
         ]
         if "type" in data:
             if data["type"] in [str(i) for i in msg_socket_data_before_event]:
@@ -252,7 +254,7 @@ class UIWebRobot:
             return redirect('/actuator_screening')
 
         if isinstance(self.get_state_machine().currentState, PhysicalBlocageState):
-            return render_template("Error.html", sn=sn, error_message="Je ne suis pas contente.")
+            return render_template("PhysicalBlocage.html", sn=sn, title=self.__ui_languages["Physical_blocage"][self.__get_ui_language()], message=self.__ui_languages["Running"][self.__get_ui_language()])
 
         if isinstance(self.get_state_machine().currentState, ErrorState):
             if self.get_state_machine().currentState.getReason():

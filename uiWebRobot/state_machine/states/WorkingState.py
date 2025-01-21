@@ -259,7 +259,10 @@ class WorkingState(State.State):
                     self.socketio.emit('updateGPSQuality', self.lastGpsQuality, namespace='/gps', broadcast=True)
                     self.__gearbox_protection.store_coord(data[0], data[1], data[2])
                     if(self.__gearbox_protection.is_physically_blocked() and config.CHECK_PHYSICAL_BLOCAGE) :
-                       utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
+                        message_name = "Physical blocage"
+                        message = "We have dected that the robot is not moving anymore. Please wait."
+                        self.socketio.emit('no_blocking_notification', {"message_name": message_name, "message": message}, namespace='/broadcast', broadcast=True)
+                        utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
 
                 elif "last_gps_list_file" in data:
                     last_gps_list_file = data["last_gps_list_file"]

@@ -239,6 +239,12 @@
 		"nl": "Het spijt ons, er heeft zich een fout voorgedaan. Herstart VIOLETTE aub.",
 		"de": "Es tut uns leid, es ist ein Fehler aufgetreten. Bitte starten Sie VIOLETTE neu."
 	},
+	"Physical_blocage": {
+		"fr": "VIOLETTE va effectuer une marche arrière. Veuillez patienter.",
+		"en": "VIOLETTE will reverse. Please wait.",
+		"nl": "VIOLETTE gaat achteruit. Even geduld..",
+		"de": "VIOLETTE wird einen Rückwärtsgang einlegen. Bitte warten Sie."
+	},
 	"AI_selector": {
 		"fr": "Sélection de l'intelligence artificielle :",
 		"en": "Selection of artificial intelligence :",

@@ -194,9 +194,11 @@ class WaitWorkingState(State.State):
         self.send_last_pos_thread_alive = False
         self.__voltage_thread_alive = False
         self.__check_joystick_info_alive = False
+        self.__check_ui_refresh_thread_alive = False
         self.__voltage_thread.join()
         self._send_last_pos_thread.join()
         self.__joystick_info_thread.join()
+        self.__check_ui_refresh_thread.join()
 
     def on_event(self, event):
         if event == Events.Events.CREATE_FIELD:

@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "2.1.1"
+CONFIG_VERSION = "2.1.2"
 
 
 # ======================================================================================================================
@@ -26,6 +26,7 @@ CONFIG_VERSION = "2.1.1"
 # PATHS SETTINGS
 # PREDICTION SETTINGS
 # NAVIGATION TEST MODE SETTINGS
+# PHYSICAL BLOCAGE SETTINGS
 # UNSORTED KEYS
 # ======================================================================================================================
 
@@ -204,7 +205,7 @@ VESC_STOPPER_CHECK_FREQ = 1000 # freq in herz
 VESC_TIMEOUT_READ = 0.05 # timeout in seconds of trying to read the serial
 
 INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
-FREQUENCY_INCREMENTAL_RPM = 0.025  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
+FREQUENCY_INCREMENTAL_RPM = 40  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
 STEP_INCREMENTAL_RPM = 500 # RPM step max by tick defined by RPM_FREQUENCY
 # int; bumper is considered pressed if voltage is getting lesser (not equal) than this value
 VESC_BUMBER_TRIGGER_VOLTAGE = 1
@@ -675,6 +676,16 @@ POINT_A = [[46.1579425, -1.1344245], -0.5] #Point coordinate for test navigation
 # the speed represents the speed the robot will apply to reach this point.
 POINT_B = [[46.1577957, -1.1347992], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
+
+
+# ======================================================================================================================
+# PHYSICAL BLOCAGE SETTINGS
+# ======================================================================================================================
+CHECK_PHYSICAL_BLOCAGE = False # Allow to stop the robot when it is physically blocked.
+MIN_NB_VALID_DISTANCES = 10 # Min number of coordinates required to determine whether the robot is physically blocked.
+MAX_NB_COORDS_STORED = 20 # Max number of stored coordinates.
+MIN_SPEED = 100 # Min speed required to determinate that the robot is unmoving (in millimeters per second).
+REVERSING_DISTANCE = 5000 # Distance that the robot will do backward after detecting a physical blocage
 
 
 # ======================================================================================================================
