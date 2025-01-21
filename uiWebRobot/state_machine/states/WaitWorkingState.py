@@ -139,8 +139,11 @@ class WaitWorkingState(State.State):
                     self.smoothie.custom_move_to(
                         A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
-        self.socketio.emit(
-            'checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
+        self.socketio.emit('list_validation', {"status": "refresh"}, namespace='/server', broadcast=True)
+
+        self.__check_ui_refresh_thread_alive = True
+        self.__check_ui_refresh_thread = threading.Thread(target=self.__check_ui_refresh_thread_tf, daemon=True)
+        self.__check_ui_refresh_thread.start()
 
         self.field = None
 
@@ -179,6 +182,11 @@ class WaitWorkingState(State.State):
             if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
                 self.vesc_engine.set_target_rpm(
                     0, self.vesc_engine.PROPULSION_KEY)
+            time.sleep(0.5)
+
+    def __check_ui_refresh_thread_tf(self) :
+        while self.__check_ui_refresh_thread_alive:
+            self.socketio.emit('wait_working_state', {"status": "refresh"}, namespace='/server', broadcast=True)
             time.sleep(0.5)
 
     def __stop_thread(self):
@@ -295,7 +303,7 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == 'getField':
             coords, other_fields, current_field_name = utilsFunction.updateFields(
-                data["field_name"])
+                data["validate_field_name"])
             fields_list = utilsFunction.load_field_list("../fields")
             self.socketio.emit('newField', json.dumps(
                 {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
@@ -303,7 +311,7 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == 'removeField':
             os.remove(
-                "../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
+                "../fields/" + quote(data["validate_field_name"], safe="", encoding='utf-8') + ".txt")
             fields_list = utilsFunction.load_field_list("../fields")
 
             if len(fields_list) > 0:
@@ -325,6 +333,10 @@ class WaitWorkingState(State.State):
                 self.smoothie.tighten_wheels()
                 self.statusOfUIObject.wheelButton = ButtonState.DISABLE
                 self.socketio.emit("wheel", "unrelease", namespace='/button')
+
+        elif data["type"] == "wait_working_state_refresh" :
+            self.__check_ui_refresh_thread_alive = False
+            
         return self
 
     def getStatusOfControls(self):

@@ -12,12 +12,14 @@ import time
 
 from state_machine import State
 from state_machine.states import WaitWorkingState
+from state_machine.states import PhysicalBlocageState
 from state_machine.states import ErrorState
 from state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
 
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects
-from uiWebRobot.state_machine import utilsFunction
+from uiWebRobot.state_machine import GearboxProtection, utilsFunction
+from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 from config import config
 import utility
 
@@ -38,6 +40,7 @@ class WorkingState(State.State):
         self.extracted_plants = dict()
         self.last_path_all_points = list()
         self.previous_sessions_working_time = None
+        self.__gearbox_protection = GearboxProtection()
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
@@ -162,6 +165,23 @@ class WorkingState(State.State):
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
+        
+        elif event == Events.Events.PHYSICAL_BLOCAGE:
+            self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
+            self.statusOfUIObject.stopButton = ButtonState.CHARGING
+            os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+            self.main.wait()
+            os.system("sudo systemctl restart nvargus-daemon")
+            self._main_msg_thread_alive = False
+            self._main_msg_thread.join()
+            self.socketio.emit('stop', {"status": "finish"}, namespace='/server', broadcast=True)
+            if self.isResume:
+                self.statusOfUIObject.continueButton = ButtonState.ENABLE
+            else:
+                self.statusOfUIObject.startButton = ButtonState.ENABLE
+            self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
+            return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.logger, False)
+        
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
@@ -204,6 +224,7 @@ class WorkingState(State.State):
             try:
                 msg = self.msgQueue.receive(timeout=2)
                 data = json.loads(msg[0])
+
                 if "stopping" in data:
                     if data["stopping"]:
                         self._main_msg_thread_alive = False
@@ -212,13 +233,14 @@ class WorkingState(State.State):
                         self.logger.write_and_flush(msg + "\n")
                         print(msg)
                         continue
+
                 elif "start" in data:
                     if data["start"]:
                         if config.UI_VERBOSE_LOGGING:
                             msg = f"[{self.__class__.__name__}] -> Main started !"
                             self.logger.write_and_flush(msg + "\n")
                             print(msg)
-                        self.socketio.emit('startMain', {"status": "finish", "audit": self.isAudit,
+                        self.socketio.emit('start_main', {"status": "finish", "audit": self.isAudit,
                                                         "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
                                         namespace='/button', broadcast=True)
                 elif "datacollector" in data:
@@ -226,6 +248,8 @@ class WorkingState(State.State):
                     self.extracted_plants = data["datacollector"][1]
                     self.previous_sessions_working_time = data["datacollector"][2]
                     self.sendLastStatistics()
+                    self.__gearbox_protection.store_number_of_extracts(data["datacollector"][1])
+                    
                 elif "last_gps" in data:
                     data = data["last_gps"]
                     self.allPath.append([data[1], data[0]])
@@ -233,7 +257,10 @@ class WorkingState(State.State):
                         self.lastGpsQuality = data[2]
                     self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
                     self.socketio.emit('updateGPSQuality', self.lastGpsQuality, namespace='/gps', broadcast=True)
-                    
+                    self.__gearbox_protection.store_coord(data[0], data[1], data[2])
+                    if(self.__gearbox_protection.is_physically_blocked() and config.CHECK_PHYSICAL_BLOCAGE) :
+                       utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
+
                 elif "last_gps_list_file" in data:
                     last_gps_list_file = data["last_gps_list_file"]
                     with open("../" + last_gps_list_file, "r") as gps_his_file:
@@ -248,14 +275,18 @@ class WorkingState(State.State):
                                     json.dumps(self.last_path_all_points), 
                                     namespace='/map',
                                     broadcast=True)
+                    
                 elif "display_instruction_path" in data:
                     data = data["display_instruction_path"]
                     self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]),
                                     namespace='/map', broadcast=True)
+                
                 elif "clear_path" in data:
                     self.allPath.clear()
+                
                 elif "input_voltage" in data:
                     utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
+            
             except posix_ipc.BusyError:
                 continue
             except KeyboardInterrupt:
@@ -263,15 +294,18 @@ class WorkingState(State.State):
             except Exception as e:
                 print(f"[{self.__class__.__name__}] -> Error during queue receive : {e}.")
                 continue
+        
         if config.UI_VERBOSE_LOGGING:        
             msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
             self.logger.write_and_flush(msg + "\n")
             print(msg)
         self.msgQueue.close()
+        
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Unlink msgQueue..."
             self.logger.write_and_flush(msg + "\n")
             print(msg)
+        
         try:
             self.msgQueue.unlink()
         except posix_ipc.ExistentialError:

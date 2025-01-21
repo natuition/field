@@ -7,3 +7,4 @@ from state_machine.states.ResumeState import ResumeState
 from state_machine.states.StartingState import StartingState
 from state_machine.states.WaitWorkingState import WaitWorkingState
 from state_machine.states.WorkingState import WorkingState
+from state_machine.states.PhysicalBlocageState import PhysicalBlocageState
