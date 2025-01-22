@@ -305,7 +305,7 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == 'getField':
             coords, other_fields, current_field_name = utilsFunction.updateFields(
-                data["validate_field_name"])
+                data["field_name"])
             fields_list = utilsFunction.load_field_list("../fields")
             self.socketio.emit('newField', json.dumps(
                 {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
@@ -313,7 +313,7 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == 'removeField':
             os.remove(
-                "../fields/" + quote(data["validate_field_name"], safe="", encoding='utf-8') + ".txt")
+                "../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
             fields_list = utilsFunction.load_field_list("../fields")
 
             if len(fields_list) > 0:
