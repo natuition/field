@@ -253,9 +253,6 @@ class UIWebRobot:
         if isinstance(self.get_state_machine().currentState, ActuatorScreeningState):
             return redirect('/actuator_screening')
 
-        if isinstance(self.get_state_machine().currentState, PhysicalBlocageState):
-            return render_template("PhysicalBlocage.html", sn=sn, title=self.__ui_languages["Physical_blocage_reversing"][self.__get_ui_language()], message=self.__ui_languages["Running"][self.__get_ui_language()])
-
         if isinstance(self.get_state_machine().currentState, ErrorState):
             if self.get_state_machine().currentState.getReason():
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()], reason=self.get_state_machine().currentState.getReason()), 500
@@ -284,10 +281,14 @@ class UIWebRobot:
             return redirect('/')
 
     def maps(self):
-        if not isinstance(self.get_state_machine().currentState, (WorkingState, WaitWorkingState, CreateFieldState, ResumeState, StartingState)):
+        if not isinstance(self.get_state_machine().currentState, (WorkingState, WaitWorkingState, CreateFieldState, ResumeState, StartingState, PhysicalBlocageState)):
             return redirect('/')
         myCoords = [0, 0]
-        field = self.get_state_machine().getField()
+        if isinstance(self.get_state_machine().currentState, (PhysicalBlocageState)):
+            field = None
+        else:
+            field = self.get_state_machine().getField()
+
         if (field is None) or (len(field) == 0):
             field = self.load_coordinates("../field.txt")
         if (field is None) or (len(field) == 0):

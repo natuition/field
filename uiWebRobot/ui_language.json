@@ -239,17 +239,29 @@
 		"nl": "Het spijt ons, er heeft zich een fout voorgedaan. Herstart VIOLETTE aub.",
 		"de": "Es tut uns leid, es ist ein Fehler aufgetreten. Bitte starten Sie VIOLETTE neu."
 	},
+	"Physical_blocage_detected": {
+		"fr": "VIOLETTE est physiquement bloquée. Le travail est mis en pause. Veuillez patienter.",
+		"en": "VIOLETTE is physically blocked. Work is paused. Please wait.",
+		"nl": "VIOLETTE is fysiek geblokkeerd. Het werk wordt onderbroken. Even geduld.",
+		"de": "VIOLETTE ist körperlich blockiert. Die Arbeit wird pausiert. Bitte warten Sie."
+	},
 	"Physical_blocage_reversing": {
 		"fr": "VIOLETTE va effectuer une marche arrière. Veuillez patienter.",
 		"en": "VIOLETTE will reverse. Please wait.",
 		"nl": "VIOLETTE gaat achteruit. Even geduld.",
 		"de": "VIOLETTE wird einen Rückwärtsgang einlegen. Bitte warten Sie."
 	},
-	"Physical_blocage_detected": {
-		"fr": "VIOLETTE est physiquement bloquée. Le travail est mis en pause.",
-		"en": "VIOLETTE is physically blocked. Work is paused.",
-		"nl": "VIOLETTE is fysiek geblokkeerd. Het werk wordt onderbroken.",
-		"de": "VIOLETTE ist körperlich blockiert. Die Arbeit wird pausiert."
+	"Physical_blocage_blocked": {
+		"fr": "VIOLETTE est complètement bloquée. Veuillez déplacer le robot manuellement et le redémarrer.",
+		"en": "VIOLETTE is completely blocked. Please move the robot manually and then restart it.",
+		"nl": "VIOLETTE is volledig geblokkeerd. Verplaats de robot handmatig en start hem daarna opnieuw op.",
+		"de": "VIOLETTE ist vollständig blockiert. Bitte bewegen Sie den Roboter manuell und starten Sie ihn dann neu."
+	},
+	"Physical_blocage_reloading": {
+		"fr": "VIOLETTE est débloquée. Le travail est sur le point de reprendre. Veuillez patienter.",
+		"en": "VIOLETTE is unblocked. Work is about to resume. Please wait.",
+		"nl": "VIOLETTE is gedeblokkeerd. Het werk wordt hervat. Een ogenblik geduld alstublieft.",
+		"de": "VIOLETTE ist nicht mehr blockiert. Die Arbeit wird wieder aufgenommen. Bitte warten Sie."
 	},
 	"AI_selector": {
 		"fr": "Sélection de l'intelligence artificielle :",

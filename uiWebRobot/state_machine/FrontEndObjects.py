@@ -10,6 +10,13 @@ class ButtonState(Enum):
     VALIDATE = "validate"
     NOT_HERE = None
 
+class PhysicalBlocageFEO(Enum):
+    DISABLE = False
+    DETECTED = True
+    REVERSING = "reversing"
+    BLOCKED = "blocked"
+    RELOADING = "reloading"
+
 class AuditButtonState(Enum):
     EXTRACTION_DISABLE = True
     EXTRACTION_ENABLE = False
@@ -26,7 +33,7 @@ class AuditButtonState(Enum):
 
 class FrontEndObjects:
 
-    def __init__(self, fieldButton: ButtonState, startButton: ButtonState, continueButton: ButtonState, stopButton: ButtonState, wheelButton: ButtonState, removeFieldButton: ButtonState, joystick: bool, slider: float, audit: AuditButtonState = AuditButtonState.BUTTON_DISABLE):
+    def __init__(self, fieldButton: ButtonState, startButton: ButtonState, continueButton: ButtonState, stopButton: ButtonState, wheelButton: ButtonState, removeFieldButton: ButtonState, joystick: bool, slider: float, physicalBlocage: PhysicalBlocageFEO = PhysicalBlocageFEO.DISABLE, audit: AuditButtonState = AuditButtonState.BUTTON_DISABLE):
         self.fieldButton: ButtonState = fieldButton
         self.startButton: ButtonState = startButton
         self.continueButton: ButtonState = continueButton
@@ -36,6 +43,7 @@ class FrontEndObjects:
         self.joystick: bool = joystick
         self.slider: float = slider
         self.audit: AuditButtonState = audit
+        self.physicalBlocage: PhysicalBlocageFEO = physicalBlocage
 
     def to_json(self):
         return{
@@ -47,7 +55,8 @@ class FrontEndObjects:
             "wheelButton": self.wheelButton.value,
             "audit": self.audit.value,
             "slider": self.slider,
-            "removeFieldButton": self.removeFieldButton.value
+            "removeFieldButton": self.removeFieldButton.value,
+            "physicalBlocage": self.physicalBlocage.value
         }
 
     def __str__(self):
@@ -60,5 +69,6 @@ class FrontEndObjects:
             "wheelButton": self.wheelButton,
             "audit": self.audit,
             "slider": self.slider,
-            "removeFieldButton": self.removeFieldButton
+            "removeFieldButton": self.removeFieldButton,
+            "physicalBlocage": self.physicalBlocage
         })

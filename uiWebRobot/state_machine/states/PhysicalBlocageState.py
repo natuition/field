@@ -1,3 +1,4 @@
+import json
 import sys
 sys.path.append('../')
 
@@ -17,7 +18,7 @@ from state_machine.GearboxProtection import GearboxProtection
 
 from shared_class.robot_synthesis import RobotSynthesis
 
-from state_machine.FrontEndObjects import ButtonState, FrontEndObjects
+from state_machine.FrontEndObjects import ButtonState, FrontEndObjects, PhysicalBlocageFEO
 from config import config
 import utility
 import adapters
@@ -50,8 +51,10 @@ class PhysicalBlocageState(State) :
                                                 stopButton=ButtonState.NOT_HERE,
                                                 wheelButton=ButtonState.NOT_HERE,
                                                 removeFieldButton=ButtonState.DISABLE,
-                                                joystick=False,
-                                                slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
+                                                joystick=True,
+                                                slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
+                                                physicalBlocage=PhysicalBlocageFEO.REVERSING
+                                                )
         
         # Init GPS
         self.__gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
@@ -68,25 +71,40 @@ class PhysicalBlocageState(State) :
         self.__init_vesc_smoothie_thread_alive = True
         self.__init_vesc_smoothie_thread = threading.Thread(target=self.__init_vesc_smoothie_thread_tf, daemon=True)
         self.__init_vesc_smoothie_thread.start()
-
         
         msg = f"[{self.__class__.__name__}] -> initialized"
         self.logger.write_and_flush(msg + "\n")
         print(msg)
 
-        self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+        with open("ui_language.json", "r", encoding='utf-8') as read_file:
+            self.__ui_languages = json.load(read_file)
+        self.__current_ui_language = self.__get_ui_language()
 
-        msg = f"[{self.__class__.__name__}] -> reload"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        message = self.__ui_languages["Physical_blocage_reversing"][self.__current_ui_language]
+        self.socketio.emit('popup_modal', {"message_name":"reversing", "message":message, "type_alert":"alert-warning"}, namespace='/broadcast', broadcast=True)
+        
+
+    def __get_ui_language(self):
+        ui_language = config.UI_LANGUAGE
+        if ui_language not in self.__ui_languages["Supported Language"]:
+            ui_language = "en"
+        return ui_language
+
 
     def on_event(self, event: Events) -> State:
         if event == Events.CONTINUE_MAIN:
             self.__stop_thread()
-            self.statusOfUIObject.continueButton = ButtonState.CHARGING
-            self.statusOfUIObject.startButton = ButtonState.DISABLE
-            self.statusOfUIObject.fieldButton = ButtonState.DISABLE
-            self.statusOfUIObject.joystick = False
+            self.__gps.close()
+            self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
+                                                startButton=ButtonState.DISABLE,
+                                                continueButton=ButtonState.CHARGING,
+                                                stopButton=ButtonState.NOT_HERE,
+                                                wheelButton=ButtonState.NOT_HERE,
+                                                removeFieldButton=ButtonState.DISABLE,
+                                                joystick=True,
+                                                slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
+                                                physicalBlocage=PhysicalBlocageFEO.RELOADING
+                                                )
             if self.smoothie is not None:
                 self.smoothie.disconnect()
                 self.smoothie = None
@@ -97,6 +115,9 @@ class PhysicalBlocageState(State) :
         
         else:
             self.__stop_thread()
+            self.__gps.close()
+            self.smoothie.freewheels()
+            self.vesc_engine.stop_moving(self.vesc_engine.PROPULSION_KEY)
             try:
                 if self.smoothie is not None:
                     self.smoothie.disconnect()
@@ -108,7 +129,20 @@ class PhysicalBlocageState(State) :
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
-            return ErrorState(self.socketio, self.logger, "Violette is totally blocked.")
+
+            self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
+                                            startButton=ButtonState.DISABLE,
+                                            continueButton=ButtonState.DISABLE,
+                                            stopButton=ButtonState.NOT_HERE,
+                                            wheelButton=ButtonState.NOT_HERE,
+                                            removeFieldButton=ButtonState.DISABLE,
+                                            joystick=True,
+                                            slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
+                                            physicalBlocage=PhysicalBlocageFEO.BLOCKED
+                                            )
+            message = self.__ui_languages["Physical_blocage_blocked"][self.__current_ui_language]
+            self.socketio.emit('popup_modal', {"message_name":"blocked", "message":message, "type_alert":"alert-danger"}, namespace='/broadcast', broadcast=True)
+            return self
     
     def on_socket_data(self, data):
         return self

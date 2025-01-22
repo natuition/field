@@ -17,7 +17,7 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
 
-from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects
+from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects, PhysicalBlocageFEO
 from uiWebRobot.state_machine import GearboxProtection, utilsFunction
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 from config import config
@@ -167,8 +167,17 @@ class WorkingState(State.State):
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
         
         elif event == Events.Events.PHYSICAL_BLOCAGE:
+            self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
+                                                startButton=ButtonState.DISABLE,
+                                                continueButton=ButtonState.DISABLE,
+                                                stopButton=ButtonState.CHARGING,
+                                                wheelButton=ButtonState.NOT_HERE,
+                                                removeFieldButton=ButtonState.DISABLE,
+                                                joystick=True,
+                                                slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
+                                                physicalBlocage=PhysicalBlocageFEO.DETECTED
+                                                )
             self.socketio.emit('stop', {"status": "physical_blocage"}, namespace='/button', broadcast=True)
-            self.statusOfUIObject.stopButton = ButtonState.CHARGING
 
             if config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> Kill main"
@@ -223,7 +232,6 @@ class WorkingState(State.State):
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
             else:
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
-            self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
             return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.logger, False)
         
         else:
@@ -304,9 +312,6 @@ class WorkingState(State.State):
                     self.socketio.emit('updateGPSQuality', self.lastGpsQuality, namespace='/gps', broadcast=True)
                     self.__gearbox_protection.store_coord(data[0], data[1], data[2])
                     if(self.__gearbox_protection.is_physically_blocked() and config.CHECK_PHYSICAL_BLOCAGE) :
-                        message_name = "Physical blocage"
-                        message = "We have dected that the robot is not moving anymore. Please wait."
-                        self.socketio.emit('no_blocking_notification', {"message_name": message_name, "message": message}, namespace='/broadcast', broadcast=True)
                         utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
 
                 elif "last_gps_list_file" in data:

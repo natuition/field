@@ -924,10 +924,10 @@ select {
     margin-right: 8px;
 }
 
-.back-alert {
-    background-color: rgba(150,150,150,0.8);
+#popup_modal::before {
+    content: "";
+    background-color: rgba(150,150,150,0.5);
     z-index: 400;
-    opacity: 50%;
     position: fixed;
     top: 0;
     bottom: 0;
@@ -989,7 +989,8 @@ select {
     border: 1px solid #856404;
     border-radius: .25rem;
     position: fixed;
-    top:50%;
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 500;
     margin: 0 10px;
     left:0;
