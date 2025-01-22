@@ -21,6 +21,9 @@ var wheelButton = document.querySelector('#Wheel');
 var removeFieldButton = document.querySelector('#RemoveField');
 var choose_field_selector = document.querySelector('#field_selector');
 
+var physical_blocage_modal = document.getElementById('physical_blocage_modal');
+physical_blocage_modal.style.display = 'none';
+
 //if(auditButton != null) auditButton.addEventListener('click', changeMode);
 if (newFieldButton != null) newFieldButton.addEventListener('click', clickHandler);
 else {
@@ -198,10 +201,17 @@ socketButton.on('stop', function (dataServ) {
         $('#Stop').addClass('active');
         $('#DemoResume').addClass('disabled');
         $('#DemoResume').attr('disabled', '');
+    }
+    else if (dataServ["status"] == "physical_blocage") {
+        $('#Stop').addClass('active');
+        $('#DemoResume').addClass('disabled');
+        $('#DemoResume').attr('disabled', '');
+        physical_blocage_modal.style.display = 'block'
     } else if (dataServ["status"] == "finish") {
         $(document.getElementsByClassName('active')[0]).addClass('finished');
         $('#DemoResume').addClass('disabled');
         $('#DemoResume').attr('disabled', '');
+        physical_blocage_modal.style.display = 'none';
         setTimeout(() => {
             button = document.getElementsByClassName('active')[0];
             button.id = button.name;

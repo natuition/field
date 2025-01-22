@@ -923,3 +923,76 @@ select {
     height: 20px;
     margin-right: 8px;
 }
+
+.back-alert {
+    background-color: rgba(150,150,150,0.8);
+    z-index: 400;
+    opacity: 50%;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left:0;
+    right: 0;
+}
+
+.alert-primary {
+    color: #004085;
+    background-color: #cce5ff;
+    border-color: #b8daff;
+}
+
+.alert-secondary {
+    color: #383d41;
+    background-color: #e2e3e5;
+    border-color: #d6d8db;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #fff3cd;
+}
+
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+.alert-light {
+    color: #818182;
+    background-color: #fefefe;
+    border-color: #fdfdfe;
+}
+
+.alert-dark {
+    color: #1b1e21;
+    background-color: #d6d8d9;
+    border-color: #c6c8ca;
+}
+
+.alert {
+    padding: .75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid #856404;
+    border-radius: .25rem;
+    position: fixed;
+    top:50%;
+    z-index: 500;
+    margin: 0 10px;
+    left:0;
+    right: 0;
+}
+

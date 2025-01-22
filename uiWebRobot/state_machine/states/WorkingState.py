@@ -167,7 +167,7 @@ class WorkingState(State.State):
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
         
         elif event == Events.Events.PHYSICAL_BLOCAGE:
-            self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
+            self.socketio.emit('stop', {"status": "physical_blocage"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
 
             if config.UI_VERBOSE_LOGGING:
@@ -216,6 +216,7 @@ class WorkingState(State.State):
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
 
+            self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
             self.socketio.emit('stop', {"status": "finish"}, namespace='/server', broadcast=True)
 
             if self.isResume:

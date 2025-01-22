@@ -239,11 +239,17 @@
 		"nl": "Het spijt ons, er heeft zich een fout voorgedaan. Herstart VIOLETTE aub.",
 		"de": "Es tut uns leid, es ist ein Fehler aufgetreten. Bitte starten Sie VIOLETTE neu."
 	},
-	"Physical_blocage": {
+	"Physical_blocage_reversing": {
 		"fr": "VIOLETTE va effectuer une marche arrière. Veuillez patienter.",
 		"en": "VIOLETTE will reverse. Please wait.",
-		"nl": "VIOLETTE gaat achteruit. Even geduld..",
+		"nl": "VIOLETTE gaat achteruit. Even geduld.",
 		"de": "VIOLETTE wird einen Rückwärtsgang einlegen. Bitte warten Sie."
+	},
+	"Physical_blocage_detected": {
+		"fr": "VIOLETTE est physiquement bloquée. Le travail est mis en pause.",
+		"en": "VIOLETTE is physically blocked. Work is paused.",
+		"nl": "VIOLETTE is fysiek geblokkeerd. Het werk wordt onderbroken.",
+		"de": "VIOLETTE ist körperlich blockiert. Die Arbeit wird pausiert."
 	},
 	"AI_selector": {
 		"fr": "Sélection de l'intelligence artificielle :",

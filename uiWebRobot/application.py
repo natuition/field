@@ -254,7 +254,7 @@ class UIWebRobot:
             return redirect('/actuator_screening')
 
         if isinstance(self.get_state_machine().currentState, PhysicalBlocageState):
-            return render_template("PhysicalBlocage.html", sn=sn, title=self.__ui_languages["Physical_blocage"][self.__get_ui_language()], message=self.__ui_languages["Running"][self.__get_ui_language()])
+            return render_template("PhysicalBlocage.html", sn=sn, title=self.__ui_languages["Physical_blocage_reversing"][self.__get_ui_language()], message=self.__ui_languages["Running"][self.__get_ui_language()])
 
         if isinstance(self.get_state_machine().currentState, ErrorState):
             if self.get_state_machine().currentState.getReason():

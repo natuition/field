@@ -306,6 +306,15 @@
                 {% endif %}
 
             </div>
+
+            <div id="physical_blocage_modal">
+                <div class="back-alert">
+                </div>
+                <div class="alert alert-warning" role="alert">
+                    {{(ui_languages["Physical_blocage_detected"])[ui_language]}}
+                </div>
+            </div>
+
         </div>
 
         <script type="text/javascript" src="/static/{{ now }}/js/joy.js"></script>
@@ -337,7 +346,7 @@
                 </div>
             </header>
 
-            <section class="checklist">
+            <section class="checklist">           
                 <div class="checkbox">
                     <label class="checkbox__item">
                         <p class="checkbox__item--title unselectable">

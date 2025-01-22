@@ -197,9 +197,9 @@ class PhysicalBlocageState(State) :
                 self.__backward_thread_alive = False
             if self.__gb.is_remote(self.__blocagePos) :
                 self.vesc_engine.stop_moving(self.vesc_engine.PROPULSION_KEY)
-                utilsFunction.change_state(Events.PHYSICAL_BLOCAGE)
+                utilsFunction.change_state(Events.CONTINUE_MAIN)
             time.sleep(1)
-    
+
     def __stop_thread(self) -> None:
         """
 			Function for stopping all threads.
