@@ -246,10 +246,10 @@
 		"de": "VIOLETTE ist körperlich blockiert. Die Arbeit wird pausiert. Bitte warten Sie..."
 	},
 	"Physical_blocage_reversing": {
-		"fr": "VIOLETTE va effectuer une marche arrière. Veuillez patienter...",
-		"en": "VIOLETTE will reverse. Please wait...",
-		"nl": "VIOLETTE gaat achteruit. Even geduld...",
-		"de": "VIOLETTE wird einen Rückwärtsgang einlegen. Bitte warten Sie..."
+		"fr": "VIOLETTE effectue une marche arrière. Veuillez patienter...",
+		"en": "VIOLETTE reverses. Please wait...",
+		"nl": "VIOLETTE schakelt achteruit. Even geduld...",
+		"de": "VIOLETTE legt einen Rückwärtsgang ein. Bitte warten Sie..."
 	},
 	"Physical_blocage_blocked": {
 		"fr": "VIOLETTE est complètement bloquée. Veuillez déplacer le robot manuellement et le redémarrer.",
