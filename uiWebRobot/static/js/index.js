@@ -396,7 +396,7 @@ function verif_iframe_start() {
             })
                 .done(function () {
                     var url = new URL(window.location.href);
-                    console.log(url.searchParams.get('notIframe'))
+                    //console.log(url.searchParams.get('notIframe'))
                     if (!url.searchParams.get('notIframe')) {
                         if (document.getElementById("webCamStream")) {
                             document.getElementById("webCamStream").src = 'http://' + document.domain + ':8888';

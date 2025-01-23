@@ -8,7 +8,7 @@ function sendAlert(message_name,message,reload=true){
 }
 
 function show_alert(message_name, message, type_alert="alert-danger"){
-    console.log("Popup with '"+message_name+"' message.")
+    //console.log("Popup with '"+message_name+"' message.")
     var popup_modal = document.getElementById('popup_modal');
     var popup_modal_text = document.getElementById('popup_modal_text');
     var popup_modal_alert = document.getElementById('popup_modal_alert');
@@ -36,5 +36,4 @@ socketBroadcast_.on('popup_modal', function(data) {
 
 socketBroadcast_.on('reload', function(dataServ) {
     document.location.reload();
-    console.log("Reload !")
 });
