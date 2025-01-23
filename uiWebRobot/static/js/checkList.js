@@ -53,14 +53,12 @@ function canNext() {
 }
 
 function listValidationEvery500ms() {
-    console.log("Send list_validation");
     var select_ai = document.getElementById("AI_selector");
     socketio.emit('data', { type: "list_validation", strategy: select_ai.value });
 }
 
 socketio.on('data', function (dataServ) {
     if (dataServ["ACK"] == "list_validation") {
-        console.log("Stop list_validation");
         clearInterval(all_checked_interval);
     }
 });
@@ -68,7 +66,6 @@ socketio.on('data', function (dataServ) {
 function checkAllBoxAreChecked() {
     if (canNext() && isCheck == false) {
         isCheck = true;
-        console.log("User all check !");
         $('#checkbutton').attr('disabled', '');
         $('#checkbutton').addClass('unselectable');
         $('#checkbutton').addClass('active');
@@ -93,7 +90,6 @@ function activateNext() {
 socketio.on('list_validation', function (dataServ) {
     if (dataServ["status"] == "refresh") {
         //clearInterval(count_next_interval);
-        console.log("refresh !")
         document.location.reload();
     }
 });
@@ -102,7 +98,6 @@ socketio.on('wait_working_state', function (dataServ) {
     if (dataServ["status"] == "refresh") {
         //clearInterval(count_next_interval);
         document.location.reload();
-        console.log("refresh !")
         socketio.emit('data', { type: "wait_working_state_refresh"});
     }
 });
