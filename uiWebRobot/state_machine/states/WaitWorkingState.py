@@ -304,27 +304,33 @@ class WaitWorkingState(State.State):
                 self.socketio, self.input_voltage["input_voltage"])
 
         elif data["type"] == 'getField':
-            coords, other_fields, current_field_name = utilsFunction.updateFields(
-                data["field_name"])
-            fields_list = utilsFunction.load_field_list("../fields")
-            self.socketio.emit('newField', json.dumps(
-                {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
-                 "fields_list": fields_list}), namespace='/map')
+            try :
+                coords, other_fields, current_field_name = utilsFunction.updateFields(
+                    data["field_name"])
+                fields_list = utilsFunction.load_field_list("../fields")
+                self.socketio.emit('newField', json.dumps(
+                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
+                    "fields_list": fields_list}), namespace='/map')
+            except FileNotFoundError as e :
+                self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
 
         elif data["type"] == 'removeField':
-            os.remove(
-                "../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
-            fields_list = utilsFunction.load_field_list("../fields")
+            try :
+                os.remove("../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
+                fields_list = utilsFunction.load_field_list("../fields")
 
-            if len(fields_list) > 0:
-                coords, other_fields, current_field_name = utilsFunction.updateFields(
-                    fields_list[0])
-            else:
-                coords, other_fields, current_field_name = list(), list(), ""
+                if len(fields_list) > 0:
+                    coords, other_fields, current_field_name = utilsFunction.updateFields(
+                        fields_list[0])
+                else:
+                    coords, other_fields, current_field_name = list(), list(), ""
 
-            self.socketio.emit('newField', json.dumps(
-                {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
-                 "fields_list": fields_list}), namespace='/map')
+                self.socketio.emit('newField', json.dumps(
+                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
+                    "fields_list": fields_list}), namespace='/map')
+                
+            except FileNotFoundError as e :
+                self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
             
         elif data["type"] == 'wheel':
             if(data["status"]=="release") :
