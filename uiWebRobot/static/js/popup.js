@@ -2,9 +2,9 @@ const socketBroadcast_ = io.connect('http://' + document.domain + ':' + location
 
 let lastAlert;
 
-function sendAlert(message_name,message,reload=true){
+function sendAlert(message_name, message, reload=true, timeout=5000){
     show_alert(message_name, message);
-    setTimeout(hide_alert, 5000, reload);
+    setTimeout(hide_alert, timeout, reload);
 }
 
 function show_alert(message_name, message, type_alert="alert-danger"){
@@ -32,6 +32,10 @@ socketBroadcast_.on('notification', function(data) {
 
 socketBroadcast_.on('popup_modal', function(data) {
     show_alert(data["message_name"], data["message"], data["type_alert"]);
+});
+
+socketBroadcast_.on('popup_modal_hide', function(data) {
+    hide_alert(false);
 });
 
 socketBroadcast_.on('reload', function(dataServ) {

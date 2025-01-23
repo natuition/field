@@ -208,7 +208,6 @@ socketButton.on('stop', function (dataServ) {
         $(document.getElementsByClassName('active')[0]).addClass('finished');
         $('#DemoResume').addClass('disabled');
         $('#DemoResume').attr('disabled', '');
-        hide_alert(false);
         setTimeout(() => {
             button = document.getElementsByClassName('active')[0];
             button.id = button.name;
