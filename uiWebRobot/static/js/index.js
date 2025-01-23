@@ -57,7 +57,7 @@ var reloader = 0;
 function clickHandler() {
     if (this.id == "Newfield") {
         if (gpsQuality == "no_gps") {
-            alert((ui_languages["alert_on_no_gps"])[ui_language])
+            sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
         } else {
             sliderValue = document.getElementById("r1").value
             socketio.emit('data', { type: "create_field", value: sliderValue });
@@ -69,7 +69,7 @@ function clickHandler() {
         socketio.emit('data', { type: "validerZone", value: sliderValue });
     } else if (this.id == "Start") {
         if (gpsQuality == "no_gps") {
-            alert((ui_languages["alert_on_no_gps"])[ui_language])
+            sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
         } else {
             socketio.emit('data', { type: "start_main", audit: audit });
         }
@@ -77,7 +77,7 @@ function clickHandler() {
         socketio.emit('data', { type: "stop" });
     } else if (this.id == "Continue") {
         if (gpsQuality == "no_gps") {
-            alert((ui_languages["alert_on_no_gps"])[ui_language])
+            sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
         } else {
             socketio.emit('data', { type: "continue_main", audit: audit });
         }
