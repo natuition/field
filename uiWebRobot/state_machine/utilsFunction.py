@@ -266,3 +266,11 @@ def is_valid_field_file(file_path : str, logger: utility.Logger):
         return False
     
     return True
+
+def get_ui_language():
+    with open("ui_language.json", "r", encoding='utf-8') as read_file:
+            ui_languages = json.load(read_file)
+    ui_language = config.UI_LANGUAGE
+    if ui_language not in ui_languages["Supported Language"]:
+        ui_language = "en"
+    return ui_languages, ui_language

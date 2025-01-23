@@ -26,7 +26,7 @@ import utility
 # This state corresponds when the robot is working.
 class WorkingState(State.State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit: bool, isResume: bool):
+    def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit: bool, isResume: bool, wasPhysicallyBlocked: bool = False):
         if isResume:
             self.robot_synthesis_value = RobotSynthesis.UI_CONTINUE_STATE
         else:
@@ -34,6 +34,7 @@ class WorkingState(State.State):
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit
+        self.__wasPhysicallyBlocked = wasPhysicallyBlocked
         self.allPath = []
         self.isResume = isResume
         self.detected_plants = dict()
@@ -50,6 +51,9 @@ class WorkingState(State.State):
                                                 removeFieldButton=ButtonState.DISABLE,
                                                 joystick=False,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
+        
+        if self.__wasPhysicallyBlocked :
+            self.statusOfUIObject.physicalBlocage = PhysicalBlocageFEO.RELOADING
 
         if isAudit:
             self.statusOfUIObject.audit = AuditButtonState.IN_USE
@@ -226,8 +230,6 @@ class WorkingState(State.State):
                 print(msg)
 
             self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
-            self.socketio.emit('stop', {"status": "finish"}, namespace='/server', broadcast=True)
-
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
             else:
@@ -296,6 +298,9 @@ class WorkingState(State.State):
                         self.socketio.emit('start_main', {"status": "finish", "audit": self.isAudit,
                                                         "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
                                         namespace='/button', broadcast=True)
+                        if self.__wasPhysicallyBlocked :
+                            self.statusOfUIObject.physicalBlocage = PhysicalBlocageFEO.DISABLE
+                            self.socketio.emit('popup_modal_hide', {}, namespace='/broadcast', broadcast=True)
                 elif "datacollector" in data:
                     self.detected_plants = data["datacollector"][0]
                     self.extracted_plants = data["datacollector"][1]

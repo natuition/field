@@ -75,19 +75,12 @@ class CreateFieldState(State.State):
             raise KeyboardInterrupt
         except:
             self.notificationQueue = None
-            
-        with open("ui_language.json", "r", encoding='utf-8') as read_file:
-            self.__ui_languages = json.load(read_file)
-        self.__current_ui_language = self.__get_ui_language()
+    
+        self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
 
         #self.__send_last_pos_thread_alive = True
         #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
 
-    def __get_ui_language(self):
-        ui_language = config.UI_LANGUAGE
-        if ui_language not in self.__ui_languages["Supported Language"]:
-            ui_language = "en"
-        return ui_language
 
     def on_event(self, event):
         if event == Events.Events.STOP:

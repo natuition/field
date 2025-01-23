@@ -76,20 +76,10 @@ class PhysicalBlocageState(State) :
         self.logger.write_and_flush(msg + "\n")
         print(msg)
 
-        with open("ui_language.json", "r", encoding='utf-8') as read_file:
-            self.__ui_languages = json.load(read_file)
-        self.__current_ui_language = self.__get_ui_language()
-
+        self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
         message = self.__ui_languages["Physical_blocage_reversing"][self.__current_ui_language]
         self.socketio.emit('popup_modal', {"message_name":"reversing", "message":message, "type_alert":"alert-warning"}, namespace='/broadcast', broadcast=True)
-        
-
-    def __get_ui_language(self):
-        ui_language = config.UI_LANGUAGE
-        if ui_language not in self.__ui_languages["Supported Language"]:
-            ui_language = "en"
-        return ui_language
-
+        self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
 
     def on_event(self, event: Events) -> State:
         if event == Events.CONTINUE_MAIN:
@@ -105,13 +95,18 @@ class PhysicalBlocageState(State) :
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
                                                 physicalBlocage=PhysicalBlocageFEO.RELOADING
                                                 )
-            if self.smoothie is not None:
-                self.smoothie.disconnect()
-                self.smoothie = None
-            if self.vesc_engine is not None:
-                self.vesc_engine.close()
-                self.vesc_engine = None
-            return ResumeState(self.socketio, self.logger, self.isAudit)
+            try:
+                if self.smoothie is not None:
+                    self.smoothie.disconnect()
+                    self.smoothie = None
+                if self.vesc_engine is not None:
+                    self.vesc_engine.close()
+                    self.vesc_engine = None
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                self.logger.write_and_flush(e + "\n")
+            return ResumeState(self.socketio, self.logger, wasPhysicallyBlocked=True, isAudit=self.isAudit)
         
         else:
             self.__stop_thread()
