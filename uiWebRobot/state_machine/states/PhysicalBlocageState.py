@@ -74,6 +74,7 @@ class PhysicalBlocageState(State) :
         self.logger.write_and_flush(msg + "\n")
         print(msg)
 
+        # Ask ui to change popup message and loading buttons
         self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
         message = self.__ui_languages["Physical_blocage_reversing"][self.__current_ui_language]
         self.socketio.emit('popup_modal', {"message_name":"reversing", "message":message, "type_alert":"alert-warning"}, namespace='/broadcast', broadcast=True)
@@ -105,8 +106,8 @@ class PhysicalBlocageState(State) :
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
             return ResumeState(self.socketio, self.logger, wasPhysicallyBlocked=True, isAudit=self.isAudit)
-        
-        else:
+        # If the robot is still blocked
+        else:  
             self.__stop_thread()
             self.__gps.close()
             self.smoothie.freewheels()

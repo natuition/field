@@ -26,13 +26,13 @@ import time
 
 def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdapterV4, socketio: SocketIO, input_voltage: Dict[str, str]) -> None:
     """
-        Function for getting and sending the voltage to ui.\n
+        Function for getting and sending the voltage to ui.
         
-        Params:
-            - voltage_thread_alive\n
-            - vesc_engine\n
-            - socketio : socket connected with ui\n
-            - input_voltage\n
+        Args:
+            - voltage_thread_alive
+            - vesc_engine
+            - socketio : socket connected with ui
+            - input_voltage
     """
     #last_update = 0
     vesc_data = None
@@ -55,11 +55,11 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
 
 def sendInputVoltage(socketio: SocketIO, input_voltage: Dict[str, str]) -> None:
     """
-        Function for sending the voltage to ui.\n
+        Function for sending the voltage to ui.
         
-        Params:
-            - socketio : socket connected with ui\n
-            - input_voltage\n
+        Args:
+            - socketio : socket connected with ui
+            - input_voltage
     """
     try:
         input_voltage = round(float(input_voltage) * 2) / 2
@@ -71,12 +71,12 @@ def sendInputVoltage(socketio: SocketIO, input_voltage: Dict[str, str]) -> None:
 
 def send_last_pos_thread_tf(send_last_pos_thread_alive: bool, socketio: SocketIO, logger: utility.Logger) -> None:
     """
-        Function for sending the last position to ui for the map.\n
+        Function for sending the last position to ui for the map.
         
-        Params:
+        Args:
             - send_last_pos_thread_alive
-            - socketio : socket connected with ui\n
-            - logger\n
+            - socketio : socket connected with ui
+            - logger
     """
     with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
         while send_last_pos_thread_alive():
@@ -91,11 +91,11 @@ def initVesc(logger: utility.Logger) -> adapters.VescAdapterV4 :
     """
         Function for initializing a VESC.\n
         
-        Params:
-            logger\n
+        Args:
+            logger
 
-        Return:
-            The initialized VESC.
+        Returns:
+            VescAdapterV4: the initialized VESC.
     """
     for i in range(3):
         if i==2:
@@ -139,13 +139,13 @@ def timeout_sm_th(event: Events, logger: utility.Logger) -> None:
 
 def initSmoothie(logger: utility.Logger) -> adapters.SmoothieAdapter:
     """
-        Function for initializing a Smoothie.\n
+        Function for initializing a Smoothie.
         
-        Params:
-            logger\n
+        Args:
+            logger
 
-        Return:
-            The initialized Smoothie.
+        Returns:
+            SmoothieAdapter: the initialized Smoothie.
     """
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
     if config.SMOOTHIE_BACKEND == 1:
@@ -170,9 +170,9 @@ def initSmoothie(logger: utility.Logger) -> adapters.SmoothieAdapter:
 
 def save_gps_coordinates(points: List[List[float]], file_name: str) -> None:
     """
-        Function for saving GPS coordinates in a file.\n
+        Function for saving GPS coordinates in a file.
         
-        Params:
+        Args:
             - points: list of coordinates.
             - file_name: name of the file in which the cooridinates will be saved.
     """
@@ -186,9 +186,9 @@ def save_gps_coordinates(points: List[List[float]], file_name: str) -> None:
 
 def changeConfigValue(path: str, value: str) -> None:
     """
-        Function for changing a value in the config file.\n
+        Function for changing a value in the config file.
         
-        Params:
+        Args:
             - path: name of the variable in the config file.
             - value: new value.
     """
@@ -220,7 +220,7 @@ def changeConfigValue(path: str, value: str) -> None:
 
 def startMain():
     """
-        Function for starting the main program.\n
+        Function for starting the main program.
     """
     mainSP = subprocess.Popen("python3 main.py", stdin=subprocess.PIPE, cwd=os.getcwd().split("/uiWebRobot")[0],
                               shell=True, preexec_fn=os.setsid)
@@ -229,7 +229,7 @@ def startMain():
 
 def startLiveCam():
     """
-        Function for starting the live camera.\n
+        Function for starting the live camera.
     """
     camSP = subprocess.Popen("python3 serveurCamLive.py", stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, cwd=os.getcwd().split(
         "/uiWebRobot")[0], shell=True,
@@ -290,9 +290,9 @@ def get_other_field() -> list:
 
 def change_state(event : Events) -> None :
     """
-        Function for changing state.\n
+        Function for changing state.
         
-        Params:
+        Args:
             - event: event of the next state
     """
     io = socketio.Client()
@@ -304,10 +304,10 @@ def is_valid_field_file(file_path : str, logger: utility.Logger) -> bool:
     """
     Check if a field file is valid.
 
-    Params:
+    Args:
         file_path (str): The path to the file to check.
 
-    Return:
+    Returns:
         bool: True if the file is valid, False otherwise.
     """
     # Check if the file exists
@@ -346,10 +346,11 @@ def is_valid_field_file(file_path : str, logger: utility.Logger) -> bool:
 
 def get_ui_language() -> Tuple[dict, str]:
     """
-        Function for getting ui languages and current language.\n
+        Function for getting ui languages and current language.
 
-        Return: 
-            A json object with the ui languages and a string denoting the current language.
+        Returns: 
+            - dict: ui languages
+            - str: current language
     """
     with open("ui_language.json", "r", encoding='utf-8') as read_file:
             ui_languages = json.load(read_file)
