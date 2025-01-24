@@ -14,7 +14,6 @@ class GearboxProtection:
 			Create an empy list of cooridinates. \n
             Inits some parameters.
 		"""
-        
         self.__min_nb_valid_distances: int = config.MIN_NB_VALID_DISTANCES
         self.__max_nb_coords_stored: int = config.MAX_NB_COORDS_STORED
         self.__min_speed: int = config.MIN_SPEED #millimeters per second
@@ -22,6 +21,8 @@ class GearboxProtection:
         self.__coord_list = []
         self.__nb_extracts: int = 0
         self.__gps_computing: GPSComputing = GPSComputing()
+        self.__percentage_of_min_speed: int = 0
+        self.__step_percentage_of_min_speed: int = config.STEP_PERCENTAGE_OF_MIN_SPEED
         
     
     def store_coord(self, lat: float, long: float, quality: int) -> None:
@@ -70,6 +71,7 @@ class GearboxProtection:
 			Function for checking if the robot is physically blocked.\n
             :return: True if the robot is physically blocked, else otherwise.
 		"""
+        # Calculate the distance between each coordinates
         nb_coords = len(self.__coord_list)
         list_valid_distances = []
         for i in range(nb_coords - 2) :
@@ -82,12 +84,18 @@ class GearboxProtection:
         if len(list_valid_distances) < self.__min_nb_valid_distances :
             return False
         
+        # Calculate median distance
         list_valid_distances.sort()
         median_index = len(list_valid_distances) // 2
         median_value = list_valid_distances[median_index]
-        print("Distance median = ", median_value)
+        print("Median distance = ", median_value)
         
-        return median_value < self.__min_speed
+        # Calculate the percentage of the minimum speed
+        if self.__percentage_of_min_speed < 100 :
+            self.__percentage_of_min_speed += self.__step_percentage_of_min_speed
+        print("Minimum distance = ", self.__min_speed * (self.__percentage_of_min_speed / 100))
+        
+        return median_value < self.__min_speed * (self.__percentage_of_min_speed / 100)
     
     def is_remote(self, start_point: list) -> bool:
         """

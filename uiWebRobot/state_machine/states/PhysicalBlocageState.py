@@ -1,4 +1,3 @@
-import json
 import sys
 sys.path.append('../')
 
@@ -10,7 +9,6 @@ from flask_socketio import SocketIO
 
 from state_machine.State import State
 from state_machine.states.ResumeState import ResumeState
-from state_machine.states.ErrorState import ErrorState
 from state_machine.Events import Events
 from state_machine import utilsFunction
 from state_machine.GearboxProtection import GearboxProtection
