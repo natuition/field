@@ -1,27 +1,40 @@
-#import application
-import socketio
+import sys
+sys.path.append('../')
+
 from config import config
+
+from navigation import NavigationV3
+from navigation import GPSComputing
+
+from uiWebRobot.state_machine import Events
+
+from typing import Tuple, Dict, List
+from flask_socketio import SocketIO
+import socketio
 import threading
-import telnetlib
 from urllib.parse import quote, unquote
 import subprocess
 import grp
 import fileinput
 import os
 import pwd
-from uiWebRobot.state_machine import Events
 import utility
 import json
 import adapters
 import time
-import sys
-sys.path.append('../')
-from navigation import NavigationV3
-from navigation import GPSComputing
 
 
-def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
-    last_update = 0
+def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdapterV4, socketio: SocketIO, input_voltage: Dict[str, str]) -> None:
+    """
+        Function for getting and sending the voltage to ui.\n
+        
+        Params:
+            - voltage_thread_alive\n
+            - vesc_engine\n
+            - socketio : socket connected with ui\n
+            - input_voltage\n
+    """
+    #last_update = 0
     vesc_data = None
     while voltage_thread_alive():
         if voltage_thread_alive():
@@ -34,13 +47,20 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                 except:
                     break
                 if vesc_data is not None and voltage_thread_alive():
-                    last_update = time.time()
+                    #last_update = time.time()
                     sendInputVoltage(socketio, vesc_data["input_voltage"])
                     input_voltage["input_voltage"] = vesc_data["input_voltage"]
         time.sleep(1)
 
 
-def sendInputVoltage(socketio, input_voltage):
+def sendInputVoltage(socketio: SocketIO, input_voltage: Dict[str, str]) -> None:
+    """
+        Function for sending the voltage to ui.\n
+        
+        Params:
+            - socketio : socket connected with ui\n
+            - input_voltage\n
+    """
     try:
         input_voltage = round(float(input_voltage) * 2) / 2
     except ValueError:
@@ -49,7 +69,15 @@ def sendInputVoltage(socketio, input_voltage):
                   namespace='/voltage', broadcast=True)
 
 
-def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio, logger: utility.Logger):
+def send_last_pos_thread_tf(send_last_pos_thread_alive: bool, socketio: SocketIO, logger: utility.Logger) -> None:
+    """
+        Function for sending the last position to ui for the map.\n
+        
+        Params:
+            - send_last_pos_thread_alive
+            - socketio : socket connected with ui\n
+            - logger\n
+    """
     with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
         while send_last_pos_thread_alive():
             lastPos = gps.get_fresh_position()
@@ -59,7 +87,16 @@ def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio, logger: utilit
             socketio.emit('updateGPSQuality', lastPos[2], namespace='/gps', broadcast=True)
 
 
-def initVesc(logger: utility.Logger):
+def initVesc(logger: utility.Logger) -> adapters.VescAdapterV4 :
+    """
+        Function for initializing a VESC.\n
+        
+        Params:
+            logger\n
+
+        Return:
+            The initialized VESC.
+    """
     for i in range(3):
         if i==2:
             msg = "Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
@@ -92,7 +129,7 @@ def initVesc(logger: utility.Logger):
     return vesc_engine
 
 
-def timeout_sm_th(event, logger):
+def timeout_sm_th(event: Events, logger: utility.Logger) -> None:
     time.sleep(10)
     if not event.is_set():
         msg = "[Timeout sm] Couldn't get SmoothieAdapter!"
@@ -100,7 +137,16 @@ def timeout_sm_th(event, logger):
         raise Exception(msg)
 
 
-def initSmoothie(logger: utility.Logger):
+def initSmoothie(logger: utility.Logger) -> adapters.SmoothieAdapter:
+    """
+        Function for initializing a Smoothie.\n
+        
+        Params:
+            logger\n
+
+        Return:
+            The initialized Smoothie.
+    """
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
     if config.SMOOTHIE_BACKEND == 1:
         smoothie_address = config.SMOOTHIE_HOST
@@ -122,7 +168,14 @@ def initSmoothie(logger: utility.Logger):
     return smoothie
 
 
-def save_gps_coordinates(points: list, file_name):
+def save_gps_coordinates(points: List[List[float]], file_name: str) -> None:
+    """
+        Function for saving GPS coordinates in a file.\n
+        
+        Params:
+            - points: list of coordinates.
+            - file_name: name of the file in which the cooridinates will be saved.
+    """
     with open(file_name, "w") as file:
         for point in points:
             str_point = str(point[0]) + " " + str(point[1]) + "\n"
@@ -131,7 +184,14 @@ def save_gps_coordinates(points: list, file_name):
     os.chown(file_name, user.pw_uid, user.pw_gid)
 
 
-def changeConfigValue(path: str, value):
+def changeConfigValue(path: str, value: str) -> None:
+    """
+        Function for changing a value in the config file.\n
+        
+        Params:
+            - path: name of the variable in the config file.
+            - value: new value.
+    """
     with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
         found_key = False
 
@@ -159,19 +219,25 @@ def changeConfigValue(path: str, value):
 
 
 def startMain():
+    """
+        Function for starting the main program.\n
+    """
     mainSP = subprocess.Popen("python3 main.py", stdin=subprocess.PIPE, cwd=os.getcwd().split("/uiWebRobot")[0],
                               shell=True, preexec_fn=os.setsid)
     return mainSP
 
 
 def startLiveCam():
+    """
+        Function for starting the live camera.\n
+    """
     camSP = subprocess.Popen("python3 serveurCamLive.py", stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, cwd=os.getcwd().split(
         "/uiWebRobot")[0], shell=True,
         preexec_fn=os.setsid)
     return camSP
 
 
-def updateFields(field_name):
+def updateFields(field_name: str) -> Tuple[List[float], list, str]:
     field_name_quote = quote(field_name, safe="", encoding='utf-8')
     
     cmd = "ln -sf 'fields/" + field_name_quote + ".txt' ../field.txt"
@@ -190,48 +256,58 @@ def updateFields(field_name):
 
     return coords, other_fields, field_name
 
-def load_field_list(dir_path):
-        field_list = []
-        for file in os.listdir(dir_path):
-            if file.endswith(".txt"):
-                #if file != "tmp.txt":
-                field_list.append(
-                    unquote(file.split(".txt")[0], encoding='utf-8'))
-        return field_list
 
-def get_other_field():
-        link_path = os.path.realpath("../field.txt")
-        current_field = (link_path.split("/")[-1]).split(".")[0]
-        field_list = load_field_list("../fields")
-        if len(field_list) >= 2:
-            coords_other = []
-            for field_name in field_list:
-                if field_name != unquote(current_field, encoding='utf-8') and field_name != "tmp.txt":
-                    with open("../fields/" + quote(field_name, safe="", encoding='utf-8') + ".txt", encoding='utf-8') as file:
-                        points = file.readlines()
+def load_field_list(dir_path) -> List[str]:
+    field_list = []
+    for file in os.listdir(dir_path):
+        if file.endswith(".txt"):
+            #if file != "tmp.txt":
+            field_list.append(
+                unquote(file.split(".txt")[0], encoding='utf-8'))
+    return field_list
 
-                    coords = list()
-                    for coord in points:
-                        coord = coord.replace("\n", "").split(" ")
-                        coords.append([float(coord[1]), float(coord[0])])
-                    coords.append(coords[0])
-                    coords_other.append(coords)
-            return coords_other
-        return list()
 
-def change_state(event : Events) :
+def get_other_field() -> list:
+    link_path = os.path.realpath("../field.txt")
+    current_field = (link_path.split("/")[-1]).split(".")[0]
+    field_list = load_field_list("../fields")
+    if len(field_list) >= 2:
+        coords_other = []
+        for field_name in field_list:
+            if field_name != unquote(current_field, encoding='utf-8') and field_name != "tmp.txt":
+                with open("../fields/" + quote(field_name, safe="", encoding='utf-8') + ".txt", encoding='utf-8') as file:
+                    points = file.readlines()
+
+                coords = list()
+                for coord in points:
+                    coord = coord.replace("\n", "").split(" ")
+                    coords.append([float(coord[1]), float(coord[0])])
+                coords.append(coords[0])
+                coords_other.append(coords)
+        return coords_other
+    return list()
+
+
+def change_state(event : Events) -> None :
+    """
+        Function for changing state.\n
+        
+        Params:
+            - event: event of the next state
+    """
     io = socketio.Client()
     io.connect(url="http://localhost:80", namespaces="/server")
     io.emit(event="data", data={"type": str(event)}, namespace="/server")
 
-def is_valid_field_file(file_path : str, logger: utility.Logger):
+
+def is_valid_field_file(file_path : str, logger: utility.Logger) -> bool:
     """
     Check if a field file is valid.
 
-    Args:
+    Params:
         file_path (str): The path to the file to check.
 
-    Returns:
+    Return:
         bool: True if the file is valid, False otherwise.
     """
     # Check if the file exists
@@ -267,7 +343,14 @@ def is_valid_field_file(file_path : str, logger: utility.Logger):
     
     return True
 
-def get_ui_language():
+
+def get_ui_language() -> Tuple[dict, str]:
+    """
+        Function for getting ui languages and current language.\n
+
+        Return: 
+            A json object with the ui languages and a string denoting the current language.
+    """
     with open("ui_language.json", "r", encoding='utf-8') as read_file:
             ui_languages = json.load(read_file)
     ui_language = config.UI_LANGUAGE
