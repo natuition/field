@@ -685,7 +685,8 @@ CHECK_PHYSICAL_BLOCAGE = False # Allow to stop the robot when it is physically b
 MIN_NB_VALID_DISTANCES = 10 # Min number of coordinates required to determine whether the robot is physically blocked.
 MAX_NB_COORDS_STORED = 20 # Max number of stored coordinates.
 MIN_SPEED = 100 # Min speed required to determinate that the robot is unmoving (in millimeters per second).
-REVERSING_DISTANCE = 5000 # Distance that the robot will do backward after detecting a physical blocage
+REVERSING_DISTANCE = 5000 # Distance that the robot will do backward after detecting a physical blocage.
+STEP_PERCENTAGE_OF_MIN_SPEED = 10 # Rate of increase in percentage points of the minimum speed to be reached.
 
 
 # ======================================================================================================================
