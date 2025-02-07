@@ -1231,8 +1231,6 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         self._crop_h_from = crop_h_from #used
         self._capture_width = capture_width #used
         self._capture_height = capture_height #used
-        self._ispdigitalgainrange_from = ispdigitalgainrange_from
-        self._ispdigitalgainrange_to = ispdigitalgainrange_to
         self._gainrange_from = gainrange_from #used
         self._gainrange_to = gainrange_to #used
         self._exposuretimerange_from = exposuretimerange_from #used
@@ -1240,6 +1238,8 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         self._aelock = aelock #used
         
         #Unused
+        self._ispdigitalgainrange_from = ispdigitalgainrange_from
+        self._ispdigitalgainrange_to = ispdigitalgainrange_to
         self._framerate = framerate
         self._crop_w_to = crop_w_to
         self._crop_h_to = crop_h_to
@@ -1581,7 +1581,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
 
     def get_image(self):
         try:
-            image_result = self._cam.GetNextImage()
+            image_result = self._cam.GetNextImage(1000)
             
             #  Ensure image completion
             if image_result.IsIncomplete():
