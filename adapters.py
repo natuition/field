@@ -1227,23 +1227,25 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
                  framerate,
                  nvidia_flip_method):
 
-        self._crop_w_from = crop_w_from
-        self._crop_w_to = crop_w_to
-        self._crop_h_from = crop_h_from
-        self._crop_h_to = crop_h_to
-        self._cv_rotate_code = cv_rotate_code
+        self._crop_w_from = crop_w_from #used
+        self._crop_h_from = crop_h_from #used
+        self._capture_width = capture_width #used
+        self._capture_height = capture_height #used
         self._ispdigitalgainrange_from = ispdigitalgainrange_from
         self._ispdigitalgainrange_to = ispdigitalgainrange_to
-        self._gainrange_from = gainrange_from
-        self._gainrange_to = gainrange_to
-        self._exposuretimerange_from = exposuretimerange_from
-        self._exposuretimerange_to = exposuretimerange_to
-        self._aelock = aelock
-        self._capture_width = capture_width
-        self._capture_height = capture_height
+        self._gainrange_from = gainrange_from #used
+        self._gainrange_to = gainrange_to #used
+        self._exposuretimerange_from = exposuretimerange_from #used
+        self._exposuretimerange_to = exposuretimerange_to #used
+        self._aelock = aelock #used
+        
+        #Unused
+        self._framerate = framerate
+        self._crop_w_to = crop_w_to
+        self._crop_h_to = crop_h_to
+        self._cv_rotate_code = cv_rotate_code
         self._display_width = display_width
         self._display_height = display_height
-        self._framerate = framerate
         self._nvidia_flip_method = nvidia_flip_method
         
         
@@ -1390,8 +1392,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
             # these nodes are being set to their maximums, there is no real reason
             # to check against the increment.
             if self._cam.Width.GetAccessMode() == PySpin.RW and self._cam.Width.GetInc() != 0 and self._cam.Width.GetMax != 0:
-                width_to_set = 2592 #width_to_set = 1920
-                width_to_set = min(self._cam.Width.GetMax(), width_to_set)
+                width_to_set = min(self._cam.Width.GetMax(), self._capture_width)
                 self._cam.Width.SetValue(width_to_set)
                 print('Width set to %i...' % self._cam.Width.GetValue())
 
@@ -1405,8 +1406,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
             # A maximum is retrieved with the method GetMax(). A node's minimum and
             # maximum should always be a multiple of its increment.
             if self._cam.Height.GetAccessMode() == PySpin.RW and self._cam.Height.GetInc() != 0 and self._cam.Height.GetMax != 0:
-                height_to_set = 1944 #height_to_set = 1080
-                height_to_set = min(self._cam.Width.GetMax(), height_to_set)
+                height_to_set = min(self._cam.Width.GetMax(), self._capture_height)
                 self._cam.Height.SetValue(height_to_set)
                 print('Height set to %i...' % self._cam.Height.GetValue())
 
@@ -1421,8 +1421,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
             # with the method GetMin(). Sometimes it can be important to check
             # minimums to ensure that your desired value is within range.
             if self._cam.OffsetX.GetAccessMode() == PySpin.RW:
-                offset_X_to_set = 0 #offset_X_to_set = 336
-                offset_X_to_set = min(self._cam.OffsetX.GetMax(), offset_X_to_set)
+                offset_X_to_set = min(self._cam.OffsetX.GetMax(), self._crop_w_from)
                 self._cam.OffsetX.SetValue(offset_X_to_set)
                 print('Offset X set to %d...' % self._cam.OffsetX.GetValue())
 
@@ -1439,8 +1438,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
             # increment of 1, which basically means that any value within range
             # is appropriate. The increment is retrieved with the method GetInc().
             if self._cam.OffsetY.GetAccessMode() == PySpin.RW:
-                offset_Y_to_set = 0 #offset_Y_to_set = 432
-                offset_Y_to_set = min(self._cam.OffsetY.GetMax(), offset_Y_to_set)
+                offset_Y_to_set = min(self._cam.OffsetY.GetMax(), self._crop_h_from)
                 self._cam.OffsetY.SetValue(offset_Y_to_set)
                 print('Offset Y set to %d...' % self._cam.OffsetY.GetValue())
 
@@ -1448,77 +1446,83 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
                 print('Offset Y not available...')
                 result = False
                 
-            # Turn off automatic exposure mode
-            #
-            # *** NOTES ***
-            # Automatic exposure prevents the manual configuration of exposure
-            # times and needs to be turned off for this example. Enumerations
-            # representing entry nodes have been added to QuickSpin. This allows
-            # for the much easier setting of enumeration nodes to new values.
-            #
-            # The naming convention of QuickSpin enums is the name of the
-            # enumeration node followed by an underscore and the symbolic of
-            # the entry node. Selecting "Off" on the "ExposureAuto" node is
-            # thus named "ExposureAuto_Off".
-            #
-            # *** LATER ***
-            # Exposure time can be set automatically or manually as needed. This
-            # example turns automatic exposure off to set it manually and back
-            # on to return the camera to its default state.
+            if self._aelock:
+                if self._exposuretimerange_from == self._exposuretimerange_to:
+                    # Turn off automatic exposure mode
+                    #
+                    # *** NOTES ***
+                    # Automatic exposure prevents the manual configuration of exposure
+                    # times and needs to be turned off for this example. Enumerations
+                    # representing entry nodes have been added to QuickSpin. This allows
+                    # for the much easier setting of enumeration nodes to new values.
+                    #
+                    # The naming convention of QuickSpin enums is the name of the
+                    # enumeration node followed by an underscore and the symbolic of
+                    # the entry node. Selecting "Off" on the "ExposureAuto" node is
+                    # thus named "ExposureAuto_Off".
+                    #
+                    # *** LATER ***
+                    # Exposure time can be set automatically or manually as needed. This
+                    # example turns automatic exposure off to set it manually and back
+                    # on to return the camera to its default state.
 
-            if self._cam.ExposureAuto.GetAccessMode() != PySpin.RW:
-                print('Unable to disable automatic exposure. Aborting...')
+                    if self._cam.ExposureAuto.GetAccessMode() != PySpin.RW:
+                        print('Unable to disable automatic exposure. Aborting...')
+                        return False
+
+                    self._cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
+                    print('Automatic exposure disabled...')
+                    
+                    
+                    # Set exposure time manually; exposure time recorded in microseconds
+                    #
+                    # *** NOTES ***
+                    # Notice that the node is checked for availability and writability
+                    # prior to the setting of the node. In QuickSpin, availability and
+                    # writability are ensured by checking the access mode.
+                    #
+                    # Further, it is ensured that the desired exposure time does not exceed
+                    # the maximum. Exposure time is counted in microseconds - this can be
+                    # found out either by retrieving the unit with the GetUnit() method or
+                    # by checking SpinView.
+
+                    if self._cam.ExposureTime.GetAccessMode() != PySpin.RW:
+                        print('Unable to set exposure time. Aborting...')
+                        return False
+
+
+                    # Ensure desired exposure time does not exceed the maximum
+                    #
+                    exposure_time_to_set = min(self._cam.ExposureTime.GetMax(), self._exposuretimerange_from)
+                    self._cam.ExposureTime.SetValue(exposure_time_to_set)
+                    print('Shutter time set to %s us...\n' % exposure_time_to_set)
+                else:
+                    print('Unable to set exposure time, exposuretimerange_from!=exposuretimerange_to. Aborting...')
+                    return False
+                
+            if self._gainrange_from == self._gainrange_to:
+                #Turn off automatique gain
+                if self._cam.GainAuto.GetAccessMode() != PySpin.RW:
+                    print('Unable to disable automatic gain. Aborting...')
+                    return False
+
+                self._cam.GainAuto.SetValue(PySpin.GainAuto_Off)
+                print('Automatic gain disabled...')
+                
+                
+                # Set gain manually; gain is in dB : 0-40
+                #
+                if self._cam.Gain.GetAccessMode() != PySpin.RW:
+                    print('Unable to set gain. Aborting...')
+                    return False
+
+                # Ensure desired gain does not exceed the maximum
+                gain_to_set = min(self._cam.Gain.GetMax(), self._gainrange_from)
+                self._cam.Gain.SetValue(gain_to_set)
+                print('Gain set to %s DB...\n' % gain_to_set)
+            else:
+                print('Unable to set gain, gainrange_from!=_gainrange_to. Aborting...')
                 return False
-
-            self._cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
-            print('Automatic exposure disabled...')
-            
-            
-            # Set exposure time manually; exposure time recorded in microseconds
-            #
-            # *** NOTES ***
-            # Notice that the node is checked for availability and writability
-            # prior to the setting of the node. In QuickSpin, availability and
-            # writability are ensured by checking the access mode.
-            #
-            # Further, it is ensured that the desired exposure time does not exceed
-            # the maximum. Exposure time is counted in microseconds - this can be
-            # found out either by retrieving the unit with the GetUnit() method or
-            # by checking SpinView.
-
-            if self._cam.ExposureTime.GetAccessMode() != PySpin.RW:
-                print('Unable to set exposure time. Aborting...')
-                return False
-
-
-            # Ensure desired exposure time does not exceed the maximum
-            #
-            exposure_time_to_set = 6600.0
-            exposure_time_to_set = min(self._cam.ExposureTime.GetMax(), exposure_time_to_set)
-            self._cam.ExposureTime.SetValue(exposure_time_to_set)
-            print('Shutter time set to %s us...\n' % exposure_time_to_set)
-            
-            #Turn off automatique gain
-            if self._cam.GainAuto.GetAccessMode() != PySpin.RW:
-                print('Unable to disable automatic gain. Aborting...')
-                return False
-
-            self._cam.GainAuto.SetValue(PySpin.GainAuto_Off)
-            print('Automatic gain disabled...')
-            
-            
-            # Set gain manually; gain is in dB : 0-40
-            #
-            if self._cam.Gain.GetAccessMode() != PySpin.RW:
-                print('Unable to set gain. Aborting...')
-                return False
-
-            # Ensure desired gain does not exceed the maximum
-            gain_to_set = 20.0
-            gain_to_set = min(self._cam.Gain.GetMax(), gain_to_set)
-            self._cam.Gain.SetValue(gain_to_set)
-            print('Gain set to %s DB...\n' % gain_to_set)
-            
             
             #Turn on manual GammaEnable
             #
@@ -1577,7 +1581,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
 
     def get_image(self):
         try:
-            image_result = self._cam.GetNextImage(1000)
+            image_result = self._cam.GetNextImage()
             
             #  Ensure image completion
             if image_result.IsIncomplete():
