@@ -13,6 +13,8 @@ import pyvesc
 import re
 #import RPi.GPIO as GPIO
 from serial import SerialException
+import PySpin
+import numpy as np
 
 
 class SmoothieAdapter:
@@ -1202,6 +1204,410 @@ class CameraAdapterIMX219_170:
             return image
         else:
             raise RuntimeError(f"[{self.__class__.__name__}] -> Unable to open camera")
+
+class CameraAdapterDR_U3_50Y2C_C3_S:
+
+    def __init__(self,
+                 crop_w_from,
+                 crop_w_to,
+                 crop_h_from,
+                 crop_h_to,
+                 cv_rotate_code,
+                 ispdigitalgainrange_from,
+                 ispdigitalgainrange_to,
+                 gainrange_from,
+                 gainrange_to,
+                 exposuretimerange_from,
+                 exposuretimerange_to,
+                 aelock,
+                 capture_width,
+                 capture_height,
+                 display_width,
+                 display_height,
+                 framerate,
+                 nvidia_flip_method):
+
+        self._crop_w_from = crop_w_from
+        self._crop_w_to = crop_w_to
+        self._crop_h_from = crop_h_from
+        self._crop_h_to = crop_h_to
+        self._cv_rotate_code = cv_rotate_code
+        self._ispdigitalgainrange_from = ispdigitalgainrange_from
+        self._ispdigitalgainrange_to = ispdigitalgainrange_to
+        self._gainrange_from = gainrange_from
+        self._gainrange_to = gainrange_to
+        self._exposuretimerange_from = exposuretimerange_from
+        self._exposuretimerange_to = exposuretimerange_to
+        self._aelock = aelock
+        self._capture_width = capture_width
+        self._capture_height = capture_height
+        self._display_width = display_width
+        self._display_height = display_height
+        self._framerate = framerate
+        self._nvidia_flip_method = nvidia_flip_method
+        
+        
+        self._system = PySpin.System.GetInstance()
+
+        # Get current library version
+        version = self._system.GetLibraryVersion()
+        print('Library version: %d.%d.%d.%d' % (version.major, version.minor, version.type, version.build))
+
+        # Retrieve list of cameras from the system
+        self._cam_list = self._system.GetCameras()
+
+        num_cameras = self._cam_list.GetSize()
+
+        print('Number of cameras detected: %d' % num_cameras)
+
+        # Finish if there are no cameras
+        if num_cameras == 0:
+
+            # Clear camera list before releasing system
+            self._cam_list.Clear()
+
+            # Release system instance
+            self._system.ReleaseInstance()
+
+            raise RuntimeError(f"[{self.__class__.__name__}] -> Not enough cameras!")
+
+        # Connect to the first camera detected in list
+        self._cam = self._cam_list[0]
+        
+        self.__init_and_setup_acquire_images()
+        
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+    def release(self):
+        self._cam.EndAcquisition()
+        
+        # Release reference to camera
+        # NOTE: Unlike the C++ examples, we cannot rely on pointer objects being automatically
+        # cleaned up when going out of scope.
+        # The usage of del is preferred to assigning the variable to None.
+        del self._cam
+
+        # Clear camera list before releasing system
+        self._cam_list.Clear()
+
+        # Release system instance
+        self._system.ReleaseInstance()
+        
+        
+    def __print_device_info(self):
+        """
+        This function prints the device information of the camera from the transport
+        layer; please see NodeMapInfo example for more in-depth comments on printing
+        device information from the nodemap.
+
+        :param nodemap: Transport layer device nodemap.
+        :type nodemap: INodeMap
+        :returns: True if successful, False otherwise.
+        :rtype: bool
+        """
+
+        print('*** DEVICE INFORMATION ***\n')
+
+        try:
+            result = True
+            node_device_information = PySpin.CCategoryPtr(self._nodemap_tldevice.GetNode('DeviceInformation'))
+
+            if PySpin.IsAvailable(node_device_information) and PySpin.IsReadable(node_device_information):
+                features = node_device_information.GetFeatures()
+                for feature in features:
+                    node_feature = PySpin.CValuePtr(feature)
+                    print('%s: %s' % (node_feature.GetName(),
+                                    node_feature.ToString() if PySpin.IsReadable(node_feature) else 'Node not readable'))
+
+            else:
+                print('Device control information not available.')
+                
+            #  Retrieve device serial number for filename
+            #
+            #  *** NOTES ***
+            #  The device serial number is retrieved in order to keep cameras from
+            #  overwriting one another. Grabbing image IDs could also accomplish
+            #  this.
+            device_serial_number = ''
+            node_device_serial_number = PySpin.CStringPtr(self._nodemap_tldevice.GetNode('DeviceSerialNumber'))
+            if PySpin.IsAvailable(node_device_serial_number) and PySpin.IsReadable(node_device_serial_number):
+                device_serial_number = node_device_serial_number.GetValue()
+                print('Device serial number retrieved as %s...' % device_serial_number)
+
+        except PySpin.SpinnakerException as ex:
+            print('Error: %s' % ex)
+            return False
+
+        return result
+        
+    def __configure_custom_image_settings(self):
+        result = True
+        
+        try:
+            
+            sNodemap = self._cam.GetTLStreamNodeMap()
+        
+            # Change bufferhandling mode to NewestOnly
+            node_bufferhandling_mode = PySpin.CEnumerationPtr(sNodemap.GetNode('StreamBufferHandlingMode'))
+            if not PySpin.IsAvailable(node_bufferhandling_mode) or not PySpin.IsWritable(node_bufferhandling_mode):
+                print('Unable to set stream buffer handling mode.. Aborting...')
+                result = False
+
+            # Retrieve entry node from enumeration node
+            node_newestonly = node_bufferhandling_mode.GetEntryByName('NewestOnly')
+            if not PySpin.IsAvailable(node_newestonly) or not PySpin.IsReadable(node_newestonly):
+                print('Unable to set stream buffer handling mode.. Aborting...')
+                result = False
+
+            # Retrieve integer value from entry node
+            node_newestonly_mode = node_newestonly.GetValue()
+
+            # Set integer value from entry node as new value of enumeration node
+            node_bufferhandling_mode.SetIntValue(node_newestonly_mode)
+            
+            # Set acquisition mode to continuous
+            if self._cam.AcquisitionMode.GetAccessMode() != PySpin.RW:
+                print('Unable to set acquisition mode to continuous. Aborting...')
+                return False
+
+            self._cam.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
+            print('Acquisition mode set to continuous...')
+            
+            # Set maximum width
+            #
+            # *** NOTES ***
+            # Other nodes, such as those corresponding to image width and height,
+            # might have an increment other than 1. In these cases, it can be
+            # important to check that the desired value is a multiple of the
+            # increment.
+            #
+            # This is often the case for width and height nodes. However, because
+            # these nodes are being set to their maximums, there is no real reason
+            # to check against the increment.
+            if self._cam.Width.GetAccessMode() == PySpin.RW and self._cam.Width.GetInc() != 0 and self._cam.Width.GetMax != 0:
+                width_to_set = 2592 #width_to_set = 1920
+                width_to_set = min(self._cam.Width.GetMax(), width_to_set)
+                self._cam.Width.SetValue(width_to_set)
+                print('Width set to %i...' % self._cam.Width.GetValue())
+
+            else:
+                print('Width not available...')
+                result = False
+
+            # Set maximum height
+            #
+            # *** NOTES ***
+            # A maximum is retrieved with the method GetMax(). A node's minimum and
+            # maximum should always be a multiple of its increment.
+            if self._cam.Height.GetAccessMode() == PySpin.RW and self._cam.Height.GetInc() != 0 and self._cam.Height.GetMax != 0:
+                height_to_set = 1944 #height_to_set = 1080
+                height_to_set = min(self._cam.Width.GetMax(), height_to_set)
+                self._cam.Height.SetValue(height_to_set)
+                print('Height set to %i...' % self._cam.Height.GetValue())
+
+            else:
+                print('Height not available...')
+                result = False
+            
+            # Apply minimum to offset X
+            #
+            # *** NOTES ***
+            # Numeric nodes have both a minimum and maximum. A minimum is retrieved
+            # with the method GetMin(). Sometimes it can be important to check
+            # minimums to ensure that your desired value is within range.
+            if self._cam.OffsetX.GetAccessMode() == PySpin.RW:
+                offset_X_to_set = 0 #offset_X_to_set = 336
+                offset_X_to_set = min(self._cam.OffsetX.GetMax(), offset_X_to_set)
+                self._cam.OffsetX.SetValue(offset_X_to_set)
+                print('Offset X set to %d...' % self._cam.OffsetX.GetValue())
+
+            else:
+                print('Offset X not available...')
+                result = False
+
+            # Apply minimum to offset Y
+            #
+            # *** NOTES ***
+            # It is often desirable to check the increment as well. The increment
+            # is a number of which a desired value must be a multiple. Certain
+            # nodes, such as those corresponding to offsets X and Y, have an
+            # increment of 1, which basically means that any value within range
+            # is appropriate. The increment is retrieved with the method GetInc().
+            if self._cam.OffsetY.GetAccessMode() == PySpin.RW:
+                offset_Y_to_set = 0 #offset_Y_to_set = 432
+                offset_Y_to_set = min(self._cam.OffsetY.GetMax(), offset_Y_to_set)
+                self._cam.OffsetY.SetValue(offset_Y_to_set)
+                print('Offset Y set to %d...' % self._cam.OffsetY.GetValue())
+
+            else:
+                print('Offset Y not available...')
+                result = False
+                
+            # Turn off automatic exposure mode
+            #
+            # *** NOTES ***
+            # Automatic exposure prevents the manual configuration of exposure
+            # times and needs to be turned off for this example. Enumerations
+            # representing entry nodes have been added to QuickSpin. This allows
+            # for the much easier setting of enumeration nodes to new values.
+            #
+            # The naming convention of QuickSpin enums is the name of the
+            # enumeration node followed by an underscore and the symbolic of
+            # the entry node. Selecting "Off" on the "ExposureAuto" node is
+            # thus named "ExposureAuto_Off".
+            #
+            # *** LATER ***
+            # Exposure time can be set automatically or manually as needed. This
+            # example turns automatic exposure off to set it manually and back
+            # on to return the camera to its default state.
+
+            if self._cam.ExposureAuto.GetAccessMode() != PySpin.RW:
+                print('Unable to disable automatic exposure. Aborting...')
+                return False
+
+            self._cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
+            print('Automatic exposure disabled...')
+            
+            
+            # Set exposure time manually; exposure time recorded in microseconds
+            #
+            # *** NOTES ***
+            # Notice that the node is checked for availability and writability
+            # prior to the setting of the node. In QuickSpin, availability and
+            # writability are ensured by checking the access mode.
+            #
+            # Further, it is ensured that the desired exposure time does not exceed
+            # the maximum. Exposure time is counted in microseconds - this can be
+            # found out either by retrieving the unit with the GetUnit() method or
+            # by checking SpinView.
+
+            if self._cam.ExposureTime.GetAccessMode() != PySpin.RW:
+                print('Unable to set exposure time. Aborting...')
+                return False
+
+
+            # Ensure desired exposure time does not exceed the maximum
+            #
+            exposure_time_to_set = 6600.0
+            exposure_time_to_set = min(self._cam.ExposureTime.GetMax(), exposure_time_to_set)
+            self._cam.ExposureTime.SetValue(exposure_time_to_set)
+            print('Shutter time set to %s us...\n' % exposure_time_to_set)
+            
+            #Turn off automatique gain
+            if self._cam.GainAuto.GetAccessMode() != PySpin.RW:
+                print('Unable to disable automatic gain. Aborting...')
+                return False
+
+            self._cam.GainAuto.SetValue(PySpin.GainAuto_Off)
+            print('Automatic gain disabled...')
+            
+            
+            # Set gain manually; gain is in dB : 0-40
+            #
+            if self._cam.Gain.GetAccessMode() != PySpin.RW:
+                print('Unable to set gain. Aborting...')
+                return False
+
+            # Ensure desired gain does not exceed the maximum
+            gain_to_set = 20.0
+            gain_to_set = min(self._cam.Gain.GetMax(), gain_to_set)
+            self._cam.Gain.SetValue(gain_to_set)
+            print('Gain set to %s DB...\n' % gain_to_set)
+            
+            
+            #Turn on manual GammaEnable
+            #
+            if self._cam.GammaEnable.GetAccessMode() != PySpin.RW:
+                print('Unable to enable manual gamma. Aborting...')
+                return False
+
+            self._cam.GammaEnable.SetValue(True)
+            print('Manual gamma enable...')
+            
+            # Set gamma manually; gamma is in : 0.25-1
+            if self._cam.Gamma.GetAccessMode() != PySpin.RW:
+                print('Unable to set gamma. Aborting...')
+                return False
+
+            # Ensure desired gamma does not exceed the maximum
+            gamma_to_set = 1
+            gamma_to_set = min(self._cam.Gamma.GetMax(), gamma_to_set)
+            self._cam.Gamma.SetValue(gamma_to_set)
+            print('Gamma set to %s ...\n' % gamma_to_set)
+
+
+        except PySpin.SpinnakerException as ex:
+            print(f"Error: {ex}")
+            return False
+        
+        return result
+    
+    def __init_and_setup_acquire_images(self):
+        # Retrieve TL device nodemap and print device information
+        self._nodemap_tldevice = self._cam.GetTLDeviceNodeMap()
+
+        self.__print_device_info()
+        
+        # Initialize camera
+        self._cam.Init()
+        
+        # load default configuration
+        self._cam.UserSetSelector.SetValue(PySpin.UserSetSelector_Default)
+        self._cam.UserSetLoad()
+        
+        self.__configure_custom_image_settings()
+        
+        #  Begin acquiring images
+        #
+        #  *** NOTES ***
+        #  What happens when the camera begins acquiring images depends on the
+        #  acquisition mode. Single frame captures only a single image, multi
+        #  frame catures a set number of images, and continuous captures a
+        #  continuous stream of images. Because the example calls for the
+        #  retrieval of 10 images, continuous mode has been set.
+        #
+        #  *** LATER ***
+        #  Image acquisition must be ended when no more images are needed.
+        self._cam.BeginAcquisition()
+
+    def get_image(self):
+        try:
+            image_result = self._cam.GetNextImage(1000)
+            
+            #  Ensure image completion
+            if image_result.IsIncomplete():
+                msg = f'Image incomplete with image status {image_result.GetImageStatus()} ...'
+                return RuntimeError(f"[{self.__class__.__name__}] -> "+msg)
+            else:                    
+                
+                processor = PySpin.ImageProcessor()
+                # Set default image processor color processing method
+                #
+                # *** NOTES ***
+                # By default, if no specific color processing algorithm is set, the image
+                # processor will default to NEAREST_NEIGHBOR method.
+                image_converted = processor.Convert(image_result, PySpin.PixelFormat_BGR8)
+                
+                # Getting the image data as a numpy array
+                final_image = image_converted.GetNDArray()
+                #final_image = np.array(image_converted.GetData(), dtype="uint8")
+                
+                #  Release image
+                #
+                #  *** NOTES ***
+                #  Images retrieved directly from the camera (i.e. non-converted
+                #  images) need to be released in order to keep from filling the
+                #  buffer.
+                image_result.Release()
+                return final_image
+            
+        except PySpin.SpinnakerException as ex:
+            raise RuntimeError(f"[{self.__class__.__name__}] -> Error: {ex}")
 
 
 class VideoCaptureNoBuffer:

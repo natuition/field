@@ -7,6 +7,7 @@ import os
 from multiprocessing import Process
 import sys
 from flask_cors import CORS
+import adapters
 
 def generateGstConfig():
     aelock = "aelock=true " if config.AE_LOCK else ""
@@ -77,26 +78,25 @@ def rescale_frame(frame, percent=75):
 def captureFrames():
     with app.app_context():
         if current_app.thread_alive:
-            video_capture = None
-            try:
-                video_capture = cv2.VideoCapture(generateGstConfig(), cv2.CAP_GSTREAMER)
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt()
-            except:
-                pass
-            if video_capture:
-                while video_capture.isOpened() and current_app.thread_alive:
-                    return_key, frame = video_capture.read()
-                    if not return_key:
-                        break
+            with adapters.CameraAdapterDR_U3_50Y2C_C3_S(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                                        config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                                        config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                                        config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                                        config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                                        config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                                        config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD) as camera:
+                while current_app.thread_alive:
+                    try:
+                        frame = camera.get_image()
 
-                    with current_app.thread_lock:
-                        current_app.video_frame = frame
-                    
-                    key = cv2.waitKey(30) & 0xff
-                    if key == 27:
+                        with current_app.thread_lock:
+                            current_app.video_frame = frame
+                        
+                        key = cv2.waitKey(30) & 0xff
+                        if key == 27:
+                            break
+                    except KeyboardInterrupt:
                         break
-                video_capture.release()
         
 def encodeFrame():
     with app.app_context():
@@ -132,7 +132,7 @@ def streamFrames():
 
 if __name__ == '__main__':
 
-    use_detector_arg = True
+    use_detector_arg = False
     if len(sys.argv)>1:
         use_detector_arg = not sys.argv[1]=="False"
 
