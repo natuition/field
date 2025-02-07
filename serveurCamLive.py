@@ -9,66 +9,6 @@ import sys
 from flask_cors import CORS
 import adapters
 
-def generateGstConfig():
-    aelock = "aelock=true " if config.AE_LOCK else ""
-
-    gst_config_start = (
-        "nvarguscamerasrc "
-        "ispdigitalgainrange=\"%.2f %.2f\" "
-        "gainrange=\"%.2f %.2f\" "
-        "exposuretimerange=\"%d %d\" "
-        "%s"
-        "! "
-        "video/x-raw(memory:NVMM), "
-        "width=(int)%d, height=(int)%d, "
-        "format=(string)NV12, framerate=(fraction)%d/1 ! "
-        
-        % (
-            config.ISP_DIGITAL_GAIN_RANGE_FROM,
-            config.ISP_DIGITAL_GAIN_RANGE_TO,
-            config.GAIN_RANGE_FROM,
-            config.GAIN_RANGE_TO,
-            config.EXPOSURE_TIME_RANGE_FROM,
-            config.EXPOSURE_TIME_RANGE_TO,
-            aelock,
-            config.CAMERA_W,
-            config.CAMERA_H,
-            config.CAMERA_FRAMERATE,
-            
-        )
-    )
-
-    if config.APPLY_IMAGE_CROPPING:
-        gst_config_end = (
-                "nvvidconv top=%d bottom=%d left=%d right=%d flip-method=%d ! "
-                "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
-                "videoconvert ! "
-                "video/x-raw, format=(string)BGR ! appsink"
-            % (
-                config.CROP_H_FROM,
-                config.CROP_H_TO,
-                config.CROP_W_FROM,
-                config.CROP_W_TO,
-                config.CAMERA_FLIP_METHOD,
-                config.CROP_W_TO-config.CROP_W_FROM,
-                config.CROP_H_TO-config.CROP_H_FROM
-            )
-        )
-    else:
-        gst_config_end = (
-            "nvvidconv flip-method=%d ! "
-            "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
-            "videoconvert ! "
-            "video/x-raw, format=(string)BGR ! appsink"
-            % (
-                config.CAMERA_FLIP_METHOD,
-                config.CAMERA_W,
-                config.CAMERA_H
-            )
-        )
-    
-    return gst_config_start+gst_config_end
-
 def rescale_frame(frame, percent=75):
     width = int(frame.shape[1] * percent/ 100)
     height = int(frame.shape[0] * percent/ 100)
@@ -132,7 +72,7 @@ def streamFrames():
 
 if __name__ == '__main__':
 
-    use_detector_arg = False
+    use_detector_arg = True
     if len(sys.argv)>1:
         use_detector_arg = not sys.argv[1]=="False"
 
