@@ -15,28 +15,18 @@ def rescale_frame(frame, percent=75):
     dim = (width, height)
     return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
 
-def captureFrames():
+def captureFrames(camera: adapters.CameraAdapterDR_U3_50Y2C_C3_S):
     with app.app_context():
         if current_app.thread_alive:
-            with adapters.CameraAdapterDR_U3_50Y2C_C3_S(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
-                                                        config.CROP_H_TO, config.CV_ROTATE_CODE,
-                                                        config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
-                                                        config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                                        config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
-                                                        config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
-                                                        config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD) as camera:
-                while current_app.thread_alive:
-                    try:
-                        frame = camera.get_image()
+            while current_app.thread_alive:
+                frame = camera.get_image()
 
-                        with current_app.thread_lock:
-                            current_app.video_frame = frame
-                        
-                        key = cv2.waitKey(30) & 0xff
-                        if key == 27:
-                            break
-                    except KeyboardInterrupt:
-                        break
+                with current_app.thread_lock:
+                    current_app.video_frame = frame
+                
+                key = cv2.waitKey(30) & 0xff
+                if key == 27:
+                    break
         
 def encodeFrame():
     with app.app_context():
@@ -72,7 +62,7 @@ def streamFrames():
 
 if __name__ == '__main__':
 
-    use_detector_arg = True
+    use_detector_arg = False
     if len(sys.argv)>1:
         use_detector_arg = not sys.argv[1]=="False"
 
@@ -86,19 +76,32 @@ if __name__ == '__main__':
         current_app.thread_lock = threading.Lock()
 
         if use_detector_arg:
-            #current_app.detector = detection.YoloDarknetDetector(config.PERIPHERY_WEIGHTS_FILE, config.PERIPHERY_CONFIG_FILE,
-            #                                                         config.PERIPHERY_DATA_FILE, config.PERIPHERY_CONFIDENCE_THRESHOLD,
-            #                                                         config.PERIPHERY_HIER_THRESHOLD, config.PERIPHERY_NMS_THRESHOLD)
             current_app.detector = detection.YoloTRTDetector(
                 config.PERIPHERY_MODEL_PATH,
                 config.PERIPHERY_CLASSES_FILE,
                 config.PERIPHERY_CONFIDENCE_THRESHOLD,
                 config.PERIPHERY_NMS_THRESHOLD,
                 config.PERIPHERY_INPUT_SIZE)
-
-    process_thread = threading.Thread(target=captureFrames)
-    process_thread.daemon = True
-    process_thread.start()
-    app.run("0.0.0.0",8080,False)
-
+            
+    try:
+        with adapters.CameraAdapterDR_U3_50Y2C_C3_S(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                                    config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                                    config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                                    config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                                    config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                                    config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                                    config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD) as camera:
+            process_thread = threading.Thread(target=captureFrames, args=[camera,])
+            process_thread.daemon = True
+            process_thread.start()
+            
+            app.run("0.0.0.0",8080,False)
+    except KeyboardInterrupt:
+        print("Received ctl+c closing...")
+    finally:
+        print("Closing camera...")
+        with app.app_context():
+            current_app.thread_alive = False
+        process_thread.join()
+        print("Camera closed...")
     
