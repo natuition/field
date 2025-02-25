@@ -25,6 +25,7 @@ class ServerCamLive:
         self.__video_frame = None
         self.__detector = None
         self.__thread_lock = threading.Lock()
+        self.__percent_rescale=50
         if self.__use_detector_arg:
             self.__detector = detection.YoloTRTDetector(
                     config.PERIPHERY_MODEL_PATH,
@@ -72,9 +73,9 @@ class ServerCamLive:
         self.__log.disabled = True
         Payload.max_decode_packets = 500
 
-    def rescale_frame(self, frame, percent=75):
-        width = int(frame.shape[1] * percent/ 100)
-        height = int(frame.shape[0] * percent/ 100)
+    def __rescale_frame(self, frame):
+        width = int(frame.shape[1] * self.__percent_rescale/ 100)
+        height = int(frame.shape[0] * self.__percent_rescale/ 100)
         dim = (width, height)
         return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
 
@@ -99,7 +100,7 @@ class ServerCamLive:
                 frameFinal = detection.draw_boxes(frame, plants_boxes)
             else:
                 frameFinal = frame
-            #frameFinal = rescale_frame(frameFinal, percent=50)
+            frameFinal = self.__rescale_frame(frameFinal)
             return_key, encoded_image = cv2.imencode(".jpg", frameFinal)
             if not return_key:
                 continue
