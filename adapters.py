@@ -1248,7 +1248,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         self._display_height = display_height
         self._nvidia_flip_method = nvidia_flip_method
         
-        
+        # Retrieve singleton reference to system object
         self._system = PySpin.System.GetInstance()
 
         # Get current library version
@@ -1572,9 +1572,11 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
     
     def __init_and_setup_acquire_images(self):
         
-        # Retrieve TL device nodemap and print device information
+        # Retrieve TL device nodemap
         self._nodemap_tldevice = self._cam.GetTLDeviceNodeMap()
         
+        # Print device information
+        self.__print_device_info()
         
         # Initialize camera
         self._cam.Init()
