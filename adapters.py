@@ -1243,7 +1243,6 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         self._ispdigitalgainrange_from = ispdigitalgainrange_from
         self._ispdigitalgainrange_to = ispdigitalgainrange_to
         self._framerate = framerate
-        
         self._cv_rotate_code = cv_rotate_code
         self._display_width = display_width
         self._display_height = display_height
@@ -1637,7 +1636,6 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
                 
                 # Getting the image data as a numpy array
                 final_image = image_converted.GetNDArray()
-                #final_image = np.array(image_converted.GetData(), dtype="uint8")
                 
                 #  Release image
                 #

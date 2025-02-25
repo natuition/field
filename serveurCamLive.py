@@ -1,10 +1,8 @@
 import cv2
 import threading
-from flask import Response, Flask, request
+from flask import Response, Flask
 from config import config
 import detection
-import os
-from multiprocessing import Process
 import sys
 from flask_cors import CORS
 import adapters
