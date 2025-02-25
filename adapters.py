@@ -1286,7 +1286,26 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         self.release()
 
     def release(self):
+        
         self._cam.EndAcquisition()
+        
+        #Turning off trigger mode.
+        # node_trigger_mode = PySpin.CEnumerationPtr(self._nodemap.GetNode('TriggerMode'))
+        # if not PySpin.IsAvailable(node_trigger_mode) or not PySpin.IsReadable(node_trigger_mode):
+        #     print('Unable to disable trigger mode (node retrieval). Aborting...')
+        #     return False
+
+        # node_trigger_mode_off = node_trigger_mode.GetEntryByName('Off')
+        # if not PySpin.IsAvailable(node_trigger_mode_off) or not PySpin.IsReadable(node_trigger_mode_off):
+        #     print('Unable to disable trigger mode (enum entry retrieval). Aborting...')
+        #     return False
+
+        # node_trigger_mode.SetIntValue(node_trigger_mode_off.GetValue())
+
+        # print('Trigger mode disabled...')
+        
+        # Deinitialize camera
+        self._cam.DeInit()
         
         # Release reference to camera
         # NOTE: Unlike the C++ examples, we cannot rely on pointer objects being automatically
@@ -1352,10 +1371,10 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         
         try:
             
-            sNodemap = self._cam.GetTLStreamNodeMap()
+            self._sNodemap = self._cam.GetTLStreamNodeMap()
         
             # Change bufferhandling mode to NewestOnly
-            node_bufferhandling_mode = PySpin.CEnumerationPtr(sNodemap.GetNode('StreamBufferHandlingMode'))
+            node_bufferhandling_mode = PySpin.CEnumerationPtr(self._sNodemap.GetNode('StreamBufferHandlingMode'))
             if not PySpin.IsAvailable(node_bufferhandling_mode) or not PySpin.IsWritable(node_bufferhandling_mode):
                 print('Unable to set stream buffer handling mode.. Aborting...')
                 result = False
@@ -1552,17 +1571,16 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         return result
     
     def __init_and_setup_acquire_images(self):
+        
         # Retrieve TL device nodemap and print device information
         self._nodemap_tldevice = self._cam.GetTLDeviceNodeMap()
-
-        self.__print_device_info()
+        
         
         # Initialize camera
         self._cam.Init()
         
-        # load default configuration
-        self._cam.UserSetSelector.SetValue(PySpin.UserSetSelector_Default)
-        self._cam.UserSetLoad()
+        # Retrieve GenICam nodemap
+        self._nodemap = self._cam.GetNodeMap()
         
         self.__configure_custom_image_settings()
         
@@ -1578,7 +1596,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         #  *** LATER ***
         #  Image acquisition must be ended when no more images are needed.
         self._cam.BeginAcquisition()
-
+        
     def get_image(self):
         try:
             image_result = self._cam.GetNextImage(1000)
