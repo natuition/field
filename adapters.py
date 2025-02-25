@@ -1227,10 +1227,12 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
                  framerate,
                  nvidia_flip_method):
 
-        self._crop_w_from = crop_w_from #used
-        self._crop_h_from = crop_h_from #used
-        self._capture_width = capture_width #used
-        self._capture_height = capture_height #used
+        self._crop_w_from = int(crop_w_from) #used
+        self._crop_h_from = int(crop_h_from) #used
+        self._crop_w_to = int(crop_w_to) #used
+        self._crop_h_to = int(crop_h_to) #used
+        self._capture_width = int(capture_width) #used
+        self._capture_height = int(capture_height) #used
         self._gainrange_from = gainrange_from #used
         self._gainrange_to = gainrange_to #used
         self._exposuretimerange_from = exposuretimerange_from #used
@@ -1241,8 +1243,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         self._ispdigitalgainrange_from = ispdigitalgainrange_from
         self._ispdigitalgainrange_to = ispdigitalgainrange_to
         self._framerate = framerate
-        self._crop_w_to = crop_w_to
-        self._crop_h_to = crop_h_to
+        
         self._cv_rotate_code = cv_rotate_code
         self._display_width = display_width
         self._display_height = display_height
@@ -1365,6 +1366,78 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
             return False
 
         return result
+    
+    def __apply_maximum_of_picture_size(self):
+        result=True
+        # Set maximum width
+        #
+        # *** NOTES ***
+        # Other nodes, such as those corresponding to image width and height,
+        # might have an increment other than 1. In these cases, it can be
+        # important to check that the desired value is a multiple of the
+        # increment.
+        #
+        # This is often the case for width and height nodes. However, because
+        # these nodes are being set to their maximums, there is no real reason
+        # to check against the increment.
+        if self._cam.Width.GetAccessMode() == PySpin.RW and self._cam.Width.GetInc() != 0 and self._cam.Width.GetMax != 0:
+            width_to_set = min(self._cam.Width.GetMax(), self._capture_width)
+            self._cam.Width.SetValue(width_to_set)
+            print('Width set to %i...' % self._cam.Width.GetValue())
+
+        else:
+            print('Width not available...')
+            result = False
+
+        # Set maximum height
+        #
+        # *** NOTES ***
+        # A maximum is retrieved with the method GetMax(). A node's minimum and
+        # maximum should always be a multiple of its increment.
+        if self._cam.Height.GetAccessMode() == PySpin.RW and self._cam.Height.GetInc() != 0 and self._cam.Height.GetMax != 0:
+            height_to_set = min(self._cam.Width.GetMax(), self._capture_height)
+            self._cam.Height.SetValue(height_to_set)
+            print('Height set to %i...' % self._cam.Height.GetValue())
+
+        else:
+            print('Height not available...')
+            result = False
+        return result
+            
+    def __apply_minimum_of_picture_offset(self):
+        result=True
+        # Apply minimum to offset X
+        #
+        # *** NOTES ***
+        # Numeric nodes have both a minimum and maximum. A minimum is retrieved
+        # with the method GetMin(). Sometimes it can be important to check
+        # minimums to ensure that your desired value is within range.
+        if self._cam.OffsetX.GetAccessMode() == PySpin.RW:
+            offset_X_to_set = min(self._cam.OffsetX.GetMax(), self._crop_w_from)
+            self._cam.OffsetX.SetValue(offset_X_to_set)
+            print('Offset X set to %d...' % self._cam.OffsetX.GetValue())
+
+        else:
+            print('Offset X not available...')
+            result = False
+
+        # Apply minimum to offset Y
+        #
+        # *** NOTES ***
+        # It is often desirable to check the increment as well. The increment
+        # is a number of which a desired value must be a multiple. Certain
+        # nodes, such as those corresponding to offsets X and Y, have an
+        # increment of 1, which basically means that any value within range
+        # is appropriate. The increment is retrieved with the method GetInc().
+        if self._cam.OffsetY.GetAccessMode() == PySpin.RW:
+            offset_Y_to_set = min(self._cam.OffsetY.GetMax(), self._crop_h_from)
+            self._cam.OffsetY.SetValue(offset_Y_to_set)
+            print('Offset Y set to %d...' % self._cam.OffsetY.GetValue())
+
+        else:
+            print('Offset Y not available...')
+            result = False 
+        return result
         
     def __configure_custom_image_settings(self):
         result = True
@@ -1399,71 +1472,16 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
             self._cam.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
             print('Acquisition mode set to continuous...')
             
-            # Set maximum width
-            #
-            # *** NOTES ***
-            # Other nodes, such as those corresponding to image width and height,
-            # might have an increment other than 1. In these cases, it can be
-            # important to check that the desired value is a multiple of the
-            # increment.
-            #
-            # This is often the case for width and height nodes. However, because
-            # these nodes are being set to their maximums, there is no real reason
-            # to check against the increment.
-            if self._cam.Width.GetAccessMode() == PySpin.RW and self._cam.Width.GetInc() != 0 and self._cam.Width.GetMax != 0:
-                width_to_set = min(self._cam.Width.GetMax(), self._capture_width)
-                self._cam.Width.SetValue(width_to_set)
-                print('Width set to %i...' % self._cam.Width.GetValue())
-
+            if config.APPLY_IMAGE_CROPPING:
+                self._capture_width = self._crop_w_to - self._crop_w_from 
+                self._capture_height = self._crop_h_to - self._crop_h_from
+                result=self.__apply_maximum_of_picture_size()
+                result=self.__apply_minimum_of_picture_offset()
             else:
-                print('Width not available...')
-                result = False
-
-            # Set maximum height
-            #
-            # *** NOTES ***
-            # A maximum is retrieved with the method GetMax(). A node's minimum and
-            # maximum should always be a multiple of its increment.
-            if self._cam.Height.GetAccessMode() == PySpin.RW and self._cam.Height.GetInc() != 0 and self._cam.Height.GetMax != 0:
-                height_to_set = min(self._cam.Width.GetMax(), self._capture_height)
-                self._cam.Height.SetValue(height_to_set)
-                print('Height set to %i...' % self._cam.Height.GetValue())
-
-            else:
-                print('Height not available...')
-                result = False
-            
-            # Apply minimum to offset X
-            #
-            # *** NOTES ***
-            # Numeric nodes have both a minimum and maximum. A minimum is retrieved
-            # with the method GetMin(). Sometimes it can be important to check
-            # minimums to ensure that your desired value is within range.
-            if self._cam.OffsetX.GetAccessMode() == PySpin.RW:
-                offset_X_to_set = min(self._cam.OffsetX.GetMax(), self._crop_w_from)
-                self._cam.OffsetX.SetValue(offset_X_to_set)
-                print('Offset X set to %d...' % self._cam.OffsetX.GetValue())
-
-            else:
-                print('Offset X not available...')
-                result = False
-
-            # Apply minimum to offset Y
-            #
-            # *** NOTES ***
-            # It is often desirable to check the increment as well. The increment
-            # is a number of which a desired value must be a multiple. Certain
-            # nodes, such as those corresponding to offsets X and Y, have an
-            # increment of 1, which basically means that any value within range
-            # is appropriate. The increment is retrieved with the method GetInc().
-            if self._cam.OffsetY.GetAccessMode() == PySpin.RW:
-                offset_Y_to_set = min(self._cam.OffsetY.GetMax(), self._crop_h_from)
-                self._cam.OffsetY.SetValue(offset_Y_to_set)
-                print('Offset Y set to %d...' % self._cam.OffsetY.GetValue())
-
-            else:
-                print('Offset Y not available...')
-                result = False
+                self._crop_w_from = 0
+                self._crop_h_from = 0
+                result=self.__apply_minimum_of_picture_offset()
+                result=self.__apply_maximum_of_picture_size()
                 
             if self._aelock:
                 if self._exposuretimerange_from == self._exposuretimerange_to:
