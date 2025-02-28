@@ -228,7 +228,7 @@ class CameraCalibration:
     def offset_calibration_step_move_with_distance_from_coins(self, smoothie, cork_to_camera_distance_x, cork_to_camera_distance_y):
         if self.target_x_mm and self.target_y_mm:
             if ExtractionManagerV3.is_point_in_circle(self.target_x, self.target_y, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, config.UNDISTORTED_ZONE_RADIUS):
-                x = self.target_x_mm - cork_to_camera_distance_x
+                x = self.target_x_mm + cork_to_camera_distance_x
                 y = self.target_y_mm + cork_to_camera_distance_y
                 res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                                           Y_F=config.Y_F_MAX,
