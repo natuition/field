@@ -2120,7 +2120,7 @@ def main():
                                    config.VESC_STOPPER_CHECK_FREQ, logger_full) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
-            adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+            adapters.CameraAdapterManager(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                              config.CROP_H_TO, config.CV_ROTATE_CODE,
                                              config.ISP_DIGITAL_GAIN_RANGE_FROM,
                                              config.ISP_DIGITAL_GAIN_RANGE_TO,
@@ -2128,7 +2128,7 @@ def main():
                                              config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
-                                             config.CAMERA_FLIP_METHOD) as camera, \
+                                             config.CAMERA_FLIP_METHOD) as camera,
             ExtractionManagerV3(smoothie, camera, logger_full, data_collector, image_saver,
                                 log_cur_dir, periphery_detector, precise_detector,
                                 config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \

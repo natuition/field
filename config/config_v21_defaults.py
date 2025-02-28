@@ -591,6 +591,8 @@ PRECISE_DATA_FILE = "yolo/Y0016.data"
 # CAMERA SETTINGS
 # ======================================================================================================================
 
+CAMERA_ADAPTATER_BACKEND = "IMX" #DR_U3_50Y2C_C3_S for dragonfly s
+
 # IMX camera
 CAMERA_W = 1920
 CAMERA_H = 1080

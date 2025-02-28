@@ -1073,6 +1073,62 @@ class CameraAdapterIMX219_170_Auto:
         else:
             raise RuntimeError("Unable to open camera")
 
+class CameraAdapterManager:
+    """Class allowing to initialize the correct adapter based on the camera 
+    specified in the config file via the parameter CAMERA_ADAPTATER_BACKEND."""
+    
+    def __init__(self,
+                 crop_w_from,
+                 crop_w_to,
+                 crop_h_from,
+                 crop_h_to,
+                 cv_rotate_code,
+                 ispdigitalgainrange_from,
+                 ispdigitalgainrange_to,
+                 gainrange_from,
+                 gainrange_to,
+                 exposuretimerange_from,
+                 exposuretimerange_to,
+                 aelock,
+                 capture_width,
+                 capture_height,
+                 display_width,
+                 display_height,
+                 framerate,
+                 nvidia_flip_method):
+        self.__configured_camera_adapter = None
+        if config.CAMERA_ADAPTATER_BACKEND == "DR_U3_50Y2C_C3_S":
+            self.__configured_camera_adapter = CameraAdapterDR_U3_50Y2C_C3_S(crop_w_from, crop_w_to, 
+                                                                             crop_h_from, crop_h_to, 
+                                                                             cv_rotate_code,
+                                                                             ispdigitalgainrange_from, ispdigitalgainrange_to,
+                                                                             gainrange_from, gainrange_to,
+                                                                             exposuretimerange_from, exposuretimerange_to,
+                                                                             aelock, capture_width, capture_height, 
+                                                                             display_width, display_height, 
+                                                                             framerate, nvidia_flip_method)
+        else:
+            self.__configured_camera_adapter = CameraAdapterIMX219_170(      crop_w_from, crop_w_to, 
+                                                                             crop_h_from, crop_h_to, 
+                                                                             cv_rotate_code,
+                                                                             ispdigitalgainrange_from, ispdigitalgainrange_to,
+                                                                             gainrange_from, gainrange_to,
+                                                                             exposuretimerange_from, exposuretimerange_to,
+                                                                             aelock, capture_width, capture_height, 
+                                                                             display_width, display_height, 
+                                                                             framerate, nvidia_flip_method)
+
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+        
+    def release(self):
+        self.__configured_camera_adapter.release()
+
+    def get_image(self):
+        self.__configured_camera_adapter.get_image()
 
 class CameraAdapterIMX219_170:
 
@@ -1276,8 +1332,7 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
         # Connect to the first camera detected in list
         self._cam = self._cam_list[0]
         
-        self.__init_and_setup_acquire_images()
-        
+        self.__init_and_setup_acquire_images()   
 
     def __enter__(self):
         return self
@@ -1318,7 +1373,6 @@ class CameraAdapterDR_U3_50Y2C_C3_S:
 
         # Release system instance
         self._system.ReleaseInstance()
-        
         
     def __print_device_info(self):
         """

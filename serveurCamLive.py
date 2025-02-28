@@ -31,13 +31,13 @@ class ServerCamLive:
                     config.PERIPHERY_CONFIDENCE_THRESHOLD,
                     config.PERIPHERY_NMS_THRESHOLD,
                     config.PERIPHERY_INPUT_SIZE)
-        self.__camera = adapters.CameraAdapterDR_U3_50Y2C_C3_S(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
-                                                config.CROP_H_TO, config.CV_ROTATE_CODE,
-                                                config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
-                                                config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                                config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
-                                                config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
-                                                config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD)
+        self.__camera = adapters.CameraAdapterManager(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                                      config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                                      config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                                      config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                                      config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                                      config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                                      config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD)
         self.__process_thread = threading.Thread(target=self.captureFrames)
         self.__process_thread.daemon = True
         self.__process_thread.start()
