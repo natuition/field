@@ -1,4 +1,5 @@
 import sys
+import threading
 sys.path.append('../')
 
 from flask_socketio import SocketIO
@@ -69,6 +70,16 @@ class CreateFieldState(State.State):
         self.field = None
         self.manoeuvre = False
 
+        self.__last_joystick_info = time.time()
+        self.__check_joystick_info_alive = True
+        self.__joystick_info_thread = threading.Thread(target=self.__check_joystick_info_tf, daemon=True)
+        self.__joystick_info_thread.start()
+
+        self.__send_last_pos_thread_alive = True
+        self.__send_last_pos_thread = threading.Thread(target=utilsFunction.send_last_pos_thread_tf, args=(lambda : self.__send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
+        self.__send_last_pos_thread.start()
+
+
         try:
             self.notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION)
         except KeyboardInterrupt:
@@ -78,9 +89,16 @@ class CreateFieldState(State.State):
     
         self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
 
-        #self.__send_last_pos_thread_alive = True
-        #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
 
+    def __check_joystick_info_tf(self):
+        """
+            This thread detect if the joystick is not use since a timing, 
+            if is not it stop de propulsion vesc.
+        """
+        while self.__check_joystick_info_alive:
+            if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
+                self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
+            time.sleep(0.5)
 
     def on_event(self, event):
         if event == Events.Events.STOP:
@@ -90,20 +108,25 @@ class CreateFieldState(State.State):
 
             #self.__send_last_pos_thread_alive = False
             #self._send_last_pos_thread.join()
+            self.__check_joystick_info_alive = False
+            self.__joystick_info_thread.join()
 
-            try:
-                self.fieldCreator.setSecondPoint()
-            except TimeoutError:
-                if self.notificationQueue is not None:
-                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
+            self.__send_last_pos_thread_alive = False
+            self.__send_last_pos_thread.join()
 
-            self.field = self.fieldCreator.calculateField()
-            if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
-                self.manoeuvre = True
-                if config.MAKE_MANEUVER_AFTER_FIELD_CREATE:
-                    self.fieldCreator.manoeuvre()
-                self.manoeuvre = False
+            # try:
+            #     self.fieldCreator.setSecondPoint()
+            # except TimeoutError:
+            #     if self.notificationQueue is not None:
+            #         self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
+            #     return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
+
+            # self.field = self.fieldCreator.calculateField()
+            # if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
+            #     self.manoeuvre = True
+            #     if config.MAKE_MANEUVER_AFTER_FIELD_CREATE:
+            #         self.fieldCreator.manoeuvre()
+            #     self.manoeuvre = False
 
             #self.__send_last_pos_thread_alive = True
             #self._send_last_pos_thread = threading.Thread(target=send_last_pos_thread_tf, args=(lambda : self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
@@ -136,73 +159,90 @@ class CreateFieldState(State.State):
             return ErrorState.ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
-        if data["type"] == "joystick":
-            if self.statusOfUIObject.fieldButton != ButtonState.VALIDATE and not self.manoeuvre:
-                x = int(data["x"]) / 2
+        if data["type"] == 'joystick':
+            self.__last_joystick_info = time.time()
+            # Move direction wheels
+            x = int(data["x"])
+            if self.lastValueX != x:
                 if x < 0:
                     x *= -(config.A_MIN / 100)
                 if x > 0:
                     x *= config.A_MAX / 100
-                # print(f"[{self.__class__.__name__}] -> Move '{x}'.")
                 self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x)
-        elif data["type"] == "create_field":
-            msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-            self.statusOfUIObject.slider = float(data["value"])
-            self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
-
-            try:
-                self.fieldCreator.setFirstPoint()
-
-                #self._send_last_pos_thread.start()
-
-                self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
-                self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
-            except TimeoutError:
-                if self.notificationQueue is not None:
-                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-                #self.__send_last_pos_thread_alive = False
-                #self._send_last_pos_thread.join()
-                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
-
-        elif data["type"] == "modifyZone":
-            msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-            self.statusOfUIObject.slider = float(data["value"])
-            self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
-            self.field = self.fieldCreator.calculateField()
-        elif data["type"] == "validerZone":
-            msg = f"[{self.__class__.__name__}] -> Slider value final : {data['value']}."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-            self.statusOfUIObject.slider = float(data["value"])
-            self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
-            self.field = self.fieldCreator.calculateField()
-            self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
-        elif data["type"] == "validate_field_name":
-            self.statusOfUIObject.fieldButton = ButtonState.CHARGING
-            #patch bug field
-            #utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
-            field_path, field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
-
-            if utilsFunction.is_valid_field_file(field_path, self.logger):
-                fields_list = utilsFunction.load_field_list("../fields")
-
-                if len(fields_list) > 0:
-                    coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
+                self.lastValueX = x
+            # Move propulsion wheels
+            y = int(data["y"])
+            if self.lastValueY != y:
+                if y > 15 or y < -15:
+                    y = (y / 100) * (config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM * 0.9) + (
+                        config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM / 10)
                 else:
-                    coords, other_fields, current_field_name = list(), list(), ""
+                    y = 0
+                self.vesc_engine.set_target_rpm(y, self.vesc_engine.PROPULSION_KEY)
+                self.lastValueY = y
 
-                self.socketio.emit('newField', json.dumps(
-                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
-                    "fields_list": fields_list}), namespace='/map')
-            else:
-                if os.path.exists(field_path):
-                    os.remove(field_path)
-                message = self.__ui_languages["working_zone_too_small"][self.__current_ui_language]
-                self.socketio.emit('notification', {"message_name": "not_a_good_zone", "message": message}, namespace='/broadcast', broadcast=True)
+            if(self.statusOfUIObject.wheelButton) :
+                self.statusOfUIObject.wheelButton = ButtonState.DISABLE
+                self.socketio.emit("wheel", "unrelease", namespace='/button')
+
+        # elif data["type"] == "create_field":
+        #     msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
+        #     self.logger.write_and_flush(msg + "\n")
+        #     print(msg)
+        #     self.statusOfUIObject.slider = float(data["value"])
+        #     self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
+
+        #     try:
+        #         self.fieldCreator.setFirstPoint()
+
+        #         #self._send_last_pos_thread.start()
+
+        #         self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
+        #         self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
+        #     except TimeoutError:
+        #         if self.notificationQueue is not None:
+        #             self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
+        #         #self.__send_last_pos_thread_alive = False
+        #         #self._send_last_pos_thread.join()
+        #         return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
+
+        # elif data["type"] == "modifyZone":
+        #     msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."
+        #     self.logger.write_and_flush(msg + "\n")
+        #     print(msg)
+        #     self.statusOfUIObject.slider = float(data["value"])
+        #     self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
+        #     self.field = self.fieldCreator.calculateField()
+        # elif data["type"] == "validerZone":
+        #     msg = f"[{self.__class__.__name__}] -> Slider value final : {data['value']}."
+        #     self.logger.write_and_flush(msg + "\n")
+        #     print(msg)
+        #     self.statusOfUIObject.slider = float(data["value"])
+        #     self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
+        #     self.field = self.fieldCreator.calculateField()
+        #     self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
+        # elif data["type"] == "validate_field_name":
+        #     self.statusOfUIObject.fieldButton = ButtonState.CHARGING
+        #     #patch bug field
+        #     #utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
+        #     field_path, field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
+
+        #     if utilsFunction.is_valid_field_file(field_path, self.logger):
+        #         fields_list = utilsFunction.load_field_list("../fields")
+
+        #         if len(fields_list) > 0:
+        #             coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
+        #         else:
+        #             coords, other_fields, current_field_name = list(), list(), ""
+
+        #         self.socketio.emit('newField', json.dumps(
+        #             {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
+        #             "fields_list": fields_list}), namespace='/map')
+        #     else:
+        #         if os.path.exists(field_path):
+        #             os.remove(field_path)
+        #         message = self.__ui_languages["working_zone_too_small"][self.__current_ui_language]
+        #         self.socketio.emit('notification', {"message_name": "not_a_good_zone", "message": message}, namespace='/broadcast', broadcast=True)
 
         return self
 
@@ -233,42 +273,42 @@ class FieldCreator:
         self.smoothie = smoothie
         self.socketio = socketio
 
-    def setFirstPoint(self):
-        msg = f"[{self.__class__.__name__}] -> Getting point A..."
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
-        with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
-            self.A = utility.average_point(gps, None, self.nav, self.logger)
+    # def setFirstPoint(self):
+    #     msg = f"[{self.__class__.__name__}] -> Getting point A..."
+    #     self.logger.write_and_flush(msg + "\n")
+    #     print(msg)
+    #     with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+    #         self.A = utility.average_point(gps, None, self.nav, self.logger)
 
-        self.socketio.emit('newPos', json.dumps([self.A[1], self.A[0]]), namespace='/map')
+    #     self.socketio.emit('newPos', json.dumps([self.A[1], self.A[0]]), namespace='/map')
 
-        if self.vesc_emergency is None:
-            self.vesc_emergency: adapters.VescAdapterV4 = utilsFunction.initVesc(self.logger)
-        msg = f"[{self.__class__.__name__}] -> Moving forward..."
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
-        self.vesc_emergency.set_target_rpm(
-            config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-            self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
+    #     if self.vesc_emergency is None:
+    #         self.vesc_emergency: adapters.VescAdapterV4 = utilsFunction.initVesc(self.logger)
+    #     msg = f"[{self.__class__.__name__}] -> Moving forward..."
+    #     self.logger.write_and_flush(msg + "\n")
+    #     print(msg)
+    #     self.vesc_emergency.set_target_rpm(
+    #         config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+    #         self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
 
-    def setSecondPoint(self):
-        msg = f"[{self.__class__.__name__}] -> Stop moving forward..."
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+    # def setSecondPoint(self):
+    #     msg = f"[{self.__class__.__name__}] -> Stop moving forward..."
+    #     self.logger.write_and_flush(msg + "\n")
+    #     print(msg)
 
-        self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.wait_for_stop(self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
 
-        msg = f"[{self.__class__.__name__}] -> Getting point B..."
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
-        with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
-            self.B = utility.average_point(gps, None, self.nav, self.logger)
+    #     msg = f"[{self.__class__.__name__}] -> Getting point B..."
+    #     self.logger.write_and_flush(msg + "\n")
+    #     print(msg)
+    #     with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+    #         self.B = utility.average_point(gps, None, self.nav, self.logger)
 
-        self.socketio.emit('newPos', json.dumps([self.B[1], self.B[0]]), namespace='/map')
+    #     self.socketio.emit('newPos', json.dumps([self.B[1], self.B[0]]), namespace='/map')
 
     def setFieldSize(self, size: int):
         self.length_field = size
@@ -323,80 +363,80 @@ class FieldCreator:
         utilsFunction.save_gps_coordinates(self.field, path)
         return (path, unquote(fieldName[:-4], encoding='utf-8'))
 
-    def manoeuvre(self):
+    # def manoeuvre(self):
 
-        # move backward and stop
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Field creation: starting vesc movement of " \
-                  f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}."
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
+    #     # move backward and stop
+    #     if config.UI_VERBOSE_LOGGING:
+    #         msg = f"[{self.__class__.__name__}] -> Field creation: starting vesc movement of " \
+    #               f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}."
+    #         print(msg)
+    #         self.logger.write_and_flush(msg + "\n")
         
-        self.vesc_emergency.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_target_rpm(
-            -config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-            self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_current_rpm(-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
-        time.sleep(config.MANEUVER_TIME_BACKWARD)
-        self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_target_rpm(
+    #         -config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+    #         self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_current_rpm(-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
+    #     time.sleep(config.MANEUVER_TIME_BACKWARD)
+    #     self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Field creation: stopped vesc movement of " \
-                  f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}."
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
+    #     if config.UI_VERBOSE_LOGGING:
+    #         msg = f"[{self.__class__.__name__}] -> Field creation: stopped vesc movement of " \
+    #               f"RPM={-config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}."
+    #         print(msg)
+    #         self.logger.write_and_flush(msg + "\n")
 
-        # vesc can't stop robot instantly, so we wait for 1 sec before turn wheels right
-        time.sleep(1)
+    #     # vesc can't stop robot instantly, so we wait for 1 sec before turn wheels right
+    #     time.sleep(1)
 
-        # turn wheels to right
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"Field creation: starting turning smoothie wheels to A={config.A_MIN}."
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
-        self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
-        self.smoothie.wait_for_all_actions_done()
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Field creation: stopped turning smoothie wheels to A={config.A_MIN}."
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
+    #     # turn wheels to right
+    #     if config.UI_VERBOSE_LOGGING:
+    #         msg = f"Field creation: starting turning smoothie wheels to A={config.A_MIN}."
+    #         print(msg)
+    #         self.logger.write_and_flush(msg + "\n")
+    #     self.smoothie.custom_move_to(A_F=config.A_F_UI, A=config.A_MIN)
+    #     self.smoothie.wait_for_all_actions_done()
+    #     if config.UI_VERBOSE_LOGGING:
+    #         msg = f"[{self.__class__.__name__}] -> Field creation: stopped turning smoothie wheels to A={config.A_MIN}."
+    #         print(msg)
+    #         self.logger.write_and_flush(msg + "\n")
 
-        # move forward (wheels are turned to right) and stop
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Field creation: starting vesc movement of " \
-                  f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}."
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
+    #     # move forward (wheels are turned to right) and stop
+    #     if config.UI_VERBOSE_LOGGING:
+    #         msg = f"[{self.__class__.__name__}] -> Field creation: starting vesc movement of " \
+    #               f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}."
+    #         print(msg)
+    #         self.logger.write_and_flush(msg + "\n")
 
-        self.vesc_emergency.set_target_rpm(
-            config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
-            self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_current_rpm(config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
-        time.sleep(config.MANEUVER_TIME_FORWARD)
-        self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
-        self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_target_rpm(
+    #         config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,
+    #         self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_current_rpm(config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM,self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.start_moving(self.vesc_emergency.PROPULSION_KEY)
+    #     time.sleep(config.MANEUVER_TIME_FORWARD)
+    #     self.vesc_emergency.stop_moving(self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_target_rpm(0,self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_current_rpm(0,self.vesc_emergency.PROPULSION_KEY)
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Field creation: stopped vesc movement of " \
-                  f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
+    #     if config.UI_VERBOSE_LOGGING:
+    #         msg = f"[{self.__class__.__name__}] -> Field creation: stopped vesc movement of " \
+    #               f"RPM={config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM}"
+    #         print(msg)
+    #         self.logger.write_and_flush(msg + "\n")
 
-        # align wheels to center
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Field creation: starting turning smoothie wheels to A=0."
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
-        self.smoothie.custom_move_to(A_F=config.A_F_UI, A=0)
-        self.smoothie.wait_for_all_actions_done()
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Field creation: stopped turning smoothie wheels to A=0."
-            print(msg)
-            self.logger.write_and_flush(msg + "\n")
+    #     # align wheels to center
+    #     if config.UI_VERBOSE_LOGGING:
+    #         msg = f"[{self.__class__.__name__}] -> Field creation: starting turning smoothie wheels to A=0."
+    #         print(msg)
+    #         self.logger.write_and_flush(msg + "\n")
+    #     self.smoothie.custom_move_to(A_F=config.A_F_UI, A=0)
+    #     self.smoothie.wait_for_all_actions_done()
+    #     if config.UI_VERBOSE_LOGGING:
+    #         msg = f"[{self.__class__.__name__}] -> Field creation: stopped turning smoothie wheels to A=0."
+    #         print(msg)
+    #         self.logger.write_and_flush(msg + "\n")
 
-        self.vesc_emergency.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_emergency.PROPULSION_KEY)
+    #     self.vesc_emergency.set_time_to_move(config.VESC_MOVING_TIME, self.vesc_emergency.PROPULSION_KEY)

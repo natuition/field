@@ -41,6 +41,17 @@ var gpsQuality = "no_gps"
 window.addEventListener("globalGpsQualityUpdated", (event) => {
     gpsQuality = event.detail.quality;
     //console.log("GPS Quality updated:", gpsQuality);
+
+
+    // Disable joystick if we are in pacing and we lost rtk
+    const joystick = document.getElementById('joystick')
+    if(gpsQuality != "gps_with_rtk") {
+        joystick.addClass("disable")
+
+    }
+    else {
+        joystick.removeClass("disable")
+    }
 });
 
 if (choose_field_selector != null) {

@@ -85,6 +85,8 @@ def send_last_pos_thread_tf(send_last_pos_thread_alive: bool, socketio: SocketIO
                 NavigationV3.restart_ntrip_service(logger)
             socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
             socketio.emit('updateGPSQuality', lastPos[2], namespace='/gps', broadcast=True)
+            if config.PACING_MODE_ACTIVATE:
+                
 
 
 def initVesc(logger: utility.Logger) -> adapters.VescAdapterV4 :

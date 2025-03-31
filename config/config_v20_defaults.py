@@ -725,3 +725,12 @@ GPS_POINT_WAIT_TIME_MAX = 0.25
 ALLOW_DEMO_PAUSES = False
 DEMO_PAUSES_HOST = "127.0.0.1"
 DEMO_PAUSES_PORT = 4546
+
+
+
+
+
+
+# Developpment of the pacing mode
+
+PACING_MODE_ACTIVATE = True

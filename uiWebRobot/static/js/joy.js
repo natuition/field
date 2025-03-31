@@ -144,9 +144,6 @@ var JoyStick = (function(container, parameters)
 		grd.addColorStop(1, internalStrokeColor);
 		context.fillStyle = grd;
 		context.fill();
-        /*var image = new Image();
-        image.src = document.getElementById("source").src;
-        context.drawImage(image,0,0,200,200);*/
 		context.lineWidth = internalLineWidth;
 		context.strokeStyle = internalStrokeColor;
 		context.stroke();

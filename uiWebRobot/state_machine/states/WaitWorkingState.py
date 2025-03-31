@@ -164,8 +164,7 @@ class WaitWorkingState(State.State):
 
         self.__last_joystick_info = time.time()
         self.__check_joystick_info_alive = True
-        self.__joystick_info_thread = threading.Thread(target=self.__check_joystick_info_tf,
-                                                       daemon=True)
+        self.__joystick_info_thread = threading.Thread(target=self.__check_joystick_info_tf, daemon=True)
         self.__joystick_info_thread.start()
 
         self.can_go_setting = True
@@ -177,11 +176,15 @@ class WaitWorkingState(State.State):
             self.logger.write_and_flush(msg + "\n")
             print(msg)
 
+    
     def __check_joystick_info_tf(self):
+        """
+            This thread detect if the joystick is not use since a timing, 
+            if is not it stop de propulsion vesc.
+        """
         while self.__check_joystick_info_alive:
             if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
-                self.vesc_engine.set_target_rpm(
-                    0, self.vesc_engine.PROPULSION_KEY)
+                self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
             time.sleep(0.5)
 
     def __check_ui_refresh_thread_tf(self) :
@@ -276,25 +279,27 @@ class WaitWorkingState(State.State):
     def on_socket_data(self, data):
         if data["type"] == 'joystick':
             self.__last_joystick_info = time.time()
+            # Move direction wheels
             x = int(data["x"])
-            if x < 0:
-                x *= -(config.A_MIN / 100)
-            if x > 0:
-                x *= config.A_MAX / 100
-            y = int(data["y"])
             if self.lastValueX != x:
-                self.smoothie.custom_move_to(
-                    A_F=config.A_F_UI, A=x + self.learn_go_straight_angle)
+                if x < 0:
+                    x *= -(config.A_MIN / 100)
+                if x > 0:
+                    x *= config.A_MAX / 100
+                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x + self.learn_go_straight_angle)
                 self.lastValueX = x
+            # Move propulsion wheels
+            y = int(data["y"])
             if self.lastValueY != y:
                 if y > 15 or y < -15:
                     y = (y / 100) * (config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM * 0.9) + (
                         config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM / 10)
                 else:
                     y = 0
-                self.vesc_engine.set_target_rpm(
-                    y, self.vesc_engine.PROPULSION_KEY)
+                self.vesc_engine.set_target_rpm(y, self.vesc_engine.PROPULSION_KEY)
                 self.lastValueY = y
+
+
             if(self.statusOfUIObject.wheelButton) :
                 self.statusOfUIObject.wheelButton = ButtonState.DISABLE
                 self.socketio.emit("wheel", "unrelease", namespace='/button')
