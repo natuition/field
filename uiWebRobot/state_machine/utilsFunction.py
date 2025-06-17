@@ -45,7 +45,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
             except:
                 break
 
-        if vesc_data is None:
+        if vesc_data is not None:
             if voltage_thread_alive():
                 vesc_voltage = vesc_data.get("input_voltage", None)
                 if vesc_voltage < 12.0:
