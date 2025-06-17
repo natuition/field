@@ -284,7 +284,6 @@ class WaitWorkingState(State.State):
                 else:
                     y = 0
 
-                print(f"vesc = {self.vesc_engine}")
                 if self.vesc_engine is not None:
                     self.vesc_engine.set_target_rpm(y, self.vesc_engine.PROPULSION_KEY)
                 self.lastValueY = y
