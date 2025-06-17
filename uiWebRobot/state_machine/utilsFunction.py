@@ -61,7 +61,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                         isBumped = False
                         sendBumperInfo(socketio, "Reseting")
                         vesc_engine.close()
-                        del vesc_engine
+                        vesc_engine = None
                         utility.life_line_reset()
                         time.sleep(5)
                         msg = f"[Voltage thread] -> Vesc reset, trying to reconnect."
