@@ -42,7 +42,8 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                 vesc_data = vesc_engine.get_sensors_data(["input_voltage"], vesc_engine.PROPULSION_KEY)
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-            except:
+            except Exception as e:
+                print(f"[Voltage thread] -> Exception while getting VESC data: {e}")
                 break
 
         if vesc_data is not None:
