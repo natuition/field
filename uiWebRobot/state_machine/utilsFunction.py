@@ -48,26 +48,27 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
         if vesc_data is not None:
             if voltage_thread_alive():
                 vesc_voltage = vesc_data.get("input_voltage", None)
-                if vesc_voltage < 12.0:
-                    msg = f"[Voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
-                    logger.write_and_flush(msg + "\n")
-                    isBumped = True
-                    sendBumperInfo(socketio, "Bumper")
+                if vesc_voltage is not None:
+                    if vesc_voltage < 12.0:
+                        msg = f"[Voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
+                        logger.write_and_flush(msg + "\n")
+                        isBumped = True
+                        sendBumperInfo(socketio, "Bumper")
 
-                elif isBumped and vesc_voltage >= 12.0:
-                    msg = f"[Voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
-                    logger.write_and_flush(msg + "\n")
-                    isBumped = False
-                    sendBumperInfo(socketio, "Reseting")
-                    utility.life_line_reset()
-                    time.sleep(5)
-                    msg = f"[Voltage thread] -> Vesc reset, trying to reconnect."
-                    logger.write_and_flush(msg + "\n")
-                    vesc_engine = recreate_vesc_callback()
-                
-                else:
-                    sendInputVoltage(socketio, vesc_data["input_voltage"])
-                    input_voltage["input_voltage"] = vesc_data["input_voltage"]
+                    elif isBumped and vesc_voltage >= 12.0:
+                        msg = f"[Voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
+                        logger.write_and_flush(msg + "\n")
+                        isBumped = False
+                        sendBumperInfo(socketio, "Reseting")
+                        utility.life_line_reset()
+                        time.sleep(5)
+                        msg = f"[Voltage thread] -> Vesc reset, trying to reconnect."
+                        logger.write_and_flush(msg + "\n")
+                        vesc_engine = recreate_vesc_callback()
+                    
+                    else:
+                        sendInputVoltage(socketio, vesc_data["input_voltage"])
+                        input_voltage["input_voltage"] = vesc_data["input_voltage"]
         time.sleep(0.3)
 
 
