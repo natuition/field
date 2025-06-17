@@ -63,7 +63,8 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                         print(msg)
                         isBumped = False
                         sendBumperInfo(socketio, "Reseting")
-                        utility.life_line_reset()                 
+                        utility.life_line_reset()
+                        time.sleep(5)  # Usefull to not send a get_sensors_data request to earlier
                     else:
                         print(f"[Voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected.")
                         sendInputVoltage(socketio, vesc_data["input_voltage"])
