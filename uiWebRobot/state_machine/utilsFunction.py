@@ -63,7 +63,6 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                         vesc_engine.close()
                         vesc_engine = None
                         utility.life_line_reset()
-                        time.sleep(5)
                         msg = f"[Voltage thread] -> Vesc reset, trying to reconnect."
                         logger.write_and_flush(msg + "\n")
                         vesc_engine = recreate_vesc_callback()
