@@ -60,13 +60,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                         logger.write_and_flush(msg + "\n")
                         isBumped = False
                         sendBumperInfo(socketio, "Reseting")
-                        vesc_engine.close()
-                        vesc_engine = None
-                        utility.life_line_reset()
-                        msg = f"[Voltage thread] -> Vesc reset, trying to reconnect."
-                        logger.write_and_flush(msg + "\n")
-                        vesc_engine = recreate_vesc_callback()
-                    
+                        utility.life_line_reset()                 
                     else:
                         sendInputVoltage(socketio, vesc_data["input_voltage"])
                         input_voltage["input_voltage"] = vesc_data["input_voltage"]
