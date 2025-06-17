@@ -121,6 +121,6 @@ class CheckState(State.State):
         return self.field
     
     def recreate_vesc(self):
-        del self.vesc_engine
+        self.vesc_engine = None
         self.vesc_engine = utilsFunction.initVesc(self.logger)
         return self.vesc_engine
