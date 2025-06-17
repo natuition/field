@@ -52,12 +52,14 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                     if vesc_voltage < 12.0:
                         msg = f"[Voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
                         logger.write_and_flush(msg + "\n")
+                        print(msg)
                         isBumped = True
                         sendBumperInfo(socketio, "Bumper")
 
                     elif isBumped and vesc_voltage >= 12.0:
                         msg = f"[Voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
                         logger.write_and_flush(msg + "\n")
+                        print(msg)
                         isBumped = False
                         sendBumperInfo(socketio, "Reseting")
                         utility.life_line_reset()                 
