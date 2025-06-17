@@ -50,7 +50,7 @@ function canNext() {
         document.getElementById('camera').checked &&
         document.getElementById('wheelsStraight').checked &&
         document.getElementById('no_cam') == null &&
-        document.getElementById("voltage_indicator").innerHTML.match(/^\d+(\.\d+)?V$/);
+        document.getElementById("voltage_indicator").innerHTML.match(/^\d+(\.\d+)?\sV$/);
 }
 
 function allCheckedEvery500ms() {
