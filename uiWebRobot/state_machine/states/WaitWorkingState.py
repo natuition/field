@@ -69,8 +69,7 @@ class WaitWorkingState(State.State):
                 msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
                 self.logger.write_and_flush(msg + "\n")
 
-            self.vesc_engine.set_current_rpm(
-                0, self.vesc_engine.PROPULSION_KEY)
+            self.vesc_engine.set_current_rpm(0, self.vesc_engine.PROPULSION_KEY)
 
             if config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
@@ -179,8 +178,8 @@ class WaitWorkingState(State.State):
     def __check_joystick_info_tf(self):
         while self.__check_joystick_info_alive:
             if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
-                self.vesc_engine.set_target_rpm(
-                    0, self.vesc_engine.PROPULSION_KEY)
+                if self.vesc_engine is not None:
+                    self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
             time.sleep(0.5)
 
     def __stop_thread(self):
@@ -284,8 +283,8 @@ class WaitWorkingState(State.State):
                         config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM / 10)
                 else:
                     y = 0
-                self.vesc_engine.set_target_rpm(
-                    y, self.vesc_engine.PROPULSION_KEY)
+                if self.vesc_engine is not None:
+                    self.vesc_engine.set_target_rpm(y, self.vesc_engine.PROPULSION_KEY)
                 self.lastValueY = y
             if(self.statusOfUIObject.wheelButton) :
                 self.statusOfUIObject.wheelButton = ButtonState.DISABLE
