@@ -155,7 +155,9 @@ class WaitWorkingState(State.State):
                                                  args=(lambda: self.__voltage_thread_alive,
                                                        self.vesc_engine,
                                                        self.socketio,
-                                                       self.input_voltage),
+                                                       self.input_voltage,
+                                                       self.logger,
+                                                       self.recreate_vesc),
                                                  daemon=True)
         self.__voltage_thread.start()
 
@@ -332,3 +334,7 @@ class WaitWorkingState(State.State):
 
     def getField(self):
         return self.field
+
+    def recreate_vesc(self):
+        self.vesc_engine = utilsFunction.initVesc(self.logger)
+        return self.vesc_engine

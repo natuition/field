@@ -54,8 +54,11 @@ class CheckState(State.State):
         self.input_voltage = {"input_voltage": "?"}
         self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
                                                  args=(lambda: self.__voltage_thread_alive,
-                                                       self.vesc_engine, self.socketio,
-                                                       self.input_voltage),
+                                                       self.vesc_engine, 
+                                                       self.socketio,
+                                                       self.input_voltage,
+                                                       self.logger,
+                                                       self.recreate_vesc),
                                                  daemon=True)
         self.__voltage_thread.start()
 
@@ -116,3 +119,7 @@ class CheckState(State.State):
 
     def getField(self):
         return self.field
+    
+    def recreate_vesc(self):
+        self.vesc_engine = utilsFunction.initVesc(self.logger)
+        return self.vesc_engine

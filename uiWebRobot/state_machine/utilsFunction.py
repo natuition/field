@@ -18,24 +18,61 @@ from navigation import NavigationV3
 from navigation import GPSComputing
 
 
-def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
-    last_update = 0
+def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage, logger: utility.Logger, recreate_vesc_callback):
+    """
+    Thread function to monitor VESC input voltage and handle bumping events.
+    This function continuously checks the VESC input voltage and emits updates to the socketio server.
+    If the voltage drops below a certain threshold, it emits "Bumper" to the socketio server.
+    If the voltage returns to normal, it emits "Reseting" to the socketio server and attempts to reset the VESC using a lifeline.
+    When the VESC is reset, it tries to reconnect to the VESC.
+
+    Args:
+        voltage_thread_alive (bool): Boolean that indicates if the voltage thread should continue running.
+        vesc_engine (adapters.VescAdapterV4): The VESC adapter instance to get sensor data from.
+        socketio: The socketio instance to emit updates to the UI.
+        input_voltage (dict): Dictionary to store the latest input voltage.
+        logger (utility.Logger): Logger instance for logging messages.
+        recreate_vesc_callback (function): Callback function to recreate the VESC connection after a bump event.
+    """
     vesc_data = None
+    isBumped = False
     while voltage_thread_alive():
         if voltage_thread_alive():
             if vesc_engine is not None:
                 try:
-                    vesc_data = vesc_engine.get_sensors_data(
-                        ["input_voltage"], vesc_engine.PROPULSION_KEY)
+                    vesc_data = vesc_engine.get_sensors_data(["input_voltage"], vesc_engine.PROPULSION_KEY)
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except:
                     break
+
                 if vesc_data is not None and voltage_thread_alive():
-                    last_update = time.time()
+                    vesc_voltage = vesc_data.get("input_voltage", None)
+                    if vesc_voltage is not None and vesc_voltage < 12.0:
+                        msg = f"[Voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
+                        logger.write_and_flush(msg + "\n")
+                        isBumped = True
+                        sendBumperInfo(socketio, "Bumper")
+
+                    if isBumped and vesc_voltage is not None and vesc_voltage >= 12.0:
+                        msg = f"[Voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
+                        logger.write_and_flush(msg + "\n")
+                        isBumped = False
+                        sendBumperInfo(socketio, "Reseting")
+                        utility.life_line_reset()
+                        time.sleep(5)
+                        msg = f"[Voltage thread] -> Vesc reset, trying to reconnect."
+                        logger.write_and_flush(msg + "\n")
+                        vesc_engine = recreate_vesc_callback()
+
+
                     sendInputVoltage(socketio, vesc_data["input_voltage"])
                     input_voltage["input_voltage"] = vesc_data["input_voltage"]
         time.sleep(1)
+
+
+def sendBumperInfo(socketio, bumper_info: str):
+    socketio.emit('update', bumper_info, namespace='/voltage', broadcast=True)
 
 
 def sendInputVoltage(socketio, input_voltage):
@@ -43,8 +80,9 @@ def sendInputVoltage(socketio, input_voltage):
         input_voltage = round(float(input_voltage) * 2) / 2
     except ValueError:
         pass
-    socketio.emit('update', input_voltage,
-                  namespace='/voltage', broadcast=True)
+    socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
+    
+
 
 
 def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio, logger: utility.Logger):
