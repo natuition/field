@@ -57,8 +57,7 @@ class CheckState(State.State):
                                                        self.vesc_engine, 
                                                        self.socketio,
                                                        self.input_voltage,
-                                                       self.logger,
-                                                       self.recreate_vesc),
+                                                       self.logger),
                                                  daemon=True)
         self.__voltage_thread.start()
 
@@ -119,8 +118,3 @@ class CheckState(State.State):
 
     def getField(self):
         return self.field
-    
-    def recreate_vesc(self):
-        self.vesc_engine = None
-        self.vesc_engine = utilsFunction.initVesc(self.logger)
-        return self.vesc_engine

@@ -377,13 +377,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
                         vesc_engine.set_current_rpm(0, vesc_engine.PROPULSION_KEY)
                         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
-
-                        # TODO remove thread init from here!
-                        voltage_thread = threading.Thread(
-                            target=send_voltage_thread_tf,
-                            args=(vesc_engine, ui_msg_queue),
-                            daemon=True)
-                        voltage_thread.start()
+                        
 
                         # single precise center scan before calling for PDZ scanning and extractions
                         if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
@@ -1099,17 +1093,52 @@ def move_to_point_and_extract(coords_from_to: list,
         logger_full.write(msg + "\n")
 
 
-def send_voltage_thread_tf(vesc_engine: adapters.VescAdapterV4, ui_msg_queue):
+def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, logger: utility.Logger, ui_msg_queue):
+    """
+    Thread function to monitor VESC input voltage and handle bumping events.
+    This function continuously checks the VESC input voltage and emits in the main message queue.
+    If the voltage drops below a certain threshold, it emits "Bumper" to the main message queue.
+    If the voltage returns to normal, it emits "Reseting" to the main message queue and attempts to reset the VESC using a lifeline.
+    """
+    
     vesc_data = None
-    while vesc_data is None:
-        vesc_data = vesc_engine.get_sensors_data(
-            ['input_voltage'], vesc_engine.PROPULSION_KEY)
+    isBumped = False
+    while voltage_thread_alive():
+        if vesc_engine is not None:
+            try:
+                vesc_data = vesc_engine.get_sensors_data(["input_voltage"], vesc_engine.PROPULSION_KEY)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                print(f"[Send voltage thread] -> Exception while getting VESC data: {e}")
+                break
+
         if vesc_data is not None:
-            input_voltage = vesc_data["input_voltage"]
-            if ui_msg_queue is not None:
-                ui_msg_queue.send(json.dumps({"input_voltage": input_voltage}))
-        else:
-            time.sleep(1)
+            if voltage_thread_alive():
+                vesc_voltage = vesc_data.get("input_voltage", None)
+                if vesc_voltage is not None:
+                    if vesc_voltage < 12.0:
+                        msg = f"[Send voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
+                        logger.write_and_flush(msg + "\n")
+                        print(msg)
+                        isBumped = True
+                        if ui_msg_queue is not None:
+                            ui_msg_queue.send(json.dumps({"input_voltage": "Bumper"}))
+
+                    elif isBumped and vesc_voltage >= 12.0:
+                        msg = f"[Send voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
+                        logger.write_and_flush(msg + "\n")
+                        print(msg)
+                        isBumped = False
+                        if ui_msg_queue is not None:
+                            ui_msg_queue.send(json.dumps({"input_voltage": "Reseting"}))
+                        utility.life_line_reset()
+                        time.sleep(5)  # Usefull to not send a get_sensors_data request to early
+                    else:
+                        print(f"[Send voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected.")
+                        if ui_msg_queue is not None:
+                            ui_msg_queue.send(json.dumps({"input_voltage": vesc_voltage}))
+        time.sleep(0.3)
 
 
 def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: str, logger_full: utility.Logger):
@@ -2137,6 +2166,16 @@ def main():
                 nav=nav,
                 log_cur_dir=log_cur_dir) as navigation_prediction:
 
+
+            send_voltage_thread_alive = True
+            send_voltage_thread = threading.Thread(
+                target=send_voltage_thread_tf,
+                args=(send_voltage_thread_alive,
+                      vesc_engine, 
+                      ui_msg_queue),
+                daemon=True)
+            send_voltage_thread.start()
+
             # try to load field ABCD points
             field_gps_coords = None
             field_name = None
@@ -2773,6 +2812,7 @@ def main():
                 path_index_file.write(str(-1))
                 path_index_file.flush()
 
+
             msg = "Path is successfully passed."
             print(msg)
             logger_full.write(msg + "\n")
@@ -2796,6 +2836,11 @@ def main():
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:
+
+        send_voltage_thread_alive = False
+        if send_voltage_thread is not None:
+            send_voltage_thread.join()
+
         # put the wheel straight
         # vesc z axis calibration in case it's used for z axis control instead of smoothie
         # (to prevent cork breaking when smoothie calibrates)

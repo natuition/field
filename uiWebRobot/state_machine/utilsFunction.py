@@ -18,13 +18,12 @@ from navigation import NavigationV3
 from navigation import GPSComputing
 
 
-def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage, logger: utility.Logger, recreate_vesc_callback):
+def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage, logger: utility.Logger):
     """
     Thread function to monitor VESC input voltage and handle bumping events.
     This function continuously checks the VESC input voltage and emits updates to the socketio server.
     If the voltage drops below a certain threshold, it emits "Bumper" to the socketio server.
     If the voltage returns to normal, it emits "Reseting" to the socketio server and attempts to reset the VESC using a lifeline.
-    When the VESC is reset, it tries to reconnect to the VESC.
 
     Args:
         voltage_thread_alive (bool): Boolean that indicates if the voltage thread should continue running.
@@ -64,7 +63,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
                         isBumped = False
                         sendBumperInfo(socketio, "Reseting")
                         utility.life_line_reset()
-                        time.sleep(5)  # Usefull to not send a get_sensors_data request to earlier
+                        time.sleep(5)  # Usefull to not send a get_sensors_data request to early
                     else:
                         print(f"[Voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected.")
                         sendInputVoltage(socketio, vesc_data["input_voltage"])
