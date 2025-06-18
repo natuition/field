@@ -56,6 +56,11 @@ function disableButtons() {
     if (joystick_button) {
         joystick_button.classList.add("disable");
     }
+    const checklist_button = document.getElementById("checkbutton");
+    if (checklist_button) {
+        checklist_button.classList.add("disabled");
+        checklist_button.setAttribute("disabled", "disabled");
+    }
 }
 
 // Fonction pour activer les boutons
@@ -78,5 +83,10 @@ function enableButtons() {
     const joystick_button = document.getElementById("canvas_joystick");
     if (joystick_button) {
         joystick_button.classList.remove("disable");
+    }
+    const checklist_button = document.getElementById("checkbutton");
+    if (checklist_button) {
+        checklist_button.classList.remove("disabled");
+        checklist_button.removeAttribute("disabled");
     }
 }
