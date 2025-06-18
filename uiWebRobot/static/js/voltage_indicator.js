@@ -47,7 +47,7 @@ function disableButtons() {
         start_button.classList.add("disabled");
         start_button.setAttribute("disabled", "disabled");
     }
-    const newfield_button = document.getElementById("NewField");
+    const newfield_button = document.getElementById("Newfield");
     if (newfield_button) {
         newfield_button.classList.add("disabled");
         newfield_button.setAttribute("disabled", "disabled");
@@ -70,7 +70,7 @@ function enableButtons() {
         start_button.classList.remove("disabled");
         start_button.removeAttribute("disabled");
     }
-    const newfield_button = document.getElementById("NewField");
+    const newfield_button = document.getElementById("Newfield");
     if (newfield_button) {
         newfield_button.classList.remove("disabled");
         newfield_button.removeAttribute("disabled");
