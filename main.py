@@ -1100,7 +1100,7 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
     If the voltage drops below a certain threshold, it emits "Bumper" to the main message queue.
     If the voltage returns to normal, it emits "Reseting" to the main message queue and attempts to reset the VESC using a lifeline.
     """
-    
+
     vesc_data = None
     isBumped = False
     while voltage_thread_alive():
@@ -2171,7 +2171,8 @@ def main():
             send_voltage_thread = threading.Thread(
                 target=send_voltage_thread_tf,
                 args=(send_voltage_thread_alive,
-                      vesc_engine, 
+                      vesc_engine,
+                      logger_full, 
                       ui_msg_queue),
                 daemon=True)
             send_voltage_thread.start()
