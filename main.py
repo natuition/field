@@ -2167,10 +2167,10 @@ def main():
                 log_cur_dir=log_cur_dir) as navigation_prediction:
 
 
-            send_voltage_thread_alive = True
+            send_voltage_thread_alive = {"value": True}
             send_voltage_thread = threading.Thread(
                 target=send_voltage_thread_tf,
-                args=(send_voltage_thread_alive,
+                args=(lambda: send_voltage_thread_alive["value"],
                       vesc_engine,
                       logger_full, 
                       ui_msg_queue),
@@ -2838,7 +2838,7 @@ def main():
             ui_msg_queue.close()
     finally:
 
-        send_voltage_thread_alive = False
+        send_voltage_thread_alive["value"] = False
         if send_voltage_thread is not None:
             send_voltage_thread.join()
 
