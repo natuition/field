@@ -84,7 +84,7 @@ function enableButtons() {
     if (joystick_button) {
         joystick_button.classList.remove("disable");
     }
-    if(canNext()) {
+    if (typeof canNext === "function" && canNext()) {
         const checklist_button = document.getElementById("checkbutton");
         if (checklist_button) {
             checklist_button.classList.remove("disabled");
