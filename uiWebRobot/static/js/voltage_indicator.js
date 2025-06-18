@@ -84,5 +84,11 @@ function enableButtons() {
     if (joystick_button) {
         joystick_button.classList.remove("disable");
     }
-    // Don't re-enable checklist button, it is managed by the checklist.js
+    if(canNext()) {
+        const checklist_button = document.getElementById("checkbutton");
+        if (checklist_button) {
+            checklist_button.classList.remove("disabled");
+            checklist_button.removeAttribute("disabled");
+        }
+    }
 }
