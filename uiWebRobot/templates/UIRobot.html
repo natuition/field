@@ -179,7 +179,7 @@
         <div id="joystick"
             class="status {% if statusOfUIObject['joystick'] %} display-flex {% else %} display-none {% endif %} unselectable">
             <img style="display:none;" id="source" src="{{ url_for('static', filename='icon.png') }}"">
-    </div>
+        </div>
     
     <section id=" conteneur_stats"
                 class="status__active {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-flex {% else %} display-none {% endif %}"
@@ -319,14 +319,17 @@
 
         <div class="main" id="main">
             <header class="header header__begin header__color--checklist">
-                <div class="header__info">
-                    <div class="header__info--logo">
-                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+                <div class="header_top_info">
+                    <div class="header_logo_container">
+                        <img src="{{ url_for('static', filename='logo_blanc.svg') }}" alt="Logo Natuition" class="header_logo_img">
                     </div>
-                    <div class="header__info--model--voltage">
-                        <div class="header__info--model" onclick="restart_ui()">
-                            <p>{{ sn }}</p>
-                        </div>
+                    <div class="header__info--voltage">
+                        <p id="voltage_indicator" bumper_disable="false">
+                            <i class="fas fa-spinner fa-spin" style="color: #fff;"></i>
+                        </p>
+                    </div>
+                    <div class="header__info--model">
+                        <p>{{ sn }}</p>
                     </div>
                 </div>
                 <div class="header__title">
@@ -462,6 +465,8 @@
         </div>
 
         <script src="/static/{{ now }}/js/checkList.js"></script>
+        <script src="/static/{{ now }}/js/voltage_indicator.js"></script>
+
 
         {% if statusOfUIObject['checkbox'] %}
 
