@@ -1103,6 +1103,7 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
 
     vesc_data = None
     isBumped = False
+    nowReset = True
     while voltage_thread_alive():
         if vesc_engine is not None:
             try:
@@ -1118,9 +1119,10 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
                 vesc_voltage = vesc_data.get("input_voltage", None)
                 if vesc_voltage is not None:
                     if vesc_voltage < 12.0:
-                        msg = f"[Send voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
-                        logger.write_and_flush(msg + "\n")
-                        print(msg)
+                        if isBumped:
+                            msg = f"[Send voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
+                            logger.write_and_flush(msg + "\n")
+                            print(msg)
                         isBumped = True
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"input_voltage": "Bumper"}))
@@ -1130,12 +1132,17 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
                         logger.write_and_flush(msg + "\n")
                         print(msg)
                         isBumped = False
+                        nowReset = True
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"input_voltage": "Reseting"}))
                         utility.life_line_reset()
                         time.sleep(5)  # Usefull to not send a get_sensors_data request to early
                     else:
-                        print(f"[Send voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected.")
+                        if nowReset:
+                            msg = f"[Send voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected."
+                            logger.write_and_flush(msg + "\n")
+                            print(msg)
+                            nowReset = False
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"input_voltage": vesc_voltage}))
         time.sleep(0.3)
