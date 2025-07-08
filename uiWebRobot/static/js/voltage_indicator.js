@@ -37,8 +37,6 @@ socketVoltage.on('update', function (data) {
 
 // Fonction pour desactiver les boutons 
 function disableButtons() {
-    const pieChart = document.getElementById("pieChart");
-    if (!pieChart) {
         const continue_button = document.getElementById("Continue");
         if (continue_button) {
             if (section)
@@ -64,13 +62,10 @@ function disableButtons() {
             checklist_button.classList.add("disabled");
             checklist_button.setAttribute("disabled", "disabled");
         }
-    }
 }
 
 // Fonction pour activer les boutons
 function enableButtons() {
-    const pieChart = document.getElementById("pieChart");
-    if (!pieChart) {
         const continue_button = document.getElementById("Continue");
         if (continue_button) {
             continue_button.classList.remove("disabled");
@@ -99,6 +94,5 @@ function enableButtons() {
                 }
             }
         }
-    }
     
 }
