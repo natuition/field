@@ -72,17 +72,14 @@ function clickHandler() {
             alert((ui_languages["alert_on_no_gps"])[ui_language])
         } else {
             socketio.emit('data', { type: "start", audit: audit });
-            passVoltageIndicatorToWorkingState();
         }
     } else if (this.id == "Stop") {
         socketio.emit('data', { type: "stop" });
-        passVoltageIndicatorToWaitWorkingState();
     } else if (this.id == "Continue") {
         if (gpsQuality == "no_gps") {
             alert((ui_languages["alert_on_no_gps"])[ui_language])
         } else {
             socketio.emit('data', { type: "continue", audit: audit });
-            passVoltageIndicatorToWorkingState();
         }
     } else if (this.id == "Wheel" && !this.classList.contains("disabled-wheel")) {
         if (this.classList.contains("release")) {

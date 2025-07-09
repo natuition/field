@@ -255,7 +255,9 @@ class WorkingState(State.State):
                 elif "clear_path" in data:
                     self.allPath.clear()
                 elif "input_voltage" in data:
-                    if data["input_voltage"] == "Bumper":
+                    if data["input_voltage"] == "Main":
+                        utilsFunction.sendBumperInfo(self.socketio, "Main")
+                    elif data["input_voltage"] == "Bumper":
                         utilsFunction.sendBumperInfo(self.socketio, "Bumper")
                     elif data["input_voltage"] == "Reseting":
                         utilsFunction.sendBumperInfo(self.socketio, "Reseting")

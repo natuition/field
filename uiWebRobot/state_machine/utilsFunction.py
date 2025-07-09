@@ -49,6 +49,7 @@ def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4,
         if vesc_data is not None:
             if voltage_thread_alive():
                 vesc_voltage = vesc_data.get("input_voltage", None)
+                sendBumperInfo(socketio, "NotMain")
                 if vesc_voltage is not None:
                     if vesc_voltage < 12.0:
                         if isBumped == False:
