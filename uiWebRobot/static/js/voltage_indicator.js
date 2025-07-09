@@ -1,6 +1,6 @@
 const socketVoltage = io.connect('http://' + document.domain + ':' + location.port + '/voltage');
 var isInWorkingState = false;
-
+console.log("Voltage indicator instanciation");
 
 socketVoltage.on('update', function (data) {
     const voltage_indicator = document.getElementById("voltage_indicator");
@@ -32,6 +32,7 @@ socketVoltage.on('update', function (data) {
             $("#voltage_indicator").parent().css("background-color", "#58b166");
             $("#voltage_indicator").parent().css("width", "70px");
             if (!isInWorkingState) {
+                console.log("Voltage indicator buttons enabled");
                 enableButtons();
             }
         }
