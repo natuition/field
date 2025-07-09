@@ -52,7 +52,6 @@ function passVoltageIndicatorToWaitWorkingState() {
 function disableButtons() {
     const continue_button = document.getElementById("Continue");
     if (continue_button) {
-        if (section)
         continue_button.classList.add("disabled");
         continue_button.setAttribute("disabled", "disabled");
     }
