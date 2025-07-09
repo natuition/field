@@ -1,4 +1,6 @@
 const socketVoltage = io.connect('http://' + document.domain + ':' + location.port + '/voltage');
+var isInWorkingState = false;
+
 
 socketVoltage.on('update', function (data) {
     const voltage_indicator = document.getElementById("voltage_indicator");
@@ -29,11 +31,22 @@ socketVoltage.on('update', function (data) {
             voltage_indicator.setAttribute("bumper_disable", true);
             $("#voltage_indicator").parent().css("background-color", "#58b166");
             $("#voltage_indicator").parent().css("width", "70px");
-            enableButtons();
+            if (!isInWorkingState) {
+                enableButtons();
+            }
         }
     }
 });
 
+
+function passVoltageIndicatorToWorkingState() {
+    const isInWorkingState = true
+    disableButtons();
+}
+
+function passVoltageIndicatorToWaitWorkingState() {
+    const isInWorkingState = false
+}
 
 // Fonction pour desactiver les boutons 
 function disableButtons() {
