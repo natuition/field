@@ -31,7 +31,7 @@ socketVoltage.on('update', function (data) {
             voltage_indicator.setAttribute("bumper_disable", true);
             $("#voltage_indicator").parent().css("background-color", "#58b166");
             $("#voltage_indicator").parent().css("width", "70px");
-            print("isInWorkingState: " + isInWorkingState);
+            console.log("isInWorkingState: " + isInWorkingState);
             if (!isInWorkingState) {
                 console.log("Voltage indicator buttons enabled");
                 enableButtons();
