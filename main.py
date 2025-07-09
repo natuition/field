@@ -1137,6 +1137,7 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
                         nowReset = True
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"input_voltage": "Reseting"}))
+                        time.sleep(5) # Usefull when vesc are reseting instantly after unbumping, so this time is for preventing injuries of customers
                         utility.life_line_reset()
                         time.sleep(5)  # Usefull to not send a get_sensors_data request to early
                     else:
