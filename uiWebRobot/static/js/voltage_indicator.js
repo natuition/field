@@ -31,6 +31,7 @@ socketVoltage.on('update', function (data) {
             voltage_indicator.setAttribute("bumper_disable", true);
             $("#voltage_indicator").parent().css("background-color", "#58b166");
             $("#voltage_indicator").parent().css("width", "70px");
+            print("isInWorkingState: " + isInWorkingState);
             if (!isInWorkingState) {
                 console.log("Voltage indicator buttons enabled");
                 enableButtons();
@@ -51,6 +52,7 @@ function passVoltageIndicatorToWaitWorkingState() {
 
 // Fonction pour desactiver les boutons 
 function disableButtons() {
+    console.log("Voltage indicator buttons disabled");
     const continue_button = document.getElementById("Continue");
     if (continue_button) {
         continue_button.classList.add("disabled");
