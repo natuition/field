@@ -42,12 +42,12 @@ socketVoltage.on('update', function (data) {
 
 
 function passVoltageIndicatorToWorkingState() {
-    const isInWorkingState = true
+    isInWorkingState = true
     disableButtons();
 }
 
 function passVoltageIndicatorToWaitWorkingState() {
-    const isInWorkingState = false
+    isInWorkingState = false
 }
 
 // Fonction pour desactiver les boutons 
