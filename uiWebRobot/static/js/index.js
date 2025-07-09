@@ -76,7 +76,7 @@ function clickHandler() {
         }
     } else if (this.id == "Stop") {
         socketio.emit('data', { type: "stop" });
-        //passVoltageIndicatorToWaitWorkingState();
+        passVoltageIndicatorToWaitWorkingState();
     } else if (this.id == "Continue") {
         if (gpsQuality == "no_gps") {
             alert((ui_languages["alert_on_no_gps"])[ui_language])
