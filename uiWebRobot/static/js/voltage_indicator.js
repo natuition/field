@@ -1,6 +1,5 @@
 const socketVoltage = io.connect('http://' + document.domain + ':' + location.port + '/voltage');
 var isInWorkingState = false;
-console.log("Voltage indicator instanciation");
 
 socketVoltage.on('update', function (data) {
     const voltage_indicator = document.getElementById("voltage_indicator");
@@ -43,7 +42,6 @@ socketVoltage.on('update', function (data) {
 // Fonction pour desactiver les boutons 
 function disableButtons() {
     if (!isInWorkingState) {
-        console.log("Voltage indicator buttons disabled");
         const continue_button = document.getElementById("Continue");
         if (continue_button) {
             continue_button.classList.add("disabled");
@@ -74,7 +72,6 @@ function disableButtons() {
 // Fonction pour activer les boutons
 function enableButtons() {
     if (!isInWorkingState) {
-        console.log("Voltage indicator buttons enabled");
         const continue_button = document.getElementById("Continue");
         if (continue_button) {
             continue_button.classList.remove("disabled");
