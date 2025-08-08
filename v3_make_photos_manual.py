@@ -3,8 +3,10 @@ import adapters
 import cv2 as cv
 import time
 import utility
+import sys
+import select
 
-OUTPUT_DIR = "manual_photos_maker/"
+OUTPUT_DIR = "/mnt/N2072/pissenlit_parking/"
 
 
 def markup_5_points(image):
@@ -42,6 +44,7 @@ def manual_photos_making(camera):
             frame = cv.circle(frame, (config.SCENE_CENTER_X, config.SCENE_CENTER_Y), 2, (0, 0, 255), thickness=2)
             # frame = markup_5_points(frame)
 
+        start_time = time.time()
         cv.imwrite(path_piece + str(counter) + sep + utility.get_current_time() + ".jpg", frame)
         counter += 1
 
@@ -51,27 +54,23 @@ def run_performance_test(camera):
     sep = " "
     counter = 1
     path_piece = OUTPUT_DIR + label + sep
-    saving_time_delta = "None"
 
+    paused = False
+
+    print("Capturing started. Type 'p' + Entrée to pause/resume. Ctrl+C to quit.")
     try:
         while True:
-            frame = camera.get_image()
-            cur_time = utility.get_current_time()  # timestamp when frame was read
-
-            saving_start_t = time.time()
-            cv.imwrite(path_piece +
-                       str(counter) +
-                       sep +
-                       cur_time +
-                       # sep +
-                       # "(prev. imwrite time " +
-                       # str(saving_time_delta) +
-                       # " seconds)" +
-                       ".jpg",
-                       frame)
-            # saving_time_delta = time.time() - saving_start_t
-
-            counter += 1
+            if not paused:
+                frame = camera.get_image()
+                cur_time = utility.get_current_time()
+                cv.imwrite(path_piece + str(counter) + sep + cur_time + ".jpg", frame)
+                counter += 1
+            # Vérifie si une commande a été entrée
+            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                cmd = sys.stdin.readline().strip()
+                if cmd == 'p':
+                    paused = not paused
+                    print("Pause" if paused else "Reprise")
     except KeyboardInterrupt:
         return
 
