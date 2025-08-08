@@ -1,13 +1,13 @@
 from config import config
+import sys
+import os
 import adapters
 import cv2 as cv
 import time
 import utility
-import sys
 import select
 
-OUTPUT_DIR = "/mnt/N2072/pissenlit_parking/"
-
+OUTPUT_DIR = ""
 
 def markup_5_points(image):
     img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
@@ -28,13 +28,13 @@ def manual_photos_making(camera):
     draw_markup = input("Draw markup points on images? (y/n): ")
     draw_markup = draw_markup.lower() == "y"
 
-    label = input("Please type label, which should be added to photos: ")
+    label = input("Please type a label to be added to photos: ")
     sep = " "
     counter = 1
     path_piece = OUTPUT_DIR + label + sep
 
     while True:
-        action = input("Hit enter to get an image, type anything to stop: ")
+        action = input("Press Enter to capture an image, or type anything to stop: ")
         if action != "":
             break
 
@@ -50,14 +50,14 @@ def manual_photos_making(camera):
 
 
 def run_performance_test(camera):
-    label = input("Please type label, which should be added to photos: ")
+    label = input("Please type a label to be added to photos: ")
     sep = " "
     counter = 1
     path_piece = OUTPUT_DIR + label + sep
 
     paused = False
 
-    print("Capturing started. Type 'p' + Entrée to pause/resume. Ctrl+C to quit.")
+    print("Capturing started. Type 'p' + Enter to pause/resume. Ctrl+C to quit.")
     try:
         while True:
             if not paused:
@@ -65,18 +65,30 @@ def run_performance_test(camera):
                 cur_time = utility.get_current_time()
                 cv.imwrite(path_piece + str(counter) + sep + cur_time + ".jpg", frame)
                 counter += 1
-            # Vérifie si une commande a été entrée
             if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 cmd = sys.stdin.readline().strip()
                 if cmd == 'p':
                     paused = not paused
-                    print("Pause" if paused else "Reprise")
+                    print("Paused." if paused else "Resumed.")
     except KeyboardInterrupt:
         return
 
 
 def main():
-    utility.create_directories(OUTPUT_DIR)
+    if len(sys.argv) < 2:
+        print("Error: Please provide the output directory as a parameter.")
+        print("Usage: python v3_make_photos_manual.py <output_directory>")
+        sys.exit(1)
+
+    OUTPUT_DIR = sys.argv[1]
+    if not os.path.exists(OUTPUT_DIR):
+        create = input(f"The directory '{OUTPUT_DIR}' does not exist. Do you want to create it? (y/n): ").strip().lower()
+        if create == "y":
+            utility.create_directories(OUTPUT_DIR)
+            print(f"Directory '{OUTPUT_DIR}' created.")
+        else:
+            print("Script stopped.")
+            sys.exit(1)
 
     print("Loading...")
     with adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
@@ -92,7 +104,7 @@ def main():
 
         print("Loading complete.")
 
-        mode = input("Type y to start in manual photos making mode, type n to start performance test (y/n): ")
+        mode = input("Type 'y' to start in manual photos making mode, type 'n' to start performance test (y/n): ")
         if mode.lower() == "y":
             manual_photos_making(camera)
         else:
