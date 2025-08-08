@@ -54,8 +54,10 @@ class CheckState(State.State):
         self.input_voltage = {"input_voltage": "?"}
         self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
                                                  args=(lambda: self.__voltage_thread_alive,
-                                                       self.vesc_engine, self.socketio,
-                                                       self.input_voltage),
+                                                       self.vesc_engine, 
+                                                       self.socketio,
+                                                       self.input_voltage,
+                                                       self.logger),
                                                  daemon=True)
         self.__voltage_thread.start()
 

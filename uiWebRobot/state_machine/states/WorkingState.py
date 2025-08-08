@@ -255,7 +255,13 @@ class WorkingState(State.State):
                 elif "clear_path" in data:
                     self.allPath.clear()
                 elif "input_voltage" in data:
-                    utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
+                    if data["input_voltage"] == "Bumper":
+                        utilsFunction.sendBumperInfo(self.socketio, "Bumper")
+                    elif data["input_voltage"] == "Reseting":
+                        utilsFunction.sendBumperInfo(self.socketio, "Reseting")
+                    else:
+                        utilsFunction.sendInputVoltage(self.socketio, data["input_voltage"])
+                    
             except posix_ipc.BusyError:
                 continue
             except KeyboardInterrupt:
