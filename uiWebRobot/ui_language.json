@@ -48,7 +48,7 @@
 		"de": "Step"
 	},
 	"Stop": {
-		"fr": "Arret",
+		"fr": "Arrêt",
 		"en": "Stop",
 		"nl": "Stop",
 		"de": "Stoppen"
@@ -96,15 +96,15 @@
 		"de": "Schließe und verriegele die mittlere Abdeckung"
 	},
 	"Wheels straight": {
-		"fr": "Mettez les roues du robot droite.",
+		"fr": "Mettez les roues du robot droites.",
 		"en": "Put the robot wheels straight.",
 		"nl": "Zet de robotwielen recht.",
 		"de": "Stelle die Vorderräder gerade."
 	},
 	"Waiting GPS": {
-		"fr": "En attente de gps...",
-		"en": "Waiting for gps...",
-		"nl": "Wachten op gps...",
+		"fr": "En attente de GPS...",
+		"en": "Waiting for GPS...",
+		"nl": "Wachten op GPS...",
 		"de": "Warten auf GPS..."
 	},
 	"GPS found": {
@@ -228,7 +228,7 @@
 		"de": "Keine Verbindung mit dem Roboter mehr !"
 	},
 	"Check_remove_zone": {
-		"fr": "Êtes vous sûr de vouloir supprimer la zone séléctionnée ?",
+		"fr": "Êtes-vous sûr de vouloir supprimer la zone séléctionnée ?",
 		"en": "Are you sure you want to delete the selected area ?",
 		"nl": "Weet u zeker dat u het geselecteerde gebied wilt verwijderen ?",
 		"de": "Möchten Sie den ausgewählte Zone wirklich löschen?"
@@ -299,6 +299,12 @@
 		"nl": "Detectie:",
 		"de": "Erkennung"
 	},
+	"Demonstration:": {
+		"fr": "Démonstration :",
+		"en": "Demonstration:",
+		"nl": "Demonstratie:",
+		"de": "Demonstration:"
+	},
 	"Periphery mod:": {
 		"fr": "Module périphérique :",
 		"en": "Periphery mod:",
@@ -322,6 +328,18 @@
 		"en": "Threshold",
 		"nl": "Drempel",
 		"de": "Schwelle"
+	},
+	"Peripheral threshold": {
+		"fr": "Seuil du module périphérique&nbsp;:",
+		"en": "Threshold of the peripheral module:",
+		"nl": "Drempel van de perifere module:",
+		"de": "Schwelle des Peripheriemoduls:"
+	},
+	"Precise threshold": {
+		"fr": "Seuil du module précis :",
+		"en": "Threshold of the precise module:",
+		"nl": "Drempel van de precieze module:",
+		"de": "Schwelle des präzisen Moduls:"
 	},
 	"Mono": {
 		"fr": "Mono",
@@ -444,7 +462,7 @@
 		"de": "Wartende Kamera..."
 	},
 	"Restart UI": {
-		"fr": "Une erreur c'est produite, nous avons relancé le robot pour vous",
+		"fr": "Une erreur s'est produite, nous avons relancé le robot pour vous",
 		"en": "Something went wrong, we restart robot for you",
 		"nl": "Er ging iets mis, we herstarten de robot voor je",
 		"de": "Etwas ist schief gelaufen, wir starten den Roboter für Sie neu"
@@ -652,6 +670,36 @@
 		"en": "Pause",
 		"nl": "Pause",
 		"de": "Pause"
+	},
+	"no_gps": {
+		"fr": "Pas de GPS",
+		"en": "No GPS",
+		"nl": "Geen GPS",
+		"de": "Kein GPS"
+	},
+	"gps_with_rtk": {
+		"fr": "RTK",
+		"en": "RTK",
+		"nl": "RTK",
+		"de": "RTK"
+	},
+	"only_gps": {
+		"fr": "GPS",
+		"en": "GPS",
+		"nl": "GPS",
+		"de": "GPS"
+	},
+	"alert_on_no_gps": {
+		"fr": "Vous ne pouvez pas utiliser cette fonction tant que le GPS n'est pas disponible, veuillez attendre un instant.",
+		"en": "You can not use this function when the GPS is not available, please wait moment.",
+		"nl": "U kunt deze functie niet gebruiken zolang de GPS niet beschikbaar is. Wacht een moment.",
+		"de": "Sie können diese Funktion nicht verwenden, solange GPS nicht verfügbar ist. Bitte warten Sie einen Moment."
+	},
+	"working_zone_too_small": {
+		"fr": "Votre zone de travail est trop petite, veuillez réessayer avec une zone plus grande.",
+		"en": "Your working zone is too small, please retry with a bigger one.",
+		"nl": "Uw werkgebied is te klein, probeer het opnieuw met een groter gebied.",
+		"de": "Ihr Arbeitsbereich ist zu klein, bitte versuchen Sie es mit einem größeren Bereich erneut."
 	},
 	"Analyse data vesc title": {
 		"fr": "Analyse des données du moteur d'extraction",

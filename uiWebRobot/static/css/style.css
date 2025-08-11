@@ -68,12 +68,15 @@ body {
 .header__info--model,
 .header__info--voltage {
     background-color: #58b166;
-    border-radius: 20px;
-    padding: 10px 20px;
+    border-radius: 10px;
+    padding: 8px;
+    font-weight: 700;
+    text-align: center;
 }
 
 .header__info--voltage {
-    margin-right: 10px;
+    margin: 0px 5px;
+    width: 70px;
 }
 
 .header__info--model p,
@@ -86,8 +89,8 @@ body {
 .header__title {
     font-weight: 500;
     font-size: 24px;
-    margin-top: 30px;
-    padding: 0 0 10px 20px;
+    margin-top: 10px;
+    padding: 0 0 20px 20px;
 }
 
 .header__subtitle,
@@ -106,6 +109,7 @@ body {
 .checklist,
 .setting {
     padding: 20px;
+    padding-top: 5px;
 }
 
 .checkbox {
@@ -269,12 +273,12 @@ body {
 .header__map,
 .header__map img {
     /*max-width: 375px;*/
-    padding: 0 40px;
+    padding: 0 30px;
     height: 50vw;
 }
 
 .header__map {
-    padding-top: 10px;
+    /*padding-top: 10px;*/
     margin: 0 auto;
 }
 
@@ -283,7 +287,7 @@ body {
 }
 
 .header__begin .header__info {
-    padding: 20px 20px 0px;
+    padding: 10px 15px 0px;
 }
 
 
@@ -293,7 +297,7 @@ body {
     background-color: #f9fafc;
     display: flex;
     flex-direction: row;
-    padding: 20px;
+    padding: 5px 20px;
     padding-bottom: 5px;
     flex-wrap: wrap;
     justify-content: space-around;
@@ -388,11 +392,6 @@ body {
     transition: .2s ease-in;
     outline: none;
 }
-
-#Wheel {
-    margin-right: 5px;
-}
-
 
 #Audit label p {
     margin-left: 32px;
@@ -775,7 +774,7 @@ svg.fa-check {
 
 .ruler {
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 5px;
 }
 
 select {
@@ -889,4 +888,38 @@ select {
     left: 0;
     padding-left: 5px;
     width: 100%;
+}
+
+
+.header_top_info {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    font-size: medium;
+    margin: 10px 15px;
+
+}
+
+.info_container {
+    display: flex;
+    background-color: #58b166;
+    border-radius: 10px;
+    padding: 8px 5px;
+}
+
+.header_logo_img {
+    width: 35px;
+    height: 35px;
+}
+
+.header_logo_container {
+    flex-grow: 2;
+    height: 35px;
+}
+
+.gps_icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
 }

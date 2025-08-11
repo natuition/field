@@ -15,26 +15,71 @@ import time
 import sys
 sys.path.append('../')
 from navigation import NavigationV3
+from navigation import GPSComputing
 
 
-def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage):
-    last_update = 0
+def voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, socketio, input_voltage, logger: utility.Logger):
+    """
+    Thread function to monitor VESC input voltage and handle bumping events.
+    This function continuously checks the VESC input voltage and emits updates to the socketio server.
+    If the voltage drops below a certain threshold, it emits "Bumper" to the socketio server.
+    If the voltage returns to normal, it emits "Reseting" to the socketio server and attempts to reset the VESC using a lifeline.
+
+    Args:
+        voltage_thread_alive (bool): Boolean that indicates if the voltage thread should continue running.
+        vesc_engine (adapters.VescAdapterV4): The VESC adapter instance to get sensor data from.
+        socketio: The socketio instance to emit updates to the UI.
+        input_voltage (dict): Dictionary to store the latest input voltage.
+        logger (utility.Logger): Logger instance for logging messages.
+        recreate_vesc_callback (function): Callback function to recreate the VESC connection after a bump event.
+    """
     vesc_data = None
+    isBumped = False
+    nowReset = True
     while voltage_thread_alive():
-        if voltage_thread_alive():
-            if vesc_engine is not None:
-                try:
-                    vesc_data = vesc_engine.get_sensors_data(
-                        ["input_voltage"], vesc_engine.PROPULSION_KEY)
-                except KeyboardInterrupt:
-                    raise KeyboardInterrupt
-                except:
-                    break
-                if vesc_data is not None and voltage_thread_alive():
-                    last_update = time.time()
-                    sendInputVoltage(socketio, vesc_data["input_voltage"])
-                    input_voltage["input_voltage"] = vesc_data["input_voltage"]
-        time.sleep(1)
+        if vesc_engine is not None:
+            try:
+                vesc_data = vesc_engine.get_sensors_data(["input_voltage"], vesc_engine.PROPULSION_KEY)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                print(f"[Voltage thread] -> Exception while getting VESC data: {e}")
+                break
+
+        if vesc_data is not None:
+            if voltage_thread_alive():
+                vesc_voltage = vesc_data.get("input_voltage", None)
+                if vesc_voltage is not None:
+                    if vesc_voltage < 12.0:
+                        if isBumped == False:
+                            msg = f"[Voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
+                            logger.write_and_flush(msg + "\n")
+                            print(msg)
+                        isBumped = True
+                        sendBumperInfo(socketio, "Bumper")
+
+                    elif isBumped and vesc_voltage >= 12.0:
+                        msg = f"[Voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
+                        logger.write_and_flush(msg + "\n")
+                        print(msg)
+                        isBumped = False
+                        nowReset = True
+                        sendBumperInfo(socketio, "Reseting")
+                        utility.life_line_reset()
+                        time.sleep(5)  # Usefull to not send a get_sensors_data request to early
+                    else:
+                        if nowReset:
+                            msg = f"[Voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected."
+                            logger.write_and_flush(msg + "\n")
+                            print(msg)
+                            nowReset = False
+                        sendInputVoltage(socketio, vesc_data["input_voltage"])
+                        input_voltage["input_voltage"] = vesc_data["input_voltage"]
+        time.sleep(0.3)
+
+
+def sendBumperInfo(socketio, bumper_info: str):
+    socketio.emit('update', bumper_info, namespace='/voltage', broadcast=True)
 
 
 def sendInputVoltage(socketio, input_voltage):
@@ -42,8 +87,9 @@ def sendInputVoltage(socketio, input_voltage):
         input_voltage = round(float(input_voltage) * 2) / 2
     except ValueError:
         pass
-    socketio.emit('update', input_voltage,
-                  namespace='/voltage', broadcast=True)
+    socketio.emit('update', input_voltage, namespace='/voltage', broadcast=True)
+    
+
 
 
 def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio, logger: utility.Logger):
@@ -52,8 +98,8 @@ def send_last_pos_thread_tf(send_last_pos_thread_alive, socketio, logger: utilit
             lastPos = gps.get_fresh_position()
             if config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART and lastPos[2]!='4':
                 NavigationV3.restart_ntrip_service(logger)
-            socketio.emit('updatePath', json.dumps(
-                [[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
+            socketio.emit('updateGPSQuality', lastPos[2], namespace='/gps', broadcast=True)
 
 
 def initVesc(logger: utility.Logger):
@@ -74,12 +120,15 @@ def initVesc(logger: utility.Logger):
             logger.write_and_flush(msg + "\n")
             print(msg)
             utility.life_line_reset()
-        
+    
+    time.sleep(5)
+
     vesc_engine = adapters.VescAdapterV4(vesc_address,
                                          config.VESC_BAUDRATE,
                                          config.VESC_ALIVE_FREQ,
                                          config.VESC_CHECK_FREQ,
-                                         config.VESC_STOPPER_CHECK_FREQ)
+                                         config.VESC_STOPPER_CHECK_FREQ,
+                                         logger)
     vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
     vesc_engine.set_time_to_move(
         config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
@@ -167,9 +216,8 @@ def startLiveCam():
 
 def updateFields(field_name):
     field_name_quote = quote(field_name, safe="", encoding='utf-8')
-
+    
     cmd = "ln -sf 'fields/" + field_name_quote + ".txt' ../field.txt"
-
     os.system(cmd)
 
     with open("../field.txt") as file:
@@ -189,9 +237,9 @@ def load_field_list(dir_path):
         field_list = []
         for file in os.listdir(dir_path):
             if file.endswith(".txt"):
-                if file != "tmp.txt":
-                    field_list.append(
-                        unquote(file.split(".txt")[0], encoding='utf-8'))
+                #if file != "tmp.txt":
+                field_list.append(
+                    unquote(file.split(".txt")[0], encoding='utf-8'))
         return field_list
 
 def get_other_field():
@@ -213,3 +261,47 @@ def get_other_field():
                     coords_other.append(coords)
             return coords_other
         return list()
+
+
+def is_valid_field_file(file_path : str, logger: utility.Logger):
+    """
+    Check if a field file is valid.
+
+    Args:
+        file_path (str): The path to the file to check.
+
+    Returns:
+        bool: True if the file is valid, False otherwise.
+    """
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        msg = f"[Field file validator] -> Field validation, the file does not exist ({file_path})."
+        logger.write(msg + "\n")
+        print(msg)
+        return False
+    try:
+        # Check if the file contains the right number of points
+        coords_list = utility.load_coordinates(file_path)
+        if (len(coords_list) not in [4,2]):
+            msg = f"[Field file validator] -> Field validation, the file does not have the right number of line ({len(coords_list)})."
+            logger.write(msg + "\n")
+            print(msg)
+            return False
+        
+        # Check distance between two consecutive points
+        if config.CHECK_MINIMUM_SIZE_FIELD:
+            nav = GPSComputing()
+            for i in range(len(coords_list) - 1):
+                if nav.get_distance(coords_list[i], coords_list[i+1]) <  (config.MINIMUM_SIZE_FIELD * 1000):
+                    msg = f"[Field file validator] -> Field validation, the file have a field to small, not saving it."
+                    logger.write(msg + "\n")
+                    print(msg)
+                    return False
+
+    except ValueError as e:
+        msg = f"[Field file validator] -> Failed to load field {file_path} due to ValueError (file is likely corrupted)."
+        logger.write(msg + "\n")
+        print(msg)
+        return False
+    
+    return True

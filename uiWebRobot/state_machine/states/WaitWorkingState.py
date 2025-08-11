@@ -15,6 +15,7 @@ from state_machine.states import ErrorState
 from state_machine.states import CalibrateState
 from state_machine.states import ActuatorScreeningState
 from state_machine import Events
+from shared_class.robot_synthesis import RobotSynthesis
 
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
 from state_machine import utilsFunction
@@ -35,7 +36,7 @@ class WaitWorkingState(State.State):
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
                  vesc_engine: adapters.VescAdapterV4 = None):
-
+        self.robot_synthesis_value = RobotSynthesis.UI_WAIT_WORKING_STATE
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
@@ -48,35 +49,56 @@ class WaitWorkingState(State.State):
 
         try:
             if self.vesc_engine is None:
-                msg = f"[{self.__class__.__name__}] -> initVesc"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> initVesc"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                 self.vesc_engine = utilsFunction.initVesc(self.logger)
-            else:
+            elif config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> no need to initVesc"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
 
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
+                self.logger.write_and_flush(msg + "\n")
+
             self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
-            self.vesc_engine.set_current_rpm(
-                0, self.vesc_engine.PROPULSION_KEY)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
+                self.logger.write_and_flush(msg + "\n")
+
+            self.vesc_engine.set_current_rpm(0, self.vesc_engine.PROPULSION_KEY)
+
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
+                self.logger.write_and_flush(msg + "\n")
+
             self.vesc_engine.start_moving(
                 self.vesc_engine.PROPULSION_KEY,
                 smooth_acceleration=True,
                 smooth_deceleration=True)
 
-            if self.smoothie is None:
-                msg = f"[{self.__class__.__name__}] -> initSmoothie"
+            if config.UI_VERBOSE_LOGGING:
+                msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
                 self.logger.write_and_flush(msg + "\n")
-                print(msg)
+
+            if self.smoothie is None:
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                 try:
                     self.smoothie = utilsFunction.initSmoothie(self.logger)
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
                 except Exception as e:
                     if "[Timeout sm]" in str(e):
                         self.smoothie = utilsFunction.initSmoothie(self.logger)
                     else:
                         raise e
-            else:
+            elif config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
                 self.logger.write_and_flush(msg + "\n")
                 print(msg)
@@ -89,17 +111,18 @@ class WaitWorkingState(State.State):
 
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Setting FrontEndObjects..."
-            self.logger.write_and_flush(msg)
+            self.logger.write_and_flush(msg + "\n")
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.ENABLE,
                                                 startButton=ButtonState.ENABLE,
                                                 continueButton=ButtonState.ENABLE,
                                                 stopButton=ButtonState.NOT_HERE,
-                                                wheelButton=ButtonState.ENABLE,
+                                                wheelButton=ButtonState.DISABLE,
                                                 removeFieldButton=ButtonState.ENABLE,
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
                                                 audit=AuditButtonState.EXTRACTION_ENABLE)
+
         if createField:
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
 
@@ -115,30 +138,15 @@ class WaitWorkingState(State.State):
                     self.smoothie.custom_move_to(
                         A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Go next page..."
-            self.logger.write_and_flush(msg)
-            print(msg)
-
         self.socketio.emit(
             'checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
 
         self.field = None
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Starting 'send_last_pos_thread_tf' thread..."
-            self.logger.write_and_flush(msg)
-            print(msg)
-
         self.send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=utilsFunction.send_last_pos_thread_tf, args=(
             lambda: self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
         self._send_last_pos_thread.start()
-
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Starting 'voltage_thread_tf' thread..."
-            self.logger.write_and_flush(msg)
-            print(msg)
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
@@ -146,22 +154,16 @@ class WaitWorkingState(State.State):
                                                  args=(lambda: self.__voltage_thread_alive,
                                                        self.vesc_engine,
                                                        self.socketio,
-                                                       self.input_voltage),
+                                                       self.input_voltage,
+                                                       self.logger),
                                                  daemon=True)
         self.__voltage_thread.start()
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Starting '__check_joystick_info_tf' thread..."
-            self.logger.write_and_flush(msg)
-            print(msg)
 
         self.__last_joystick_info = time.time()
         self.__check_joystick_info_alive = True
         self.__joystick_info_thread = threading.Thread(target=self.__check_joystick_info_tf,
                                                        daemon=True)
         self.__joystick_info_thread.start()
-        if config.UI_VERBOSE_LOGGING:
-            msg = " DONE"
-            self.logger.write_and_flush(msg + "\n")
 
         self.can_go_setting = True
 
@@ -175,8 +177,8 @@ class WaitWorkingState(State.State):
     def __check_joystick_info_tf(self):
         while self.__check_joystick_info_alive:
             if time.time() - self.__last_joystick_info > config.TIMEOUT_JOYSTICK_USER_ACTION:
-                self.vesc_engine.set_target_rpm(
-                    0, self.vesc_engine.PROPULSION_KEY)
+                if self.vesc_engine is not None:
+                    self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
             time.sleep(0.5)
 
     def __stop_thread(self):
@@ -237,9 +239,6 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.close()
                 self.vesc_engine = None
             return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
-        elif event == Events.Events.WHEEL:
-            self.smoothie.freewheels()
-            return self
         elif event == Events.Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
             return self
@@ -283,9 +282,13 @@ class WaitWorkingState(State.State):
                         config.SI_SPEED_UI * config.MULTIPLIER_SI_SPEED_TO_RPM / 10)
                 else:
                     y = 0
-                self.vesc_engine.set_target_rpm(
-                    y, self.vesc_engine.PROPULSION_KEY)
+
+                if self.vesc_engine is not None:
+                    self.vesc_engine.set_target_rpm(y, self.vesc_engine.PROPULSION_KEY)
                 self.lastValueY = y
+            if(self.statusOfUIObject.wheelButton) :
+                self.statusOfUIObject.wheelButton = ButtonState.DISABLE
+                self.socketio.emit("wheel", "unrelease", namespace='/button')
 
         elif data["type"] == 'getInputVoltage':
             utilsFunction.sendInputVoltage(
@@ -313,7 +316,16 @@ class WaitWorkingState(State.State):
             self.socketio.emit('newField', json.dumps(
                 {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
                  "fields_list": fields_list}), namespace='/map')
-
+            
+        elif data["type"] == 'wheel':
+            if(data["status"]=="release") :
+                self.smoothie.freewheels()
+                self.statusOfUIObject.wheelButton = ButtonState.ENABLE
+                self.socketio.emit("wheel", "release", namespace='/button')
+            else :
+                self.smoothie.tighten_wheels()
+                self.statusOfUIObject.wheelButton = ButtonState.DISABLE
+                self.socketio.emit("wheel", "unrelease", namespace='/button')
         return self
 
     def getStatusOfControls(self):

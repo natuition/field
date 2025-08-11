@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "0.20.11"
+CONFIG_VERSION = "2.1.1"
 
 
 # ======================================================================================================================
@@ -177,9 +177,8 @@ VESC_CORK_PICKUP_MAX_TRIES = 3
 
 AVOID_CORK_VIEW_OBSCURING = True  # is True: adds offsets to control points to make a plant to be at the top half of the undistorted zone
 
-EXTRACTIONS_FULL_CYCLES = 2  # count of full extraction loops called after periphery NN detection (should be >= 1)
-0.006184835433959961
-EXTRACTION_TUNING_MAX_COUNT = 3 # Number of try to get closer to a plant
+EXTRACTIONS_FULL_CYCLES = 1  # count of full extraction loops called after periphery NN detection (should be >= 1)
+EXTRACTION_TUNING_MAX_COUNT = 2 # Number of try to get closer to a plant
 
 SEEK_DELTA_DISTANCE = 25  # mm; if weed is lost after tuning/getting closer - we do 3 shifts for that value (down, left, right) and trying to find it
 MYOPIA_PATCH = True
@@ -202,10 +201,11 @@ VESC_BAUDRATE = 115200
 
 VESC_RPM_SLOW = -2500
 VESC_MOVING_TIME = float("inf")
-VESC_ALIVE_FREQ = 0.5  # freq of sending "keep working" signal to engines when moving
-VESC_CHECK_FREQ = 0.001  # freq of checking need to stop
+VESC_ALIVE_FREQ = 4  # freq in herz of sending "keep working" signal to engines when moving
+VESC_CHECK_FREQ = 1000  # freq in herz of checking need to stop
 FAST_TO_SLOW_TIME = 5
-VESC_STOPPER_CHECK_FREQ = 0.001
+VESC_STOPPER_CHECK_FREQ = 1000 # freq in herz
+VESC_TIMEOUT_READ = 0.05 # timeout in seconds of trying to read the serial
 
 INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
 FREQUENCY_INCREMENTAL_RPM = 0.025  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
@@ -228,10 +228,10 @@ VESC_PROPULSION_CAN_ID = None  # parent vesc has can_id=None
 
 # engine 2
 # enables extraction vesc initialization and usage
-VESC_ALLOW_EXTRACTION = True # extraction GPIO stopper PIN number, set to None to disable stopper usage or if no stopper is used for this vesc
+VESC_ALLOW_EXTRACTION = False # extraction GPIO stopper PIN number, set to None to disable stopper usage or if no stopper is used for this vesc
 VESC_EXTRACTION_STOPPER_PIN = 16  # VALUE MAY BE DIFFERENT FOR EACH ROBOT # set to True if GPIO returns 1 if stopper was hit, otherwise set to False
 VESC_EXTRACTION_STOP_SIGNAL = False # set to True to allow this axis init calibration during vesc adapter instance creation
-VESC_EXTRACTION_CALIBRATE_AT_INIT = True 
+VESC_EXTRACTION_CALIBRATE_AT_INIT = False 
 VESC_EXTRACTION_CALIBRATION_RPM = -2500 # rpm for init calibration 
 VESC_EXTRACTION_CALIBRATION_MAX_TIME = 2 # seconds; max time needed to reach stopper, calibration will be stopped after this timeout 
 VESC_EXTRACTION_CALIBRATION_Z5_FIX_RPM = 2500  
@@ -359,11 +359,11 @@ C_AXIS_CALIBRATION_TO_MAX = None
 CALIBRATION_DISTANCE = 1000  # should be always positive, sign will be auto-defined using *_AXIS_CALIBRATION_TO_MAX flag key
 AFTER_CALIBRATION_AXIS_OFFSET = 0
 CORK_CALIBRATION_MIN_TIME = 3600 
-CALIBRATION_ORDER = ["Z", "X", "Y", "A", "B", "C"]
+CALIBRATION_ORDER = ["Z", "Y", "X", "A", "B", "C"]
 
 # DIRECTION WHEELS
-A_MIN = -13 
-A_MAX = 13 
+A_MIN = -11
+A_MAX = 11
 #NOT USED
 B_MIN = -float("inf")
 B_MAX = float("inf")
@@ -477,7 +477,7 @@ LIFE_LINE_PIN = 78 #77 for lifeline with nvidia board (board pin 38) | 78 for mo
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
-UI_LANGUAGE = "fr" 
+UI_LANGUAGE = "en"
 
 SLIDER_CREATE_FIELD_MIN = 15 #minimum of the slider allowing to configure the second segment of the terrain on the ui.
 SLIDER_CREATE_FIELD_MAX = 150 #maximum of the slider allowing to configure the second segment of the terrain on the ui
@@ -501,7 +501,7 @@ TIMEOUT_JOYSTICK_USER_ACTION = 1
 
 EXTRACTION_PATTERNS_OFFSET_MM = 5 
 EXTRACTION_MAP_CELL_SIZE_MM = 10
-EXTRACTION_TRIES_PER_PLANT = 3 # defines how many times robot will try to extract plant or plants group in undist. zone
+EXTRACTION_TRIES_PER_PLANT = 1 # defines how many times robot will try to extract plant or plants group in undist. zone
 # should be >= 1; expected value that equal to extraction strategies count so each of them can be applied
 
 AVOID_CORK_VIEW_OBSCURING_DIST_X = 10  # mm; offset size to "remove" corkscrew tube from camera-plant view
@@ -538,7 +538,15 @@ NTRIP_OUTPUT_BAUDRATE = 115200
 
 NTRIP_RESTART_TIMEOUT = 10
 MAX_DISTANCE_MOUNTPOINT = 1000 #Allows you to find the station closest to MAX_DISTANCE_MOUNTPOINT maximum if FIND_MOUNTPOINT=True.
-RTK_ID_SEND = [1077,1087,1127,1230,1005] #Id of the rtk frames that will be sent to the gps
+RTK_ID_SEND = [(1005, 1006), (1124, 1127), (1084, 1087), (1074, 1077)] #Id of the rtk frames that will be sent to the gps
+# 1005 : Stationary RTK reference station ARP
+# 1006 : Stationary RTK reference station ARP with antenna height
+# Origine RTK           MSM4        MSM7
+# BeiDou (Chine)        1124        1127
+# GPS (USA)             1074        1077
+# GLONASS (Russie)      1084        1087
+# Galileo (UE)          1094        1097
+NTRIP_SLEEP_TIME = 10 # Time in seconds between two sessions of getting data (MSM and ARP)
 
 CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 
@@ -619,18 +627,18 @@ PRECISE_DATA_FILE = "yolo/Y0016.data"
 # ======================================================================================================================
 # CAMERA SETTINGS
 # ======================================================================================================================
-CAMERA_W = 3264
-CAMERA_H = 1848
-APPLY_IMAGE_CROPPING = True
-CROP_W_FROM = 508 
-CROP_W_TO = 2508 
-CROP_H_FROM = -62 
-CROP_H_TO = 1438 
+CAMERA_W = 1920
+CAMERA_H = 1080
+APPLY_IMAGE_CROPPING = False
+CROP_W_FROM = 0 
+CROP_W_TO = 1920 
+CROP_H_FROM = 0 
+CROP_H_TO = 1080
 CAMERA_FRAMERATE = 16
 CAMERA_FLIP_METHOD = 0
 SCENE_CENTER_X = 1000
 SCENE_CENTER_Y = 980
-ONE_MM_IN_PX = 5.2
+ONE_MM_IN_PX = 3.2
 ISP_DIGITAL_GAIN_RANGE_FROM = 4
 ISP_DIGITAL_GAIN_RANGE_TO = 4
 GAIN_RANGE_FROM = 4
@@ -670,6 +678,8 @@ CORK_TO_CAMERA_DISTANCE_Y = 30  # distance between camera and cork on the robot,
 # PATHS SETTINGS
 # ======================================================================================================================
 INPUT_GPS_FIELD_FILE = "field.txt"
+MINIMUM_SIZE_FIELD = 15 # Size minimum of a field (in meter)
+CHECK_MINIMUM_SIZE_FIELD = True # Do check if a field is bigger than the minimum
 OUTPUT_GPS_HISTORY_FILE = "gps_history.txt"
 DARKNET_LIB_DIR_PATH = "/home/violette/field/darknet/"
 STATISTICS_OUTPUT_FILE = "statistics.txt"

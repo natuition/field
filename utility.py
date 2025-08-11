@@ -717,3 +717,12 @@ def life_line_reset():
         else:
             print(f"Not find vesc sleeping {time_int+1}/10 secs.")
         sleep(1)
+
+
+def load_coordinates(file_path):
+    positions_list = []
+    with open(file_path) as file:
+        for line in file:
+            if line != "":
+                positions_list.append(list(map(float, line.split(" "))))
+    return positions_list

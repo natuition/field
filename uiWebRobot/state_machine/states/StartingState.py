@@ -8,6 +8,7 @@ from state_machine.states import ErrorState
 from state_machine import Events
 from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
 from state_machine import utilsFunction
+from shared_class.robot_synthesis import RobotSynthesis
 from config import config
 import utility
 
@@ -15,22 +16,23 @@ import utility
 class StartingState(State.State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit=False):
+        self.robot_synthesis_value = RobotSynthesis.UI_STARTING_STATE
         self.socketio = socketio
         self.logger = logger
         self.isAudit = isAudit
 
         self.socketio.emit('start', {"status": "pushed"}, namespace='/button', broadcast=True)
-        msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{False},AUDIT_MODE:{isAudit})"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        if config.UI_VERBOSE_LOGGING:
+            msg = f"[{self.__class__.__name__}] -> Edit config file (CONTINUE_PREVIOUS_PATH:{False})"
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
         utilsFunction.changeConfigValue("CONTINUE_PREVIOUS_PATH", False)
-        utilsFunction.changeConfigValue("AUDIT_MODE", isAudit)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.CHARGING,
                                                 continueButton=ButtonState.DISABLE,
                                                 stopButton=ButtonState.NOT_HERE,
-                                                wheelButton=ButtonState.DISABLE,
+                                                wheelButton=ButtonState.NOT_HERE,
                                                 removeFieldButton=ButtonState.DISABLE,
                                                 joystick=False,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)

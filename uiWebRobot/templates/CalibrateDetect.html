@@ -16,8 +16,12 @@
         }
 
         #fig_image:hover {
-            /*transform: scale(2);*/
-            object-fit: none;
+            transform: scale(2.25) translateX(-50px);
+            /*object-fit: cover;*/
+        }
+
+        #img_detection_div {
+            overflow: hidden;
         }
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
@@ -51,15 +55,15 @@
             </div>
         </div>
         <div id="img_detection_div" class="d-none justify-content-center align-items-center"
-            style="margin: 0 auto; padding: 10px 0;">
-            <img id="fig_image" class="d-none" style="width: 80%; aspect-ratio: 16/9; margin: 0 auto;">
+            style="padding: 10px 0; width:80%">
+            <img id="fig_image" class="d-none" style="width: 100%; aspect-ratio: 16/9;">
         </div>
         <div id="label_detection_div" class="d-none justify-content-center align-items-center"
             style="margin: 0 auto; padding: 10px 0;">
-            <label id="fig_image_txt_ok" class="d-none form-check-label">
+            <label id="fig_image_txt_true" class="d-none form-check-label">
                 {{(ui_languages["Is in undistorted zone"])[ui_language]}}
             </label>
-            <label id="fig_image_txt_nok" class="d-none form-check-label">
+            <label id="fig_image_txt_false" class="d-none form-check-label">
                 {{(ui_languages["Is not in undistorted zone"])[ui_language]}}
             </label>
         </div>
@@ -109,8 +113,8 @@
         }
 
         socketio.on('image', function (data) {
-            $('#fig_image_txt_ok').addClass('d-none');
-            $('#fig_image_txt_nok').addClass('d-none');
+            $('#fig_image_txt_true').addClass('d-none');
+            $('#fig_image_txt_false').addClass('d-none');
             var arrayBufferView = new Uint8Array(data['image_data']);
             var blob = new Blob([arrayBufferView], { type: "image/jpeg" });
             var img_url = URL.createObjectURL(blob);
@@ -123,7 +127,7 @@
             $('#label_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
             $('#img_detection_div').attr({ class: "d-flex justify-content-center align-items-center" });
             $('#fig_image_txt_' + data['label']).removeClass('d-none');
-            if (data['label'] == "ok") {
+            if (data['label']) {
                 $('#validate').removeClass('d-none');
             } else {
                 $('#validate').addClass('d-none');

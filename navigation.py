@@ -451,21 +451,21 @@ class AntiTheftZone:
 class NavigationV3:
     __ntrip_restart_ts = 0
 
-    @staticmethod
-    def restart_ntrip_service(logger_full: utility.Logger):
+    @classmethod
+    def restart_ntrip_service(cls, logger_full: utility.Logger):
         """Will restart Ntrip service if time passed after last Ntrip restart is bigger than allowed in config
 
         Returns True if did Ntrip restart, returns False otherwise.
         """
 
         if not config.NTRIP:
-            msg = f"Ntrip restart is aborted as Ntrip usage is disabled in config.NTRIP={config.NTRIP} key"
+            msg = f"[{cls.__name__}] -> Ntrip restart is aborted as Ntrip usage is disabled in config.NTRIP={config.NTRIP} key."
             print(msg)
             logger_full.write(msg + "\n")
             return False
 
         if time.time() - NavigationV3.__ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT:
-            msg = "Restarting Ntrip service"
+            msg = f"[{cls.__name__}] -> Restarting Ntrip service."
             logger_full.write(msg + "\n")
             if config.VERBOSE:
                 print(msg)

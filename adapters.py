@@ -12,9 +12,8 @@ import threading
 import serial
 import pyvesc
 import re
-import RPi.GPIO as GPIO
-
-
+#import RPi.GPIO as GPIO
+from serial import SerialException
 
 
 class SmoothieAdapter:
@@ -27,14 +26,14 @@ class SmoothieAdapter:
 
     def __init__(self, smoothie_host, calibration_at_init=True):
         if type(smoothie_host) is not str:
-            raise TypeError("invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
+            raise TypeError(f"[{self.__class__.__name__}] -> invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
 
         if config.SMOOTHIE_BACKEND == 1:
             self.__smc = connectors.SmoothieV11TelnetConnector(smoothie_host)
         elif config.SMOOTHIE_BACKEND == 2:
             self.__smc = connectors.SmoothieV11SerialConnector(smoothie_host, config.SMOOTHIE_BAUDRATE)
         else:
-            raise ValueError("wrong config.SMOOTHIE_BACKEND value: " + str(smoothie_host))
+            raise ValueError(f"[{self.__class__.__name__}] -> wrong config.SMOOTHIE_BACKEND value: " + str(smoothie_host))
 
         self.__sync_locker = multiprocessing.RLock()
         self.__x_cur = multiprocessing.Value("d", 0)
@@ -52,35 +51,56 @@ class SmoothieAdapter:
             "C": self.__c_cur,
         }
 
+        #< Code de base
+        # res = None
+        # for i in range(3):
+        #     res = self.switch_to_relative()
+        #     if res != self.RESPONSE_OK:
+        #         msg = f"Attempt {i + 1} of switching smoothie to relative is failed, smoothie response:\n{res}"
+        #         print(msg)
+        #     else:
+        #         break
+        # else:
+        #     msg = f"All attempts of switching smoothie to relative were failed! Last smoothie's response:\n{res}"
+        #     print(msg)
+        #     raise Exception(msg)
+        #> Code de base
+
+        #< Code patché rapidement pour la démo
         res = None
         for i in range(3):
             res = self.switch_to_relative()
-            if res != self.RESPONSE_OK:
-                msg = f"Attempt {i + 1} of switching smoothie to relative is failed, smoothie response:\n{res}"
+            if SmoothieAdapter.check_res_smoothie(res):
+                msg = f"[{self.__class__.__name__}] -> Attempt {i + 1} of switching smoothie to relative is failed, smoothie response:\n{res}"
                 print(msg)
             else:
+                if(res == self.RESPONSE_OK):
+                    print(f"[{self.__class__.__name__}] -> The Smoothie switched to relative mode without detecting any bugs. The response was: {res}")
+                else:
+                    print(f"[{self.__class__.__name__}] -> A bug was detected during the Smoothie's switch to relative mode, but it was handled by the bug fix. The response was: {res}")
                 break
         else:
-            msg = f"All attempts of switching smoothie to relative were failed! Last smoothie's response:\n{res}"
+            msg = f"[{self.__class__.__name__}] -> All attempts of switching smoothie to relative were failed! Last smoothie's response:\n{res}"
             print(msg)
             raise Exception(msg)
+        #> Code patché rapidement pour la démo
 
         if config.SEEDER_QUANTITY > 0:
             self.seeder_close()
             res = self.seeder_close()
-            if res != self.RESPONSE_OK:
-                msg = "Couldn't lock seeder during smoothie adapter initialization! Smoothie response:\n" + res
+            if SmoothieAdapter.check_res_smoothie(res):
+                msg = f"[{self.__class__.__name__}] -> Couldn't lock seeder during smoothie adapter initialization! Smoothie response: {res}"
                 print(msg)
 
         if calibration_at_init:
             # TODO: temporary crutch - vesc is moving Z upward before smoothie loads, so we need to lower the cork a bit down
             res = self.custom_move_for(Z_F=config.Z_F_EXTRACTION_DOWN, Z=5)
             self.wait_for_all_actions_done()
-            if res != self.RESPONSE_OK:
+            if SmoothieAdapter.check_res_smoothie(res):
                 print("Couldn't move cork down for Z5! Calibration errors on Z axis are possible!")
 
             res = self.ext_calibrate_cork()
-            if res != self.RESPONSE_OK:
+            if SmoothieAdapter.check_res_smoothie(res):
                 print("Initial cork calibration was failed, smoothie response:\n", res)  # TODO: what if so??
                 raise Exception("Initial cork calibration was failed!")
 
@@ -92,6 +112,10 @@ class SmoothieAdapter:
 
     def disconnect(self):
         self.__smc.disconnect()
+        
+    @staticmethod
+    def check_res_smoothie(res):
+        return (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res))
 
     @property
     def is_disconnect(self):
@@ -132,6 +156,14 @@ class SmoothieAdapter:
         with self.__sync_locker:
             self.__smc.write("M18")
             return self.__smc.read_some()
+        
+    def tighten_wheels(self):
+        """Disable stepper motors.
+
+        Sends 'M17' command to smoothie. Returns smoothie answer message."""
+        with self.__sync_locker:
+            self.__smc.write("M17")
+            return self.__smc.read_some()
 
     def reset_halted_state(self):
         """Reset from a halted state caused by limit switch, M112 or kill switch
@@ -162,9 +194,9 @@ class SmoothieAdapter:
     def set_current_coordinates(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
         with self.__sync_locker:
             if self.__check_arg_types([type(None)], X, Y, Z, A, B, C):
-                raise TypeError("at least one axis shouldn't be None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one axis shouldn't be None")
             if not self.__check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
-                raise TypeError("incorrect axis current value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect axis current value(s) type(s)")
 
             g_code = "G92"
 
@@ -236,12 +268,12 @@ class SmoothieAdapter:
                     coordinates[coord[0]] = self.smoothie_to_mm(coordinates[coord[0]], coord[0])
             return coordinates
 
-    @staticmethod
-    def compare_coordinates(coordinates_a, coordinates_b, precision=1e-10):
+    @classmethod
+    def compare_coordinates(cls, coordinates_a, coordinates_b, precision=1e-10):
         if type(coordinates_a) != dict or type(coordinates_b) != dict:
-            raise AttributeError("coordinates should be stored in dict")
+            raise AttributeError(f"[{cls.__name__}] -> coordinates should be stored in dict")
         if len(coordinates_a) != len(coordinates_b):
-            raise AttributeError("coordinates dicts should have similar items count")
+            raise AttributeError(f"[{cls.__name__}] -> coordinates dicts should have similar items count")
 
         for key in coordinates_a:
             if abs(coordinates_a[key] - coordinates_b[key]) > precision:
@@ -269,15 +301,15 @@ class SmoothieAdapter:
         with self.__sync_locker:
             # check given forces
             if self.__check_arg_types([type(None)], X_F, Y_F, Z_F, A_F, B_F, C_F):
-                raise TypeError("at least one given force value shouldn't be a None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one given force value shouldn't be a None")
             if not self.__check_arg_types([float, int, type(None)], X_F, Y_F, Z_F, A_F, B_F, C_F):
-                raise TypeError("incorrect force value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect force value(s) type(s)")
 
             # check given axes
             if self.__check_arg_types([type(None)], X, Y, Z, A, B, C):
-                raise TypeError("at least one given axis value shouldn't be a None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one given axis value shouldn't be a None")
             if not self.__check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
-                raise TypeError("incorrect axis value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect axis value(s) type(s)")
 
             # apply min of given forces (and pass by Nones)
             min_f_msg = "(min force value applied)"
@@ -424,15 +456,15 @@ class SmoothieAdapter:
         with self.__sync_locker:
             # check given forces
             if self.__check_arg_types([type(None)], X_F, Y_F, Z_F, A_F, B_F, C_F):
-                raise TypeError("at least one given force value shouldn't be a None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one given force value shouldn't be a None")
             if not self.__check_arg_types([float, int, type(None)], X_F, Y_F, Z_F, A_F, B_F, C_F):
-                raise TypeError("incorrect force value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect force value(s) type(s)")
 
             # check given axes
             if self.__check_arg_types([type(None)], X, Y, Z, A, B, C):
-                raise TypeError("at least one given axis value shouldn't be a None")
+                raise TypeError(f"[{self.__class__.__name__}] -> at least one given axis value shouldn't be a None")
             if not self.__check_arg_types([float, int, type(None)], X, Y, Z, A, B, C):
-                raise TypeError("incorrect axis value(s) type(s)")
+                raise TypeError(f"[{self.__class__.__name__}] -> incorrect axis value(s) type(s)")
 
             # apply min of given forces (and pass by Nones)
             min_f_msg = "(min force value applied)"
@@ -583,13 +615,13 @@ class SmoothieAdapter:
                         (rel_x != 0 and rel_y == 0):
                     # X movement
                     res = self.custom_move_for(X_F=X_F, X=X)
-                    if res != self.RESPONSE_OK:
-                        err_msg = "Couldn't do separate X movement:\n" + res
+                    if SmoothieAdapter.check_res_smoothie(res):
+                        err_msg = f"[{self.__class__.__name__}] -> Couldn't do separate X movement:\n" + res
                         return err_msg
                     # Y movement
                     res = self.custom_move_for(Y_F=Y_F, Y=Y)
-                    if res != self.RESPONSE_OK:
-                        err_msg = "Couldn't do separate Y movement:\n" + res
+                    if SmoothieAdapter.check_res_smoothie(res):
+                        err_msg = f"[{self.__class__.__name__}] -> Couldn't do separate Y movement:\n" + res
                         return err_msg
                     return res
             return self.custom_move_for(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
@@ -613,13 +645,13 @@ class SmoothieAdapter:
                         (rel_x != 0 and rel_y == 0):
                     # X movement
                     res = self.custom_move_to(X_F=X_F, X=X)
-                    if res != self.RESPONSE_OK:
-                        err_msg = "Couldn't do separate X movement:\n" + res
+                    if SmoothieAdapter.check_res_smoothie(res):
+                        err_msg = f"[{self.__class__.__name__}] -> Couldn't do separate X movement:\n" + res
                         return err_msg
                     # Y movement
                     res = self.custom_move_to(Y_F=Y_F, Y=Y)
-                    if res != self.RESPONSE_OK:
-                        err_msg = "Couldn't do separate Y movement:\n" + res
+                    if SmoothieAdapter.check_res_smoothie(res):
+                        err_msg = f"[{self.__class__.__name__}] -> Couldn't do separate Y movement:\n" + res
                         return err_msg
                     return res
             return self.custom_move_to(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
@@ -648,12 +680,12 @@ class SmoothieAdapter:
         with self.__sync_locker:
             res = self.custom_move_for(A_F=config.A_F_MAX, A=config.A_MAX)
             self.wait_for_all_actions_done()
-            if res != self.RESPONSE_OK:
+            if SmoothieAdapter.check_res_smoothie(res):
                 return res
 
             res = self.custom_move_for(A_F=config.A_F_MAX, A=-(abs(config.A_MIN) + abs(config.A_MAX)))
             self.wait_for_all_actions_done()
-            if res != self.RESPONSE_OK:
+            if SmoothieAdapter.check_res_smoothie(res):
                 return res
 
             return self.set_current_coordinates(A=config.A_MIN)
@@ -661,7 +693,7 @@ class SmoothieAdapter:
     def ext_calibrate_cork(self):
 
         if not set(config.CALIBRATION_ORDER).issubset(set(["X", "Y", "Z", "A", "B", "C"])):
-            raise ValueError("unsupported axis label or wrong type")
+            raise ValueError(f"[{self.__class__.__name__}] -> unsupported axis label or wrong type")
 
         for axis_label in config.CALIBRATION_ORDER:
                 
@@ -673,7 +705,7 @@ class SmoothieAdapter:
                     eval("config."+axis_label+"_MAX"), 
                     eval("config."+axis_label+"_AXIS_CALIBRATION_TO_MAX")
                 )
-                if res != self.RESPONSE_OK:
+                if SmoothieAdapter.check_res_smoothie(res):
                     raise RuntimeError(f"Couldn't calibrate {axis_label} axis, smoothie response:\n" + res)
 
         return self.RESPONSE_OK
@@ -695,7 +727,7 @@ class SmoothieAdapter:
             if self.RESPONSE_HOMING_FAILED in response:
                 for i in range(config.RETRY_CORK_UP_MIN, config.RETRY_CORK_UP_MAX+config.RETRY_CORK_UP_STEP, config.RETRY_CORK_UP_STEP):
                     response = self.__smc.read_some()
-                    msg = f"Homing failed during cork up, retry with Z{i} down before up."
+                    msg = f"[{self.__class__.__name__}] -> Homing failed during cork up, retry with Z{i} down before up."
                     print(msg)
                     response = self.reset_halted_state()
                     if self.RESPONSE_AFTER_M999 in response:
@@ -720,11 +752,11 @@ class SmoothieAdapter:
 
         else:
             raise RuntimeError(
-                "picking up corkscrew with stoppers usage requires Z axis calibration permission in config"
+                f"[{self.__class__.__name__}] -> picking up corkscrew with stoppers usage requires Z axis calibration permission in config"
             )
 
-    @staticmethod
-    def mm_to_smoothie(mm_axis_val, axis_label: str):
+    @classmethod
+    def mm_to_smoothie(cls, mm_axis_val, axis_label: str):
         """Converts given mms value to smoothie value applying (multiplying) coefficient corresponding to given axis
         label
 
@@ -732,9 +764,9 @@ class SmoothieAdapter:
         """
 
         if axis_label not in ["X", "Y", "Z", "A", "B", "C"]:
-            raise ValueError("unsupported axis label or wrong type")
+            raise ValueError(f"[{cls.__name__}] -> unsupported axis label or wrong type")
         if not SmoothieAdapter.__check_arg_types([int, float], mm_axis_val):
-            raise TypeError("axis_value should be float or int")
+            raise TypeError(f"[{cls.__name__}] -> axis_value should be float or int")
 
         if mm_axis_val == 0:
             return mm_axis_val
@@ -752,8 +784,8 @@ class SmoothieAdapter:
         if axis_label == "C":
             return mm_axis_val * config.C_COEFFICIENT_TO_MM
 
-    @staticmethod
-    def smoothie_to_mm(sm_axis_val, axis_label: str):
+    @classmethod
+    def smoothie_to_mm(cls, sm_axis_val, axis_label: str):
         """Converts given smoothie value to mms value applying (dividing) coefficient corresponding to given axis
         label
 
@@ -761,83 +793,83 @@ class SmoothieAdapter:
         """
 
         if axis_label not in ["X", "Y", "Z", "A", "B", "C"]:
-            raise ValueError("unsupported axis label or wrong type")
+            raise ValueError(f"[{cls.__name__}] -> unsupported axis label or wrong type")
         if not SmoothieAdapter.__check_arg_types([int, float], sm_axis_val):
-            raise TypeError("axis_value should be float or int")
+            raise TypeError(f"[{cls.__name__}] -> axis_value should be float or int")
 
         if sm_axis_val == 0:
             return sm_axis_val
 
         if axis_label == "X":
             if config.X_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.X_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.X_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.X_COEFFICIENT_TO_MM
 
         if axis_label == "Y":
             if config.Y_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.Y_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.Y_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.Y_COEFFICIENT_TO_MM
 
         if axis_label == "Z":
             if config.Z_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.Z_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.Z_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.Z_COEFFICIENT_TO_MM
 
         if axis_label == "A":
             if config.A_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.A_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.A_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.A_COEFFICIENT_TO_MM
 
         if axis_label == "B":
             if config.B_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.B_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.B_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.B_COEFFICIENT_TO_MM
 
         if axis_label == "C":
             if config.C_COEFFICIENT_TO_MM == 0:
-                raise ValueError("config.C_COEFFICIENT_TO_MM can't be a zero")
+                raise ValueError(f"[{cls.__name__}] -> config.C_COEFFICIENT_TO_MM can't be a zero")
             return sm_axis_val / config.C_COEFFICIENT_TO_MM
 
-    @staticmethod
-    def __check_arg_types(types: list, *args):
+    @classmethod
+    def __check_arg_types(cls, types: list, *args):
         """Returns True if all given variables (*args) types are in given types list, False otherwise
         """
         if len(args) < 1:
-            raise TypeError("item(s) to check is missed")
+            raise TypeError(f"[{cls.__name__}] -> item(s) to check is missed")
         if type(types) is not list:
-            raise TypeError("expected list of types, received " + str(type(types)))
+            raise TypeError(f"[{cls.__name__}] -> expected list of types, received " + str(type(types)))
         if len(types) < 1:
-            raise ValueError("list of types should contain at least one item")
+            raise ValueError(f"[{cls.__name__}] -> list of types should contain at least one item")
 
         for arg in args:
             if type(arg) not in types:
                 return False
         return True
 
-    @staticmethod
-    def __validate_axis(cur_axis_val, mov_axis_val, key_label, key_min, key_max, key_min_label, key_max_label):
+    @classmethod
+    def __validate_axis(cls, cur_axis_val, mov_axis_val, key_label, key_min, key_max, key_min_label, key_max_label):
         """Checks if given axis movement can be done. Returns None if value is ok, info/error message otherwise.
 
         Receives smoothie values (may be not in mms).
         """
 
         if cur_axis_val + mov_axis_val > key_max:
-            return "Value {0} for {1} goes beyond max acceptable range of {3} = {2}, as current value is {4}" \
+            return f"[{cls.__name__}] -> Value {0} for {1} goes beyond max acceptable range of {3} = {2}, as current value is {4}" \
                 .format(mov_axis_val, key_label, key_max, key_max_label, cur_axis_val)
         if cur_axis_val + mov_axis_val < key_min:
-            return "Value {0} for {1} goes beyond min acceptable range of {3} = {2}, as current value is {4}" \
+            return f"[{cls.__name__}] -> Value {0} for {1} goes beyond min acceptable range of {3} = {2}, as current value is {4}" \
                 .format(mov_axis_val, key_label, key_min, key_min_label, cur_axis_val)
         return None
 
-    @staticmethod
-    def __validate_force(value, key_label, key_min, key_max, key_min_label, key_max_label):
+    @classmethod
+    def __validate_force(cls, value, key_label, key_min, key_max, key_min_label, key_max_label):
         """Checks if given force can be applied. Returns None if value is ok, info/error message otherwise.
         """
 
         if value > key_max:
-            return f"Value {value} for {key_label} goes beyond max acceptable range of {key_max_label} = {key_max}"
+            return f"[{cls.__name__}] -> Value {value} for {key_label} goes beyond max acceptable range of {key_max_label} = {key_max}"
         if value < key_min:
-            return f"Value {value} for {key_label} goes beyond min acceptable range of {key_min_label} = {key_min}"
+            return f"[{cls.__name__}] -> Value {value} for {key_label} goes beyond min acceptable range of {key_min_label} = {key_min}"
         return None
 
     def __calibrate_axis(self,
@@ -1170,7 +1202,7 @@ class CameraAdapterIMX219_170:
             # image = cv.imread('test.jpg') #fake image for debug
             return image
         else:
-            raise RuntimeError("Unable to open camera")
+            raise RuntimeError(f"[{self.__class__.__name__}] -> Unable to open camera")
 
 
 class VideoCaptureNoBuffer:
@@ -1455,9 +1487,10 @@ class VescAdapterV3:
             self.__gpio_stoppers_pins[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOPPER_PIN
             if self.__gpio_stoppers_pins[self.PROPULSION_KEY] is not None:
                 if not gpio_is_initialized:
-                    GPIO.setmode(GPIO.BOARD)
-                    gpio_is_initialized = True
-                GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
+                    raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
+                    #GPIO.setmode(GPIO.BOARD)
+                    #gpio_is_initialized = True
+                #GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
 
         # init EXTRACTION vesc
         if config.VESC_ALLOW_EXTRACTION:
@@ -1477,9 +1510,10 @@ class VescAdapterV3:
                 self.__gpio_stoppers_pins[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOPPER_PIN
                 if self.__gpio_stoppers_pins[self.EXTRACTION_KEY] is not None:
                     if not gpio_is_initialized:
-                        GPIO.setmode(GPIO.BOARD)
-                        gpio_is_initialized = True
-                    GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
+                        raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
+                        #GPIO.setmode(GPIO.BOARD)
+                        #gpio_is_initialized = True
+                    #GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
             else:
                 # TODO what robot should do if initialization was failed?
                 print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
@@ -1546,13 +1580,13 @@ class VescAdapterV3:
 
         for engine_key in self.__can_ids:
             self.stop_moving(engine_key)
-            if self.__gpio_stoppers_pins[engine_key] is not None:
-                GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
-                if not cleanup_gpio:
-                    cleanup_gpio = True
+            #if self.__gpio_stoppers_pins[engine_key] is not None:
+                #GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
+                #if not cleanup_gpio:
+                    #cleanup_gpio = True
 
-        if cleanup_gpio:
-            GPIO.cleanup()
+        #if cleanup_gpio:
+            #GPIO.cleanup()
 
         self._movement_ctrl_th.join(1)
         self.__ser.close()
@@ -1600,12 +1634,12 @@ class VescAdapterV3:
                         self.__is_moving[engine_key] = False
                 # send alive to each active
                 if time.time() > self.__next_alive_time:
-                    self.__next_alive_time = time.time() + self.__alive_freq
+                    self.__next_alive_time = time.time() + 1 / self.__alive_freq
                     for engine_key in self.__is_moving:
                         if self.__is_moving[engine_key]:
                             self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
                 # wait for next checking tick
-                time.sleep(self.__check_freq)
+                time.sleep(1 / self.__check_freq)
         except serial.SerialException as ex:
             print(ex)
 
@@ -1633,7 +1667,7 @@ class VescAdapterV3:
                             new_rpm = future_rpm-current_rpm
                         self.__current_rpm[engine_key] += new_rpm
                         self.__ser.write(pyvesc.encode(pyvesc.SetRPM(self.__current_rpm[engine_key], can_id=self.__can_ids[engine_key])))
-                time.sleep(config.FREQUENCY_INCREMENTAL_RPM)
+                time.sleep(1 / config.FREQUENCY_INCREMENTAL_RPM)
         except serial.SerialException as ex:
             print(ex)
 
@@ -1660,7 +1694,7 @@ class VescAdapterV3:
         while self.__is_moving[engine_key]:
             if timeout is not None and time.time() > end_t:
                 return False
-            time.sleep(self.__check_freq)
+            time.sleep(1 / self.__check_freq)
         return True
 
     def wait_for_stop_any(self, timeout=None):
@@ -1681,13 +1715,13 @@ class VescAdapterV3:
 
         end_t = time.time() + timeout if timeout is not None else float("inf")
         while self.__is_moving[engine_key]:
-            if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
-                return True
+            #if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
+                #return True
             if time.time() > end_t:
                 if stop_engine_if_timeout:
                     self.stop_moving(engine_key)
                 return False
-            time.sleep(self.__stopper_check_freq)
+            time.sleep(1 / self.__stopper_check_freq)
         return False
 
     def wait_for_stopper_hit_any(self):
@@ -1769,13 +1803,18 @@ class VescAdapterV4:
     PROPULSION_KEY = 0
     EXTRACTION_KEY = 1
 
-    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
+    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq, logger_full: utility.Logger):
         self.__locker = threading.Lock()
+        self.__reconnect_locker = threading.Lock()
+
+        self.__ser_port = ser_port
+        self.__ser_baudrate = ser_baudrate
 
         gpio_is_initialized = False
         self.__stopper_check_freq = stopper_check_freq
         self.__alive_freq = alive_freq
         self.__check_freq = check_freq
+        self.__logger_full = logger_full
         self.__next_alive_time = time.time()
 
         self.__can_ids = dict()
@@ -1796,13 +1835,13 @@ class VescAdapterV4:
         self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
         self.__ser.flushInput()
         self.__ser.flushOutput()
-
+        self.__ser.timeout = config.VESC_TIMEOUT_READ
 
         # INIT ALL ALLOWED VESCS HERE
         # init PROPULSION vesc (currently it's parent vesc so it has no checkings for ID and has parent's ID=None)
         if config.VESC_ALLOW_PROPULSION:
             if config.VESC_PROPULSION_AUTODETECT_CAN_ID:
-                raise NotImplementedError("can id detection is not confirmed to work fine")
+                raise NotImplementedError(f"[{self.__class__.__name__}] -> Can id detection is not confirmed to work fine.")
             else:
                 prop_can_id = config.VESC_PROPULSION_CAN_ID
             self.__can_ids[self.PROPULSION_KEY] = prop_can_id  # parent vesc has ID=None
@@ -1821,9 +1860,10 @@ class VescAdapterV4:
             self.__gpio_stoppers_pins[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOPPER_PIN
             if self.__gpio_stoppers_pins[self.PROPULSION_KEY] is not None:
                 if not gpio_is_initialized:
-                    GPIO.setmode(GPIO.BOARD)
-                    gpio_is_initialized = True
-                GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
+                    raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
+                    #GPIO.setmode(GPIO.BOARD)
+                    #gpio_is_initialized = True
+                #GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
 
         # init EXTRACTION vesc
         if config.VESC_ALLOW_EXTRACTION:
@@ -1849,13 +1889,13 @@ class VescAdapterV4:
                 self.__gpio_stoppers_pins[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOPPER_PIN
                 if self.__gpio_stoppers_pins[self.EXTRACTION_KEY] is not None:
                     if not gpio_is_initialized:
-                        GPIO.setmode(GPIO.BOARD)
-                        gpio_is_initialized = True
-                    GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
-
+                        raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
+                        #GPIO.setmode(GPIO.BOARD)
+                        #gpio_is_initialized = True
+                    #GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
             else:
                 # TODO what robot should do if initialization was failed?
-                print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
+                print(f"[{self.__class__.__name__}] -> Extraction vesc initialization fail: couldn't determine extraction vesc ID.")
         # init any new vescs (add vesc init code here)
         # ...
 
@@ -1891,9 +1931,10 @@ class VescAdapterV4:
             self.stop_moving(self.EXTRACTION_KEY)
             if not res:
                 # TODO what robot should do if calibration was failed (there was no stopper hit)?
-                print("Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!)")
+                print(f"[{self.__class__.__name__}] -> Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!).")
         # do any new calibrations (add vesc calibration code here)
         # ...
+        self.__last_reconnect_time = time.time() - 60
 
     def __enter__(self):
         return self
@@ -1903,6 +1944,7 @@ class VescAdapterV4:
 
     def __del__(self):
         self.close()
+        del self.__ser
 
     def close(self):
         
@@ -1912,16 +1954,51 @@ class VescAdapterV4:
 
             for engine_key in self.__can_ids:
                 self.stop_moving(engine_key)
-                if self.__gpio_stoppers_pins[engine_key] is not None:
-                    GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
-                    if not cleanup_gpio:
-                        cleanup_gpio = True
+                #if self.__gpio_stoppers_pins[engine_key] is not None:
+                    #GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
+                    #if not cleanup_gpio:
+                        #cleanup_gpio = True
 
-            if cleanup_gpio:
-                GPIO.cleanup()
+            #if cleanup_gpio:
+                #GPIO.cleanup()
 
             self._movement_ctrl_th.join(1)
             self.__ser.close()
+
+    def reconnect_vesc(self) :
+        with self.__reconnect_locker :
+            if time.time() - self.__last_reconnect_time < 60 :
+                return
+
+            print(self)
+            self.__last_reconnect_time = time.time()
+            self.__ser.close()
+
+            smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
+            while not "vesc" in smoothie_vesc_addr:
+                msg = f"[{self.__class__.__name__}] -> Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
+                print(msg)
+                time.sleep(1)
+                smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
+                
+            vesc_address = smoothie_vesc_addr["vesc"]
+            msg = f"[{self.__class__.__name__}] -> Finding vesc's USB address at '{vesc_address}'."
+            print(msg)
+            
+            could_open_port = False
+            while not could_open_port :
+                try : 
+                    self.__ser = serial.Serial(port=vesc_address, baudrate=self.__ser_baudrate)
+                    could_open_port = True
+                    self.__ser.flushInput()
+                    self.__ser.flushOutput()
+                    self.__ser.timeout = 5
+                    print(f"[{self.__class__.__name__}] -> It is reconnected!")
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
+                except Exception as e:
+                    print(f"[{self.__class__.__name__}] -> Could not open port ({e}).")
+                    time.sleep(1)
 
     def get_unregistered_can_id(self):
         for can_id in range(0, 253):
@@ -1932,10 +2009,14 @@ class VescAdapterV4:
 
     def __get_firmware_version(self, report_field_names, can_id):
         with self.__locker:
-            self.__ser.write(pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id)))
-            in_buf = b''
-            while self.__ser.in_waiting > 0:
-                in_buf += self.__ser.read(self.__ser.in_waiting)
+            try :
+                self.__ser.write(pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id)))
+                in_buf = b''
+                while self.__ser.in_waiting > 0:
+                    in_buf += self.__ser.read(self.__ser.in_waiting)
+            except SerialException :
+                self.reconnect_vesc()
+
 
         if len(in_buf) == 0:
             return None
@@ -1955,7 +2036,6 @@ class VescAdapterV4:
 
         Implements keeping multiple vesc engines alive and stopping them by a timers if they were set.
         """
-
         try:
             while self.__keep_thread_alive:
                 with self.__locker:
@@ -1963,16 +2043,17 @@ class VescAdapterV4:
                     for engine_key in self.__can_ids:
                         if not self.__keep_thread_alive:
                             break
-
                         if not self.__is_moving[engine_key]:
                             continue
-
                         # engine movement timeout
                         if time.time() - self.__start_time[engine_key] >= self.__time_to_move[engine_key] or \
                                 self.__stop_request[engine_key]:
                             # immediate engine stop
                             if not self.__use_smooth_decel[engine_key]:
-                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                try :
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
                                 self.__current_rpm[engine_key] = 0
                                 self.__last_stop_time[engine_key] = time.time()
                                 self.__is_moving[engine_key] = False
@@ -1985,12 +2066,18 @@ class VescAdapterV4:
                                 if abs(self.__current_rpm[engine_key]) > config.VESC_SMOOTH_DECEL_RPM_STEP:
                                     self.__current_rpm[engine_key] += -config.VESC_SMOOTH_DECEL_RPM_STEP \
                                         if self.__current_rpm[engine_key] > 0 else config.VESC_SMOOTH_DECEL_RPM_STEP
-                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                        self.__current_rpm[engine_key],
-                                        can_id=self.__can_ids[engine_key])))
+                                    try :
+                                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                            self.__current_rpm[engine_key],
+                                            can_id=self.__can_ids[engine_key])))
+                                    except SerialException :
+                                        self.reconnect_vesc()
                                 # stop engine (current RPM <= RPM step)
                                 else:
-                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                    try :
+                                        self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                                    except SerialException :
+                                        self.reconnect_vesc()
                                     self.__current_rpm[engine_key] = 0
                                     self.__last_stop_time[engine_key] = time.time()
                                     self.__is_moving[engine_key] = False
@@ -2002,30 +2089,70 @@ class VescAdapterV4:
                             # set engine to target RPM as current-target difference is <= RPM step
                             if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= \
                                     config.VESC_SMOOTH_ACCEL_RPM_STEP:
-                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                    self.__target_rpm[engine_key],
-                                    can_id=self.__can_ids[engine_key])))
+                                try :
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                        self.__target_rpm[engine_key],
+                                        can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
                                 self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
                             # increase current RPM by RPM step
                             else:
                                 self.__current_rpm[engine_key] += config.VESC_SMOOTH_ACCEL_RPM_STEP \
                                     if self.__target_rpm[engine_key] > self.__current_rpm[engine_key] \
                                     else -config.VESC_SMOOTH_ACCEL_RPM_STEP
-                                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                                    self.__current_rpm[engine_key],
-                                    can_id=self.__can_ids[engine_key])))
+                                try :
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                                        self.__current_rpm[engine_key],
+                                        can_id=self.__can_ids[engine_key])))
+                                except SerialException :
+                                    self.reconnect_vesc()
 
                     # send alive to each active
                     if time.time() > self.__next_alive_time:
-                        self.__next_alive_time = time.time() + self.__alive_freq
+                        self.__next_alive_time = time.time() + 1 / self.__alive_freq
                         for engine_key in self.__is_moving:
-                            if self.__is_moving[engine_key]:
-                                self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
-
+                            try :
+                                if self.__is_moving[engine_key]:
+                                    self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
+                                    
+                                vesc_rpm = self.__get_rpm_sensor_data(engine_key)
+                                
+                                if vesc_rpm is not None:
+                                    if vesc_rpm == 0 and self.__current_rpm[engine_key] != 0:
+                                        self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
+                                        self.__ser.write(
+                                            pyvesc.encode(
+                                                pyvesc.SetRPM(
+                                                    self.__current_rpm[engine_key],
+                                                    can_id=self.__can_ids[engine_key]
+                                                )
+                                            )
+                                        )
+                                        
+                            except SerialException or OSError as e :
+                                if e.errno == 5 or isinstance(e, SerialException):
+                                    self.reconnect_vesc()
                 # wait for next checking tick
-                time.sleep(self.__check_freq)
+                time.sleep(1 / self.__check_freq)
         except serial.SerialException as ex:
-            print(ex)  # TODO should these exceptions to be ignored?
+            print(f"[{self.__class__.__name__}] -> {ex}")  # TODO should these exceptions to be ignored?
+            
+    def __get_rpm_sensor_data(self, engine_key):
+        self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+        in_buf = b''
+        while self.__ser.in_waiting > 0:
+            try:
+                in_buf += self.__ser.read(self.__ser.in_waiting)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
+        if len(in_buf) != 0:
+            response, consumed = pyvesc.decode(in_buf)
+            if consumed != 0 and response is not None:
+                return response.__dict__["rpm"]
+        return None
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
@@ -2038,13 +2165,16 @@ class VescAdapterV4:
             if smooth_acceleration:
                 self.__smooth_accel_next_t[engine_key] = 0
             else:
-                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                    self.__target_rpm[engine_key],
-                    can_id=self.__can_ids[engine_key])))
+                try :
+                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
+                        self.__target_rpm[engine_key],
+                        can_id=self.__can_ids[engine_key])))
+                except SerialException :
+                    self.reconnect_vesc()
                 self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
             self.__is_moving[engine_key] = True
 
-    def stop_moving(self, engine_key, smooth_deceleration: bool = False):
+    def stop_moving(self, engine_key, smooth_deceleration: bool = False):        
         with self.__locker:
             self.__use_smooth_decel[engine_key] = smooth_deceleration
 
@@ -2052,7 +2182,10 @@ class VescAdapterV4:
                 self.__smooth_decel_next_t[engine_key] = 0
                 self.__stop_request[engine_key] = True
             else:
-                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                try :
+                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                except SerialException :
+                    self.reconnect_vesc()
                 self.__current_rpm[engine_key] = 0
                 self.__last_stop_time[engine_key] = time.time()
                 self.__is_moving[engine_key] = False
@@ -2071,10 +2204,10 @@ class VescAdapterV4:
                     return True
             if timeout is not None and time.time() > end_t:
                 return False
-            time.sleep(self.__check_freq)
+            time.sleep(1 / self.__check_freq)
 
     def wait_for_stop_any(self, timeout=None):
-        raise NotImplementedError("this feature is not implemented yet")
+        raise NotImplementedError(f"[{self.__class__.__name__}] -> This feature is not implemented yet")
 
     def wait_for_stopper_hit(self,
                              engine_key,
@@ -2089,7 +2222,7 @@ class VescAdapterV4:
 
         if self.__gpio_stoppers_pins[engine_key] is None:
             self.stop_moving(engine_key)
-            raise RuntimeError("stopper usage is not allowed in config \
+            raise RuntimeError(f"[{self.__class__.__name__}] -> Stopper usage is not allowed in config \
                 (engine movement is terminated to prevent occasional damage cause)")
 
         end_t = time.time() + timeout if timeout is not None else float("inf")
@@ -2098,18 +2231,18 @@ class VescAdapterV4:
             with self.__locker:
                 if not self.__is_moving[engine_key]:
                     return False
-            if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
-                if stop_engine_if_stopper_hit:
-                    self.stop_moving(engine_key)
-                return True
+            #if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
+                #if stop_engine_if_stopper_hit:
+                    #self.stop_moving(engine_key)
+                #return True
             if time.time() > end_t:
                 if stop_engine_if_timeout:
                     self.stop_moving(engine_key)
                 return False
-            time.sleep(self.__stopper_check_freq)
+            time.sleep(1 / self.__stopper_check_freq)
 
     def wait_for_stopper_hit_any(self):
-        raise NotImplementedError("this feature is not implemented yet")
+        raise NotImplementedError(f"[{self.__class__.__name__}] -> This feature is not implemented yet")
 
     def set_current_rpm(self, rpm, engine_key):
         """Set as current and apply given RPM on specified by engine_key vesc engine.
@@ -2120,11 +2253,14 @@ class VescAdapterV4:
         """
 
         if not isinstance(rpm, (int, float)):
-            msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> rpm must be int or float, got {type(rpm).__name__} instead"
             raise TypeError(msg)
 
         with self.__locker:
-            self.__ser.write(pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])))
+            try :
+                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])))
+            except SerialException :
+                self.reconnect_vesc()
             self.__current_rpm[engine_key] = rpm
 
     def set_target_rpm(self, rpm, engine_key):
@@ -2134,9 +2270,8 @@ class VescAdapterV4:
         otherwise this RPM will be applied immediately during engine start. In this case high RPM values may lead to
         strong jerk during the start.
         """
-
         if not isinstance(rpm, (int, float)):
-            msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> rpm must be int or float, got {type(rpm).__name__} instead"
             raise TypeError(msg)
 
         with self.__locker:
@@ -2144,10 +2279,10 @@ class VescAdapterV4:
 
     def set_time_to_move(self, time_to_move, engine_key):
         if not isinstance(time_to_move, (int, float)):
-            msg = f"time_to_move must be int or float, got {type(time_to_move).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> time_to_move must be int or float, got {type(time_to_move).__name__} instead"
             raise TypeError(msg)
         if time_to_move < 0:
-            msg = f"time_to_move must be >= 0, got {str(time_to_move)} instead"
+            msg = f"[{self.__class__.__name__}] -> time_to_move must be >= 0, got {str(time_to_move)} instead"
             raise ValueError(msg)
 
         with self.__locker:
@@ -2155,10 +2290,10 @@ class VescAdapterV4:
 
     def set_alive_freq(self, alive_freq):
         if not isinstance(alive_freq, (int, float)):
-            msg = f"alive_freq must be int or float, got {type(alive_freq).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> alive_freq must be int or float, got {type(alive_freq).__name__} instead"
             raise TypeError(msg)
         if alive_freq < 0:
-            msg = f"alive_freq must be >= 0, got {str(alive_freq)} instead"
+            msg = f"[{self.__class__.__name__}] -> alive_freq must be >= 0, got {str(alive_freq)} instead"
             raise ValueError(msg)
 
         with self.__locker:
@@ -2166,10 +2301,10 @@ class VescAdapterV4:
 
     def set_check_freq(self, check_freq):
         if not isinstance(check_freq, (int, float)):
-            msg = f"check_freq must be int or float, got {type(check_freq).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> check_freq must be int or float, got {type(check_freq).__name__} instead"
             raise TypeError(msg)
         if check_freq < 0:
-            msg = f"check_freq must be >= 0, got {str(check_freq)} instead"
+            msg = f"[{self.__class__.__name__}] -> check_freq must be >= 0, got {str(check_freq)} instead"
             raise ValueError(msg)
 
         with self.__locker:
@@ -2177,7 +2312,7 @@ class VescAdapterV4:
 
     def set_smooth_acceleration(self, smooth_acceleration: bool, engine_key):
         if not isinstance(smooth_acceleration, bool):
-            msg = f"smooth_acceleration must be bool, got {type(smooth_acceleration).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> smooth_acceleration must be bool, got {type(smooth_acceleration).__name__} instead"
             raise TypeError(msg)
 
         with self.__locker:
@@ -2185,7 +2320,7 @@ class VescAdapterV4:
 
     def set_smooth_deceleration(self, smooth_deceleration: bool, engine_key):
         if not isinstance(smooth_deceleration, bool):
-            msg = f"smooth_deceleration must be bool, got {type(smooth_deceleration).__name__} instead"
+            msg = f"[{self.__class__.__name__}] -> smooth_deceleration must be bool, got {type(smooth_deceleration).__name__} instead"
             raise TypeError(msg)
 
         with self.__locker:
@@ -2231,11 +2366,14 @@ class VescAdapterV4:
         return self.__target_rpm[engine_key]
 
     def get_sensors_data_of_can_id(self, report_field_names, can_id):
+        in_buf = b''
         with self.__locker:
-            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=can_id)))
-            in_buf = b''
-            while self.__ser.in_waiting > 0:
-                in_buf += self.__ser.read(self.__ser.in_waiting)
+            try :
+                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=can_id)))
+                while self.__ser.in_waiting > 0:
+                    in_buf += self.__ser.read(self.__ser.in_waiting)
+            except SerialException :
+                self.reconnect_vesc()
 
         if len(in_buf) == 0:
             return None
@@ -2251,11 +2389,14 @@ class VescAdapterV4:
         return None
 
     def get_sensors_data(self, report_field_names, engine_key):
+        in_buf = b''
         with self.__locker:
-            self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-            in_buf = b''
-            while self.__ser.in_waiting > 0:
-                in_buf += self.__ser.read(self.__ser.in_waiting)
+            try : 
+                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+                while self.__ser.in_waiting > 0:
+                    in_buf += self.__ser.read(self.__ser.in_waiting)
+            except SerialException :
+                self.reconnect_vesc()
 
         if len(in_buf) == 0:
             return None
@@ -2281,9 +2422,9 @@ class GPSUbloxAdapter:
 
     def __init__(self, ser_port: str, ser_baudrate: int, last_pos_count: int):
         if not isinstance(last_pos_count, int):
-            raise TypeError(f"last_pos_count must be int, got {type(last_pos_count).__name__} instead")
+            raise TypeError(f"[{self.__class__.__name__}] -> last_pos_count must be int, got {type(last_pos_count).__name__} instead")
         if last_pos_count < 1:
-            raise ValueError(f"last_pos_count shouldn't be less than 1, got {last_pos_count} instead")
+            raise ValueError(f"[{self.__class__.__name__}] -> last_pos_count shouldn't be less than 1, got {last_pos_count} instead")
 
         self._position_is_fresh = False
         self._last_pos_count = last_pos_count
@@ -2309,6 +2450,7 @@ class GPSUbloxAdapter:
 
     def close(self):
         self._keep_thread_alive = False
+        self._reader_thread.join()
         if self._serial.is_open:
             self._serial.close()
 
@@ -2441,7 +2583,7 @@ class GPSUbloxAdapter:
                     self._last_pos_container.append(position)
                     self._position_is_fresh = True
         except serial.SerialException as ex:
-            print("Ublox reading error:", ex)
+            print(f"[{self.__class__.__name__}] -> Ublox reading error:", ex)
 
     def _read_from_gps(self):
         """Returns GPS coordinates of the current position"""
@@ -2546,7 +2688,7 @@ class GPSUbloxAdapterWithoutThread:
         """Waits until at least one position is stored, returns list of last saved positions copies at the moment of
         call (reference type safe)"""
 
-        raise NotImplementedError("Test without list")
+        raise NotImplementedError(f"[{self.__class__.__name__}] -> Test without list")
 
     def _read_from_gps(self):
         """Returns GPS coordinates of the current position"""

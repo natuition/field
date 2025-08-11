@@ -7,6 +7,7 @@ from state_machine import State
 from state_machine.states.ErrorState import ErrorState
 from state_machine.Events import Events
 from state_machine import utilsFunction
+from shared_class.robot_synthesis import RobotSynthesis
 from config import config
 import utility
 import adapters
@@ -28,6 +29,7 @@ class ActuatorScreeningState(State.State):
                  logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
+        self.robot_synthesis_value = RobotSynthesis.UI_ACTUATOR_SCREENING_STATE
         self.socketio = socketio
         self.logger = logger
         self.smoothie = smoothie
@@ -47,14 +49,16 @@ class ActuatorScreeningState(State.State):
 
         try:
             if self.smoothie is None:
-                msg = f"[{self.__class__.__name__}] -> initSmoothie"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> initSmoothie"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
                 self.smoothie = utilsFunction.initSmoothie(self.logger)
             else:
-                msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                if config.UI_VERBOSE_LOGGING:
+                    msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
@@ -92,6 +96,8 @@ class ActuatorScreeningState(State.State):
                 time.sleep(0.01)
             if ActuatorScreeningState.DATA_IN_CSV:
                 csvfile.close()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except Exception as e:
             print(e)
 

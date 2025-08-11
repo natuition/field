@@ -383,9 +383,19 @@ class SettingPageManager:
     # Define the setting page
     def generate_html(self):
 
+        # Demo category
+        category_demo = Category("demo", "Demonstration:")
+
         checkbox_demo_mode = Checkbox("demo_mode", "Activate demo mode", lambda new_value: self.__changeConfigValue(
             "ALLOW_DEMO_PAUSES", new_value))
         checkbox_demo_mode.set_checked(self.__config.ALLOW_DEMO_PAUSES)
+        
+        checkbox_instruction_path = Checkbox("instruction_path", "Display instruction path",
+                                             lambda new_value: self.__changeConfigValue("DISPLAY_INSTRUCTION_PATH", new_value))
+        checkbox_instruction_path.set_checked(
+            self.__config.DISPLAY_INSTRUCTION_PATH)
+        
+        category_demo.add_items([checkbox_demo_mode, checkbox_instruction_path])
 
         # Navigation category
         category_nav = Category("nav", "Navigation:")
@@ -429,44 +439,41 @@ class SettingPageManager:
         slider_leaving_protection_distance.set_number_parameters(
             1000, 10000, 500, self.__config.LEAVING_PROTECTION_DISTANCE_MAX)
 
-        checkbox_instruction_path = Checkbox("instruction_path", "Display instruction path",
-                                             lambda new_value: self.__changeConfigValue("DISPLAY_INSTRUCTION_PATH", new_value))
-        checkbox_instruction_path.set_checked(
-            self.__config.DISPLAY_INSTRUCTION_PATH)
-
         category_nav.add_items([radio_btn_group_path_choice, slider_sides_interval, checkbox_bad_gps,
-                               checkbox_leaving_protection, slider_leaving_protection_distance, checkbox_instruction_path])
+                               checkbox_leaving_protection, slider_leaving_protection_distance])
 
         # Detection category
         category_detection = Category("detec", "Detection:")
 
-        selector_periph = Selector(
+        """selector_periph = Selector(
             "periph", "Periphery mod:", lambda new_value: self.__set_ia_in_config("PERIPHERY", new_value))
         selector_periph.set_content_list(self.__get_ia_list(
             "../yolo"), self.__config.PERIPHERY_MODEL_PATH.split("yolo/")[1].split(".trt")[0])
         selector_periph.set_choose_description(
-            "Please choose artificial intelligence")
+            "Please choose artificial intelligence")"""
 
-        slider_periph = Slider("periph", "Threshold", lambda new_value: self.__changeConfigValue(
+        slider_periph = Slider("periph", "Peripheral threshold", lambda new_value: self.__changeConfigValue(
             "PERIPHERY_CONFIDENCE_THRESHOLD", new_value))
         slider_periph.set_number_parameters(
-            0.1, 0.8, 0.1, self.__config.PERIPHERY_CONFIDENCE_THRESHOLD)
+            0.1, 0.9, 0.1, self.__config.PERIPHERY_CONFIDENCE_THRESHOLD)
 
-        selector_precise = Selector(
+        """selector_precise = Selector(
             "precise", "Precise mod:", lambda new_value: self.__set_ia_in_config("PRECISE", new_value))
         selector_precise.set_content_list(self.__get_ia_list(
             "../yolo"), self.__config.PRECISE_MODEL_PATH.split("yolo/")[1].split(".trt")[0])
         selector_precise.set_choose_description(
-            "Please choose artificial intelligence")
+            "Please choose artificial intelligence")"""
 
-        slider_precise = Slider("precise", "Threshold", lambda new_value: self.__changeConfigValue(
+        slider_precise = Slider("precise", "Precise threshold", lambda new_value: self.__changeConfigValue(
             "PRECISE_CONFIDENCE_THRESHOLD", new_value))
         slider_precise.set_number_parameters(
-            0.1, 0.8, 0.1, self.__config.PRECISE_CONFIDENCE_THRESHOLD)
+            0.1, 0.9, 0.1, self.__config.PRECISE_CONFIDENCE_THRESHOLD)
 
         # ,radio_btn_group_shooting
+        """category_detection.add_items(
+            [selector_periph, slider_periph, selector_precise, slider_precise])"""
         category_detection.add_items(
-            [selector_periph, slider_periph, selector_precise, slider_precise])
+            [slider_periph, slider_precise])
 
         # Weeding technique category
         category_weed_removal = Category(
@@ -477,16 +484,16 @@ class SettingPageManager:
         slider_extraction_z.set_number_parameters(
             10, 50, 1, self.__config.EXTRACTION_Z)
 
-        slider_cycle = Slider("cycle", "Cycle", lambda new_value: self.__changeConfigValue(
+        """slider_cycle = Slider("cycle", "Cycle", lambda new_value: self.__changeConfigValue(
             "EXTRACTIONS_FULL_CYCLES", new_value))
         slider_cycle.set_number_parameters(
-            1, 5, 1, self.__config.EXTRACTIONS_FULL_CYCLES)
+            1, 5, 1, self.__config.EXTRACTIONS_FULL_CYCLES)"""
 
         # radio_btn_group_weeding_technique
-        category_weed_removal.add_items([slider_extraction_z, slider_cycle])
+        category_weed_removal.add_items([slider_extraction_z])
 
         # Seeding technique category
-        category_weed_seeding = Category(
+        """ category_weed_seeding = Category(
             "seeding_technique", "Seeding parameter:")
 
         slider_seeder_quantity = Slider("seeder_quantity", "Number of seeding doses",
@@ -500,7 +507,7 @@ class SettingPageManager:
             0, 70, 5, self.__config.SEEDER_EXT_OFFSET_Y)
 
         category_weed_seeding.add_items(
-            [slider_seeder_quantity, slider_seeder_ext_offset_y])
+            [slider_seeder_quantity, slider_seeder_ext_offset_y]) """
 
         # Other category
         category_other = Category("other", "Other")
@@ -538,6 +545,6 @@ class SettingPageManager:
         # Setting page
 
         self.__setting_generator.add_items(
-            [checkbox_demo_mode, category_nav, category_detection, category_weed_removal, category_weed_seeding, category_other])
+            [category_demo, category_nav, category_detection, category_weed_removal, category_other]) #category_weed_seeding
 
         return self.__setting_generator.generate_html(self.__ui_languages, self.__config.UI_LANGUAGE)

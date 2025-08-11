@@ -20,77 +20,10 @@ import json
 import glob
 import importlib
 import subprocess
-import datetime
-import shutil
-import pytz
 
-
-# load config, if failed - copy and load config backups until success or no more backups
-def is_config_empty(config_full_path: str):
-    with open(config_full_path, "r") as config_file:
-        for line in config_file:
-            if line not in ["", "\n"]:
-                return False
-    return True
-
-
-try:
-    if not os.path.isfile("config/config.py"):
-        raise Exception("config file is not exist")
-
-    if is_config_empty("config/config.py"):
-        raise Exception("config file is empty")
-
-    from config import config
-except KeyboardInterrupt:
-    raise KeyboardInterrupt
-except Exception as exc:
-    print(f"Failed to load current config.py! ({str(exc)})")
-
-    # load config backups
-    config_backups = [path for path in glob.glob(
-        "configBackup/*.py") if "config" in path]
-    for i in range(len(config_backups)):
-        ds = config_backups[i].split("_")[1:]  # date structure
-        ds.extend(ds.pop(-1).split(":"))
-        ds[-1] = ds[-1][:ds[-1].find(".")]
-        config_backups[i] = [
-            config_backups[i],
-            datetime.datetime(
-                day=int(ds[0]),
-                month=int(ds[1]),
-                year=int(ds[2]),
-                hour=int(ds[3]),
-                minute=int(ds[4]),
-                second=int(ds[5])
-            ).timestamp()
-        ]
-    # make last backups to be placed and used first
-    config_backups.sort(key=lambda item: item[1], reverse=True)
-
-    # try to find and set as current last valid config
-    for config_backup in config_backups:
-        try:
-            os.rename(
-                "config/config.py",
-                f"config/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
-                f"_config.py")
-            shutil.copy(config_backup[0], "config/config.py")
-            shutil.chown("config/config.py", user="violette", group="violette")
-
-            if is_config_empty("config/config.py"):
-                raise Exception("config file is empty")
-
-            from config import config
-            print("Successfully loaded config:", config_backup[0])
-            break
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            pass
-    else:
-        print("Couldn't find proper 'config.py' file in 'config' and 'configBackup' directories!")
-        exit()
+import safe_import_of_config
+safe_import_of_config.make_import()
+from config import config
 
 import adapters
 import navigation
@@ -100,7 +33,7 @@ import stubs
 import extraction
 import datacollection
 from extraction import ExtractionManagerV3
-from notification import RobotStates
+from shared_class.robot_synthesis import RobotSynthesis
 from notification import NotificationClient
 import connectors
 from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
@@ -117,15 +50,6 @@ if config.RECEIVE_FIELD_FROM_RTK:
 """
 # TODO: temp debug counter
 IMAGES_COUNTER = 0
-
-
-def load_coordinates(file_path):
-    positions_list = []
-    with open(file_path) as file:
-        for line in file:
-            if line != "":
-                positions_list.append(list(map(float, line.split(" "))))
-    return positions_list
 
 
 def save_gps_coordinates(points: list, file_name: str):
@@ -455,13 +379,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
                         vesc_engine.set_current_rpm(0, vesc_engine.PROPULSION_KEY)
                         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
-
-                        # TODO remove thread init from here!
-                        voltage_thread = threading.Thread(
-                            target=send_voltage_thread_tf,
-                            args=(vesc_engine, ui_msg_queue),
-                            daemon=True)
-                        voltage_thread.start()
+                        
 
                         # single precise center scan before calling for PDZ scanning and extractions
                         if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
@@ -877,8 +795,8 @@ def move_to_point_and_extract(coords_from_to: list,
                           f"P2: '{str(cur_field[0] if last_point else cur_field[pt_idx + 1])}'"
                     print(msg)
                     logger_full.write_and_flush(msg + "\n")
-                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
-                    exit()
+                    notification.set_robot_state_and_wait_send(RobotSynthesis.ANTI_THEFT)
+                    raise Exception("LEAVING_FIELD")
 
         # check if arrived
         _, side = nav.get_deviation(
@@ -1179,17 +1097,59 @@ def move_to_point_and_extract(coords_from_to: list,
         logger_full.write(msg + "\n")
 
 
-def send_voltage_thread_tf(vesc_engine: adapters.VescAdapterV4, ui_msg_queue):
+def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapterV4, logger: utility.Logger, ui_msg_queue):
+    """
+    Thread function to monitor VESC input voltage and handle bumping events.
+    This function continuously checks the VESC input voltage and emits in the main message queue.
+    If the voltage drops below a certain threshold, it emits "Bumper" to the main message queue.
+    If the voltage returns to normal, it emits "Reseting" to the main message queue and attempts to reset the VESC using a lifeline.
+    """
+
     vesc_data = None
-    while vesc_data is None:
-        vesc_data = vesc_engine.get_sensors_data(
-            ['input_voltage'], vesc_engine.PROPULSION_KEY)
+    isBumped = False
+    nowReset = True
+    while voltage_thread_alive():
+        if vesc_engine is not None:
+            try:
+                vesc_data = vesc_engine.get_sensors_data(["input_voltage"], vesc_engine.PROPULSION_KEY)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                print(f"[Send voltage thread] -> Exception while getting VESC data: {e}")
+                break
+
         if vesc_data is not None:
-            input_voltage = vesc_data["input_voltage"]
-            if ui_msg_queue is not None:
-                ui_msg_queue.send(json.dumps({"input_voltage": input_voltage}))
-        else:
-            time.sleep(1)
+            if voltage_thread_alive():
+                vesc_voltage = vesc_data.get("input_voltage", None)
+                if vesc_voltage is not None:
+                    if vesc_voltage < 12.0:
+                        if isBumped:
+                            msg = f"[Send voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
+                            logger.write_and_flush(msg + "\n")
+                            print(msg)
+                        isBumped = True
+                        if ui_msg_queue is not None:
+                            ui_msg_queue.send(json.dumps({"input_voltage": "Bumper"}))
+
+                    elif isBumped and vesc_voltage >= 12.0:
+                        msg = f"[Send voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
+                        logger.write_and_flush(msg + "\n")
+                        print(msg)
+                        isBumped = False
+                        nowReset = True
+                        if ui_msg_queue is not None:
+                            ui_msg_queue.send(json.dumps({"input_voltage": "Reseting"}))
+                        utility.life_line_reset()
+                        time.sleep(5)  # Usefull to not send a get_sensors_data request to early
+                    else:
+                        if nowReset:
+                            msg = f"[Send voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected."
+                            logger.write_and_flush(msg + "\n")
+                            print(msg)
+                            nowReset = False
+                        if ui_msg_queue is not None:
+                            ui_msg_queue.send(json.dumps({"input_voltage": vesc_voltage}))
+        time.sleep(0.3)
 
 
 def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: str, logger_full: utility.Logger):
@@ -2044,7 +2004,7 @@ def main():
             len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
 
     notification = NotificationClient(time_start)
-    notification.set_robot_state(RobotStates.WORKING)
+    notification.set_robot_state(RobotSynthesis.WORKING)
     data_collector = datacollection.DataCollector(
         log_cur_dir + config.STATISTICS_DB_FILE_NAME,
         notification,
@@ -2080,7 +2040,7 @@ def main():
         msg = "Couldn't get vesc's USB address!"
         print(msg)
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+        notification.set_robot_state(RobotSynthesis.HS)
         exit()
     if config.SMOOTHIE_BACKEND == 1:
         smoothie_address = config.SMOOTHIE_HOST
@@ -2091,7 +2051,7 @@ def main():
             msg = "Couldn't get smoothie's USB address!"
             print(msg)
             logger_full.write(msg + "\n")
-            notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+            notification.set_robot_state(RobotSynthesis.HS)
             exit()
 
     # load yolo networks
@@ -2126,7 +2086,7 @@ def main():
         msg = "Wrong config.PERIPHERY_WRAPPER = " + \
             str(config.PERIPHERY_WRAPPER) + " code. Exiting."
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+        notification.set_robot_state(RobotSynthesis.HS)
         exit()
 
     # load precise NN
@@ -2155,7 +2115,7 @@ def main():
             msg = "Wrong config.PRECISE_WRAPPER = " + \
                 str(config.PRECISE_WRAPPER) + " code. Exiting."
             logger_full.write(msg + "\n")
-            notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+            notification.set_robot_state(RobotSynthesis.HS)
             exit()
     else:
         msg = "Using periphery detector as precise."
@@ -2197,7 +2157,7 @@ def main():
             utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt",
                                     config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
             adapters.VescAdapterV4(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
-                                   config.VESC_STOPPER_CHECK_FREQ) as vesc_engine, \
+                                   config.VESC_STOPPER_CHECK_FREQ, logger_full) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
             adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
@@ -2238,7 +2198,7 @@ def main():
                         logger_full.write(msg + "\n")
 
                         try:
-                            field_gps_coords = load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                            field_gps_coords = utility.load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
                         except ValueError:
                             msg = f"Failed to load field '{shortcut_target_path}' due " \
                                   f"to ValueError (file is likely corrupted)"
@@ -2340,7 +2300,7 @@ def main():
                     msg = f"Exiting main as building path without field points is impossible"
                     print(msg)
                     logger_full.write_and_flush(msg)
-                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    notification.set_robot_state(RobotSynthesis.HS)
                     exit()
 
                 # check field corner points count
@@ -2386,7 +2346,7 @@ def main():
                         field_gps_coords)
                     print(msg)
                     logger_full.write(msg + "\n")
-                    notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                    notification.set_robot_state(RobotSynthesis.HS)
                     exit()
 
                 # save path points and point to start from index
@@ -2411,7 +2371,7 @@ def main():
                       " instead (1st point is starting point)."
                 print(msg)
                 logger_full.write(msg + "\n")
-                notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+                notification.set_robot_state(RobotSynthesis.HS)
                 exit()
 
             # set smoothie's A axis to 0 (nav turn wheels)
@@ -2822,6 +2782,8 @@ def main():
                         try:
                             start_position = utility.average_point(
                                 gps, trajectory_saver, nav)
+                        except KeyboardInterrupt:
+                            raise KeyboardInterrupt
                         except:
                             pass
                         if ui_msg_queue is not None:
@@ -2862,6 +2824,7 @@ def main():
                 path_index_file.write(str(-1))
                 path_index_file.flush()
 
+
             msg = "Path is successfully passed."
             print(msg)
             logger_full.write(msg + "\n")
@@ -2871,18 +2834,25 @@ def main():
             traceback.format_exc()
         print(msg)
         logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotStates.ENABLED)
         notification.close()
         if ui_msg_queue is not None:
+            ui_msg_queue.send(json.dumps({"stopping": True}))
+        if ui_msg_queue is not None:
             ui_msg_queue.close()
-    except:
-        msg = "Exception occurred:\n" + traceback.format_exc()
-        print(msg)
-        logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotStates.OUT_OF_SERVICE)
+    except Exception as e:
+        if "LEAVING_FIELD" not in e.args:
+            notification.set_robot_state_and_wait_send(RobotSynthesis.HS)
+            msg = "Exception occurred:\n" + traceback.format_exc()
+            print(msg)
+            logger_full.write(msg + "\n")
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:
+
+        send_voltage_thread_alive["value"] = False
+        if send_voltage_thread is not None:
+            send_voltage_thread.join()
+
         # put the wheel straight
         # vesc z axis calibration in case it's used for z axis control instead of smoothie
         # (to prevent cork breaking when smoothie calibrates)
@@ -3014,6 +2984,6 @@ def main():
 
         print("Safe disable is done.")
 
-
 if __name__ == '__main__':
     main()
+    exit(0)
