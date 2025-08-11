@@ -2364,10 +2364,10 @@ class VescAdapterV4:
         return self.__target_rpm[engine_key]
 
     def get_sensors_data_of_can_id(self, report_field_names, can_id):
+        in_buf = b''
         with self.__locker:
             try :
                 self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=can_id)))
-                in_buf = b''
                 while self.__ser.in_waiting > 0:
                     in_buf += self.__ser.read(self.__ser.in_waiting)
             except SerialException :
@@ -2387,10 +2387,10 @@ class VescAdapterV4:
         return None
 
     def get_sensors_data(self, report_field_names, engine_key):
+        in_buf = b''
         with self.__locker:
             try : 
                 self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-                in_buf = b''
                 while self.__ser.in_waiting > 0:
                     in_buf += self.__ser.read(self.__ser.in_waiting)
             except SerialException :
