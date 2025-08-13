@@ -1,4 +1,6 @@
 import sys
+
+import requests
 sys.path.append('../')
 
 from flask_socketio import SocketIO
@@ -10,18 +12,21 @@ import os
 import json
 import time
 
-from state_machine import State
-from state_machine.states import WaitWorkingState
-from state_machine.states import PhysicalBlocageState
-from state_machine.states import ErrorState
-from state_machine import Events
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states import WaitWorkingState
+from uiWebRobot.state_machine.states import PhysicalBlocageState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
+from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects, PhysicalBlocageFEO
 from uiWebRobot.state_machine import GearboxProtection, utilsFunction
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 from config import config
 import utility
+
+from queue import Queue
 
 # This state corresponds when the robot is working.
 class WorkingState(State.State):
@@ -37,6 +42,7 @@ class WorkingState(State.State):
         self.__wasPhysicallyBlocked = wasPhysicallyBlocked
         self.allPath = []
         self.isResume = isResume
+        self.allPath = []
         self.detected_plants = dict()
         self.extracted_plants = dict()
         self.last_path_all_points = list()
@@ -113,6 +119,7 @@ class WorkingState(State.State):
         self.__main_not_received_stop = True
 
     def on_event(self, event):
+        
         if event == Events.Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
@@ -275,6 +282,7 @@ class WorkingState(State.State):
 
     def _main_msg_thread_tf(self):
         while self._main_msg_thread_alive:
+
             try:
                 msg = self.msgQueue.receive(timeout=2)
                 data = json.loads(msg[0])

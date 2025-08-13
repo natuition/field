@@ -26,7 +26,7 @@ from setting_page import SettingPageManager
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from state_machine.states import *
+from uiWebRobot.state_machine.states import *
 import traceback
 
 __author__ = 'Vincent LAMBERT'
@@ -56,6 +56,9 @@ class UIWebRobot:
     def on_connect(self):
         print("A client is connected.")
 
+    def on_connect(self):
+        print("A client is connected.")
+
     def __init_socketio(self):
         self.__socketio.on_event(
             'data', self.on_socket_broadcast, namespace='/broadcast')
@@ -66,6 +69,7 @@ class UIWebRobot:
 
     def __init_flask_route(self):
         self.__app.add_url_rule("/", view_func=self.index)
+        self.__app.add_url_rule("/received_on_socket_data/<event_name>", view_func=self.received_on_socket_data)
         self.__app.add_url_rule("/setting", view_func=self.setting)
         self.__app.add_url_rule("/map", view_func=self.maps)
         self.__app.add_url_rule("/offline.html", view_func=self.offline)
@@ -167,55 +171,52 @@ class UIWebRobot:
 
     # SOCKET IO
     def on_socket_data(self, data):
+        print("on_socket_data", data)
         msg_socket_data_before_event = [
-            Events.Events.VALIDATE_FIELD_NAME, 
-            Events.Events.LIST_VALIDATION, 
-            Events.Events.WHEEL
+            Events.VALIDATE_FIELD_NAME, 
+            Events.LIST_VALIDATION, 
+            Events.WHEEL
         ]
         msg_socket_to_event = [
-            Events.Events.STOP, 
-            Events.Events.ERROR, 
-            Events.Events.CALIBRATION_DETECT,
-            Events.Events.CALIBRATION_MOVE,
-            Events.Events.START_MAIN,
-            Events.Events.CONTINUE_MAIN,
-            Events.Events.CREATE_FIELD,
-            Events.Events.VALIDATE_FIELD_NAME,
-            Events.Events.LIST_VALIDATION,
-            Events.Events.CALIBRATION_VALIDATE,
-            Events.Events.CALIBRATION_CANCEL,
-            Events.Events.ACTUATOR_SCREENING_START,
-            Events.Events.ACTUATOR_SCREENING_PAUSE,
-            Events.Events.ACTUATOR_SCREENING_STOP,
-            Events.Events.PHYSICAL_BLOCAGE
+            Events.STOP, 
+            Events.ERROR,
+            Events.CALIBRATION_DETECT,
+            Events.CALIBRATION_MOVE,
+            Events.START_MAIN,
+            Events.CONTINUE_MAIN,
+            Events.CREATE_FIELD,
+            Events.VALIDATE_FIELD_NAME,
+            Events.LIST_VALIDATION,
+            Events.CALIBRATION_VALIDATE,
+            Events.CALIBRATION_CANCEL,
+            Events.ACTUATOR_SCREENING_START,
+            Events.ACTUATOR_SCREENING_PAUSE,
+            Events.ACTUATOR_SCREENING_STOP,
+            Events.PHYSICAL_BLOCAGE
         ]
-        msg_socket_data_after_event = [
-            "run_move_to_target", 
-            "step_axis_xy", 
-            "getInputVoltage", 
-            "modifyZone", 
-            "getField", 
-            "getStats", 
-            "getLastPath", 
-            "create_field",
-            "wait_working_state_refresh"
-        ]
+        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "create_field", "wait_working_state_refresh"]
+        
         if "type" in data:
             if data["type"] in [str(i) for i in msg_socket_data_before_event]:
                 self.get_state_machine().on_socket_data(data)
+
             if data["type"] in [str(i) for i in msg_socket_to_event]:
-                self.get_state_machine().on_event(Events.Events.from_str(data["type"]))
+                self.get_state_machine().on_event(Events.from_str(data["type"]))
+
             if data["type"] in msg_socket_data_after_event:
                 self.get_state_machine().on_socket_data(data)
 
             if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
                 self.get_state_machine().on_socket_data(data)
+
             elif data["type"] == "demo_resume_cmd":
                 self.demo_pause_client.send_resume_cmd()
+
             elif data["type"] == "validerZone":
                 data["client_id"] = request.sid
                 self.get_state_machine().on_socket_data(data)
-                self.get_state_machine().on_event(Events.Events.VALIDATE_FIELD)
+                self.get_state_machine().on_event(Events.VALIDATE_FIELD)
+
             elif data["type"] == "removeField":
                 if isinstance(self.get_state_machine().currentState, WaitWorkingState):
                     self.get_state_machine().on_socket_data(data)
@@ -258,7 +259,17 @@ class UIWebRobot:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()], reason=self.get_state_machine().currentState.getReason()), 500
             else:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()]), 500
+
         return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
+
+    def received_on_socket_data(self, event_name):
+        self.on_socket_data({"type": event_name})
+        response = self.__app.response_class(
+                response=json.dumps({True}),
+                status=200,
+                mimetype='application/json'
+        )
+        return response
 
     def setting(self):
         sn = self.__config.ROBOT_SN
@@ -436,7 +447,6 @@ def main():
             print("[UIWebRobot] -> Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.Events.CLOSE_APP)
         uiWebRobot.exit()
-
 
 if __name__ == "__main__":
     main()

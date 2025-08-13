@@ -3,12 +3,12 @@ sys.path.append('../')
 
 from flask_socketio import SocketIO
 
-from state_machine import State
-from state_machine.states import WorkingState
-from state_machine.states import ErrorState
-from state_machine import Events
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState, PhysicalBlocageFEO
-from state_machine import utilsFunction
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states import WorkingState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState, PhysicalBlocageFEO
+from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 from config import config
 import utility
@@ -22,6 +22,13 @@ class ResumeState(State.State):
         self.logger = logger
         self.isAudit = isAudit
         self.__wasPhysicallyBlocked = wasPhysicallyBlocked
+
+        self.socketio.emit('continue_main', {"status": "pushed"}, namespace='/button', broadcast=True)
+        msg = f"[{self.__class__.__name__}] -> Edit fichier config (CONTINUE_PREVIOUS_PATH:{True},AUDIT_MODE:{isAudit})"
+        self.logger.write_and_flush(msg + "\n")
+        print(msg)
+        utilsFunction.changeConfigValue("CONTINUE_PREVIOUS_PATH", True)
+        utilsFunction.changeConfigValue("AUDIT_MODE", isAudit)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,

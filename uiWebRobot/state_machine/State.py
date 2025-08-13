@@ -2,13 +2,15 @@ import sys
 sys.path.append('../')
 
 import utility
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
+from shared_class.robot_synthesis import RobotSynthesis
 
 class State(object):
 
     def __init__(self, socketio, logger: utility.Logger):
         self.socketio = socketio
         self.logger = logger
+        self.robot_synthesis_value: RobotSynthesis = None
         msg = 'Processing current state :', str(self)
         self.logger.write_and_flush(msg)
         print(msg)

@@ -437,7 +437,7 @@ ROBOT_SYNTHESIS_PORT = 2006
 DATAGATHERING_HOST = "172.16.0.10"
 DATAGATHERING_PORT = 8080
 
-LIFE_LINE_PIN = 77 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
+LIFE_LINE_PIN = 78 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
@@ -575,7 +575,7 @@ PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 PRECISE_CONFIDENCE_THRESHOLD = 0.1
 PRECISE_INPUT_SIZE = (832, 832)
 PRECISE_CLASSES_FILE = "yolo/Y0016.names"
-PRECISE_MODEL_PATH = "yolo/Y0016_832_832.trt"  # for TRT wrapper
+PRECISE_MODEL_PATH = "yolo/Y0016_832_832.trt"
 
 PRECISE_HIER_THRESHOLD = 0.5
 PRECISE_NMS_THRESHOLD = 0.4

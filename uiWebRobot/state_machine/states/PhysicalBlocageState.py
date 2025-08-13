@@ -1,22 +1,23 @@
-import sys
-sys.path.append('../')
-
 import string
+import sys
 import threading
 import time
 
+sys.path.append('../')
+
 from flask_socketio import SocketIO
 
-from state_machine.State import State
-from state_machine.states.ResumeState import ResumeState
-from state_machine.Events import Events
-from state_machine import utilsFunction
-from state_machine.GearboxProtection import GearboxProtection
+from uiWebRobot.state_machine.State import State
+from uiWebRobot.state_machine.states.ResumeState import ResumeState
+from uiWebRobot.state_machine.states.ErrorState import ErrorState
+from uiWebRobot.state_machine.Events import Events
+from uiWebRobot.state_machine import utilsFunction
+from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 
 
 from shared_class.robot_synthesis import RobotSynthesis
 
-from state_machine.FrontEndObjects import ButtonState, FrontEndObjects, PhysicalBlocageFEO
+from uiWebRobot.state_machine.FrontEndObjects import ButtonState, FrontEndObjects, PhysicalBlocageFEO
 from config import config
 import utility
 import adapters
@@ -37,7 +38,8 @@ class PhysicalBlocageState(State) :
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
 
-        self.robot_synthesis_value = RobotSynthesis.UI_PHYSICAL_BLOCAGE
+        #self.robot_synthesis_value = RobotSynthesis.UI_PHYSICAL_BLOCAGE
+        self.robot_synthesis_value = RobotSynthesis.WORKING
 
         msg = f"[{self.__class__.__name__}] -> Physically blocked"
         self.logger.write_and_flush(msg + "\n")

@@ -7,23 +7,23 @@ import os
 import json
 from urllib.parse import quote
 
-from state_machine import State
-from state_machine.states import CreateFieldState
-from state_machine.states import StartingState
-from state_machine.states import ResumeState
-from state_machine.states import ErrorState
-from state_machine.states import CalibrateState
-from state_machine.states import ActuatorScreeningState
-from state_machine import Events
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states import CreateFieldState
+from uiWebRobot.state_machine.states import StartingState
+from uiWebRobot.state_machine.states import ResumeState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine.states import CalibrateState
+from uiWebRobot.state_machine.states import ActuatorScreeningState
+from uiWebRobot.state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
 
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from state_machine import utilsFunction
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
+from uiWebRobot.state_machine import utilsFunction
 from config import config
 import adapters
 import utility
 
-from EnvironnementConfig import EnvironnementConfig
+from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
@@ -139,7 +139,6 @@ class WaitWorkingState(State.State):
                         A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
         self.socketio.emit('list_validation', {"status": "refresh"}, namespace='/server', broadcast=True)
-
         self.__check_ui_refresh_thread_alive = True
         self.__check_ui_refresh_thread = threading.Thread(target=self.__check_ui_refresh_thread_tf, daemon=True)
         self.__check_ui_refresh_thread.start()
@@ -189,6 +188,11 @@ class WaitWorkingState(State.State):
             self.socketio.emit('wait_working_state', {"status": "refresh"}, namespace='/server', broadcast=True)
             time.sleep(0.5)
 
+    def __check_ui_refresh_thread_tf(self) :
+        while self.__check_ui_refresh_thread_alive:
+            self.socketio.emit('wait_working_state', {"status": "refresh"}, namespace='/server', broadcast=True)
+            time.sleep(0.5)
+
     def __stop_thread(self):
         self.can_go_setting = False
         self.send_last_pos_thread_alive = False
@@ -201,6 +205,7 @@ class WaitWorkingState(State.State):
         self.__check_ui_refresh_thread.join()
 
     def on_event(self, event):
+
         if event == Events.Events.CREATE_FIELD:
             self.__stop_thread()
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
@@ -209,18 +214,21 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
             return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event == Events.Events.CALIBRATION:
             self.__stop_thread()
             return CalibrateState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event == Events.Events.ACTUATOR_SCREENING:
             self.__stop_thread()
             return ActuatorScreeningState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.startButton = ButtonState.CHARGING
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
-            self.statusOfUIObject.joystick = False
+            self.statusOfUIObject.joystick = False 
             if event == Events.Events.START_MAIN:
                 self.statusOfUIObject.audit = AuditButtonState.NOT_IN_USE
             elif event == Events.Events.START_AUDIT:
@@ -232,6 +240,7 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.close()
                 self.vesc_engine = None
             return StartingState.StartingState(self.socketio, self.logger, (event == Events.Events.START_AUDIT))
+        
         elif event in [Events.Events.CONTINUE_MAIN, Events.Events.CONTINUE_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
@@ -249,15 +258,19 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.close()
                 self.vesc_engine = None
             return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
+        
         elif event == Events.Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
             return self
+        
         elif event == Events.Events.AUDIT_DISABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_ENABLE
             return self
+        
         elif event == Events.Events.CLOSE_APP:
             self.__stop_thread()
             return self
+        
         else:
             self.__stop_thread()
             try:
@@ -345,7 +358,6 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == "wait_working_state_refresh" :
             self.__check_ui_refresh_thread_alive = False
-            
         return self
 
     def getStatusOfControls(self):
