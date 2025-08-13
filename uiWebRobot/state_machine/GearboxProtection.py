@@ -10,10 +10,11 @@ class GearboxProtection:
 
     def __init__(self):
         """
-			Inits GearboxProtection.
-			Create an empy list of cooridinates.
+			Inits GearboxProtection.\n
+			Create an empy list of cooridinates. \n
             Inits some parameters.
 		"""
+        
         self.__min_nb_valid_distances: int = config.MIN_NB_VALID_DISTANCES
         self.__max_nb_coords_stored: int = config.MAX_NB_COORDS_STORED
         self.__min_speed: int = config.MIN_SPEED #millimeters per second
@@ -27,12 +28,10 @@ class GearboxProtection:
     
     def store_coord(self, lat: float, long: float, quality: int) -> None:
         """
-			Function for storing GPS coordinates in a list.
-
-            Args:
-			    - lat: robot position latitude.
-                - long: robot position longitude.
-                - quality: quality of the RTK signal.
+			Function for storing GPS coordinates in a list.\n
+			:param lat: robot position latitude.\n
+            :param long: robot position longitude.\n
+            :param quality: quality of the RTK signal.
 		"""
         coord = [lat, long, quality, self.__nb_extracts]
         if len(self.__coord_list) >= self.__max_nb_coords_stored :
@@ -41,22 +40,16 @@ class GearboxProtection:
         
     def store_number_of_extracts(self, extracts: Dict[str, int]) -> None:
         """
-			Function for storing the number of extractions performed by the robot.
-
-            Args:
-			    extracts: dictionary of the extractions performed by the robot.
+			Function for storing the number of extractions performed by the robot.\n
+			:param extracts: dictionary of the extractions performed by the robot.
 		"""
         self.__nb_extracts = self.__compute_number_of_extracts(extracts)
 
     def __compute_number_of_extracts(extracts: Dict[str, int]) -> int:
         """
-			Function for computing the number of extractions performed by the robot.
-
-            Args:
-			    extracts: dictionary of the extractions.
-
-            Returns:
-                int: total of the extractions.
+			Function for computing the number of extractions performed by the robot.\n
+			:param extracts: dictionary of the extractions.\n
+            :return: total of the extractions.
 		"""
         sum = 0
         for nb_extracts in extracts.values():
@@ -65,14 +58,10 @@ class GearboxProtection:
     
     def __check_same_gps_quality(self, point_A: list, point_B: list) -> bool:
         """
-			Function for checking the equivalent quality between two points.
-
-            Args:
-			    - point_A: coordinates of the first point (latitude, longitude, quality).
-                - point_B: coordinates of the secoond point (latitude, longitude, quality).
-
-            Returns:
-                bool: True if the GPS quality is equivalent, else otherwise.
+			Function for checking the equivalent quality between two points.\n
+			:param point_A: coordinates of the first point (latitude, longitude, quality).\n
+            :param point_B: coordinates of the secoond point (latitude, longitude, quality).\n
+            :return: True if the GPS quality is equivalent, else otherwise.
 		"""
         return ((point_A[3], point_B[3]) == (4, 4)) \
             or \
@@ -80,12 +69,9 @@ class GearboxProtection:
         
     def is_physically_blocked(self) -> None:
         """
-			Function for checking if the robot is physically blocked.
-
-            Returns:
-                bool: True if the robot is physically blocked, else otherwise.
+			Function for checking if the robot is physically blocked.\n
+            :return: True if the robot is physically blocked, else otherwise.
 		"""
-        # Calculate the distance between each coordinates
         nb_coords = len(self.__coord_list)
         list_valid_distances = []
         for i in range(nb_coords - 2) :
@@ -113,14 +99,10 @@ class GearboxProtection:
     
     def is_remote(self, start_point: list) -> bool:
         """
-			Function for checking the distance between two points.
-
-            Args:
-			    - point_A: coordinates of the first point (latitude, longitude, quality).
-                - point_B: coordinates of the secoond point (latitude, longitude, quality).
-
-            Returns:
-                bool: True if the two points are remoted, else otherwise.
+			Function for checking the distance between two points.\n
+			:param point_A: coordinates of the first point (latitude, longitude, quality).\n
+            :param point_B: coordinates of the secoond point (latitude, longitude, quality).\n
+            :return: True if the two points are remoted, else otherwise.
 		"""
         current_point = self.__coord_list[-1]
         distance = self.__gps_computing.get_distance(start_point, current_point)

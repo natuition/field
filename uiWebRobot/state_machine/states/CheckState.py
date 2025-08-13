@@ -1,15 +1,14 @@
 import sys
 sys.path.append('../')
 from config import config
-from state_machine import utilsFunction
-from state_machine import Events
-from state_machine.states import WaitWorkingState
-from state_machine import State
+from uiWebRobot.state_machine import utilsFunction
+from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.states import WaitWorkingState
+from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
 import signal
-import threading
 from flask_socketio import SocketIO
-from EnvironnementConfig import EnvironnementConfig
+from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 import utility
 import os
 
@@ -69,6 +68,7 @@ class CheckState(State.State):
             self.statusOfUIObject["checkbox"] = False
 
     def on_event(self, event):
+
         if event == Events.Events.LIST_VALIDATION:
             self.socketio.emit('data', {"ACK": "list_validation"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
@@ -91,6 +91,7 @@ class CheckState(State.State):
                     print(msg)
                 os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
+        
         else:
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)
@@ -107,15 +108,14 @@ class CheckState(State.State):
                             utilsFunction.changeConfigValue(key.strip(), value.strip())
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-            """
-            elif data["type"] == 'getInputVoltage':
-                utilsFunction.sendInputVoltage(
-                    self.socketio, self.input_voltage["input_voltage"])
-            """
         else:
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)
         return self
+        """ elif data["type"] == 'getInputVoltage':
+            utilsFunction.sendInputVoltage(
+                self.socketio, self.input_voltage["input_voltage"]) """
+        
 
     def getStatusOfControls(self):
         return self.statusOfUIObject

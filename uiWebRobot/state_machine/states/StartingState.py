@@ -2,12 +2,12 @@ import sys
 sys.path.append('../')
 
 from flask_socketio import SocketIO
-from state_machine import State
-from state_machine.states import WorkingState
-from state_machine.states import ErrorState
-from state_machine import Events
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from state_machine import utilsFunction
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states import WorkingState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
+from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 from config import config
 import utility
