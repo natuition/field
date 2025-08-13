@@ -38,8 +38,7 @@ class PhysicalBlocageState(State) :
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
 
-        #self.robot_synthesis_value = RobotSynthesis.UI_PHYSICAL_BLOCAGE
-        self.robot_synthesis_value = RobotSynthesis.WORKING
+        self.robot_synthesis_value = RobotSynthesis.UI_PHYSICAL_BLOCAGE
 
         msg = f"[{self.__class__.__name__}] -> Physically blocked"
         self.logger.write_and_flush(msg + "\n")
