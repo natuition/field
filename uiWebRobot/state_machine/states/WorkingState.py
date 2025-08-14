@@ -209,7 +209,6 @@ class WorkingState(State.State):
         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
     def _main_msg_thread_tf(self):
-        self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
 
         self.queue_penetrometry_data = None
         if config.PENETROMETRY_ANALYSE_MODE:
