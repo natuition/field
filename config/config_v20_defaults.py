@@ -263,7 +263,7 @@ PENETROMETRY_PARAMS_QUEUE_MAX_MESSAGE = 5 # Size of the queue that contain the n
 
 PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_BEFORE = 15 # Number of capture registred before the trigger
 PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_OVER = 5 # Number of capture over the treshold to trigger
-PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_AFTER = 95 # Number of capture registred after the trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_AFTER = 90 # Number of capture registred after the trigger
 PENETROMETRY_RPM_TRIGGER_THRESHOLD = 500 # RPM threshold for the trigger
 
 PENETROMETRY_SAVING_MODE = True # Active or desactive the saving of vesc datas
