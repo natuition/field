@@ -2177,6 +2177,16 @@ def main():
                 nav=nav,
                 log_cur_dir=log_cur_dir) as navigation_prediction:
 
+            send_voltage_thread_alive = {"value": True}
+            send_voltage_thread = threading.Thread(
+                target=send_voltage_thread_tf,
+                args=(lambda: send_voltage_thread_alive["value"],
+                      vesc_engine,
+                      logger_full, 
+                      ui_msg_queue),
+                daemon=True)
+            send_voltage_thread.start()
+
             myPenetrometryAnalyse = None
             if(config.PENETROMETRY_ANALYSE_MODE):
                 myPenetrometryAnalyse = PenetrometryAnalyse(vesc_engine, config.PENETROMETRY_SAVING_MODE)
