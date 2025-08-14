@@ -172,7 +172,6 @@ class UIWebRobot:
 
     # SOCKET IO
     def on_socket_data(self, data):
-        print("on_socket_data", data)
         msg_socket_data_before_event = [
             Events.VALIDATE_FIELD_NAME, 
             Events.LIST_VALIDATION, 
