@@ -49,8 +49,8 @@ function canNext() {
         document.getElementById('Z').checked &&
         document.getElementById('camera').checked &&
         document.getElementById('wheelsStraight').checked &&
-        document.getElementById('no_cam') == null;
-        //document.getElementById("voltage_indicator").innerHTML.match(/^\d+(\.\d+)?\sV$/);
+        document.getElementById('no_cam') == null &&
+        document.getElementById("voltage_indicator").innerHTML.match(/^\d+(\.\d+)?\sV$/);
 }
 
 function listValidationEvery500ms() {

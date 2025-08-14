@@ -1,4 +1,5 @@
 import sys
+import threading
 sys.path.append('../')
 from config import config
 from uiWebRobot.state_machine import utilsFunction
@@ -49,7 +50,6 @@ class CheckState(State.State):
             print(msg)
         self.vesc_engine = utilsFunction.initVesc(self.logger)
 
-        """
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
         self.__voltage_thread = threading.Thread(target=utilsFunction.voltage_thread_tf,
@@ -60,7 +60,6 @@ class CheckState(State.State):
                                                        self.logger),
                                                  daemon=True)
         self.__voltage_thread.start()
-        """
 
         if EnvironnementConfig.NATUITION_CHECKLIST():
             self.statusOfUIObject["checkbox"] = True
@@ -72,7 +71,7 @@ class CheckState(State.State):
         if event == Events.Events.LIST_VALIDATION:
             self.socketio.emit('data', {"ACK": "list_validation"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
-            #self.__voltage_thread_alive = False
+            self.__stop_thread()
             if self.cam:
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Sending kill signal to camera process..."
@@ -122,3 +121,7 @@ class CheckState(State.State):
 
     def getField(self):
         return self.field
+    
+    def __stop_thread(self):
+        self.__voltage_thread_alive = False
+        self.__voltage_thread.join()
