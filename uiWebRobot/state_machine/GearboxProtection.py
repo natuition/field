@@ -43,9 +43,10 @@ class GearboxProtection:
 			Function for storing the number of extractions performed by the robot.\n
 			:param extracts: dictionary of the extractions performed by the robot.
 		"""
+        print(extracts)
         self.__nb_extracts = self.__compute_number_of_extracts(extracts)
 
-    def __compute_number_of_extracts(extracts: Dict[str, int]) -> int:
+    def __compute_number_of_extracts(self, extracts: Dict[str, int]) -> int:
         """
 			Function for computing the number of extractions performed by the robot.\n
 			:param extracts: dictionary of the extractions.\n
