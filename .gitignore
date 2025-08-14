@@ -160,6 +160,7 @@ deployement/target_coords.json
 deployement/go_to_coins_images/*
 deployement/target_detection.jpg
 uiWebRobot/target_detection.jpg
+penetrometry/datas/data*
 
 darknet2trt/*.names
 darknet2trt/*.weights

@@ -261,6 +261,15 @@ class WorkingState(State.State):
                                    json.dumps(self.last_path_all_points), 
                                    namespace='/map')
             return self
+        # When parameters for trigger are changed by the UI
+        elif data["type"] == 'penetrometry_new_params':
+            try:
+                queue_params = posix_ipc.MessageQueue(config.PENETROMETRY_PARAMS_QUEUE_NAME)
+                queue_params.send(json.dumps(data), timeout=0.01)
+                queue_params.close()
+            except Exception as e:
+                print("PENETROMETRY, sending params in queue:", e)
+            return self
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
@@ -281,7 +290,29 @@ class WorkingState(State.State):
         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
     def _main_msg_thread_tf(self):
+
+        self.queue_penetrometry_data = None
+        if config.PENETROMETRY_ANALYSE_MODE:
+            # Waiting for queue creating by adapter
+            while(self.queue_penetrometry_data is None):
+                try:
+                    self.queue_penetrometry_data = posix_ipc.MessageQueue(config.PENETROMETRY_DATA_QUEUE_NAME)
+                except posix_ipc.ExistentialError:
+                    pass
+        
+        
         while self._main_msg_thread_alive:
+
+            if self.queue_penetrometry_data is not None:
+                msg = None
+                try:
+                    msg = self.queue_penetrometry_data.receive(0.01)
+                except posix_ipc.BusyError:
+                    pass # If queue is empty continue loop, it will refill
+                if msg is not None:
+                    print(f"Envoie des données de l'extraction au client WEB")
+                    self.socketio.emit('penetrometry_datas', json.loads(msg[0]), namespace="/server", broadcast=True)
+
 
             try:
                 msg = self.msgQueue.receive(timeout=2)
@@ -381,3 +412,17 @@ class WorkingState(State.State):
             self.msgQueue.unlink()
         except posix_ipc.ExistentialError:
             pass
+        
+        # Closing file descriptor and removing queue if it exist
+        if self.queue_penetrometry_data is not None:
+            msg = f"[{self.__class__.__name__}] -> Close queue_penetrometry_data..."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+            self.queue_penetrometry_data.close()
+            msg = f"[{self.__class__.__name__}] -> Unlink queue_penetrometry_data..."
+            self.logger.write_and_flush(msg + "\n")
+            print(msg)
+            try:
+                self.queue_penetrometry_data.unlink()
+            except posix_ipc.ExistentialError:
+                pass

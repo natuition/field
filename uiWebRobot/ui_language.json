@@ -724,5 +724,95 @@
 		"en": "Your working zone is too small, please retry with a bigger one.",
 		"nl": "Uw werkgebied is te klein, probeer het opnieuw met een groter gebied.",
 		"de": "Ihr Arbeitsbereich ist zu klein, bitte versuchen Sie es mit einem größeren Bereich erneut."
+	},
+	"Analyse data vesc title": {
+		"fr": "Analyse des données du moteur d'extraction",
+		"en": "Analyse des données du moteur d'extraction",
+		"nl": "Analyse des données du moteur d'extraction",
+		"de": "Analyse des données du moteur d'extraction"
+	},
+	"analyse data vesc checkbox": {
+		"fr": "Cocher la case pour afficher la courbe :",
+		"en": "Cocher la case pour afficher la courbe :",
+		"nl": "Cocher la case pour afficher la courbe :",
+		"de": "Cocher la case pour afficher la courbe :"
+	},
+	"temperature": {
+		"fr": "Température (°C)",
+		"en": "Température (°C)",
+		"nl": "Température (°C)",
+		"de": "Température (°C)"
+	},
+	"speed": {
+		"fr": "Vitesse (RPM)",
+		"en": "Vitesse (RPM)",
+		"nl": "Vitesse (RPM)",
+		"de": "Vitesse (RPM)"
+	},
+	"torque": {
+		"fr": "Couple (N/m)",
+		"en": "Couple (N/m)",
+		"nl": "Couple (N/m)",
+		"de": "Couple (N/m)"
+	},
+	"time": {
+		"fr": "Temps (s)",
+		"en": "Temps (s)",
+		"nl": "Temps (s)",
+		"de": "Temps (s)"
+	},
+	"seuil vitesse": {
+		"fr": "Seuil (RPM)",
+		"en": "Seuil (RPM)",
+		"nl": "Seuil (RPM)",
+		"de": "Seuil (RPM)"
+	},
+	"Graphique en temps reel": {
+		"fr": "Graphique en temps réel",
+		"en": "Graphique en temps réel",
+		"nl": "Graphique en temps réel",
+		"de": "Graphique en temps réel"
+	},
+	"rechercher un nouveau signal": {
+		"fr": "Rechercher un nouveau signal",
+		"en": "Rechercher un nouveau signal",
+		"nl": "Rechercher un nouveau signal",
+		"de": "Rechercher un nouveau signal"
+	},
+	"en attente de donnees": {
+		"fr": "En attente de données ...",
+		"en": "En attente de données ...",
+		"nl": "En attente de données ...",
+		"de": "En attente de données ..."
+	},
+	"Graphique une extraction": {
+		"fr": "Graphique d'une extraction",
+		"en": "Graphique d'une extraction",
+		"nl": "Graphique d'une extraction",
+		"de": "Graphique d'une extraction"
+	},
+	"nb_capture_before": {
+		"fr": "Nombre de capture avant le déclencheur",
+		"en": "Nombre de capture avant le déclencheur",
+		"nl": "Nombre de capture avant le déclencheur",
+		"de": "Nombre de capture avant le déclencheur"
+	},
+	"nb_capture": {
+		"fr": "Nombre de capture au dessus du seuil",
+		"en": "Nombre de capture au dessus du seuil",
+		"nl": "Nombre de capture au dessus du seuil",
+		"de": "Nombre de capture au dessus du seuil"
+	},
+	"nb_capture_after": {
+		"fr": "Nombre de capture après le déclencheur",
+		"en": "Nombre de capture après le déclencheur",
+		"nl": "Nombre de capture après le déclencheur",
+		"de": "Nombre de capture après le déclencheur"
+	},
+	"threshold": {
+		"fr": "Seuil de vitesse",
+		"en": "Seuil de vitesse",
+		"nl": "Seuil de vitesse",
+		"de": "Seuil de vitesse"
 	}
 }
