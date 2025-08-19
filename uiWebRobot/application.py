@@ -194,7 +194,7 @@ class UIWebRobot:
             Events.ACTUATOR_SCREENING_STOP,
             Events.PHYSICAL_BLOCAGE
         ]
-        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "create_field", "wait_working_state_refresh"]
+        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "create_field", "wait_working_state_refresh", "penetrometry_new_params"]
         
         if "type" in data:
             if data["type"] in [str(i) for i in msg_socket_data_before_event]:

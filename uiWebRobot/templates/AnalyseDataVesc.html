@@ -42,9 +42,6 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
-    <script>
-        var socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
-    </script>
 </head>
 
 <body>

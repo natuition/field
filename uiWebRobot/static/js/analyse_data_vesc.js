@@ -1,3 +1,5 @@
+const socketio = io.connect('http://' + document.domain + ':' + location.port + '/server');
+
 let shouldUpdateRegisteredGraph = true;
 let receivedData = [];
 
@@ -247,6 +249,13 @@ document.getElementById('newSignalButton').addEventListener('click', function() 
 
         // Send the new parameters to the server for the next detection
         socketio.emit('data', {
+            type: 'penetrometry_new_params',
+            nb_capture_before: nb_capture_before,
+            nb_capture_over: nb_capture_over,
+            nb_capture_after: nb_capture_after,
+            threshold: threshold
+        });
+        console.log("New parameters sent to the server:", {
             'type': 'penetrometry_new_params',
             'nb_capture_before': nb_capture_before,
             'nb_capture_over': nb_capture_over,
