@@ -133,8 +133,8 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                         fontSize: 14
                     },
                     ticks: {
-                        suggestedMin: -10,
-                        suggestedMax: 10,
+                        suggestedMin: -4,
+                        suggestedMax: 4,
                     },
                 },
                 {
@@ -167,8 +167,8 @@ const myRegistredChart = new Chart(ctx_registred_chart, {
                         fontSize: 14
                     },
                     ticks: {
-                        suggestedMin: -100,
-                        suggestedMax: 100,
+                        suggestedMin: -50,
+                        suggestedMax: 50,
                     },
                 }
             ]
