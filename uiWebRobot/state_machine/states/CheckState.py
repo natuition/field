@@ -3,7 +3,7 @@ import threading
 sys.path.append('../')
 from config import config
 from uiWebRobot.state_machine import utilsFunction
-from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.states import WaitWorkingState
 from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
@@ -68,7 +68,7 @@ class CheckState(State.State):
 
     def on_event(self, event):
 
-        if event == Events.Events.LIST_VALIDATION:
+        if event == Events.LIST_VALIDATION:
             self.socketio.emit('data', {"ACK": "list_validation"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
             self.__stop_thread()

@@ -31,11 +31,11 @@ class Events(Enum):
 
     @staticmethod
     def from_str(events_name: str) -> 'Events':
-        return Events._member_map_[events_name.upper()]
+        return Events[events_name.upper()]
     
     @staticmethod
     def from_value(events_name: int) -> 'Events':
-        return Events._value2member_map_[events_name]
+        return Events(events_name)
     
     @staticmethod
     def event_list_to_str_list(list_events: List['Events']) -> List[str]:

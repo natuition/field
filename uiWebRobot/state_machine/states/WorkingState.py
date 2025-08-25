@@ -16,7 +16,7 @@ from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import WaitWorkingState
 from uiWebRobot.state_machine.states import PhysicalBlocageState
 from uiWebRobot.state_machine.states import ErrorState
-from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.Events import Events
 from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 
@@ -120,7 +120,7 @@ class WorkingState(State.State):
 
     def on_event(self, event):
         
-        if event == Events.Events.STOP:
+        if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
             
@@ -177,7 +177,7 @@ class WorkingState(State.State):
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
         
-        elif event == Events.Events.PHYSICAL_BLOCAGE:
+        elif event == Events.PHYSICAL_BLOCAGE:
             self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
                                                 continueButton=ButtonState.DISABLE,
@@ -356,7 +356,7 @@ class WorkingState(State.State):
                     self.socketio.emit('updateGPSQuality', self.lastGpsQuality, namespace='/gps', broadcast=True)
                     self.__gearbox_protection.store_coord(data[0], data[1], data[2])
                     if(self.__gearbox_protection.is_physically_blocked() and config.CHECK_PHYSICAL_BLOCAGE) :
-                        utilsFunction.change_state(Events.Events.PHYSICAL_BLOCAGE)
+                        utilsFunction.change_state(Events.PHYSICAL_BLOCAGE)
 
                 elif "last_gps_list_file" in data:
                     last_gps_list_file = data["last_gps_list_file"]
