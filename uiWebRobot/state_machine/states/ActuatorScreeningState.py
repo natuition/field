@@ -3,7 +3,7 @@ sys.path.append('../')
 
 from flask_socketio import SocketIO
 
-from uiWebRobot.state_machine.State import State
+from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import utilsFunction
@@ -11,13 +11,16 @@ from shared_class.robot_synthesis import RobotSynthesis
 from config import config
 import utility
 import adapters
+import hashlib
+import subprocess
+import os
 import time
 import threading
 import csv
 import math
 
 # This state corresponds when the robot screening his actuator.
-class ActuatorScreeningState(State):
+class ActuatorScreeningState(State.State):
 
     DATA_IN_CSV = False
 
