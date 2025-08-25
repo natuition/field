@@ -246,7 +246,6 @@ VESC_SMOOTH_DECEL_RPM_STEP = 2500
 VESC_SMOOTH_DECEL_TIME_STEP = 0.1
 
 
-
 # ======================================================================================================================
 # PENETROMETRY SETTINGS
 # ======================================================================================================================
@@ -271,10 +270,6 @@ PENETROMETRY_SAVING_MODE = True # Active or desactive the saving of vesc datas
 
 POLARY_POLE_COUNT = 7 # Multiply the erpm by the pole count of the motor give you the rpm
 TORQUE_CONST = 0.081 # Multiply the input current motor by this constant give you the torque
-
-
-
-
 
 
 # ======================================================================================================================
