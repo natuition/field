@@ -719,7 +719,7 @@ RELOAD_CONFIG_DURING_NAVIGATION_TEST = False
 # ======================================================================================================================
 # PHYSICAL BLOCAGE SETTINGS
 # ======================================================================================================================
-CHECK_PHYSICAL_BLOCAGE = False # Allow to stop the robot when it is physically blocked.
+CHECK_PHYSICAL_BLOCAGE = True # Allow to stop the robot when it is physically blocked.
 MIN_NB_VALID_DISTANCES = 10 # Min number of coordinates required to determine whether the robot is physically blocked.
 MAX_NB_COORDS_STORED = 20 # Max number of stored coordinates.
 MIN_SPEED = 100 # Min speed required to determinate that the robot is unmoving (in millimeters per second).
