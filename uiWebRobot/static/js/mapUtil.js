@@ -336,6 +336,7 @@ function createMap(coords_field, coords_other) {
         });
 
         socketMap.on('updatePath', function (dataServ) {
+            //console.log(dataServ)
             dataServ = JSON.parse(dataServ)
             var coords = dataServ[0]
             var last_coord = coords[coords.length - 1]

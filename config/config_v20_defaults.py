@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "2.1.1"
+CONFIG_VERSION = "2.2.1"
 
 
 # ======================================================================================================================
@@ -11,6 +11,7 @@ CONFIG_VERSION = "2.1.1"
 # ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
 # EXTRACTION SETTINGS
 # VESC SETTINGS
+# PENETROMETRY SETTINGS
 # GPS SETTINGS
 # SMOOTHIE SETTINGS
 # DETECTION SETTINGS
@@ -26,6 +27,7 @@ CONFIG_VERSION = "2.1.1"
 # PATHS SETTINGS
 # PREDICTION SETTINGS
 # NAVIGATION TEST MODE SETTINGS
+# PHYSICAL BLOCAGE SETTINGS
 # UNSORTED KEYS
 # ======================================================================================================================
 
@@ -92,9 +94,7 @@ PREVIOUS_PATH_INDEX_FILE = "path_index.txt"
 
 #Cyril covid
 ORIGIN_AVERAGE_SAMPLES = 8
-
 WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL = True
-
 FUTURE_NUMBER_OF_POINTS = 3 #number of points that is given to the move to point function in addition to the one that is aimed
 
 #FORCE STEP
@@ -117,7 +117,7 @@ SLOW_FAST_MODE_HEAD_FACTOR = 0.5
 ALLOW_FIELD_LEAVING_PROTECTION = True
 # mms; robot will stop if ALLOW_FIELD_LEAVING_PROTECTION=True and PERPENDICULAR from a field's line is bigger
 # than this value (all ABCDA field lines are checked) and it's on left side of the line
-LEAVING_PROTECTION_DISTANCE_MAX = 1000
+LEAVING_PROTECTION_DISTANCE_MAX = 5000
 
 
 # ======================================================================================================================
@@ -204,7 +204,7 @@ VESC_STOPPER_CHECK_FREQ = 1000 # freq in herz
 VESC_TIMEOUT_READ = 0.05 # timeout in seconds of trying to read the serial
 
 INCREMENTAL_ENGINE_KEY = [0] # 0 = PROPULSION_KEY
-FREQUENCY_INCREMENTAL_RPM = 0.025  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
+FREQUENCY_INCREMENTAL_RPM = 40  # freq of sending RPM to vesc for engine in RPM_INCREMENTAL_ENGINE_KEY list.
 STEP_INCREMENTAL_RPM = 500 # RPM step max by tick defined by RPM_FREQUENCY
 # int; bumper is considered pressed if voltage is getting lesser (not equal) than this value
 VESC_BUMBER_TRIGGER_VOLTAGE = 1
@@ -239,6 +239,33 @@ VESC_SMOOTH_ACCEL_RPM_STEP = 2500
 VESC_SMOOTH_ACCEL_TIME_STEP = 0.1  
 VESC_SMOOTH_DECEL_RPM_STEP = 2500
 VESC_SMOOTH_DECEL_TIME_STEP = 0.1
+
+
+# ======================================================================================================================
+# PENETROMETRY SETTINGS
+# ======================================================================================================================
+
+
+PENETROMETRY_ANALYSE_MODE = True  # Active or desactive the analyse of vesc datas
+PENETROMETRY_ANALYSE_FREQUENCY = 0.02 # Delay between vesc questionning, in second
+
+PENETROMETRY_DATA_QUEUE_NAME = "/queue_penetrometry_data" # Name of the queue that contain the data of extraction
+PENETROMETRY_DATA_QUEUE_MAX_MESSAGE = 10 # Size of the queue that contain the data of extraction
+PENETROMETRY_DATA_QUEUE_BUFFER_SLICE_SIZE = 50 # Size max of buffer in message sended in the queue
+
+PENETROMETRY_PARAMS_QUEUE_NAME = "/queue_penetrometry_params" # Name of the queue that contain the new params send by the web client
+PENETROMETRY_PARAMS_QUEUE_MAX_MESSAGE = 5 # Size of the queue that contain the new params send by the web client
+
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_BEFORE = 15 # Number of capture registred before the trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_OVER = 5 # Number of capture over the treshold to trigger
+PENETROMETRY_RPM_TRIGGER_NB_CAPTURE_AFTER = 90 # Number of capture registred after the trigger
+PENETROMETRY_RPM_TRIGGER_THRESHOLD = 500 # RPM threshold for the trigger
+
+PENETROMETRY_SAVING_MODE = True # Active or desactive the saving of vesc datas
+
+POLARY_POLE_COUNT = 7 # Multiply the erpm by the pole count of the motor give you the rpm
+TORQUE_CONST = 0.081 # Multiply the input current motor by this constant give you the torque
+
 
 # ======================================================================================================================
 # GPS SETTINGS
@@ -436,7 +463,8 @@ ROBOT_SYNTHESIS_PORT = 2006
 DATAGATHERING_HOST = "172.16.0.10"
 DATAGATHERING_PORT = 8080
 
-LIFE_LINE_PIN = 77 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
+LIFE_LINE_PIN = 78 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
+LIFE_LINE_PIN = 78 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
@@ -457,6 +485,7 @@ CONTINUOUS_INFORMATION_SENDING = True
 ALIVE_SENDING_TIMEOUT = 1
 
 TIMEOUT_JOYSTICK_USER_ACTION = 1
+
 
 # ======================================================================================================================
 # EXTRACTION MANAGER SETTINGS
@@ -513,6 +542,7 @@ NTRIP_SLEEP_TIME = 10 # Time in seconds between two sessions of getting data (MS
 
 CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 
+
 # ======================================================================================================================
 # SEEDER SETTINGS
 # ======================================================================================================================
@@ -525,6 +555,7 @@ SEEDER_EXT_OFFSET_Y = 25  # mm; if not 0 - will move cork for this value on Y ax
 SEEDER_EXT_OFFSET_Y_F = 20000  # offset force for Y axis
 SEEDER_CLOSE_COMMAND = 2 # Command send to close exit of robot's seeder (M280 S[SEEDER_CLOSE_COMMAND])
 SEEDER_OPEN_COMMAND = 5.5 # Command send to open exit of robot's seeder (M280 S[SEEDER_OPEN_COMMAND])
+
 
 # ======================================================================================================================
 # MILLING SETTINGS
@@ -568,13 +599,14 @@ PERIPHERY_CONFIG_FILE = "yolo/Y0016_416.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/Y0016.weights"
 PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 
+
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
 PRECISE_CONFIDENCE_THRESHOLD = 0.1
 PRECISE_INPUT_SIZE = (832, 832)
 PRECISE_CLASSES_FILE = "yolo/Y0016.names"
-PRECISE_MODEL_PATH = "yolo/Y0016_832_832.trt"  # for TRT wrapper
+PRECISE_MODEL_PATH = "yolo/Y0016_832_832.trt"
 
 PRECISE_HIER_THRESHOLD = 0.5
 PRECISE_NMS_THRESHOLD = 0.4
@@ -586,6 +618,7 @@ PRECISE_WRAPPER = 1
 PRECISE_CONFIG_FILE = "yolo/Y0016_832.cfg"
 PRECISE_WEIGHTS_FILE = "yolo/Y0016.weights"
 PRECISE_DATA_FILE = "yolo/Y0016.data"
+
 
 # ======================================================================================================================
 # CAMERA SETTINGS
@@ -615,9 +648,9 @@ APPLY_THREAD_BUFF_CLEANING = True
 BUFF_CLEANING_DELAY = 0  # seconds of waiting before frame reading; should be positive or zero; set to 0 if thread cleaning is used
 UNDISTORTED_ZONE_RADIUS = 300
 DELAY_BEFORE_2ND_SCAN = 0.3  # delay in seconds after robot stop and before second scan (M=1)
-WORKING_ZONE_POLY_POINTS = [[1000, 1050], [30, 1080], [45, 755], [40, 300], [640, 115], [1000, 70], [1360, 115], [1860, 300], [1955, 755], [1970, 1080]]
+WORKING_ZONE_POLY_POINTS = [[1534, 908], [1530, 772], [1523, 641], [1502, 519], [1479, 412], [1452, 322], [1438, 290], [1403, 279], [1300, 260], [1184, 235], [1062, 228], [936, 226], [809, 237], [693, 256], [594, 279], [493, 302], [479, 343], [454, 431], [435, 535], [417, 648], [410, 783], [412, 917], [988, 929]]
 # working zone polygon's points relative to scene center (used for abs points calculation during calibrations)
-WORKING_ZONE_POLY_POINTS_REL = [[621, 96], [622, -48], [609, -189], [585, -317], [558, -431], [389, -562], [-10, -564], [-407, -564], [-585, -445], [-611, -338], [-637, -208], [-646, -67], [-646, 89], [-21, 119]]
+WORKING_ZONE_POLY_POINTS_REL = [[534, -72], [530, -208], [523, -339], [502, -461], [479, -568], [452, -658], [438, -690], [403, -701], [300, -720], [184, -745], [62, -752], [-64, -754], [-191, -743], [-307, -724], [-406, -701], [-507, -678], [-521, -637], [-546, -549], [-565, -445], [-583, -332], [-590, -197], [-588, -63], [-12, -51]]
 # max res is used during deployment calibration to detect scene center position
 DEPLOYMENT_CAMERA_MAX_W = 3264
 # max res is used during deployment calibration to detect scene center position
@@ -671,10 +704,22 @@ NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
 #when it reaches this point it will wait for a press on enter to go to the furthest point from it.
 DISPLAY_INSTRUCTION_PATH = False #Allows to display the robot guide points on the ui.
 DELTA_DISPLAY_INSTRUCTION_PATH = 15 #Number of guide points display on the ui.
-POINT_A = [[46.1579425, -1.1344245], -0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+POINT_A = [[46.1546931, -1.1198362], -0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
-POINT_B = [[46.1577957, -1.1347992], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+POINT_B = [[46.1545618, -1.119885], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
+RELOAD_CONFIG_DURING_NAVIGATION_TEST = False
+
+
+# ======================================================================================================================
+# PHYSICAL BLOCAGE SETTINGS
+# ======================================================================================================================
+CHECK_PHYSICAL_BLOCAGE = True # Allow to stop the robot when it is physically blocked.
+MIN_NB_VALID_DISTANCES = 10 # Min number of coordinates required to determine whether the robot is physically blocked.
+MAX_NB_COORDS_STORED = 20 # Max number of stored coordinates.
+MIN_SPEED = 100 # Min speed required to determinate that the robot is unmoving (in millimeters per second).
+REVERSING_DISTANCE = 5000 # Distance that the robot will do backward after detecting a physical blocage(in millimeters).
+STEP_PERCENTAGE_OF_MIN_SPEED = 10 # Rate of increase in percentage points of the minimum speed to be reached.
 
 
 # ======================================================================================================================

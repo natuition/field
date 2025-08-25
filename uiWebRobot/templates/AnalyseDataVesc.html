@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Violette</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0 15px;
+            height: 100%;
+            touch-action: manipulation;
+        }
+
+        /* Style for the loading spinner */
+        .spinner {
+            margin-left: auto;
+            margin-right: auto;
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #37b318; /* Blue */
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Animation for the spinner */
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap/bootstrap.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+</head>
+
+<body>
+    <script type="text/javascript">
+        const ui_languages = {{ ui_languages | tojson}};
+        const ui_language = {{ ui_language | tojson}};
+    </script>
+    <!-- <h1 style="text-align: center; padding: 10px 0;">{{(ui_languages["Analyse data vesc title"])[ui_language]}}</h1>
+
+    <h2 style="text-align: center; padding: 10px 0;">{{(ui_languages["Graphique une extraction"])[ui_language]}}</h2>-->
+    <div style="display: flex; flex-direction: column; align-items: center; margin-top: 20px; margin-bottom: 20px;">
+        <button id="newSignalButton" style="display: block; background-color: green; color: white; font-weight: 600; padding: 15px 30px; font-size: 18px; border-radius: 10px; border: none; cursor: pointer;">{{(ui_languages["rechercher un nouveau signal"])[ui_language]}}</button>
+
+        <div id="loadingContainer" style="display: block; text-align: center;">
+            <div class="spinner"></div>
+            <p style="font-size: xx-large; font-weight: 700;">{{(ui_languages["en attente de donnees"])[ui_language]}}</p>
+        </div>
+    </div>
+
+    <div id="paramContainer" style="display: none; margin-top: 20px;">
+        <div style="display: flex; justify-content: space-around; width: 100%;">
+            <div>
+                <label for="nbCaptureBefore">{{ (ui_languages["nb_capture_before"])[ui_language] }}:</label>
+                <input id="nbCaptureBefore" type="number" min="1" max="100" value="1">
+                <p id="nbCaptureBeforeError" style="color: red; display: none;">Valeur invalide ! Doit être un nombre entre 1 et 100.</p>
+            </div>
+            <div>
+                <label for="nbCaptureOver">{{ (ui_languages["nb_capture"])[ui_language] }}:</label>
+                <input id="nbCaptureOver" type="number" min="1" max="50" value="1">
+                <p id="nbCaptureOverError" style="color: red; display: none;">Valeur invalide ! Doit être un nombre entre 1 et 50.</p>
+            </div>
+            <div>
+                <label for="nbCaptureAfter">{{ (ui_languages["nb_capture_after"])[ui_language] }}:</label>
+                <input id="nbCaptureAfter" type="number" min="1" max="200" value="1">
+                <p id="nbCaptureAfterError" style="color: red; display: none;">Valeur invalide ! Doit être un nombre entre 1 et 200.</p>
+            </div>
+            <div>
+                <label for="threshold">{{ (ui_languages["threshold"])[ui_language] }}:</label>
+                <input id="threshold" type="number" min="1" max="2000" step="100" value="1">
+                <p id="thresholdError" style="color: red; display: none;">Valeur invalide ! Doit être un nombre entre 1 et 2000.</p>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <canvas id="myRegistredChart" width="400" height="200" style="width: 100%; height: 100%;"></canvas>
+    </div>
+
+    <script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script>
+    <script type="text/javascript" src="/static/{{ now }}/js/chartjs-plugin-annotation.min.js"></script>
+    <script type="text/javascript" src="/static/{{ now }}/js/analyse_data_vesc.js"></script>
+</body>
+
+</html>

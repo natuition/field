@@ -2,12 +2,12 @@ import sys
 sys.path.append('../')
 
 from flask_socketio import SocketIO
-from state_machine import State
-from state_machine.states import WorkingState
-from state_machine.states import ErrorState
-from state_machine import Events
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from state_machine import utilsFunction
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states import WorkingState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
+from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 from config import config
 import utility
@@ -21,7 +21,7 @@ class StartingState(State.State):
         self.logger = logger
         self.isAudit = isAudit
 
-        self.socketio.emit('start', {"status": "pushed"}, namespace='/button', broadcast=True)
+        self.socketio.emit('start_main', {"status": "pushed"}, namespace='/button', broadcast=True)
         if config.UI_VERBOSE_LOGGING:
             msg = f"[{self.__class__.__name__}] -> Edit config file (CONTINUE_PREVIOUS_PATH:{False})"
             self.logger.write_and_flush(msg + "\n")

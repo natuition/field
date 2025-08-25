@@ -57,10 +57,10 @@ var reloader = 0;
 function clickHandler() {
     if (this.id == "Newfield") {
         if (gpsQuality == "no_gps") {
-            alert((ui_languages["alert_on_no_gps"])[ui_language])
+            sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
         } else {
             sliderValue = document.getElementById("r1").value
-            socketio.emit('data', { type: "field", value: sliderValue });
+            socketio.emit('data', { type: "create_field", value: sliderValue });
         }
     } else if (this.id == "DemoResume") {
         socketio.emit('data', { type: "demo_resume_cmd" });
@@ -69,17 +69,17 @@ function clickHandler() {
         socketio.emit('data', { type: "validerZone", value: sliderValue });
     } else if (this.id == "Start") {
         if (gpsQuality == "no_gps") {
-            alert((ui_languages["alert_on_no_gps"])[ui_language])
+            sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
         } else {
-            socketio.emit('data', { type: "start", audit: audit });
+            socketio.emit('data', { type: "start_main", audit: audit });
         }
     } else if (this.id == "Stop") {
         socketio.emit('data', { type: "stop" });
     } else if (this.id == "Continue") {
         if (gpsQuality == "no_gps") {
-            alert((ui_languages["alert_on_no_gps"])[ui_language])
+            sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
         } else {
-            socketio.emit('data', { type: "continue", audit: audit });
+            socketio.emit('data', { type: "continue_main", audit: audit });
         }
     } else if (this.id == "Wheel" && !this.classList.contains("disabled-wheel")) {
         if (this.classList.contains("release")) {
@@ -123,7 +123,7 @@ socketButton.on('wheel', function (dataServ) {
 }
 );
 
-socketButton.on('start', function (dataServ) {
+socketButton.on('start_main', function (dataServ) {
     if (dataServ["status"] == "pushed") {
 
         $('.begin__button--continue').addClass('disabled');
@@ -138,7 +138,7 @@ socketButton.on('start', function (dataServ) {
     }
 });
 
-socketButton.on('continue', function (dataServ) {
+socketButton.on('continue_main', function (dataServ) {
     if (dataServ["status"] == "pushed") {
         $('.begin__button--start').addClass('disabled');
         $('.begin__button--start').attr('disabled', '');
@@ -152,7 +152,7 @@ socketButton.on('continue', function (dataServ) {
     }
 });
 
-socketButton.on('startMain', function (dataServ) {
+socketButton.on('start_main', function (dataServ) {
     if (dataServ["status"] == "finish") {
         //verif_iframe_start();
         $(document.getElementsByClassName('active')[0]).addClass('finished');
@@ -198,6 +198,12 @@ socketButton.on('stop', function (dataServ) {
         $('#Stop').addClass('active');
         $('#DemoResume').addClass('disabled');
         $('#DemoResume').attr('disabled', '');
+    }
+    else if (dataServ["status"] == "physical_blocage") {
+        $('#Stop').addClass('active');
+        $('#DemoResume').addClass('disabled');
+        $('#DemoResume').attr('disabled', '');
+        show_alert("Physical blocage", (ui_languages["Physical_blocage_detected"])[ui_language], "alert-warning");
     } else if (dataServ["status"] == "finish") {
         $(document.getElementsByClassName('active')[0]).addClass('finished');
         $('#DemoResume').addClass('disabled');
@@ -311,7 +317,7 @@ socketButton.on('field', function (dataServ) {
             field_name = datetime;
         }
 
-        socketio.emit('data', { type: "field_name", name: field_name });
+        socketio.emit('data', { type: "validate_field_name", name: field_name });
 
         reloader = setTimeout(() => {
             document.location.reload();
@@ -359,6 +365,10 @@ socketBroadcast.on('audit', function (data) {
     }
 });
 
+socketBroadcast.on('physical_blocage', function (dataServ) {
+    socketio.emit('data', { type: "physical_blocage" });
+});
+
 function changeMode() {
     /*if(!this.classList.contains("fix") && !this.classList.contains("disable-switcher-audit")){
         if(!this.classList.contains("disable-extraction")){
@@ -389,7 +399,7 @@ function verif_iframe_start() {
             })
                 .done(function () {
                     var url = new URL(window.location.href);
-                    console.log(url.searchParams.get('notIframe'))
+                    //console.log(url.searchParams.get('notIframe'))
                     if (!url.searchParams.get('notIframe')) {
                         if (document.getElementById("webCamStream")) {
                             document.getElementById("webCamStream").src = 'http://' + document.domain + ':8888';

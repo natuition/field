@@ -1,15 +1,15 @@
 import sys
+import threading
 sys.path.append('../')
 from config import config
-from state_machine import utilsFunction
-from state_machine import Events
-from state_machine.states import WaitWorkingState
-from state_machine import State
+from uiWebRobot.state_machine import utilsFunction
+from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.states import WaitWorkingState
+from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
 import signal
-import threading
 from flask_socketio import SocketIO
-from EnvironnementConfig import EnvironnementConfig
+from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 import utility
 import os
 
@@ -67,10 +67,11 @@ class CheckState(State.State):
             self.statusOfUIObject["checkbox"] = False
 
     def on_event(self, event):
+
         if event == Events.Events.LIST_VALIDATION:
-            self.socketio.emit('data', {"ACK": "allChecked"}, namespace='/server', broadcast=True)
+            self.socketio.emit('data', {"ACK": "list_validation"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
-            self.__voltage_thread_alive = False
+            self.__stop_thread()
             if self.cam:
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Sending kill signal to camera process..."
@@ -89,13 +90,14 @@ class CheckState(State.State):
                     print(msg)
                 os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
+        
         else:
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)
             return self
 
     def on_socket_data(self, data):
-        if data["type"] == 'allChecked':
+        if data["type"] == 'list_validation':
             try:
                 with open("../yolo/" + data["strategy"] + ".conf") as file:
                     for line in file:
@@ -105,16 +107,21 @@ class CheckState(State.State):
                             utilsFunction.changeConfigValue(key.strip(), value.strip())
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-        elif data["type"] == 'getInputVoltage':
-            utilsFunction.sendInputVoltage(
-                self.socketio, self.input_voltage["input_voltage"])
         else:
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)
         return self
+        """ elif data["type"] == 'getInputVoltage':
+            utilsFunction.sendInputVoltage(
+                self.socketio, self.input_voltage["input_voltage"]) """
+        
 
     def getStatusOfControls(self):
         return self.statusOfUIObject
 
     def getField(self):
         return self.field
+    
+    def __stop_thread(self):
+        self.__voltage_thread_alive = False
+        self.__voltage_thread.join()
