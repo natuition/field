@@ -11,7 +11,7 @@ from urllib.parse import quote, unquote
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import WaitWorkingState
 from uiWebRobot.state_machine.states import ErrorState
-from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
@@ -83,7 +83,7 @@ class CreateFieldState(State.State):
 
 
     def on_event(self, event):
-        if event == Events.Events.STOP:
+        if event == Events.STOP:
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
@@ -113,12 +113,12 @@ class CreateFieldState(State.State):
             self.statusOfUIObject.fieldButton = ButtonState.VALIDATE
             self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
             return self
-        elif event == Events.Events.VALIDATE_FIELD:
+        elif event == Events.VALIDATE_FIELD:
             return self
-        elif event == Events.Events.VALIDATE_FIELD_NAME:
+        elif event == Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
             return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine)
-        elif event == Events.Events.WHEEL:
+        elif event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
         else:

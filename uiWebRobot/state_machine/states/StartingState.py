@@ -5,7 +5,7 @@ from flask_socketio import SocketIO
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import WorkingState
 from uiWebRobot.state_machine.states import ErrorState
-from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
 from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
@@ -45,7 +45,7 @@ class StartingState(State.State):
         self.field = None
 
     def on_event(self, event):
-        if event == Events.Events.CONFIG_IS_SET:
+        if event == Events.CONFIG_IS_SET:
             self.statusOfUIObject.startButton = ButtonState.NOT_HERE
             self.statusOfUIObject.stopButton = True
             return WorkingState.WorkingState(self.socketio, self.logger, self.isAudit, False)

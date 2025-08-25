@@ -1120,10 +1120,12 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
 
         if vesc_data is not None:
             if voltage_thread_alive():
+                if ui_msg_queue is not None:
+                    ui_msg_queue.send(json.dumps({"input_voltage": "Main"}))
                 vesc_voltage = vesc_data.get("input_voltage", None)
                 if vesc_voltage is not None:
                     if vesc_voltage < 12.0:
-                        if isBumped:
+                        if isBumped == False:
                             msg = f"[Send voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
                             logger.write_and_flush(msg + "\n")
                             print(msg)

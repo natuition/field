@@ -317,7 +317,7 @@ class UIWebRobot:
             return redirect('/')
         
         if isinstance(self.get_state_machine().currentState, (WaitWorkingState)):
-            self.get_state_machine().on_event(Events.Events.CALIBRATION)
+            self.get_state_machine().on_event(Events.CALIBRATION)
 
         currentState: CalibrateState = self.get_state_machine().currentState
 
@@ -335,7 +335,7 @@ class UIWebRobot:
             return redirect('/')
         
         if isinstance(self.get_state_machine().currentState, (WaitWorkingState)):
-            self.get_state_machine().on_event(Events.Events.ACTUATOR_SCREENING)
+            self.get_state_machine().on_event(Events.ACTUATOR_SCREENING)
 
         currentState: ActuatorScreeningState = self.get_state_machine().currentState
 
@@ -430,7 +430,7 @@ class UIWebRobot:
             return e
 
         # now you're handling non-HTTP exceptions only
-        self.get_state_machine().on_event(Events.Events.ERROR)
+        self.get_state_machine().on_event(Events.ERROR)
         sn = self.__config.ROBOT_SN
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
@@ -452,7 +452,7 @@ def main():
     finally:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
             print("[UIWebRobot] -> Closing app...")
-            uiWebRobot.get_state_machine().on_event(Events.Events.CLOSE_APP)
+            uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
 
 if __name__ == "__main__":

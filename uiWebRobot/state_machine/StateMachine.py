@@ -6,7 +6,7 @@ from flask_socketio import SocketIO
 import utility
 from state_machine.states import CheckState
 from state_machine.states import ErrorState
-from state_machine import Events
+from state_machine.Events import Events
 from state_machine import State
 from state_machine.FrontEndObjects import FrontEndObjects
 from notification import RobotStateClient
@@ -23,7 +23,7 @@ class StateMachine:
         self.__robot_state_client = robot_state_client
         self.change_current_state(CheckState(socketio,self.logger))
 
-    def on_event(self, event: Events.Events):
+    def on_event(self, event: Events):
         msg = f"[{self.__class__.__name__}] -> {self.currentState} received event : {event}."
         self.logger.write_and_flush(msg+"\n")
         print(msg)
@@ -42,7 +42,7 @@ class StateMachine:
             newState = ErrorState(self.socketio,self.logger,msg)
 
         if str(newState) in ["StartingState","ResumeState"]:
-            self.change_current_state(newState.on_event(Events.Events.CONFIG_IS_SET))
+            self.change_current_state(newState.on_event(Events.CONFIG_IS_SET))
         else:
             self.change_current_state(newState)
     

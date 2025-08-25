@@ -14,7 +14,7 @@ from uiWebRobot.state_machine.states import ResumeState
 from uiWebRobot.state_machine.states import ErrorState
 from uiWebRobot.state_machine.states import CalibrateState
 from uiWebRobot.state_machine.states import ActuatorScreeningState
-from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.Events import Events
 from shared_class.robot_synthesis import RobotSynthesis
 
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
@@ -206,7 +206,7 @@ class WaitWorkingState(State.State):
 
     def on_event(self, event):
 
-        if event == Events.Events.CREATE_FIELD:
+        if event == Events.CREATE_FIELD:
             self.__stop_thread()
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
@@ -215,23 +215,23 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
             return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         
-        elif event == Events.Events.CALIBRATION:
+        elif event == Events.CALIBRATION:
             self.__stop_thread()
             return CalibrateState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         
-        elif event == Events.Events.ACTUATOR_SCREENING:
+        elif event == Events.ACTUATOR_SCREENING:
             self.__stop_thread()
             return ActuatorScreeningState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         
-        elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
+        elif event in [Events.START_MAIN, Events.START_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.startButton = ButtonState.CHARGING
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = False 
-            if event == Events.Events.START_MAIN:
+            if event == Events.START_MAIN:
                 self.statusOfUIObject.audit = AuditButtonState.NOT_IN_USE
-            elif event == Events.Events.START_AUDIT:
+            elif event == Events.START_AUDIT:
                 self.statusOfUIObject.audit = AuditButtonState.IN_USE
             if self.smoothie is not None:
                 self.smoothie.disconnect()
@@ -239,17 +239,17 @@ class WaitWorkingState(State.State):
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            return StartingState.StartingState(self.socketio, self.logger, (event == Events.Events.START_AUDIT))
+            return StartingState.StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
         
-        elif event in [Events.Events.CONTINUE_MAIN, Events.Events.CONTINUE_AUDIT]:
+        elif event in [Events.CONTINUE_MAIN, Events.CONTINUE_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
             self.statusOfUIObject.startButton = ButtonState.DISABLE
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = False
-            if event == Events.Events.CONTINUE_MAIN:
+            if event == Events.CONTINUE_MAIN:
                 self.statusOfUIObject.audit = AuditButtonState.NOT_IN_USE
-            elif event == Events.Events.CONTINUE_AUDIT:
+            elif event == Events.CONTINUE_AUDIT:
                 self.statusOfUIObject.audit = AuditButtonState.IN_USE
             if self.smoothie is not None:
                 self.smoothie.disconnect()
@@ -257,17 +257,17 @@ class WaitWorkingState(State.State):
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
+            return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.CONTINUE_AUDIT))
         
-        elif event == Events.Events.AUDIT_ENABLE:
+        elif event == Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
             return self
         
-        elif event == Events.Events.AUDIT_DISABLE:
+        elif event == Events.AUDIT_DISABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_ENABLE
             return self
         
-        elif event == Events.Events.CLOSE_APP:
+        elif event == Events.CLOSE_APP:
             self.__stop_thread()
             return self
         
