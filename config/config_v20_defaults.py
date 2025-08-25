@@ -116,10 +116,10 @@ SLOW_FAST_MODE_HEAD_FACTOR = 0.5
 
 # protection to prevent robot leaving a field it works on
 # True: stop robot and set state to out if service if robot has left the field; False: disable leaving the field control
-ALLOW_FIELD_LEAVING_PROTECTION = False
+ALLOW_FIELD_LEAVING_PROTECTION = True
 # mms; robot will stop if ALLOW_FIELD_LEAVING_PROTECTION=True and PERPENDICULAR from a field's line is bigger
 # than this value (all ABCDA field lines are checked) and it's on left side of the line
-LEAVING_PROTECTION_DISTANCE_MAX = 1000
+LEAVING_PROTECTION_DISTANCE_MAX = 5000
 
 
 # ======================================================================================================================
@@ -253,7 +253,7 @@ VESC_SMOOTH_DECEL_TIME_STEP = 0.1
 
 
 PENETROMETRY_ANALYSE_MODE = True  # Active or desactive the analyse of vesc datas
-PENETROMETRY_ANALYSE_FREQUENCY = 0.02 # Frequency of vesc questionning, in second
+PENETROMETRY_ANALYSE_FREQUENCY = 0.02 # Delay between vesc questionning, in second
 
 PENETROMETRY_DATA_QUEUE_NAME = "/queue_penetrometry_data" # Name of the queue that contain the data of extraction
 PENETROMETRY_DATA_QUEUE_MAX_MESSAGE = 10 # Size of the queue that contain the data of extraction
@@ -294,9 +294,9 @@ GPS_POINT_TIME_BEFORE_STOP = 2
 # (starts counting after robot was stopped, not after last point received)
 GPS_POINT_TIME_BEFORE_RECONNECT = 5
 # True: allow robot to restart ntrip service if received GPS point's quality is not '4'; False: ignore points quality
-ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART = False
+ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART = True
 # True: allow robot to stop if GPS point quality is not '4'; False: don't stop the robot
-ALLOW_GPS_BAD_QUALITY_STOP = False
+ALLOW_GPS_BAD_QUALITY_STOP = True
 # True: stop robot if prev-cur position distance is bigger than PREV_CUR_POINT_MAX_DIST and wait for another
 # cur_pos point with suitable distance, no more than specified in GPS_DIST_WAIT_TIME_MAX time;
 # False: ignore prev-cur position distance
@@ -385,7 +385,6 @@ C_F_MAX = 1000
 C_COEFFICIENT_TO_MM = 1
 
 A_ONE_DEGREE_IN_SMOOTHIE = 2  # A axis
-0.005750913619995118
 A_DEGREES_PER_SECOND = 5  # A axis
 NAV_TURN_WHEELS_CENTER = 0
 
@@ -455,7 +454,7 @@ VALUES_LEARN_GO_STRAIGHT = 40
 
 ANTI_THEFT_ZONE_RADIUS = 5000
 
-ROBOT_SN = "SN030"
+ROBOT_SN = "SN000"
 
 # posix_ipc.MessageQueue in main script setting
 # int: override OS's default max amount messages in queue before new msg sending will be blocked and forced to wait;
@@ -611,7 +610,7 @@ PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
 PRECISE_CONFIDENCE_THRESHOLD = 0.1
-PRECISE_INPUT_SIZE = (416, 416)
+PRECISE_INPUT_SIZE = (832, 832)
 PRECISE_CLASSES_FILE = "yolo/Y0016.names"
 PRECISE_MODEL_PATH = "yolo/Y0016_832_832.trt"
 
@@ -707,11 +706,10 @@ ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
 # ======================================================================================================================
 NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
 #The robot will aim for the furthest point, 
-0.005507249832153321
 #when it reaches this point it will wait for a press on enter to go to the furthest point from it.
 DISPLAY_INSTRUCTION_PATH = False #Allows to display the robot guide points on the ui.
 DELTA_DISPLAY_INSTRUCTION_PATH = 15 #Number of guide points display on the ui.
-POINT_A = [[46.1546931, -1.1198362], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+POINT_A = [[46.1546931, -1.1198362], -0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
 POINT_B = [[46.1545618, -1.119885], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
 # the speed represents the speed the robot will apply to reach this point.
