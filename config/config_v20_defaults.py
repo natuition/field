@@ -94,9 +94,7 @@ PREVIOUS_PATH_INDEX_FILE = "path_index.txt"
 
 #Cyril covid
 ORIGIN_AVERAGE_SAMPLES = 8
-
 WHEELS_STRAIGHT_CHANGE_DIRECTION_OF_TRAVEL = True
-
 FUTURE_NUMBER_OF_POINTS = 3 #number of points that is given to the move to point function in addition to the one that is aimed
 
 #FORCE STEP
@@ -189,9 +187,6 @@ FIRST_POINT_NO_EXTRACTIONS = False
 
 # True: set on pause extractions and wait for manual continue permission; False: usual extraction
 SET_EXTRACTIONS_ON_DEBUG_PAUSE = False
-
-
-
 
 
 # ======================================================================================================================
@@ -491,6 +486,7 @@ ALIVE_SENDING_TIMEOUT = 1
 
 TIMEOUT_JOYSTICK_USER_ACTION = 1
 
+
 # ======================================================================================================================
 # EXTRACTION MANAGER SETTINGS
 # ======================================================================================================================
@@ -546,6 +542,7 @@ NTRIP_SLEEP_TIME = 10 # Time in seconds between two sessions of getting data (MS
 
 CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 
+
 # ======================================================================================================================
 # SEEDER SETTINGS
 # ======================================================================================================================
@@ -558,6 +555,7 @@ SEEDER_EXT_OFFSET_Y = 25  # mm; if not 0 - will move cork for this value on Y ax
 SEEDER_EXT_OFFSET_Y_F = 20000  # offset force for Y axis
 SEEDER_CLOSE_COMMAND = 2 # Command send to close exit of robot's seeder (M280 S[SEEDER_CLOSE_COMMAND])
 SEEDER_OPEN_COMMAND = 5.5 # Command send to open exit of robot's seeder (M280 S[SEEDER_OPEN_COMMAND])
+
 
 # ======================================================================================================================
 # MILLING SETTINGS
@@ -601,6 +599,7 @@ PERIPHERY_CONFIG_FILE = "yolo/Y0016_416.cfg"
 PERIPHERY_WEIGHTS_FILE = "yolo/Y0016.weights"
 PERIPHERY_DATA_FILE = "yolo/Y0016.data"
 
+
 # ======================================================================================================================
 # YOLO PRECISE NETWORK SETTINGS
 # ======================================================================================================================
@@ -619,6 +618,7 @@ PRECISE_WRAPPER = 1
 PRECISE_CONFIG_FILE = "yolo/Y0016_832.cfg"
 PRECISE_WEIGHTS_FILE = "yolo/Y0016.weights"
 PRECISE_DATA_FILE = "yolo/Y0016.data"
+
 
 # ======================================================================================================================
 # CAMERA SETTINGS
@@ -720,7 +720,6 @@ MAX_NB_COORDS_STORED = 20 # Max number of stored coordinates.
 MIN_SPEED = 100 # Min speed required to determinate that the robot is unmoving (in millimeters per second).
 REVERSING_DISTANCE = 5000 # Distance that the robot will do backward after detecting a physical blocage(in millimeters).
 STEP_PERCENTAGE_OF_MIN_SPEED = 10 # Rate of increase in percentage points of the minimum speed to be reached.
-
 
 
 # ======================================================================================================================
