@@ -1,7 +1,5 @@
-import sys
-sys.path.append('../')
-
 from enum import Enum
+from typing import List
 
 class Events(Enum):
     ERROR = -1
@@ -29,3 +27,22 @@ class Events(Enum):
     ACTUATOR_SCREENING_START = 21
     ACTUATOR_SCREENING_PAUSE = 22
     ACTUATOR_SCREENING_STOP = 23
+    PHYSICAL_BLOCAGE = 24
+
+    @staticmethod
+    def from_str(events_name: str) -> 'Events':
+        return Events._member_map_[events_name.upper()]
+    
+    @staticmethod
+    def from_value(events_name: int) -> 'Events':
+        return Events._value2member_map_[events_name]
+    
+    @staticmethod
+    def event_list_to_str_list(list_events: List['Events']) -> List[str]:
+        return [str(i) for i in list_events]
+
+    def __str__(self):
+        return self.name.lower()
+
+    def __eq__(self, other):
+        return self.value == other.value

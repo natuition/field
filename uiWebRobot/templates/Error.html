@@ -15,24 +15,26 @@
 </head>
 
 <body>
-    <header class="header header__begin header__color--checklist">
-        <div class="header__info">
-            <div class="header__info--logo">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
-            </div>
-            <div class="header__info--model--voltage">
-                <div class="header__info--model">
-                    <p>{{ sn }}</p>
+    <div class="main" id="main">
+        <header class="header header__begin header__color--checklist">
+            <div class="header__info">
+                <div class="header__info--logo">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+                </div>
+                <div class="header__info--model--voltage">
+                    <div class="header__info--model">
+                        <p>{{ sn }}</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="header__title">
-            {{ error_message }}
-        </div>
-    </header>
-    <section class="checklist">
-        <p class="checkbox__item--title" style="color:rgb(156, 156, 156); font-style: italic;">{{ reason }}</p>
-    </section>
+            <div class="header__title">
+                {{ error_message }}
+            </div>
+        </header>
+        <section class="checklist">
+            <p class="checkbox__item--title" style="color:rgb(156, 156, 156); font-style: italic;">{{ reason }}</p>
+        </section>
+    </div>
 </body>
 
 </html>

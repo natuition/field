@@ -8,7 +8,8 @@ from matplotlib.patches import Polygon
 import time
 import pickle
 from sklearn.preprocessing import PolynomialFeatures
-
+import posix_ipc
+import json
 
 class ExtractionManagerV3:
     """Implements extraction logic and control"""
@@ -1090,6 +1091,8 @@ class ExtractionMethods:
 
         res = smoothie.RESPONSE_OK
         all_ext_z_start_t = start_t = time.time()
+
+
 
         # this loop implements multiple tries of cork re-picking
         for _ in range(config.VESC_CORK_PICKUP_MAX_TRIES):

@@ -29,16 +29,16 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Reset to 'no_gps' if no update for 5 seconds
+        // Reset to 'no_gps' if no update for 20 seconds
         if (gpsQualityTimeout) {
             clearTimeout(gpsQualityTimeout);
         }
         gpsQualityTimeout = setTimeout(function () {
-            console.warn("No GPS quality update received for 5 seconds. Reset to 'no_gps'.");
+            console.warn("No GPS quality update received for 20 seconds. Reset to 'no_gps'.");
             lastGPSQuality = 0;
             qualityDescription = (ui_languages["no_gps"])[ui_language];
             updateGlobalGpsQuality("no_gps");
-        }, 5000);
+        }, 20000);
 
         // Modify only if new quality value isn't the same as old quality value
         if (gps_quality_value != lastGPSQuality) {
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateGlobalGpsQuality("gps_with_rtk");
                     break;
                 default:
-                    console.warn(`GPS quality value (${gps_quality_value}) not recognized. Falling back to 'no_gps'.`);
+                    //console.warn(`GPS quality value (${gps_quality_value}) not recognized. Falling back to 'no_gps'.`);
                     qualityDescription = (ui_languages["no_gps"])[ui_language];
                     updateGlobalGpsQuality("no_gps");
                     background_color = "#FF3232"
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Update HTML content
             qualityTextElement.textContent = qualityDescription;
-            console.log(`GPS quality updated : ${qualityDescription} <${gps_quality_value}>`);
+            //console.log(`GPS quality updated : ${qualityDescription} <${gps_quality_value}>`);
             $("#gps_quality_indicator_text").parent().css("background-color", background_color);
 
         }

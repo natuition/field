@@ -53,15 +53,13 @@ function canNext() {
         document.getElementById("voltage_indicator").innerHTML.match(/^\d+(\.\d+)?\sV$/);
 }
 
-function allCheckedEvery500ms() {
-    console.log("Send allChecked");
+function listValidationEvery500ms() {
     var select_ai = document.getElementById("AI_selector");
-    socketio.emit('data', { type: "allChecked", strategy: select_ai.value });
+    socketio.emit('data', { type: "list_validation", strategy: select_ai.value });
 }
 
 socketio.on('data', function (dataServ) {
-    if (dataServ["ACK"] == "allChecked") {
-        console.log("Stop allChecked");
+    if (dataServ["ACK"] == "list_validation") {
         clearInterval(all_checked_interval);
     }
 });
@@ -69,7 +67,6 @@ socketio.on('data', function (dataServ) {
 function checkAllBoxAreChecked() {
     if (canNext() && isCheck == false) {
         isCheck = true;
-        console.log("User all check !");
         $('#checkbutton').attr('disabled', '');
         $('#checkbutton').addClass('unselectable');
         $('#checkbutton').addClass('active');
@@ -77,7 +74,7 @@ function checkAllBoxAreChecked() {
         loading_next = document.getElementById("checkbutton").getElementsByClassName('loading')[0];
         
         //count_next_interval = setInterval(count_next, 500);
-        all_checked_interval = setInterval(allCheckedEvery500ms, 1000);
+        all_checked_interval = setInterval(listValidationEvery500ms, 1000);
     }
 }
 
@@ -91,13 +88,22 @@ function activateNext() {
     }
 }
 
-socketio.on('checklist', function (dataServ) {
+socketio.on('list_validation', function (dataServ) {
     if (dataServ["status"] == "refresh") {
         //clearInterval(count_next_interval);
+        console.log("refresh !")
         document.location.reload();
     }
 });
 
+socketio.on('wait_working_state', function (dataServ) {
+    if (dataServ["status"] == "refresh") {
+        //clearInterval(count_next_interval);
+        document.location.reload();
+        socketio.emit('data', { type: "wait_working_state_refresh"});
+    }
+});
+
 window.addEventListener("load", function (event) {
-    socketio.emit('data', { type: "getInputVoltage" });
+    //socketio.emit('data', { type: "getInputVoltage" });
 });

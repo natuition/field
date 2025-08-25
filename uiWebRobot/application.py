@@ -22,7 +22,7 @@ from urllib.parse import unquote
 import posix_ipc
 from threading import Thread
 from datetime import datetime
-from uiWebRobot.setting_page import SettingPageManager
+from setting_page import SettingPageManager
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
@@ -53,15 +53,23 @@ class UIWebRobot:
         self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
         print(f"[{self.__class__.__name__}] -> Sent ✅")
 
+    def on_connect(self):
+        print("A client is connected.")
+
+    def on_connect(self):
+        print("A client is connected.")
+
     def __init_socketio(self):
         self.__socketio.on_event(
             'data', self.on_socket_broadcast, namespace='/broadcast')
         self.__socketio.on_event('disconnect', self.on_disconnect)
+        self.__socketio.on_event('connect', self.on_connect)
         self.__socketio.on_event(
             'data', self.on_socket_data, namespace='/server')
 
     def __init_flask_route(self):
         self.__app.add_url_rule("/", view_func=self.index)
+        self.__app.add_url_rule("/received_on_socket_data/<event_name>", view_func=self.received_on_socket_data)
         self.__app.add_url_rule("/setting", view_func=self.setting)
         self.__app.add_url_rule("/map", view_func=self.maps)
         self.__app.add_url_rule("/offline.html", view_func=self.offline)
@@ -76,6 +84,7 @@ class UIWebRobot:
         self.__app.add_url_rule("/calibrate", view_func=self.calibrate, methods=['GET', 'POST'])
         self.__app.add_url_rule("/actuator_screening", view_func=self.actuator_screening)
         self.__app.add_url_rule("/run_life_line", view_func=self.run_life_line)
+        self.__app.add_url_rule("/analyse_data_vesc", view_func=self.analyse_data_vesc)
 
     def __setting_flask(self):
         self.__app.register_error_handler(Exception, self.handle_exception)
@@ -163,39 +172,51 @@ class UIWebRobot:
 
     # SOCKET IO
     def on_socket_data(self, data):
-        msg_socket_data_before_event = ["field_name", "allChecked", "wheel"]
-        msg_socket_to_event = {
-            "stop": Events.STOP, 
-            "run_target_detection": Events.CALIBRATION_DETECT,
-            "run_target_move": Events.CALIBRATION_MOVE,
-            "start": Events.START_MAIN,
-            "continue": Events.CONTINUE_MAIN,
-            "field": Events.CREATE_FIELD,
-            "field_name": Events.VALIDATE_FIELD_NAME,
-            "allChecked": Events.LIST_VALIDATION,
-            "calibration_validate": Events.CALIBRATION_VALIDATE,
-            "calibration_cancel": Events.CALIBRATION_CANCEL,
-            "screening_start": Events.ACTUATOR_SCREENING_START,
-            "screening_pause": Events.ACTUATOR_SCREENING_PAUSE,
-            "screening_quit": Events.ACTUATOR_SCREENING_STOP
-        }
-        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "field"]
+        msg_socket_data_before_event = [
+            Events.VALIDATE_FIELD_NAME, 
+            Events.LIST_VALIDATION, 
+            Events.WHEEL
+        ]
+        msg_socket_to_event = [
+            Events.STOP, 
+            Events.ERROR,
+            Events.CALIBRATION_DETECT,
+            Events.CALIBRATION_MOVE,
+            Events.START_MAIN,
+            Events.CONTINUE_MAIN,
+            Events.CREATE_FIELD,
+            Events.VALIDATE_FIELD_NAME,
+            Events.LIST_VALIDATION,
+            Events.CALIBRATION_VALIDATE,
+            Events.CALIBRATION_CANCEL,
+            Events.ACTUATOR_SCREENING_START,
+            Events.ACTUATOR_SCREENING_PAUSE,
+            Events.ACTUATOR_SCREENING_STOP,
+            Events.PHYSICAL_BLOCAGE
+        ]
+        msg_socket_data_after_event = ["run_move_to_target", "step_axis_xy", "getInputVoltage", "modifyZone", "getField", "getStats", "getLastPath", "create_field", "wait_working_state_refresh", "penetrometry_new_params"]
+        
         if "type" in data:
-            if data["type"] in msg_socket_data_before_event:
+            if data["type"] in [str(i) for i in msg_socket_data_before_event]:
                 self.get_state_machine().on_socket_data(data)
-            if data["type"] in msg_socket_to_event.keys():
-                self.get_state_machine().on_event(msg_socket_to_event[data["type"]])
+
+            if data["type"] in [str(i) for i in msg_socket_to_event]:
+                self.get_state_machine().on_event(Events.from_str(data["type"]))
+
             if data["type"] in msg_socket_data_after_event:
                 self.get_state_machine().on_socket_data(data)
 
             if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
                 self.get_state_machine().on_socket_data(data)
+
             elif data["type"] == "demo_resume_cmd":
                 self.demo_pause_client.send_resume_cmd()
+
             elif data["type"] == "validerZone":
                 data["client_id"] = request.sid
                 self.get_state_machine().on_socket_data(data)
                 self.get_state_machine().on_event(Events.VALIDATE_FIELD)
+
             elif data["type"] == "removeField":
                 if isinstance(self.get_state_machine().currentState, WaitWorkingState):
                     self.get_state_machine().on_socket_data(data)
@@ -238,7 +259,17 @@ class UIWebRobot:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()], reason=self.get_state_machine().currentState.getReason()), 500
             else:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()]), 500
+
         return render_template('UIRobot.html', demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
+
+    def received_on_socket_data(self, event_name):
+        self.on_socket_data({"type": event_name})
+        response = self.__app.response_class(
+                response=json.dumps({True}),
+                status=200,
+                mimetype='application/json'
+        )
+        return response
 
     def setting(self):
         sn = self.__config.ROBOT_SN
@@ -261,10 +292,14 @@ class UIWebRobot:
             return redirect('/')
 
     def maps(self):
-        if not isinstance(self.get_state_machine().currentState, (WorkingState, WaitWorkingState, CreateFieldState, ResumeState, StartingState)):
+        if not isinstance(self.get_state_machine().currentState, (WorkingState, WaitWorkingState, CreateFieldState, ResumeState, StartingState, PhysicalBlocageState)):
             return redirect('/')
         myCoords = [0, 0]
-        field = self.get_state_machine().getField()
+        if isinstance(self.get_state_machine().currentState, (PhysicalBlocageState)):
+            field = None
+        else:
+            field = self.get_state_machine().getField()
+
         if (field is None) or (len(field) == 0):
             field = self.load_coordinates("../field.txt")
         if (field is None) or (len(field) == 0):
@@ -282,7 +317,7 @@ class UIWebRobot:
             return redirect('/')
         
         if isinstance(self.get_state_machine().currentState, (WaitWorkingState)):
-            self.get_state_machine().on_event(Events.CALIBRATION)
+            self.get_state_machine().on_event(Events.Events.CALIBRATION)
 
         currentState: CalibrateState = self.get_state_machine().currentState
 
@@ -300,12 +335,19 @@ class UIWebRobot:
             return redirect('/')
         
         if isinstance(self.get_state_machine().currentState, (WaitWorkingState)):
-            self.get_state_machine().on_event(Events.ACTUATOR_SCREENING)
+            self.get_state_machine().on_event(Events.Events.ACTUATOR_SCREENING)
 
         currentState: ActuatorScreeningState = self.get_state_machine().currentState
 
         return render_template(currentState.getStatusOfControls()["currentHTML"], ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), hasStarted=currentState.getStatusOfControls()["hasStarted"], count=currentState.getStatusOfControls()["count"], now=datetime.now().strftime("%H_%M_%S_%f"))
     
+
+    def analyse_data_vesc(self):
+        if not isinstance(self.get_state_machine().currentState, (WorkingState)):
+            return redirect('/')
+        return render_template("AnalyseDataVesc.html", ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), now=datetime.now().strftime("%H_%M_%S_%f"))
+
+
     def __get_ui_language(self):
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
@@ -388,7 +430,7 @@ class UIWebRobot:
             return e
 
         # now you're handling non-HTTP exceptions only
-        self.get_state_machine().on_event(Events.ERROR)
+        self.get_state_machine().on_event(Events.Events.ERROR)
         sn = self.__config.ROBOT_SN
         ui_language = self.__config.UI_LANGUAGE
         if ui_language not in self.__ui_languages["Supported Language"]:
@@ -410,9 +452,8 @@ def main():
     finally:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
             print("[UIWebRobot] -> Closing app...")
-            uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
+            uiWebRobot.get_state_machine().on_event(Events.Events.CLOSE_APP)
         uiWebRobot.exit()
-
 
 if __name__ == "__main__":
     main()

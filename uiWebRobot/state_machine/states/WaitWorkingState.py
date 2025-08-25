@@ -7,23 +7,23 @@ import os
 import json
 from urllib.parse import quote
 
-from state_machine import State
-from state_machine.states import CreateFieldState
-from state_machine.states import StartingState
-from state_machine.states import ResumeState
-from state_machine.states import ErrorState
-from state_machine.states import CalibrateState
-from state_machine.states import ActuatorScreeningState
-from state_machine import Events
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states import CreateFieldState
+from uiWebRobot.state_machine.states import StartingState
+from uiWebRobot.state_machine.states import ResumeState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine.states import CalibrateState
+from uiWebRobot.state_machine.states import ActuatorScreeningState
+from uiWebRobot.state_machine import Events
 from shared_class.robot_synthesis import RobotSynthesis
 
-from state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
-from state_machine import utilsFunction
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
+from uiWebRobot.state_machine import utilsFunction
 from config import config
 import adapters
 import utility
 
-from EnvironnementConfig import EnvironnementConfig
+from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
@@ -138,8 +138,10 @@ class WaitWorkingState(State.State):
                     self.smoothie.custom_move_to(
                         A_F=config.A_F_UI, A=self.learn_go_straight_angle)
 
-        self.socketio.emit(
-            'checklist', {"status": "refresh"}, namespace='/server', broadcast=True)
+        self.socketio.emit('list_validation', {"status": "refresh"}, namespace='/server', broadcast=True)
+        self.__check_ui_refresh_thread_alive = True
+        self.__check_ui_refresh_thread = threading.Thread(target=self.__check_ui_refresh_thread_tf, daemon=True)
+        self.__check_ui_refresh_thread.start()
 
         self.field = None
 
@@ -181,16 +183,29 @@ class WaitWorkingState(State.State):
                     self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
             time.sleep(0.5)
 
+    def __check_ui_refresh_thread_tf(self) :
+        while self.__check_ui_refresh_thread_alive:
+            self.socketio.emit('wait_working_state', {"status": "refresh"}, namespace='/server', broadcast=True)
+            time.sleep(0.5)
+
+    def __check_ui_refresh_thread_tf(self) :
+        while self.__check_ui_refresh_thread_alive:
+            self.socketio.emit('wait_working_state', {"status": "refresh"}, namespace='/server', broadcast=True)
+            time.sleep(0.5)
+
     def __stop_thread(self):
         self.can_go_setting = False
         self.send_last_pos_thread_alive = False
         self.__voltage_thread_alive = False
         self.__check_joystick_info_alive = False
+        self.__check_ui_refresh_thread_alive = False
         self.__voltage_thread.join()
         self._send_last_pos_thread.join()
         self.__joystick_info_thread.join()
+        self.__check_ui_refresh_thread.join()
 
     def on_event(self, event):
+
         if event == Events.Events.CREATE_FIELD:
             self.__stop_thread()
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
@@ -199,18 +214,21 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
             return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event == Events.Events.CALIBRATION:
             self.__stop_thread()
             return CalibrateState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event == Events.Events.ACTUATOR_SCREENING:
             self.__stop_thread()
             return ActuatorScreeningState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+        
         elif event in [Events.Events.START_MAIN, Events.Events.START_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.startButton = ButtonState.CHARGING
             self.statusOfUIObject.fieldButton = ButtonState.DISABLE
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
-            self.statusOfUIObject.joystick = False
+            self.statusOfUIObject.joystick = False 
             if event == Events.Events.START_MAIN:
                 self.statusOfUIObject.audit = AuditButtonState.NOT_IN_USE
             elif event == Events.Events.START_AUDIT:
@@ -222,6 +240,7 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.close()
                 self.vesc_engine = None
             return StartingState.StartingState(self.socketio, self.logger, (event == Events.Events.START_AUDIT))
+        
         elif event in [Events.Events.CONTINUE_MAIN, Events.Events.CONTINUE_AUDIT]:
             self.__stop_thread()
             self.statusOfUIObject.continueButton = ButtonState.CHARGING
@@ -239,15 +258,19 @@ class WaitWorkingState(State.State):
                 self.vesc_engine.close()
                 self.vesc_engine = None
             return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.Events.CONTINUE_AUDIT))
+        
         elif event == Events.Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
             return self
+        
         elif event == Events.Events.AUDIT_DISABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_ENABLE
             return self
+        
         elif event == Events.Events.CLOSE_APP:
             self.__stop_thread()
             return self
+        
         else:
             self.__stop_thread()
             try:
@@ -295,27 +318,33 @@ class WaitWorkingState(State.State):
                 self.socketio, self.input_voltage["input_voltage"])
 
         elif data["type"] == 'getField':
-            coords, other_fields, current_field_name = utilsFunction.updateFields(
-                data["field_name"])
-            fields_list = utilsFunction.load_field_list("../fields")
-            self.socketio.emit('newField', json.dumps(
-                {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
-                 "fields_list": fields_list}), namespace='/map')
+            try :
+                coords, other_fields, current_field_name = utilsFunction.updateFields(
+                    data["field_name"])
+                fields_list = utilsFunction.load_field_list("../fields")
+                self.socketio.emit('newField', json.dumps(
+                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
+                    "fields_list": fields_list}), namespace='/map')
+            except FileNotFoundError as e :
+                self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
 
         elif data["type"] == 'removeField':
-            os.remove(
-                "../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
-            fields_list = utilsFunction.load_field_list("../fields")
+            try :
+                os.remove("../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
+                fields_list = utilsFunction.load_field_list("../fields")
 
-            if len(fields_list) > 0:
-                coords, other_fields, current_field_name = utilsFunction.updateFields(
-                    fields_list[0])
-            else:
-                coords, other_fields, current_field_name = list(), list(), ""
+                if len(fields_list) > 0:
+                    coords, other_fields, current_field_name = utilsFunction.updateFields(
+                        fields_list[0])
+                else:
+                    coords, other_fields, current_field_name = list(), list(), ""
 
-            self.socketio.emit('newField', json.dumps(
-                {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
-                 "fields_list": fields_list}), namespace='/map')
+                self.socketio.emit('newField', json.dumps(
+                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
+                    "fields_list": fields_list}), namespace='/map')
+                
+            except FileNotFoundError as e :
+                self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
             
         elif data["type"] == 'wheel':
             if(data["status"]=="release") :
@@ -326,6 +355,9 @@ class WaitWorkingState(State.State):
                 self.smoothie.tighten_wheels()
                 self.statusOfUIObject.wheelButton = ButtonState.DISABLE
                 self.socketio.emit("wheel", "unrelease", namespace='/button')
+
+        elif data["type"] == "wait_working_state_refresh" :
+            self.__check_ui_refresh_thread_alive = False
         return self
 
     def getStatusOfControls(self):

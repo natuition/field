@@ -1,3 +1,4 @@
+import collections
 import connectors
 import multiprocessing
 import time
@@ -1946,6 +1947,7 @@ class VescAdapterV4:
         del self.__ser
 
     def close(self):
+        
         if self.__ser.is_open:
             self.__keep_thread_alive = False
             cleanup_gpio = False
@@ -2412,6 +2414,7 @@ class VescAdapterV4:
     def is_moving(self, engine_key):
         with self.__locker:
             return self.__is_moving[engine_key]
+
 
 
 class GPSUbloxAdapter:
