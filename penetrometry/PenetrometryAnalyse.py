@@ -4,6 +4,7 @@ import json
 import time
 import threading
 from penetrometry import extractions_data_pb2
+import os
 
 class PenetrometryAnalyse :
     """Class use to get a penetrometry analyse.
@@ -59,7 +60,7 @@ class PenetrometryAnalyse :
         self.__is_saving_mode_active = saving_mode
         self.__file_name = f"data_{time.strftime('%Y-%m-%d-%H-%M-%S')}.pb" # Timestamp of the class creating for naming the saving file
         self.__file_path = f"/home/violette/field/penetrometry/datas/{self.__file_name}"
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        os.makedirs(os.path.dirname(self.__file_path), exist_ok=True)
 
         self.__data_queue = None
         self.__data_queue_name = config.PENETROMETRY_DATA_QUEUE_NAME
