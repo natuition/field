@@ -1,6 +1,5 @@
 import sys
 
-import requests
 sys.path.append('../')
 
 from flask_socketio import SocketIO
@@ -12,10 +11,10 @@ import os
 import json
 import time
 
-from uiWebRobot.state_machine import State
-from uiWebRobot.state_machine.states import WaitWorkingState
-from uiWebRobot.state_machine.states import PhysicalBlocageState
-from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine.State import State
+from uiWebRobot.state_machine.states.WaitWorkingState import WaitWorkingState
+from uiWebRobot.state_machine.states.PhysicalBlocageState import PhysicalBlocageState
+from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
@@ -26,10 +25,8 @@ from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 from config import config
 import utility
 
-from queue import Queue
-
 # This state corresponds when the robot is working.
-class WorkingState(State.State):
+class WorkingState(State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit: bool, isResume: bool, wasPhysicallyBlocked: bool = False):
         if isResume:
@@ -175,7 +172,7 @@ class WorkingState(State.State):
             else:
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
-            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
+            return WaitWorkingState(self.socketio, self.logger, False)
         
         elif event == Events.PHYSICAL_BLOCAGE:
             self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
@@ -241,13 +238,13 @@ class WorkingState(State.State):
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
             else:
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
-            return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.logger, False)
+            return PhysicalBlocageState(self.socketio, self.logger, False)
         
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
             self.msgQueue.close()
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         if data["type"] == "getStats":
@@ -274,7 +271,7 @@ class WorkingState(State.State):
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
 
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject

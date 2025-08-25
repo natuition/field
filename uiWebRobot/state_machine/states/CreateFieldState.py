@@ -8,9 +8,9 @@ import os
 import json
 from urllib.parse import quote, unquote
 
-from uiWebRobot.state_machine import State
-from uiWebRobot.state_machine.states import WaitWorkingState
-from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine.State import State
+from uiWebRobot.state_machine.states.WaitWorkingState import WaitWorkingState
+from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from uiWebRobot.state_machine import utilsFunction
@@ -24,7 +24,7 @@ from navigation import NavigationV3
 
 
 # This state corresponds when the robot is generating the work area.
-class CreateFieldState(State.State):
+class CreateFieldState(State):
 
     def __init__(self,
                  socketio: SocketIO,
@@ -96,7 +96,7 @@ class CreateFieldState(State.State):
             except TimeoutError:
                 if self.notificationQueue is not None:
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
+                return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
 
             self.field = self.fieldCreator.calculateField()
             if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
@@ -117,7 +117,7 @@ class CreateFieldState(State.State):
             return self
         elif event == Events.VALIDATE_FIELD_NAME:
             self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
-            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine)
+            return WaitWorkingState(self.socketio, self.logger, True, self.smoothie, self.vesc_engine)
         elif event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
@@ -133,7 +133,7 @@ class CreateFieldState(State.State):
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         if data["type"] == "joystick":
@@ -164,7 +164,7 @@ class CreateFieldState(State.State):
                     self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
                 #self.__send_last_pos_thread_alive = False
                 #self._send_last_pos_thread.join()
-                return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
+                return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
 
         elif data["type"] == "modifyZone":
             msg = f"[{self.__class__.__name__}] -> Slider value : {data['value']}."

@@ -3,9 +3,9 @@ sys.path.append('../')
 
 from flask_socketio import SocketIO
 
-from uiWebRobot.state_machine import State
-from uiWebRobot.state_machine.states import WorkingState
-from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine.State import State
+from uiWebRobot.state_machine.states.WorkingState import WorkingState
+from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState, PhysicalBlocageFEO
 from uiWebRobot.state_machine import utilsFunction
@@ -14,7 +14,7 @@ from config import config
 import utility
 
 # This state corresponds when the robot configures it to continue the last job.
-class ResumeState(State.State):
+class ResumeState(State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit=False, wasPhysicallyBlocked=False):
         self.robot_synthesis_value = RobotSynthesis.UI_CONTINUE_STATE
@@ -65,14 +65,14 @@ class ResumeState(State.State):
         if event == Events.CONFIG_IS_SET:
             self.statusOfUIObject.continueButton = ButtonState.NOT_HERE
             self.statusOfUIObject.stopButton = ButtonState.ENABLE
-            return WorkingState.WorkingState(self.socketio, self.logger, self.isAudit, True, self.__wasPhysicallyBlocked)
+            return WorkingState(self.socketio, self.logger, self.isAudit, True, self.__wasPhysicallyBlocked)
         else:
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         if data["type"] == 'getInputVoltage':
             return self
-        return ErrorState.ErrorState(self.socketio, self.logger)
+        return ErrorState(self.socketio, self.logger)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject

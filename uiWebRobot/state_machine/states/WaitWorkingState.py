@@ -7,13 +7,13 @@ import os
 import json
 from urllib.parse import quote
 
-from uiWebRobot.state_machine import State
-from uiWebRobot.state_machine.states import CreateFieldState
-from uiWebRobot.state_machine.states import StartingState
-from uiWebRobot.state_machine.states import ResumeState
-from uiWebRobot.state_machine.states import ErrorState
-from uiWebRobot.state_machine.states import CalibrateState
-from uiWebRobot.state_machine.states import ActuatorScreeningState
+from uiWebRobot.state_machine.State import State
+from uiWebRobot.state_machine.states.CreateFieldState import CreateFieldState
+from uiWebRobot.state_machine.states.StartingState import StartingState
+from uiWebRobot.state_machine.states.ResumeState import ResumeState
+from uiWebRobot.state_machine.states.ErrorState import ErrorState
+from uiWebRobot.state_machine.states.CalibrateState import CalibrateState
+from uiWebRobot.state_machine.states.ActuatorScreeningState import ActuatorScreeningState
 from uiWebRobot.state_machine.Events import Events
 from shared_class.robot_synthesis import RobotSynthesis
 
@@ -28,7 +28,7 @@ from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
 
-class WaitWorkingState(State.State):
+class WaitWorkingState(State):
 
     def __init__(self,
                  socketio: SocketIO,
@@ -213,7 +213,7 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
-            return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+            return CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
         
         elif event == Events.CALIBRATION:
             self.__stop_thread()
@@ -239,7 +239,7 @@ class WaitWorkingState(State.State):
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            return StartingState.StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
+            return StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
         
         elif event in [Events.CONTINUE_MAIN, Events.CONTINUE_AUDIT]:
             self.__stop_thread()
@@ -257,7 +257,7 @@ class WaitWorkingState(State.State):
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.CONTINUE_AUDIT))
+            return ResumeState(self.socketio, self.logger, (event == Events.CONTINUE_AUDIT))
         
         elif event == Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
@@ -284,7 +284,7 @@ class WaitWorkingState(State.State):
                 raise KeyboardInterrupt
             except Exception as e:
                 self.logger.write_and_flush(e + "\n")
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState(self.socketio, self.logger)
 
     def on_socket_data(self, data):
         if data["type"] == 'joystick':

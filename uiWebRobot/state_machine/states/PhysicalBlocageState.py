@@ -1,4 +1,3 @@
-import string
 import sys
 import threading
 import time
@@ -9,7 +8,6 @@ from flask_socketio import SocketIO
 
 from uiWebRobot.state_machine.State import State
 from uiWebRobot.state_machine.states.ResumeState import ResumeState
-from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import utilsFunction
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection

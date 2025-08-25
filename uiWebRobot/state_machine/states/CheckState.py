@@ -4,8 +4,8 @@ sys.path.append('../')
 from config import config
 from uiWebRobot.state_machine import utilsFunction
 from uiWebRobot.state_machine.Events import Events
-from uiWebRobot.state_machine.states import WaitWorkingState
-from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states.WaitWorkingState import WaitWorkingState
+from uiWebRobot.state_machine.State import State
 from shared_class.robot_synthesis import RobotSynthesis
 import signal
 from flask_socketio import SocketIO
@@ -15,7 +15,7 @@ import os
 
 # This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
 
-class CheckState(State.State):
+class CheckState(State):
 
     def __init__(self, socketio: SocketIO, logger: utility.Logger):
 
@@ -89,7 +89,7 @@ class CheckState(State.State):
                     self.logger.write_and_flush(msg + "\n")
                     print(msg)
                 os.system("sudo systemctl restart ntripClient.service")
-            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
+            return WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
         
         else:
             self.socketio.emit(

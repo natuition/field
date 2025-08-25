@@ -3,7 +3,7 @@ sys.path.append('../')
 
 from flask_socketio import SocketIO
 
-from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.State import State
 from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import utilsFunction
@@ -19,7 +19,7 @@ import subprocess
 
 
 # This state corresponds when the robot is calibrate of plant targeting precision.
-class CalibrateState(State.State):
+class CalibrateState(State):
 
     def __init__(self,
                  socketio: SocketIO,
