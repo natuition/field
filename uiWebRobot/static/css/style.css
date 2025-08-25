@@ -79,6 +79,10 @@ body {
     width: 70px;
 }
 
+.header__info--logo {
+    flex-grow: 2;
+}
+
 .header__info--model p,
 .header__info--voltage p {
     color: #e7ffeb;
