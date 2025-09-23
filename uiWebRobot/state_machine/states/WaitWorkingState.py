@@ -361,11 +361,13 @@ class WaitWorkingState(State.State):
             
         elif data["type"] == 'getContinuePoint':
             with open("../"+config.PREVIOUS_GNSS_INDEX_FILE, "r") as f:
-                coordinates = f.readlines()
-                if len(coordinates) == 2:
-                    self.socketio.emit('showContinuePoint', 
-                                    json.dumps({"A": coordinates[0].strip().split(), "B": coordinates[1].strip().split()}), 
-                                    namespace='/map')
+                previous_gnss_index_lines = f.readlines()
+                if len(previous_gnss_index_lines) == 3:
+                    print(f"field_name: {data["field_name"]}")
+                    if(previous_gnss_index_lines[0]==data["field_name"]):
+                        self.socketio.emit('showContinuePoint', 
+                                        json.dumps({"A": previous_gnss_index_lines[1].strip().split(), "B": previous_gnss_index_lines[2].strip().split()}), 
+                                        namespace='/map')
             return self
         return self
 
