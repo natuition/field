@@ -378,6 +378,7 @@ function createMap(coords_field, coords_other) {
         });
         socketio.emit('data', { type: "getLastPath" });
 
+        socketio.emit('data', { type: "getContinuePoint" });
     });
 
 }
@@ -665,6 +666,6 @@ socketMap.on('newField', function (dataServ) {
 
     socketBroadcast.emit('data', { type: "reloader", status: false });
 
-    socketio.emit('data', { type: "getContinuePoint", field_name: dataServ["current_field_name"] });
+    socketio.emit('data', { type: "getContinuePoint" });
 
 });

@@ -6,6 +6,7 @@ import threading
 import os
 import json
 from urllib.parse import quote
+import unquote
 
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import CreateFieldState
@@ -363,11 +364,19 @@ class WaitWorkingState(State.State):
             with open("../"+config.PREVIOUS_GNSS_INDEX_FILE, "r") as f:
                 previous_gnss_index_lines = f.readlines()
                 if len(previous_gnss_index_lines) == 3:
-                    print(f"field_name: {data['field_name']}")
-                    if(previous_gnss_index_lines[0]==data["field_name"]):
+                    
+                    link_path = os.path.realpath("../field.txt")
+                    current_field = (link_path.split("/")[-1]).split(".")[0]
+                    current_field = unquote(current_field, encoding='utf-8')
+                    
+                    print(f"current_field: '{current_field}'")
+                    print(f"previous_gnss_index_lines[0]: '{previous_gnss_index_lines[0]}'")
+                    
+                    if(True):
                         self.socketio.emit('showContinuePoint', 
                                         json.dumps({"A": previous_gnss_index_lines[1].strip().split(), "B": previous_gnss_index_lines[2].strip().split()}), 
                                         namespace='/map')
+                        
             return self
         return self
 
