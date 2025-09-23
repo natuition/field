@@ -91,6 +91,7 @@ EMERGENCY_MOVING_TIME = 10  # seconds of moving forward for vector getting
 CONTINUE_PREVIOUS_PATH = False
 PREVIOUS_PATH_POINTS_FILE = "path_points.dat"
 PREVIOUS_PATH_INDEX_FILE = "path_index.txt"
+PREVIOUS_GNSS_INDEX_FILE = "path_gnss_index.txt"
 
 #Cyril covid
 ORIGIN_AVERAGE_SAMPLES = 8

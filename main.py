@@ -1971,6 +1971,21 @@ def get_bezier_indexes(path_points: list):
 
     return bezier_indexes
 
+def get_no_bezier_indexes(path_points: list):
+    bezier_indexes = get_bezier_indexes(path_points)
+    return list(set(path_points)^set(bezier_indexes))
+
+def get_new_path_start_index(path_points: list, path_start_index, logger_full: utility.Logger):
+    # Finding the last point in traditional path before path_start_index
+    non_bezier_indexes = get_no_bezier_indexes(path_points)
+    
+    # we take the last index <= path_start_index
+    last_trad_index = max([i for i in non_bezier_indexes if i <= path_start_index])
+    if path_start_index != last_trad_index:
+        msg = f"Reprise modifiée : retour au dernier point traditional path ({last_trad_index}) au lieu de {path_start_index}"
+        print(msg)
+        logger_full.write(msg + "\n")
+        return last_trad_index
 
 def main():
     time_start = utility.get_current_time()
@@ -2290,6 +2305,7 @@ def main():
                         logger_full.write_and_flush(msg + "\n")
                         notification.close()
                         exit()
+                        
                     elif path_start_index >= len(path_points) or path_start_index < 1:
                         loading_previous_index_failed = True
                         msg = f"Path start index {path_start_index} is out of path points list range (loaded " \
@@ -2305,6 +2321,10 @@ def main():
                         path_start_index = 1
                         with open(config.PREVIOUS_PATH_INDEX_FILE, "w") as path_index_file:
                             path_index_file.write(str(path_start_index))
+                            
+                    new_path_start_index = get_new_path_start_index(path_points, path_start_index, logger_full)
+                    path_start_index = new_path_start_index
+
 
             # load field points and generate new path or continue previous path errors case
             if not config.CONTINUE_PREVIOUS_PATH or loading_previous_path_failed:
@@ -2408,7 +2428,10 @@ def main():
             # path points visiting loop
             with open(
                     config.PREVIOUS_PATH_INDEX_FILE,
-                    "r+" if os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE) else "w") as path_index_file:
+                    "r+" if os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE) else "w") as path_index_file, \
+                  open(
+                    config.PREVIOUS_GNSS_INDEX_FILE,
+                    "r+" if os.path.isfile(config.PREVIOUS_GNSS_INDEX_FILE) else "w") as GNSS_index_file  :
                 # TODO: temp. wheels mechanics hotfix. please don't repeat things I did here they are not good.
                 if config.ENABLE_ADDITIONAL_WHEELS_TURN:
                     if config.TRADITIONAL_PATH:
@@ -2811,6 +2834,12 @@ def main():
                     path_index_file.seek(0)
                     path_index_file.write(str(i + 1))
                     path_index_file.flush()
+                    
+                    #TODO : put the code back here 
+                    GNSS_index_file.seek(0)
+                    continue_point = get_new_path_start_index(path_points, i + 1, logger_full)
+                    GNSS_index_file.write(path_points[continue_point])
+                    GNSS_index_file.flush()
 
                     """
                     msg = "Starting memory cleaning"
