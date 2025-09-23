@@ -452,42 +452,46 @@ socketMap.on('updateDisplayInstructionPath', function (dataServ) {
 });
 
 //Continue point
-socketMap.on('showContinuePoint', function (dataServ) {
-    A_B_continue_points = JSON.parse(dataServ);
-    let A = A_B_continue_points["A"];
-    let B = A_B_continue_points["B"];
-    var degrees_continue = 0;
-    var start_point_continue_btn = [];
-    if (coords_field.length > 0) {
-        degrees_continue = Math.atan2(A[0] - B[0], A[1] - B[1]) * 180 / Math.PI;
-        start_point_continue_btn = [A[1], A[0]];
-    }
-    if (typeof (map.getSource('field_continue')) == "undefined") {
-        map.addSource('field_continue', {
-            'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': start_point_continue_btn
-                },
-                "properties": {
-                    'rotate': degrees_continue
-                },
-            }
-        });
-        map.addLayer({
-            'id': 'field_continueLayer',
-            'type': 'symbol',
-            'source': 'field_continue',
-            'layout': {
-                'icon-rotate': ['get', 'rotate'],
-                'icon-rotation-alignment': 'map',
-                'icon-image': 'nav-img',
-                'icon-size': 0.3
-            }
-        });
-    }
+map.loadImage('http://' + document.domain + ':' + location.port + '/static/nav_continue.png', (error, image_continue) => {
+    if (error) throw error;
+    map.addImage('nav_continue-img', image_continue);
+    socketMap.on('showContinuePoint', function (dataServ) {
+        A_B_continue_points = JSON.parse(dataServ);
+        let A = A_B_continue_points["A"];
+        let B = A_B_continue_points["B"];
+        var degrees_continue = 0;
+        var start_point_continue_btn = [];
+        if (coords_field.length > 0) {
+            degrees_continue = Math.atan2(A[0] - B[0], A[1] - B[1]) * 180 / Math.PI;
+            start_point_continue_btn = [A[1], A[0]];
+        }
+        if (typeof (map.getSource('field_continue')) == "undefined") {
+            map.addSource('field_continue', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': start_point_continue_btn
+                    },
+                    "properties": {
+                        'rotate': degrees_continue
+                    },
+                }
+            });
+            map.addLayer({
+                'id': 'field_continueLayer',
+                'type': 'symbol',
+                'source': 'field_continue',
+                'layout': {
+                    'icon-rotate': ['get', 'rotate'],
+                    'icon-rotation-alignment': 'map',
+                    'icon-image': 'nav_continue-img',
+                    'icon-size': 0.3
+                }
+            });
+        }
+    });
 });
 
 socketMap.on('newField', function (dataServ) {
