@@ -5,8 +5,7 @@ from flask_socketio import SocketIO
 import threading
 import os
 import json
-from urllib.parse import quote
-import unquote
+from urllib.parse import quote, unquote
 
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import CreateFieldState
@@ -372,7 +371,7 @@ class WaitWorkingState(State.State):
                     print(f"current_field: '{current_field}'")
                     print(f"previous_gnss_index_lines[0]: '{previous_gnss_index_lines[0]}'")
                     
-                    if(True):
+                    if current_field == previous_gnss_index_lines[0].strip():
                         self.socketio.emit('showContinuePoint', 
                                         json.dumps({"A": previous_gnss_index_lines[1].strip().split(), "B": previous_gnss_index_lines[2].strip().split()}), 
                                         namespace='/map')
