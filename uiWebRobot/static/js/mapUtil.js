@@ -387,7 +387,7 @@ function createMap(coords_field, coords_other) {
             var degrees_continue = 0;
             var start_point_continue_btn = [];
             if (coords_field.length > 0) {
-                degrees_continue = Math.atan2(B[0] - A[0], B[1] - A[1]) * 180 / Math.PI;
+                degrees_continue = Math.atan2(A[0] - B[0], A[1] - B[1]) * 180 / Math.PI;
                 start_point_continue_btn = [A[1], A[0]];
             }
             if (typeof (map.getSource('field_continue')) == "undefined") {
