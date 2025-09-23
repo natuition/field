@@ -362,7 +362,7 @@ class WaitWorkingState(State.State):
         elif data["type"] == 'getContinuePoint':
             with open("../"+config.PREVIOUS_GNSS_INDEX_FILE, "r") as f:
                 coordinates = f.readlines()
-                print("getContinuePoint : "+coordinates)
+                print(f"getContinuePoint : {coordinates} patate")
             # if len(self.last_path_all_points) > 0:
             #     self.socketio.emit('updateLastPath', 
             #                        json.dumps(self.last_path_all_points), 
