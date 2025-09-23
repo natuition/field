@@ -230,7 +230,9 @@ function createMap(coords_field, coords_other) {
                         'icon-rotate': ['get', 'rotate'],
                         'icon-rotation-alignment': 'map',
                         'icon-image': 'nav-img',
-                        'icon-size': 0.3
+                        'icon-size': 0.3,
+                        'icon-ignore-placement': true,
+                        'icon-allow-overlap': true
                     }
                 });
             }
@@ -414,7 +416,9 @@ function createMap(coords_field, coords_other) {
                             'icon-rotate': ['get', 'rotate'],
                             'icon-rotation-alignment': 'map',
                             'icon-image': 'nav_continue-img',
-                            'icon-size': 0.3
+                            'icon-size': 0.3,
+                            'icon-ignore-placement': true,
+                            'icon-allow-overlap': true
                         }
                     }, 'field_startLayer'); // Ajouter avant field_startLayer
                 }
