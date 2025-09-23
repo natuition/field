@@ -220,6 +220,10 @@ class UIWebRobot:
             elif data["type"] == "removeField":
                 if isinstance(self.get_state_machine().currentState, WaitWorkingState):
                     self.get_state_machine().on_socket_data(data)
+                    
+            elif data["type"] == "getContinuePoint":
+                if isinstance(self.get_state_machine().currentState, WaitWorkingState):
+                    self.get_state_machine().on_socket_data(data)
 
     def on_socket_broadcast(self, data):
         emit(data["type"], data, broadcast=True)

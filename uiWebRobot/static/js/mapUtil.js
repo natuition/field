@@ -93,8 +93,6 @@ function createMap(coords_field, coords_other) {
     }
 
     map.on('load', function () {
-
-
         map.loadImage('http://' + document.domain + ':' + location.port + '/static/nav.png', (error, image) => {
             if (error) throw error;
             map.addImage('nav-img', image);
@@ -378,8 +376,45 @@ function createMap(coords_field, coords_other) {
         socketMap.on('updateLastPath', function (dataServ) {
             lastPathCoords = JSON.parse(dataServ);
         });
-
         socketio.emit('data', { type: "getLastPath" });
+
+        socketMap.on('showContinuePoint', function (dataServ) {
+            lastPathCoords = JSON.parse(dataServ);
+            //Continue point
+            var degrees = 0;
+            var start_point_continue_btn = [];
+            if (coords_field.length > 0) {
+                degrees = Math.atan2(coords_field[1][0] - coords_field[coords_field.length - 1][0], coords_field[1][1] - coords_field[coords_field.length - 1][1]) * 180 / Math.PI;
+                start_point_continue_btn = coords_field[coords_field.length - 1];
+            }
+            if (typeof (map.getSource('field_continue')) == "undefined") {
+                map.addSource('field_continue', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': start_point_continue_btn
+                        },
+                        "properties": {
+                            'rotate': degrees_continue
+                        },
+                    }
+                });
+                map.addLayer({
+                    'id': 'field_continueLayer',
+                    'type': 'symbol',
+                    'source': 'field_continue',
+                    'layout': {
+                        'icon-rotate': ['get', 'rotate'],
+                        'icon-rotation-alignment': 'map',
+                        'icon-image': 'nav-img',
+                        'icon-size': 0.3
+                    }
+                });
+            }
+        });
+        socketio.emit('data', { type: "getContinuePoint" });
     });
 
 }

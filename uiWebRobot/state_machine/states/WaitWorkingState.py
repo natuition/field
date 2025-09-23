@@ -358,6 +358,16 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == "wait_working_state_refresh" :
             self.__check_ui_refresh_thread_alive = False
+            
+        elif data["type"] == 'getContinuePoint':
+            with open(config.PREVIOUS_GNSS_INDEX_FILE, "r") as f:
+                coordinates = f.readlines()
+                print("getContinuePoint : "+coordinates)
+            # if len(self.last_path_all_points) > 0:
+            #     self.socketio.emit('updateLastPath', 
+            #                        json.dumps(self.last_path_all_points), 
+            #                        namespace='/map')
+            return self
         return self
 
     def getStatusOfControls(self):
