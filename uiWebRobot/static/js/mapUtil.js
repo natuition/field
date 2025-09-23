@@ -492,7 +492,10 @@ socketMap.on('showContinuePoint', function (dataServ) {
 
 socketMap.on('newField', function (dataServ) {
 
-    if (typeof (map.getSource('field_continue')) != "undefined") map.removeSource('field_continue');
+    if (typeof (map.getSource('field_continue')) != "undefined") {
+        map.removeLayer('field_continueLayer');
+        map.removeSource('field_continue');
+    }
 
     dataServ = JSON.parse(dataServ);
 
