@@ -379,7 +379,9 @@ function createMap(coords_field, coords_other) {
         socketio.emit('data', { type: "getLastPath" });
 
         socketMap.on('showContinuePoint', function (dataServ) {
-            lastPathCoords = JSON.parse(dataServ);
+            A_B_continue_points = JSON.parse(dataServ);
+            console.log(A_B_continue_points);
+            return;
             //Continue point
             var degrees = 0;
             var start_point_continue_btn = [];
