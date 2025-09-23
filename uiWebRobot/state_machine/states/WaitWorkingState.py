@@ -363,7 +363,7 @@ class WaitWorkingState(State.State):
             with open("../"+config.PREVIOUS_GNSS_INDEX_FILE, "r") as f:
                 previous_gnss_index_lines = f.readlines()
                 if len(previous_gnss_index_lines) == 3:
-                    print(f"field_name: {data["field_name"]}")
+                    print(f"field_name: {data['field_name']}")
                     if(previous_gnss_index_lines[0]==data["field_name"]):
                         self.socketio.emit('showContinuePoint', 
                                         json.dumps({"A": previous_gnss_index_lines[1].strip().split(), "B": previous_gnss_index_lines[2].strip().split()}), 
