@@ -360,7 +360,7 @@ class WaitWorkingState(State.State):
             self.__check_ui_refresh_thread_alive = False
             
         elif data["type"] == 'getContinuePoint':
-            with open(config.PREVIOUS_GNSS_INDEX_FILE, "r") as f:
+            with open("../"+config.PREVIOUS_GNSS_INDEX_FILE, "r") as f:
                 coordinates = f.readlines()
                 print("getContinuePoint : "+coordinates)
             # if len(self.last_path_all_points) > 0:
