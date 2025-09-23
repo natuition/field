@@ -416,7 +416,7 @@ function createMap(coords_field, coords_other) {
                             'icon-image': 'nav_continue-img',
                             'icon-size': 0.3
                         }
-                    });
+                    }, 'field_startLayer'); // Ajouter avant field_startLayer
                 }
             });
         });
