@@ -202,7 +202,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 logger_full.write(msg)
             elif len(cur_field) < 3:
                 msg = f"WARNING: robot field leaving protection WILL NOT WORK as given field contains " \
-                      f"{len(cur_field)} points (required ar least 3 points)"
+                      f"{len(cur_field)} points (requires at least 3 points)"
                 print(msg)
                 logger_full.write(msg)
 
@@ -1986,6 +1986,13 @@ def get_new_path_start_index(path_points: list, path_start_index, logger_full: u
         print(msg)
         logger_full.write(msg + "\n")
         return last_trad_index
+    
+def get_continue_path_points(path_points, A):
+    for i in enumerate(path_points):
+        if path_points[i] == A:
+            return path_points[i:]
+        else:
+            return None
 
 def main():
     time_start = utility.get_current_time()
@@ -2325,6 +2332,8 @@ def main():
                     new_path_start_index = get_new_path_start_index(path_points, path_start_index, logger_full)
                     path_start_index = new_path_start_index
 
+                    continue_path_points = get_continue_path_points(path_points, path_start_index)
+                    path_points = continue_path_points
 
             # load field points and generate new path or continue previous path errors case
             if not config.CONTINUE_PREVIOUS_PATH or loading_previous_path_failed:
