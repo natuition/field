@@ -2332,8 +2332,17 @@ def main():
                     new_path_start_index = get_new_path_start_index(path_points, path_start_index, logger_full)
                     path_start_index = new_path_start_index
 
-                    continue_path_points = get_continue_path_points(path_points, path_start_index)
-                    path_points = continue_path_points
+                    continue_path_points =  nue_path_points(path_points, path_start_index)
+                    path_points = continue_path_points 
+                     
+                    A = path_points[0]
+                    B = path_points[1]
+                    
+                    points = [A,B]
+                    with open('path_gnss_index.txt','w') as f:
+                        for index in points:
+                            line = ''.join(map(str,index))
+                            f.write(line+'/n')
 
             # load field points and generate new path or continue previous path errors case
             if not config.CONTINUE_PREVIOUS_PATH or loading_previous_path_failed:
