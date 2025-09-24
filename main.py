@@ -20,6 +20,7 @@ import json
 import glob
 import importlib
 import subprocess
+from urllib.parse import unquote
 
 import safe_import_of_config
 safe_import_of_config.make_import()
@@ -1987,12 +1988,6 @@ def get_new_path_start_index(path_points: list, path_start_index, logger_full: u
         logger_full.write(msg + "\n")
         return last_trad_index
     
-def get_continue_path_points(path_points, A):
-    for i in enumerate(path_points):
-        if path_points[i] == A:
-            return path_points[i:]
-        else:
-            return None
 
 def main():
     time_start = utility.get_current_time()
@@ -2331,18 +2326,6 @@ def main():
                             
                     new_path_start_index = get_new_path_start_index(path_points, path_start_index, logger_full)
                     path_start_index = new_path_start_index
-
-                    continue_path_points =  nue_path_points(path_points, path_start_index)
-                    path_points = continue_path_points 
-                     
-                    A = path_points[0]
-                    B = path_points[1]
-                    
-                    points = [A,B]
-                    with open('path_gnss_index.txt','w') as f:
-                        for index in points:
-                            line = ''.join(map(str,index))
-                            f.write(line+'/n')
 
             # load field points and generate new path or continue previous path errors case
             if not config.CONTINUE_PREVIOUS_PATH or loading_previous_path_failed:
@@ -2853,10 +2836,19 @@ def main():
                     path_index_file.write(str(i + 1))
                     path_index_file.flush()
                     
-                    #TODO : put the code back here 
-                    GNSS_index_file.seek(0)
+                    #create file to show continue points on UI
                     continue_point = get_new_path_start_index(path_points, i + 1, logger_full)
-                    GNSS_index_file.write(path_points[continue_point])
+                    A = path_points[continue_point]
+                    B = path_points[continue_point+1]
+                    
+                    link_path = os.path.realpath("./field.txt")
+                    current_field = (link_path.split("/")[-1]).split(".")[0]
+                    current_field = unquote(current_field, encoding='utf-8')
+                    
+                    GNSS_index_file.seek(0)
+                    GNSS_index_file.write(current_field)
+                    GNSS_index_file.write(" ".join(A))
+                    GNSS_index_file.write(" ".join(B))
                     GNSS_index_file.flush()
 
                     """
