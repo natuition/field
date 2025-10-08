@@ -169,18 +169,30 @@ ADD_FORWARD_BACKWARD_TO_END_PATH = False
 
 def build_maneuvre_path(
                 abcd_points,
+                abcd_points_prev,
                 nav,
                 logger,
                 SI_speed_fwd,
                 SI_speed_rev,
-                path):
+                continue_path = list()):
     
-    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
+    path = continue_path
+    
+    _ , a2 = compute_x1_x2_points(abcd_points[0], abcd_points[1], nav, logger)
+    
+    if a2 is not None:
+        a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
+    else:
+        a, b, c, d = abcd_points_prev[0], abcd_points_prev[1], abcd_points_prev[2], abcd_points_prev[3]
+        path = path[:(-config.NUMBER_OF_BEZIER_POINT*4)]   
     
     if nav.get_distance(a,b) > nav.get_distance(b,c):
         a, b, c, d = d, a, b, c
+        if len(path) == 0:
+            path.append([b,SI_speed_fwd])
     else:
-        
+        if len(path) == 0:
+            path.append([a,SI_speed_fwd])
         _ , a2 = compute_x1_x2_points(a, b, nav, logger)
         b1, _ = compute_x1_x2_points(b, c, nav, logger)
         
@@ -289,13 +301,12 @@ def build_bezier_path(abcd_points: list,
 
     while True:
         # get moving points A1 - ... - D2 spiral
-        a1, a2 = compute_x1_x2_points(a, b, nav, logger, config.SPIRAL_SIDES_INTERVAL*2)
-        b1, b2 = compute_x1_x2_points(b, c, nav, logger, config.SPIRAL_SIDES_INTERVAL*2)
-        c1, c2 = compute_x1_x2_points(c, d, nav, logger, config.SPIRAL_SIDES_INTERVAL*2)
-        d1, _ = compute_x1_x2_points(d, a, nav, logger, config.SPIRAL_SIDES_INTERVAL*2)
+        a1, a2 = compute_x1_x2_points(a, b, nav, logger)
+        b1, b2 = compute_x1_x2_points(b, c, nav, logger)
+        c1, c2 = compute_x1_x2_points(c, d, nav, logger)
+        d1, _ = compute_x1_x2_points(d, a, nav, logger)
         if not check_points_for_nones(a1, a2, b1, b2, c1, c2, d1):
             center_fill_start_point = 1
-            print("qsdfgh")
             break
 
         b_corner_bezier = compute_bezier_points(a2, b, b1)
@@ -316,7 +327,6 @@ def build_bezier_path(abcd_points: list,
         # check before computing d2 and A corner bezier curve (see d2 computing comments below for details)
         if nav.get_distance(d, a) <= config.MANEUVER_START_DISTANCE * 2 + config.SPIRAL_SIDES_INTERVAL \
                 or nav.get_distance(a, b) <= config.MANEUVER_START_DISTANCE:
-            print("azerty")
             center_fill_start_point = 2
             break
 
@@ -352,12 +362,18 @@ def build_bezier_path(abcd_points: list,
                   "This could happen if spiral shift value is higher than robot's maneuverability. " \
                   "Check config.MANEUVER_START_DISTANCE and config.SPIRAL_SIDES_INTERVAL for wrong values."
             raise RuntimeError(msg)
-        
+
+        a_prev, b_prev, c_prev, d_prev = a, b, c, d
         a, b, c, d = a_new, b_new, c_new, d_new
         
+    if center_fill_start_point == 1: 
+        print("robot is going to stop spiral movement at point A")
+    if center_fill_start_point == 2: 
+        print("robot is going to stop spiral movement at point D")
         
     path = build_maneuvre_path(
         [a, b, c, d],
+        [a_prev, b_prev, c_prev, d_prev],
         nav,
         logger,
         SI_speed_fwd,
@@ -366,9 +382,6 @@ def build_bezier_path(abcd_points: list,
     )
     
     return path
-    
-
-            
         
     if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
         if center_fill_start_point == 0:
@@ -404,7 +417,9 @@ if __name__=="__main__":
     nav = navigation.GPSComputing()
     field_gps_coords = utility.load_coordinates(config.INPUT_GPS_FIELD_FILE)
     
-    field_gps_coords = [field_gps_coords[1],field_gps_coords[2],field_gps_coords[3],field_gps_coords[0]]
+    #field_gps_coords = [field_gps_coords[1],field_gps_coords[2],field_gps_coords[3],field_gps_coords[0]]
+    #field_gps_coords = [field_gps_coords[2],field_gps_coords[3],field_gps_coords[0],field_gps_coords[1]]
+    #field_gps_coords = [field_gps_coords[3],field_gps_coords[0],field_gps_coords[1],field_gps_coords[2]]
     
     path_points = build_bezier_path(
         field_gps_coords,
@@ -413,6 +428,15 @@ if __name__=="__main__":
         config.SI_SPEED_FWD,
         config.SI_SPEED_REV
     )
+    
+    # path_points = build_maneuvre_path(
+    #     [field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]],
+    #     [field_gps_coords[0], field_gps_coords[1], field_gps_coords[2], field_gps_coords[3]],
+    #     nav,
+    #     logger_full,
+    #     config.SI_SPEED_FWD,
+    #     config.SI_SPEED_REV
+    # )
     
     with open("manoeuvre_path_points.txt", "w") as f:
         for coords, value in path_points:
