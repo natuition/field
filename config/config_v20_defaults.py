@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "2.2.1"
+CONFIG_VERSION = "2.2.2"
 
 
 # ======================================================================================================================
@@ -623,6 +623,12 @@ PRECISE_DATA_FILE = "yolo/Y0016.data"
 # ======================================================================================================================
 # CAMERA SETTINGS
 # ======================================================================================================================
+CAMERA_BACKEND = "auto" # "auto" | "aravis" | "imx219"
+#- "auto": try Aravis first, fallback to IMX219 if no camera found
+#- "aravis": force Aravis backend
+#- "imx219": force Jetson IMX219 backend "gstreamer", "v4l2", "auto"
+CAMERA_BINNING_H = 2
+CAMERA_BINNING_V = 2
 CAMERA_W = 1920
 CAMERA_H = 1080
 APPLY_IMAGE_CROPPING = False
