@@ -39,6 +39,7 @@ class ServerCamLive:
         self.video_frame = None
         self.thread_lock = threading.Lock()
         self.capture_thread = None
+        self._running = True
 
         # Register routes (always added)
         self._register_routes()
@@ -130,7 +131,7 @@ class ServerCamLive:
 
     def encode_frame(self):
         """Generate MJPEG byte stream."""
-        while True:
+        while self._running:
             with self.thread_lock:
                 frame = self.video_frame
 
@@ -201,6 +202,7 @@ class ServerCamLive:
         """Stop the capture thread and remove routes."""
         print(f"[{self.__class__.__name__}] 🛑 Stopping camera stream...")
         
+        self._running = False
         self.thread_alive = False
         if self.cam:
             self.cam.release()
