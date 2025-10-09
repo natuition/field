@@ -2,13 +2,14 @@
 import cv2
 import threading
 import os
+import signal
 import sys
 import numpy as np
 from flask import Flask, Response, jsonify
 from flask_cors import CORS
 from config import config
 import detection
-from CameraAdapterManager import CameraAdapterManager
+from adapters import CameraAdapterManager
 
 
 class ServerCamLive:
@@ -217,4 +218,14 @@ if __name__ == "__main__":
     use_detector = not ("--no-detector" in sys.argv)
 
     server = ServerCamLive(port=8080, use_detector=use_detector, display_zones=display_zones)
+    
+    def handle_exit(sig, frame):
+        print("\n[ServerCamLive] 🛑 Ctrl+C detected — stopping server and releasing camera...")
+        server.stop()
+        sys.exit(0)
+
+    # Capture Ctrl+C (SIGINT) et kill (SIGTERM)
+    signal.signal(signal.SIGINT, handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
+    
     server.start()

@@ -1282,15 +1282,15 @@ class CameraAdapterAravis(CameraAdapterInterface):
         # 6: vertical flip   → ReverseX=0, ReverseY=1
         # Other values (1,3,5,7) are not supported by Aravis.
 
-        flip_mapping = {0: (0, 0), 2: (1, 1), 4: (1, 0), 6: (0, 1)}
+        flip_mapping = {0: (False, False), 2: (True, True), 4: (True, False), 6: (False, True)}
 
         if nvidia_flip_method in flip_mapping:
             reverse_x, reverse_y = flip_mapping[nvidia_flip_method]
             try:
                 if self.cam.is_feature_available("ReverseX"):
-                    self.cam.set_integer("ReverseX", reverse_x)
+                    self.cam.set_boolean("ReverseX", reverse_x)
                 if self.cam.is_feature_available("ReverseY"):
-                    self.cam.set_integer("ReverseY", reverse_y)
+                    self.cam.set_boolean("ReverseY", reverse_y)
                 print(f"[{self.__class__.__name__}] → Applied ReverseX={reverse_x}, ReverseY={reverse_y} (flip-method={nvidia_flip_method})")
             except Exception as e:
                 print(f"[{self.__class__.__name__}] ⚠️ Unable to set ReverseX/ReverseY: {e}")
@@ -1358,17 +1358,27 @@ class CameraAdapterAravis(CameraAdapterInterface):
             self.stream.push_buffer(buf)
 
     # ─────────── Public interface ───────────
-    def get_image(self):
-        """Return the latest RGB frame."""
-        with self._lock:
-            if not self._new_frame:
-                raise RuntimeError(f"[{self.__class__.__name__}] No image available.")
-            frame = self._buffers[self._ready_index]
-            self._new_frame = False
+    def get_image(self, timeout_s: float = 2.0):
+        """Return the latest RGB frame, waiting up to `timeout_s` seconds if none is ready."""
+        start_time = time.time()
 
+        while True:
+            with self._lock:
+                if self._new_frame:
+                    frame = self._buffers[self._ready_index]
+                    self._new_frame = False
+                    break
+
+            # If no image has arrived yet, please wait a short while
+            if (time.time() - start_time) > timeout_s:
+                raise RuntimeError(f"[{self.__class__.__name__}] No image available after {timeout_s:.1f}s.")
+            time.sleep(0.05)# wait 50 ms before trying again
+            
         frame_rgb = cv.cvtColor(frame, cv.COLOR_BAYER_GB2BGR)
+        
         if self._cv_rotate_code is not None:
             frame_rgb = cv.rotate(frame_rgb, self._cv_rotate_code)
+
         return frame_rgb
 
     def release(self):
