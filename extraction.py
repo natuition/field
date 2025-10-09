@@ -16,7 +16,7 @@ class ExtractionManagerV3:
 
     def __init__(self,
                  smoothie: adapters.SmoothieAdapter,
-                 camera: adapters.CameraAdapterIMX219_170,
+                 camera: adapters.CameraAdapterInterface,
                  logger_full: utility.Logger,
                  data_collector: datacollection.DataCollector,
                  image_saver: utility.ImageSaver,

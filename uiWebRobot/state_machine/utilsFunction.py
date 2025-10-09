@@ -272,7 +272,7 @@ def startLiveCam():
     """
         Function for starting the live camera.
     """
-    camSP = subprocess.Popen("python3 serveurCamLive.py", stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, cwd=os.getcwd().split(
+    camSP = subprocess.Popen("python3 serverCamLive.py", stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, cwd=os.getcwd().split(
         "/uiWebRobot")[0], shell=True,
         preexec_fn=os.setsid)
     return camSP
