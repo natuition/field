@@ -1242,11 +1242,18 @@ class CameraAdapterAravis(CameraAdapterInterface):
         exposuretimerange_from = exposuretimerange_from / 1000
         exposuretimerange_to = exposuretimerange_to / 1000.0 
 
-        self._cv_rotate_code = cv_rotate_code
         self._running = False
         self._ready_index = 0
         self._lock = threading.Lock()
         self._new_frame = False
+        self._framerate = framerate
+        
+        self._cv_codes = {
+            "BayerBG8": cv.COLOR_BAYER_RG2BGR,
+            "BayerGB8": cv.COLOR_BAYER_GR2BGR,
+            "BayerRG8": cv.COLOR_BAYER_BG2BGR,
+            "BayerGR8": cv.COLOR_BAYER_GB2BGR,
+        }
 
         # ─────────── Camera initialization ───────────
         Aravis.update_device_list()
@@ -1267,22 +1274,53 @@ class CameraAdapterAravis(CameraAdapterInterface):
         by = self.cam.get_integer("BinningVertical") if self.cam.is_feature_available("BinningVertical") else 1
         eff_w, eff_h = sensor_w // bx, sensor_h // by
 
-        # ─────────── Centered ROI ───────────
-        target_w, target_h = min(capture_width, eff_w), min(capture_height, eff_h)
-        ox = ((eff_w - target_w) // 2) * bx
-        oy = ((eff_h - target_h) // 2) * by
-        self.cam.set_region(ox, oy, target_w, target_h)
-        self._width, self._height = target_w, target_h
+        # ─────────── Configure ROI ───────────
+        if config.APPLY_IMAGE_CROPPING:
+            # ─────────── Centered ROI ───────────
+            target_w, target_h = min(capture_width, eff_w), min(capture_height, eff_h)
+            ox = ((eff_w - target_w) // 2)
+            oy = (eff_h - target_h)
+            self.cam.set_region(ox, oy, target_w, target_h)
+            self._width, self._height = target_w, target_h
+        else:
+            # ─────────── Full sensor ROI ───────────
+            self.cam.set_region(0, 0, eff_w, eff_h)
+            self._width, self._height = eff_w, eff_h
+
+        # ─────────── ExposureTime, gain and framerate ───────────
         
-        # ─────────── Flip / rotation mapping (Aravis equivalent of nvidia_flip_method) ───────────
+        if gainrange_from != gainrange_to:
+            raise ValueError(f"[{self.__class__.__name__}] gainrange_from and gainrange_to must be equal.")
+        if exposuretimerange_from != exposuretimerange_to:
+            raise ValueError(f"[{self.__class__.__name__}] exposuretimerange_from and exposuretimerange_to must be equal.")
+
+        for (k, v) in [("ExposureAuto", "Off"), ("GainAuto", "Off")]:
+            try: self.cam.set_string(k, v)
+            except Exception: pass
+        for (k, v) in [("ExposureTime", float(exposuretimerange_from)), ("Gain", float(gainrange_from))]:
+            try: self.cam.set_float(k, v)
+            except Exception: pass
+
+        try:
+            self.cam.set_boolean("AcquisitionFrameRateEnable", True)
+            self.cam.set_float("AcquisitionFrameRate", self._framerate)
+        except Exception:
+            pass
+        
+        # ─────────── Flip / rotation mapping (hardware + software hybrid) ───────────
         # nvarguscamerasrc flip-method values:
         # 0: none            → ReverseX=0, ReverseY=0
+        # 1: rotate 90° CCW  → emulate in software
         # 2: rotate 180°     → ReverseX=1, ReverseY=1
+        # 3: rotate 90° CW   → emulate in software
         # 4: horizontal flip → ReverseX=1, ReverseY=0
+        # 5: vertical flip + rotate 180° (upside down) → emulate in software
         # 6: vertical flip   → ReverseX=0, ReverseY=1
-        # Other values (1,3,5,7) are not supported by Aravis.
+        # 7: transverse (transpose + 180°) → emulate in software
 
         flip_mapping = {0: (False, False), 2: (True, True), 4: (True, False), 6: (False, True)}
+        
+        self._software_rotate_code = None
 
         if nvidia_flip_method in flip_mapping:
             reverse_x, reverse_y = flip_mapping[nvidia_flip_method]
@@ -1295,32 +1333,8 @@ class CameraAdapterAravis(CameraAdapterInterface):
             except Exception as e:
                 print(f"[{self.__class__.__name__}] ⚠️ Unable to set ReverseX/ReverseY: {e}")
         else:
+            self._software_rotate_code = nvidia_flip_method
             print(f"[{self.__class__.__name__}] ⚠️ flip-method={nvidia_flip_method} not supported by Aravis (only 0,2,4,6).")
-
-        # ─────────── Pixel format, exposureTime, gain and framerate ───────────
-        
-        if gainrange_from != gainrange_to:
-            raise ValueError(f"[{self.__class__.__name__}] gainrange_from and gainrange_to must be equal.")
-        if exposuretimerange_from != exposuretimerange_to:
-            raise ValueError(f"[{self.__class__.__name__}] exposuretimerange_from and exposuretimerange_to must be equal.")
-        
-        try:
-            self.cam.set_pixel_format_from_string("BayerGR8")
-        except Exception:
-            print(f"[{self.__class__.__name__}] ⚠️ Bayer format not supported.")
-
-        for (k, v) in [("ExposureAuto", "Off"), ("GainAuto", "Off")]:
-            try: self.cam.set_string(k, v)
-            except Exception: pass
-        for (k, v) in [("ExposureTime", float(exposuretimerange_from)), ("Gain", float(gainrange_from))]:
-            try: self.cam.set_float(k, v)
-            except Exception: pass
-
-        try:
-            self.cam.set_boolean("AcquisitionFrameRateEnable", True)
-            self.cam.set_float("AcquisitionFrameRate", framerate)
-        except Exception:
-            pass
 
         # ─────────── Stream & Buffers ───────────
         self.stream = self.cam.create_stream(None, None)
@@ -1339,7 +1353,9 @@ class CameraAdapterAravis(CameraAdapterInterface):
         self._running = True
         self._thread = threading.Thread(target=self._capture_loop, daemon=True)
         self._thread.start()
-        print(f"[{self.__class__.__name__}] Aravis acquisition launched in {framerate} FPS ({target_w}x{target_h})")
+        print(f"[{self.__class__.__name__}] Aravis acquisition launched in {self._framerate} FPS ({self._width}x{self._height})")
+        
+        self._pixel_format = self.cam.get_pixel_format_as_string()
 
     # ─────────── Capture thread ───────────
     def _capture_loop(self):
@@ -1374,10 +1390,25 @@ class CameraAdapterAravis(CameraAdapterInterface):
                 raise RuntimeError(f"[{self.__class__.__name__}] No image available after {timeout_s:.1f}s.")
             time.sleep(0.05)# wait 50 ms before trying again
             
-        frame_rgb = cv.cvtColor(frame, cv.COLOR_BAYER_GB2BGR)
+        frame_rgb = cv.cvtColor(frame, self._cv_codes.get(self._pixel_format, cv.COLOR_BAYER_GB2BGR))
         
-        if self._cv_rotate_code is not None:
-            frame_rgb = cv.rotate(frame_rgb, self._cv_rotate_code)
+        if self._software_rotate_code is not None:
+            code = self._software_rotate_code
+            if code == 1:
+                # rotate 90° counterclockwise
+                frame_rgb = cv.transpose(frame_rgb)
+                frame_rgb = cv.flip(frame_rgb, 0)
+            elif code == 3:
+                # rotate 90° clockwise
+                frame_rgb = cv.transpose(frame_rgb)
+                frame_rgb = cv.flip(frame_rgb, 1)
+            elif code == 5:
+                # upside down flip (vertical + horizontal)
+                frame_rgb = cv.flip(frame_rgb, -1)
+            elif code == 7:
+                # transverse (transpose + 180°)
+                frame_rgb = cv.transpose(frame_rgb)
+                frame_rgb = cv.flip(frame_rgb, -1)
 
         return frame_rgb
 
