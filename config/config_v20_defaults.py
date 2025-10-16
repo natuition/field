@@ -1,14 +1,14 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "2.2.1"
+CONFIG_VERSION = "2.2.2"
 
 
 # ======================================================================================================================
 # CONTENTS:
 
 # NAVIGATION ROUTING SETTINGS
-# ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
+# TRAJECTORY PLANNER SETTINGS
 # EXTRACTION SETTINGS
 # VESC SETTINGS
 # PENETROMETRY SETTINGS
@@ -105,7 +105,7 @@ SI_SPEED_STEP_FORWARD = 0.175
 #SPEEDS
 SI_SPEED_UI = 1 #0.8 for 12v
 SI_SPEED_FWD = 0.175 
-SI_SPEED_REV = -0.5
+SI_SPEED_REV = -0.175 #-0.5 for forward backward
 SI_SPEED_FAST = 0.5 
 MULTIPLIER_SI_SPEED_TO_RPM = -14285 #multiplier to go from speed to rpm vesc
 
@@ -122,16 +122,17 @@ LEAVING_PROTECTION_DISTANCE_MAX = 5000
 
 
 # ======================================================================================================================
-# ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
+# TRAJECTORY PLANNER SETTINGS
 # ======================================================================================================================
 #Only one of the following three parameters must be true
 TRADITIONAL_PATH = False #Snail path
 BEZIER_PATH = True #Snail path and use of bezier curve for turns
 FORWARD_BACKWARD_PATH = False #Path where the robot goes straight in extraction then reverses without extraction ....
+MANEUVER_PATH = False 
 
-#This params work only if TRADITIONAL_PATH or BEZIER_PATH are true. 
-ADD_FORWARD_BACKWARD_TO_END_PATH = True #Adds the path FORWARD_BACKWARD to complete the missing center.
-#This params work only if BEZIER_PATH are true. 
+#This params work only if BEZIER_PATH are true : 
+ADD_FORWARD_BACKWARD_TO_END_OF_BEZIER_PATH = False #Adds the path FORWARD_BACKWARD to complete the missing center.
+ADD_MANEUVER_PATH_TO_END_OF_BEZIER_PATH = True #Adds the path MANEUVER_PATH to complete the missing center.
 ADD_CORNER_TO_BEZIER_PATH = False #Add management of corner for bezier curve
 
 #This params work only if BEZIER_CORNER_PATH are true.
