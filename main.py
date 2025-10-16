@@ -2187,7 +2187,7 @@ def main():
                             config.SI_SPEED_FWD,
                             config.SI_SPEED_REV)
                     elif config.MANEUVER_PATH:
-                        path = build_maneuvre_path(
+                        path_points = build_maneuvre_path(
                             field_gps_coords,
                             field_gps_coords,
                             nav,
