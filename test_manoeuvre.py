@@ -165,7 +165,7 @@ def build_forward_backward_path(abcd_points: list,
     return path
 ADD_FINAL_VIRAGE = True
 ADD_DIRECT_TO_FINAL_CORNER = True
-ADD_FORWARD_BACKWARD_TO_END_PATH = False
+ADD_FORWARD_BACKWARD_TO_END_OF_BEZIER_PATH = False
 
 def build_maneuvre_path(
                 abcd_points,
@@ -264,7 +264,7 @@ def build_bezier_path(abcd_points: list,
     
     """Builds spiral path to fill given ABCD field.
 
-    Fills field's missing center with zigzag (forward-backward) movement if config.ADD_FORWARD_BACKWARD_TO_END_PATH
+    Fills field's missing center with zigzag (forward-backward) movement if config.ADD_FORWARD_BACKWARD_TO_END_OF_BEZIER_PATH
     is set to True.
     Returns python list of gps [[latitude, longitude], speed] points."""
 
@@ -383,7 +383,7 @@ def build_bezier_path(abcd_points: list,
     
     return path
         
-    if config.ADD_FORWARD_BACKWARD_TO_END_PATH:
+    if config.ADD_FORWARD_BACKWARD_TO_END_OF_BEZIER_PATH:
         if center_fill_start_point == 0:
             msg = "Asked to fill field's center during path building, but filling start position point flag was not " \
                   "changed from it's initial value."
