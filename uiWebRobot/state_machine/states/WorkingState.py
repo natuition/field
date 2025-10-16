@@ -297,7 +297,7 @@ class WorkingState(State.State):
             if hasattr(self, "main"):
                 if self.main.poll() is not None:
                     self._main_msg_thread_alive = False
-                    self.__main_not_received_stop = True
+                    self.__main_not_received_stop = False
                     if config.UI_VERBOSE_LOGGING: 
                         msg = f"[{self.__class__.__name__}] -> Detect main dead !"
                         self.logger.write_and_flush(msg + "\n")
