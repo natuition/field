@@ -69,7 +69,7 @@ def validate_config_file(config_directory_path) -> bool:
     try:
         # 1️⃣ check empty
         if is_config_empty(config_full_path):
-            print(f"[{__file__}] ❌ Config file is empty.")
+            print(f"[{os.path.basename(__file__)}] ❌ Config file is empty.")
             return False
 
         # 2️⃣ check syntax
@@ -80,7 +80,7 @@ def validate_config_file(config_directory_path) -> bool:
         # 3️⃣ find latest default
         latest_default = get_latest_default_config_file(os.path.join(config_directory_path, "*_defaults.py"))
         if not latest_default:
-            print(f"[{__file__}] ⚠️ No default config found to compare.")
+            print(f"[{os.path.basename(__file__)}] ⚠️ No default config found to compare.")
             return True  # syntax OK but no structure check possible
 
         # 4️⃣ parse both files safely (no execution)
@@ -92,12 +92,12 @@ def validate_config_file(config_directory_path) -> bool:
         extra_keys   = [k for k in user_vars if k not in default_vars]
 
         if missing_keys:
-            print(f"[{__file__}] ⚠️ Missing keys in {config_full_path}: {missing_keys}")
+            print(f"[{os.path.basename(__file__)}] ⚠️ Missing keys in {config_full_path}: {missing_keys}")
 
         if extra_keys:
-            print(f"[{__file__}] ℹ️ Extra keys found (not in defaults): {extra_keys}")
+            print(f"[{os.path.basename(__file__)}] ℹ️ Extra keys found (not in defaults): {extra_keys}")
 
-        print(f"[{__file__}] ✅ Config validated successfully — syntax and keys are OK.")
+        print(f"[{os.path.basename(__file__)}] ✅ Config validated successfully — syntax and keys are OK.")
         return True
     except Exception:
         return False
@@ -111,11 +111,11 @@ def prepare_valid_config(config_directory_path: str = "config", config_backup_pa
             raise Exception("config file is empty or has invalid syntax")
 
         # Config syntax is OK
-        print(f"[{__file__}] Config.py file works good !")
+        print(f"[{os.path.basename(__file__)}] Config.py file works good !")
     except KeyboardInterrupt:
         raise KeyboardInterrupt
     except Exception as exc:
-        print(f"[{__file__}] Failed to load current config.py ! ({str(exc)})")
+        print(f"[{os.path.basename(__file__)}] Failed to load current config.py ! ({str(exc)})")
 
         # load config backups
         config_backups = [path for path in glob.glob(
@@ -156,13 +156,13 @@ def prepare_valid_config(config_directory_path: str = "config", config_backup_pa
                 if not validate_config_file(config_directory_path):
                     raise Exception("config file is empty or has invalid syntax")
 
-                print(f"[{__file__}] Successfully loaded config:", config_backup[0])
+                print(f"[{os.path.basename(__file__)}] Successfully loaded config:", config_backup[0])
                 break
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                print(f"[{__file__}] {e}")
+                print(f"[{os.path.basename(__file__)}] {e}")
                 pass
         else:
-            print(f"[{__file__}] Couldn't find proper '{config_directory_path}/config.py' file and '{config_backup_path}' directories!")
+            print(f"[{os.path.basename(__file__)}] Couldn't find proper '{config_directory_path}/config.py' file and '{config_backup_path}' directories!")
             exit()
