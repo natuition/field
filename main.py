@@ -2535,6 +2535,7 @@ def main():
                             config.DELTA_DISPLAY_INSTRUCTION_PATH < path_end_index else path_end_index-1
                         display_instruction_path = [elem[0]
                                                     for elem in path_points[i_inf:i_sup]]
+                        print(f"display_instruction_path (indexes {i_inf}-{i_sup}): {path_points[i_inf:i_sup]}")
 
                     if ui_msg_queue is not None and config.DISPLAY_INSTRUCTION_PATH:
                         ui_msg_queue.send(json.dumps(
