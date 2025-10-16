@@ -292,14 +292,6 @@ class WorkingState(State.State):
     def _main_msg_thread_tf(self):
 
         self.queue_penetrometry_data = None
-        if config.PENETROMETRY_ANALYSE_MODE:
-            # Waiting for queue creating by adapter
-            while(self.queue_penetrometry_data is None):
-                try:
-                    self.queue_penetrometry_data = posix_ipc.MessageQueue(config.PENETROMETRY_DATA_QUEUE_NAME)
-                except posix_ipc.ExistentialError:
-                    pass
-        
         
         while self._main_msg_thread_alive:
             
@@ -311,6 +303,15 @@ class WorkingState(State.State):
                     self.logger.write_and_flush(msg + "\n")
                     print(msg)
                 continue
+            
+            if config.PENETROMETRY_ANALYSE_MODE:
+                # Waiting for queue creating by adapter
+                try:
+                    self.queue_penetrometry_data = posix_ipc.MessageQueue(config.PENETROMETRY_DATA_QUEUE_NAME)
+                except posix_ipc.ExistentialError:
+                    pass
+                if self.queue_penetrometry_data is None:
+                    continue
 
             if self.queue_penetrometry_data is not None:
                 msg = None
@@ -321,7 +322,6 @@ class WorkingState(State.State):
                 if msg is not None:
                     print(f"Envoie des données de l'extraction au client WEB")
                     self.socketio.emit('penetrometry_datas', json.loads(msg[0]), namespace="/server", broadcast=True)
-
 
             try:
                 msg = self.msgQueue.receive(timeout=2)
