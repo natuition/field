@@ -358,16 +358,38 @@ function createMap(coords_field, coords_other) {
                 });
             }
 
-            map.getSource('lastPos').setData({
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': last_coord
-                },
-                "properties": {
-                    'quality': quality
-                },
-            });
+            if (typeof (map.getSource('lastPos')) == "undefined") {
+                map.addSource('lastPos', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': last_coord
+                        }
+                    }
+                });
+                map.addLayer({
+                    id: "lastPosLayer",
+                    type: "circle",
+                    source: "lastPos",
+                    paint: {
+                        "circle-radius": 5,
+                        "circle-color": "#ff00e0",
+                    },
+                });
+            } else {
+                map.getSource('lastPos').setData({
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': last_coord
+                    },
+                    "properties": {
+                        'quality': quality
+                    },
+                });
+            }
 
             if (coords.length > 1 || !firstFocus) {
                 map.panTo(last_coord);
