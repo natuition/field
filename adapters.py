@@ -2649,7 +2649,7 @@ class GPSUbloxAdapterWithoutThread:
     """Provides access to the robot's on-board GPS navigator (UBLOX card)"""
 
     def __init__(self, ser_port: str, ser_baudrate: int, last_pos_count: int):
-        self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate)
+        self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate, timeout=1)
         # self._hot_reset()
         # self._USBNMEA_OUT()
 
@@ -2696,6 +2696,8 @@ class GPSUbloxAdapterWithoutThread:
         while True:
             try:
                 read_line = self._serial.readline()
+                if not read_line:
+                    return None
                 if isinstance(read_line, bytes):
                     data = str(read_line)
                     # if len(data) == 3:
