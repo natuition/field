@@ -452,87 +452,89 @@ function createMap(coords_field, coords_other) {
 
 }
 
-function updateLineLayer(map, idSource, idLayer, coords, color) {
+// --- Create or update a MultiLine layer ---
+function updateLineLayer(map, idSource, idLayer, segments, color) {
+    const geojsonData = {
+        'type': 'Feature',
+        'geometry': {
+            'type': 'MultiLineString',
+            'coordinates': segments
+        }
+    };
+
     if (typeof map.getSource(idSource) === "undefined") {
         map.addSource(idSource, {
             'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'LineString',
-                    'coordinates': coords
-                }
-            }
+            'data': geojsonData
         });
+
+        const paint = {
+            'line-color': color,
+            'line-width': 3
+        };
+
         map.addLayer({
             'id': idLayer,
             'type': 'line',
             'source': idSource,
             'layout': {
                 'line-join': 'round',
-                'line-cap': 'round',
+                'line-cap': 'round'
             },
-            'paint': {
-                'line-color': color,
-                'line-width': 3
-            }
+            'paint': paint
         });
     } else {
-        map.getSource(idSource).setData({
-            'type': 'Feature',
-            'geometry': {
-                'type': 'LineString',
-                'coordinates': coords
-            }
-        });
+        map.getSource(idSource).setData(geojsonData);
     }
 }
 
 function updateDisplayInstructionPathLayer(map, dataServ) {
     dataServ = JSON.parse(dataServ);
 
-    let forwardCoords = [];
-    let backwardCoords = [];
+    let forwardSegments = [];
+    let backwardSegments = [];
+    let currentSegment = [];
+    let currentType = null;
 
     for (let i = 0; i < dataServ.length - 1; i++) {
-        let [curSpeed, curPos] = dataServ[i];
-        let [nextSpeed, nextPos] = dataServ[i + 1];
+        const [curSpeed, curPosRaw] = dataServ[i];
+        const [nextSpeed, nextPosRaw] = dataServ[i + 1];
 
         // Convert [lat, lon] → [lon, lat]
-        curPos = [curPos[1], curPos[0]];
-        nextPos = [nextPos[1], nextPos[0]];
+        const curPos = [curPosRaw[1], curPosRaw[0]];
+        const nextPos = [nextPosRaw[1], nextPosRaw[0]];
+        const segmentType = curSpeed >= 0 ? 'forward' : 'backward';
 
-        if (curSpeed >= 0) {
-            forwardCoords.push(curPos, nextPos);
-        } else {
-            backwardCoords.push(curPos, nextPos);
+        // Detect direction change (forward ↔ backward)
+        if (currentType !== segmentType && currentSegment.length > 0) {
+            if (currentType === 'forward') forwardSegments.push([...currentSegment]);
+            else backwardSegments.push([...currentSegment]);
+            currentSegment = [];
         }
+
+        // Add both points to current segment
+        currentSegment.push(curPos, nextPos);
+        currentType = segmentType;
     }
 
-    // 🔸 Forward / backward line layers
-    updateLineLayer(map, 'instruction_line_forward', 'instruction_lineLayer_forward', forwardCoords, '#FF8C15'); // forward (orange)
-    updateLineLayer(map, 'instruction_line_backward', 'instruction_lineLayer_backward', backwardCoords, '#157CFF'); // backward (blue)
+    // Push the last remaining segment
+    if (currentSegment.length > 0) {
+        if (currentType === 'forward') forwardSegments.push(currentSegment);
+        else backwardSegments.push(currentSegment);
+    }
 
-    // 🔸 Points colored dynamically based on speed
-    let pointFeatures = dataServ.map(item => {
-        const speed = item[0];
-        const coord = [item[1][1], item[1][0]]; // lon/lat
-        return {
-            'type': 'Feature',
-            'geometry': {
-                'type': 'Point',
-                'coordinates': coord
-            },
-            'properties': {
-                'speed': speed
-            }
-        };
-    });
+    // --- Draw forward (orange) and backward (blue) lines ---
+    updateLineLayer(map, 'instruction_line_forward', 'instruction_lineLayer_forward', forwardSegments, '#FF8C15');
+    updateLineLayer(map, 'instruction_line_backward', 'instruction_lineLayer_backward', backwardSegments, '#157CFF');
 
-    const pointCollection = {
-        'type': 'FeatureCollection',
-        'features': pointFeatures
-    };
+    // --- Points colored based on speed ---
+    const pointFeatures = dataServ.map(([speed, [lat, lon]]) => ({
+        'type': 'Feature',
+        'geometry': { 'type': 'Point', 'coordinates': [lon, lat] },
+        'properties': { 'speed': speed }
+    }));
+
+    const pointCollection = { 'type': 'FeatureCollection', 'features': pointFeatures };
 
     const circlePaint = {
         'circle-radius': 3.5,
@@ -560,10 +562,12 @@ function updateDisplayInstructionPathLayer(map, dataServ) {
     }
 }
 
+// --- Socket listener ---
 socketMap.on('updateDisplayInstructionPath', function (dataServ) {
-    console.log("dataServ: ", dataServ);
+    console.log("dataServ:", dataServ);
     updateDisplayInstructionPathLayer(map, dataServ);
 });
+
 
 socketMap.on('updateDisplayInstructionPath', function (dataServ) {
     dataServ = JSON.parse(dataServ)
