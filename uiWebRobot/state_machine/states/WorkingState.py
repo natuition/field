@@ -295,7 +295,7 @@ class WorkingState(State.State):
         
         while self._main_msg_thread_alive:
             
-            if self.main:
+            if hasattr(self, "main"):
                 if self.main.poll() is not None:
                     self._main_msg_thread_alive = False
                     self.__main_not_received_stop = True
