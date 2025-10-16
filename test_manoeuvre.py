@@ -3,8 +3,8 @@ import numpy as np
 import navigation
 import utility
 
-import safe_import_of_config
-safe_import_of_config.make_import()
+from check_config import prepare_valid_config
+prepare_valid_config()
 from config import config
 
 def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSComputing, logger: utility.Logger):

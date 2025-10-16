@@ -19,8 +19,8 @@ import json
 import glob
 import importlib
 
-import safe_import_of_config
-safe_import_of_config.make_import()
+from check_config import prepare_valid_config
+prepare_valid_config()
 from config import config
 
 import adapters

@@ -1,8 +1,8 @@
 import sys
 sys.path.append('../')
 
-import safe_import_of_config
-safe_import_of_config.make_import("../config", "../configBackup")
+from check_config import prepare_valid_config
+prepare_valid_config("../config", "../configBackup")
 
 from state_machine.Events import Events
 from state_machine.utilsFunction import *
@@ -45,7 +45,7 @@ class UIWebRobot:
         self.__robot_state_client = RobotStateClient()
         self.init_params()
         self.demo_pause_client = utility.DemoPauseClient(
-            config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
+            self.__config.DEMO_PAUSES_HOST, self.__config.DEMO_PAUSES_PORT)
 
 
     def exit(self):

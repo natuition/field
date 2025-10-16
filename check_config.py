@@ -2,7 +2,7 @@ import os
 import glob
 import datetime
 import shutil
-import pytz
+from zoneinfo import ZoneInfo
 import pwd
 import grp
 
@@ -14,15 +14,32 @@ def is_config_empty(config_full_path: str):
                 return False
     return True
 
-def make_import(config_directory_path: str = "config", config_backup_path : str = "configBackup"):
+def validate_config_file(config_full_path: str) -> bool:
+    """Validate a Python config file without importing it.
+
+    Checks that the file is non-empty and has valid Python syntax by compiling it.
+    Returns True if valid, False otherwise.
+    """
+    try:
+        if is_config_empty(config_full_path):
+            return False
+        with open(config_full_path, "r") as f:
+            source = f.read()
+        # Compile only checks syntax; it will not execute the code
+        compile(source, config_full_path, 'exec')
+        return True
+    except Exception:
+        return False
+
+def prepare_valid_config(config_directory_path: str = "config", config_backup_path : str = "configBackup"):
     try:
         if not os.path.isfile(f"{config_directory_path}/config.py"):
             raise Exception("config file doesn't exist")
 
-        if is_config_empty(f"{config_directory_path}/config.py"):
-            raise Exception("config file is empty")
+        if not validate_config_file(f"{config_directory_path}/config.py"):
+            raise Exception("config file is empty or has invalid syntax")
 
-        from config import config
+        # Config syntax is OK
         print("Config.py file works good !")
     except KeyboardInterrupt:
         raise KeyboardInterrupt
@@ -56,7 +73,7 @@ def make_import(config_directory_path: str = "config", config_backup_path : str 
                 try:
                     os.rename(
                         f"{config_directory_path}/config.py",
-                        f"{config_directory_path}/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
+                        f"{config_directory_path}/ERROR_{datetime.datetime.now(ZoneInfo('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
                         f"_config.py")
                 except:
                     pass
@@ -65,10 +82,9 @@ def make_import(config_directory_path: str = "config", config_backup_path : str 
                 gid = grp.getgrnam("violette").gr_gid
                 os.chown(f"{config_directory_path}/config.py", uid, gid)
 
-                if is_config_empty(f"{config_directory_path}/config.py"):
-                    raise Exception("config file is empty")
+                if not validate_config_file(f"{config_directory_path}/config.py"):
+                    raise Exception("config file is empty or has invalid syntax")
 
-                from config import config
                 print("Successfully loaded config:", config_backup[0])
                 break
             except KeyboardInterrupt:
