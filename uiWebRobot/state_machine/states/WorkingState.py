@@ -47,6 +47,7 @@ class WorkingState(State.State):
         self.extracted_plants = dict()
         self.last_path_all_points = list()
         self.previous_sessions_working_time = None
+        self.__queue_penetrometry_data = None
         self.__gearbox_protection = GearboxProtection()
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
@@ -290,8 +291,6 @@ class WorkingState(State.State):
         self.socketio.emit('statistics', data, namespace='/server', broadcast=True)
 
     def _main_msg_thread_tf(self):
-
-        self.queue_penetrometry_data = None
         
         while self._main_msg_thread_alive:
             
@@ -308,16 +307,16 @@ class WorkingState(State.State):
             if config.PENETROMETRY_ANALYSE_MODE:
                 # Waiting for queue creating by adapter
                 try:
-                    self.queue_penetrometry_data = posix_ipc.MessageQueue(config.PENETROMETRY_DATA_QUEUE_NAME)
+                    self.__queue_penetrometry_data = posix_ipc.MessageQueue(config.PENETROMETRY_DATA_QUEUE_NAME)
                 except posix_ipc.ExistentialError:
                     pass
-                if self.queue_penetrometry_data is None:
+                if self.__queue_penetrometry_data is None:
                     continue
 
-            if self.queue_penetrometry_data is not None:
+            if self.__queue_penetrometry_data is not None:
                 msg = None
                 try:
-                    msg = self.queue_penetrometry_data.receive(0.01)
+                    msg = self.__queue_penetrometry_data.receive(0.01)
                 except posix_ipc.BusyError:
                     pass # If queue is empty continue loop, it will refill
                 if msg is not None:
@@ -427,15 +426,15 @@ class WorkingState(State.State):
             pass
         
         # Closing file descriptor and removing queue if it exist
-        if self.queue_penetrometry_data is not None:
-            msg = f"[{self.__class__.__name__}] -> Close queue_penetrometry_data..."
+        if self.__queue_penetrometry_data is not None:
+            msg = f"[{self.__class__.__name__}] -> Close __queue_penetrometry_data..."
             self.logger.write_and_flush(msg + "\n")
             print(msg)
-            self.queue_penetrometry_data.close()
-            msg = f"[{self.__class__.__name__}] -> Unlink queue_penetrometry_data..."
+            self.__queue_penetrometry_data.close()
+            msg = f"[{self.__class__.__name__}] -> Unlink __queue_penetrometry_data..."
             self.logger.write_and_flush(msg + "\n")
             print(msg)
             try:
-                self.queue_penetrometry_data.unlink()
+                self.__queue_penetrometry_data.unlink()
             except posix_ipc.ExistentialError:
                 pass
