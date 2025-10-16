@@ -2193,8 +2193,7 @@ def main():
                             nav,
                             logger_full,
                             config.SI_SPEED_FWD,
-                            config.SI_SPEED_REV,
-                            path)
+                            config.SI_SPEED_REV)
 
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
