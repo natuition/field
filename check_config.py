@@ -2,7 +2,7 @@ import os
 import glob
 import datetime
 import shutil
-from zoneinfo import ZoneInfo
+import pytz
 import pwd
 import grp
 
@@ -73,7 +73,7 @@ def prepare_valid_config(config_directory_path: str = "config", config_backup_pa
                 try:
                     os.rename(
                         f"{config_directory_path}/config.py",
-                        f"{config_directory_path}/ERROR_{datetime.datetime.now(ZoneInfo('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
+                        f"{config_directory_path}/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
                         f"_config.py")
                 except:
                     pass
