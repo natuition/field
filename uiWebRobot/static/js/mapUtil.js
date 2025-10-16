@@ -564,7 +564,6 @@ function updateDisplayInstructionPathLayer(map, dataServ) {
 
 // --- Socket listener ---
 socketMap.on('updateDisplayInstructionPath', function (dataServ) {
-    console.log("dataServ:", dataServ);
     updateDisplayInstructionPathLayer(map, dataServ);
 });
 
