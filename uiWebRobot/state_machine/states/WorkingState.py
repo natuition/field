@@ -295,14 +295,15 @@ class WorkingState(State.State):
         
         while self._main_msg_thread_alive:
             
-            if self.main.poll() is not None:
-                self._main_msg_thread_alive = False
-                self.__main_not_received_stop = True
-                if config.UI_VERBOSE_LOGGING: 
-                    msg = f"[{self.__class__.__name__}] -> Detect main dead !"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                continue
+            if self.main:
+                if self.main.poll() is not None:
+                    self._main_msg_thread_alive = False
+                    self.__main_not_received_stop = True
+                    if config.UI_VERBOSE_LOGGING: 
+                        msg = f"[{self.__class__.__name__}] -> Detect main dead !"
+                        self.logger.write_and_flush(msg + "\n")
+                        print(msg)
+                    continue
             
             if config.PENETROMETRY_ANALYSE_MODE:
                 # Waiting for queue creating by adapter
