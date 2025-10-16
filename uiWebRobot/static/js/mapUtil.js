@@ -430,6 +430,118 @@ function createMap(coords_field, coords_other) {
 
 }
 
+function updateLineLayer(map, idSource, idLayer, coords, color) {
+    if (typeof map.getSource(idSource) === "undefined") {
+        map.addSource(idSource, {
+            'type': 'geojson',
+            'data': {
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': coords
+                }
+            }
+        });
+        map.addLayer({
+            'id': idLayer,
+            'type': 'line',
+            'source': idSource,
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round',
+            },
+            'paint': {
+                'line-color': color,
+                'line-width': 3
+            }
+        });
+    } else {
+        map.getSource(idSource).setData({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': coords
+            }
+        });
+    }
+}
+
+function updateDisplayInstructionPathLayer(map, dataServ) {
+    dataServ = JSON.parse(dataServ);
+
+    let forwardCoords = [];
+    let backwardCoords = [];
+
+    for (let i = 0; i < dataServ.length - 1; i++) {
+        let [curPos, curSpeed] = dataServ[i];
+        let [nextPos] = dataServ[i + 1];
+
+        // Conversion lat/lon → lon/lat
+        curPos = [curPos[1], curPos[0]];
+        nextPos = [nextPos[1], nextPos[0]];
+
+        if (curSpeed >= 0) {
+            forwardCoords.push(curPos, nextPos);
+        } else {
+            backwardCoords.push(curPos, nextPos);
+        }
+    }
+
+    // Lines forward / backward
+    updateLineLayer(map, 'instruction_line_forward', 'instruction_lineLayer_forward', forwardCoords, '#FF8C15'); // forward (orange)
+    updateLineLayer(map, 'instruction_line_backward', 'instruction_lineLayer_backward', backwardCoords, '#157CFF'); // backward (blue)
+
+    // Points with dynamic color depending on the speed
+    let pointFeatures = dataServ.map(item => {
+        const coord = [item[0][1], item[0][0]]; // lon/lat
+        const speed = item[1];
+        return {
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Point',
+                'coordinates': coord
+            },
+            'properties': {
+                'speed': speed
+            }
+        };
+    });
+
+    const pointCollection = {
+        'type': 'FeatureCollection',
+        'features': pointFeatures
+    };
+
+    const circlePaint = {
+        'circle-radius': 3.5,
+        'circle-color': [
+            'case',
+            ['>=', ['get', 'speed'], 0],
+            '#FF8C15', // forward
+            '#157CFF'  // backward
+        ],
+    };
+
+    if (typeof map.getSource('instruction_point') === "undefined") {
+        map.addSource('instruction_point', {
+            'type': 'geojson',
+            'data': pointCollection
+        });
+        map.addLayer({
+            'id': 'instruction_pointLayer',
+            'type': 'circle',
+            'source': 'instruction_point',
+            'paint': circlePaint
+        });
+    } else {
+        map.getSource('instruction_point').setData(pointCollection);
+    }
+}
+
+socketMap.on('updateDisplayInstructionPath', function (dataServ) {
+    updateDisplayInstructionPathLayer(map, dataServ);
+});
+
 socketMap.on('updateDisplayInstructionPath', function (dataServ) {
     dataServ = JSON.parse(dataServ)
     //Instruction_line
