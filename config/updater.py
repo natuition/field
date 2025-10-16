@@ -52,8 +52,6 @@ with open(version_defaults_file[-1][1], 'r') as read_file, open('config.py', 'w+
                     write_file.write(result)
                     continue
         write_file.write(line)
-        
-
 
 try:
     user_name = "violette"
