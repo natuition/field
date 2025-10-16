@@ -495,10 +495,10 @@ function updateDisplayInstructionPathLayer(map, dataServ) {
     let backwardCoords = [];
 
     for (let i = 0; i < dataServ.length - 1; i++) {
-        let [curPos, curSpeed] = dataServ[i];
-        let [nextPos] = dataServ[i + 1];
+        let [curSpeed, curPos] = dataServ[i];
+        let [nextSpeed, nextPos] = dataServ[i + 1];
 
-        // Conversion lat/lon → lon/lat
+        // Convert [lat, lon] → [lon, lat]
         curPos = [curPos[1], curPos[0]];
         nextPos = [nextPos[1], nextPos[0]];
 
@@ -509,14 +509,14 @@ function updateDisplayInstructionPathLayer(map, dataServ) {
         }
     }
 
-    // Lines forward / backward
+    // 🔸 Forward / backward line layers
     updateLineLayer(map, 'instruction_line_forward', 'instruction_lineLayer_forward', forwardCoords, '#FF8C15'); // forward (orange)
     updateLineLayer(map, 'instruction_line_backward', 'instruction_lineLayer_backward', backwardCoords, '#157CFF'); // backward (blue)
 
-    // Points with dynamic color depending on the speed
+    // 🔸 Points colored dynamically based on speed
     let pointFeatures = dataServ.map(item => {
-        const coord = [item[0][1], item[0][0]]; // lon/lat
-        const speed = item[1];
+        const speed = item[0];
+        const coord = [item[1][1], item[1][0]]; // lon/lat
         return {
             'type': 'Feature',
             'geometry': {
@@ -541,7 +541,7 @@ function updateDisplayInstructionPathLayer(map, dataServ) {
             ['>=', ['get', 'speed'], 0],
             '#FF8C15', // forward
             '#157CFF'  // backward
-        ],
+        ]
     };
 
     if (typeof map.getSource('instruction_point') === "undefined") {
@@ -561,7 +561,7 @@ function updateDisplayInstructionPathLayer(map, dataServ) {
 }
 
 socketMap.on('updateDisplayInstructionPath', function (dataServ) {
-    console.log("dataServ: ", dataServ)
+    console.log("dataServ: ", dataServ);
     updateDisplayInstructionPathLayer(map, dataServ);
 });
 
