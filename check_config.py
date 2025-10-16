@@ -154,7 +154,7 @@ def prepare_valid_config(config_directory_path: str = "config", config_backup_pa
                 gid = grp.getgrnam("violette").gr_gid
                 os.chown(f"{config_directory_path}/config.py", uid, gid)
 
-                if not validate_config_file(f"{config_directory_path}/config.py"):
+                if not validate_config_file(config_directory_path):
                     raise Exception("config file is empty or has invalid syntax")
 
                 print("Successfully loaded config:", config_backup[0])
