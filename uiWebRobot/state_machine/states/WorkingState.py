@@ -134,9 +134,11 @@ class WorkingState(State.State):
                     msg = f"[{self.__class__.__name__}] -> Send KeyboardInterrupt to main"
                     self.logger.write_and_flush(msg + "\n")
                     print(msg)
-                    print(os.getpgid(self.main.pid))
-                os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
-                time.sleep(3)
+                try:
+                    os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+                    time.sleep(3)
+                except ProcessLookupError:
+                    self.__main_not_received_stop = False
             
             if config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> Wait main"
