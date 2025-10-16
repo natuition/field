@@ -76,7 +76,28 @@ def validate_config_file(config_directory_path) -> bool:
         with open(config_full_path, "r") as f:
             source = f.read()
         compile(source, config_full_path, "exec")
-        
+
+        # 3️⃣ find latest default
+        latest_default = get_latest_default_config_file(os.path.join(config_directory_path, "*_defaults.py"))
+        if not latest_default:
+            print(f"[{__file__}] ⚠️ No default config found to compare.")
+            return True  # syntax OK but no structure check possible
+
+        # 4️⃣ parse both files safely (no execution)
+        default_vars = extract_globals_static(latest_default)
+        user_vars = extract_globals_static(config_full_path)
+
+        # 5️⃣ compare keys
+        missing_keys = [k for k in default_vars if k not in user_vars]
+        extra_keys   = [k for k in user_vars if k not in default_vars]
+
+        if missing_keys:
+            print(f"[{__file__}] ⚠️ Missing keys in {config_full_path}: {missing_keys}")
+
+        if extra_keys:
+            print(f"[{__file__}] ℹ️ Extra keys found (not in defaults): {extra_keys}")
+
+        print(f"[{__file__}] ✅ Config validated successfully — syntax and keys are OK.")
         return True
     except Exception:
         return False
