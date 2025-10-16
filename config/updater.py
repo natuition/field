@@ -1,6 +1,4 @@
-import glob
-import re
-import os
+import glob, re, os, pwd, grp
 
 version_defaults_file = sorted([(int(m.group(1)),m.string) for m in (re.compile(".*v([0-9]*).*").match(line) for line in glob.glob("*_defaults.py"))], key=lambda x: (x[0], x[1]))
 
@@ -54,3 +52,28 @@ with open(version_defaults_file[-1][1], 'r') as read_file, open('config.py', 'w+
                     write_file.write(result)
                     continue
         write_file.write(line)
+        
+
+
+try:
+    user_name = "violette"
+    group_name = "violette"
+
+    # Get UID and GID for the target user and group
+    uid = pwd.getpwnam(user_name).pw_uid
+    gid = grp.getgrnam(group_name).gr_gid
+
+    # Change owner and group
+    os.chown("config.py", uid, gid)
+
+    # Set permissions to -rw-r--r--
+    os.chmod("config.py", 0o644)
+
+    print(f"✅ config.py ownership set to {user_name}:{group_name} with permissions 644.")
+except KeyError:
+    print("⚠️ The user or group 'violette' does not exist on this system.")
+except PermissionError:
+    print("⚠️ Permission denied: run the script with sufficient privileges (sudo).")
+except Exception as e:
+    print(f"⚠️ Unexpected error while changing file ownership: {e}")
+
