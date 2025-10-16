@@ -539,6 +539,7 @@ function updateDisplayInstructionPathLayer(map, dataServ) {
 }
 
 socketMap.on('updateDisplayInstructionPath', function (dataServ) {
+    print("dataServ: ", dataServ)
     updateDisplayInstructionPathLayer(map, dataServ);
 });
 
