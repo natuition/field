@@ -134,11 +134,8 @@ class WorkingState(State.State):
                     msg = f"[{self.__class__.__name__}] -> Send KeyboardInterrupt to main"
                     self.logger.write_and_flush(msg + "\n")
                     print(msg)
-                try:
-                    os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
-                    time.sleep(3)
-                except ProcessLookupError:
-                    self.__main_not_received_stop = False
+                os.killpg(os.getpgid(self.main.pid), signal.SIGINT)    
+                time.sleep(3)
             
             if config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> Wait main"
@@ -305,6 +302,15 @@ class WorkingState(State.State):
         
         
         while self._main_msg_thread_alive:
+            
+            if self.main.poll() is not None:
+                self._main_msg_thread_alive = False
+                self.__main_not_received_stop = True
+                if config.UI_VERBOSE_LOGGING: 
+                    msg = f"[{self.__class__.__name__}] -> Detect main dead !"
+                    self.logger.write_and_flush(msg + "\n")
+                    print(msg)
+                continue
 
             if self.queue_penetrometry_data is not None:
                 msg = None
