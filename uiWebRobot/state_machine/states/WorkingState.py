@@ -375,6 +375,7 @@ class WorkingState(State.State):
                     
                 elif "display_instruction_path" in data:
                     data = data["display_instruction_path"]
+                    print(f"[{self.__class__.__name__}] Display instruction path received with {len(data)} points")
                     self.socketio.emit('updateDisplayInstructionPath', json.dumps([elem[::-1] for elem in data]),
                                     namespace='/map', broadcast=True)
                 
