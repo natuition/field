@@ -186,6 +186,9 @@ def move_to_point_and_extract(coords_from_to: list,
     :param cur_field: None or list of 4 ABCD points which are describing current field robot is working on.
     :return:
     """
+    
+    if coords_from_to[0] == coords_from_to[1]:
+        return
 
     if config.ALLOW_FIELD_LEAVING_PROTECTION and cur_field is not None and len(cur_field) > 2:
         enable_field_leaving_protection = True
@@ -768,7 +771,6 @@ def move_to_point_and_extract(coords_from_to: list,
 
         distance = nav.get_distance(cur_pos, coords_from_to[1])
 
-        last_corridor_side = current_corridor_side
         perpendicular, current_corridor_side = nav.get_deviation(
             coords_from_to[0], coords_from_to[1], cur_pos)
 
@@ -2141,8 +2143,8 @@ def main():
                         with open(config.PREVIOUS_PATH_INDEX_FILE, "w") as path_index_file:
                             path_index_file.write(str(path_start_index))
                             
-                    new_path_start_index = get_new_path_start_index(path_points, path_start_index, logger_full)
-                    path_start_index = new_path_start_index
+                    # new_path_start_index = get_new_path_start_index(path_points, path_start_index, logger_full)
+                    # path_start_index = new_path_start_index
 
 
             # load field points and generate new path or continue previous path errors case
@@ -2255,10 +2257,10 @@ def main():
             # path points visiting loop
             with open(
                     config.PREVIOUS_PATH_INDEX_FILE,
-                    "r+" if os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE) else "w") as path_index_file, \
-                  open(
-                    config.PREVIOUS_GNSS_INDEX_FILE,
-                    "r+" if os.path.isfile(config.PREVIOUS_GNSS_INDEX_FILE) else "w") as GNSS_index_file  :
+                    "r+" if os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE) else "w") as path_index_file :
+                  #open(
+                   # config.PREVIOUS_GNSS_INDEX_FILE,
+                    #"r+" if os.path.isfile(config.PREVIOUS_GNSS_INDEX_FILE) else "w") as GNSS_index_file  :
                 # TODO: temp. wheels mechanics hotfix. please don't repeat things I did here they are not good.
                 if config.ENABLE_ADDITIONAL_WHEELS_TURN:
                     if config.TRADITIONAL_PATH:
@@ -2468,7 +2470,6 @@ def main():
                                     i_inf = i + 1 if i + 1 < path_end_index else path_end_index
                                     i_sup = i + 1 + config.FUTURE_NUMBER_OF_POINTS \
                                         if i + config.FUTURE_NUMBER_OF_POINTS < path_end_index else path_end_index
-
                                     move_to_point_and_extract(
                                         [path_points[i - 1][0], path_points[i][0]],
                                         gps,
@@ -2662,10 +2663,10 @@ def main():
                     path_index_file.flush()
                     
                     #TODO : put the code back here 
-                    GNSS_index_file.seek(0)
-                    continue_point = get_new_path_start_index(path_points, i + 1, logger_full)
-                    GNSS_index_file.write(path_points[continue_point])
-                    GNSS_index_file.flush()
+                    # GNSS_index_file.seek(0)
+                    # continue_point = get_new_path_start_index(path_points, i + 1, logger_full)
+                    # GNSS_index_file.write(path_points[continue_point])
+                    # GNSS_index_file.flush()
 
                     """
                     msg = "Starting memory cleaning"
