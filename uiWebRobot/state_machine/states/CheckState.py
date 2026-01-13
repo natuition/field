@@ -78,11 +78,11 @@ class CheckState(State.State):
                     self.logger.write_and_flush(msg + "\n")
                     print(msg)
                 os.killpg(os.getpgid(self.cam.pid), signal.SIGKILL)
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Restarting camera nvargus-daemon service..."
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                os.system("sudo systemctl restart nvargus-daemon")
+                # if config.UI_VERBOSE_LOGGING:
+                #     msg = f"[{self.__class__.__name__}] -> Restarting camera nvargus-daemon service..."
+                #     self.logger.write_and_flush(msg + "\n")
+                #     print(msg)
+                # os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Restarting ntripClient.service..."

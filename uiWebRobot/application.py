@@ -12,7 +12,7 @@ import importlib.util
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
-from flask import Flask, render_template, make_response, send_from_directory, request, redirect
+from flask import Flask, render_template, make_response, send_from_directory, request, redirect, Response
 
 import logging
 import json
@@ -29,6 +29,11 @@ import utility
 from uiWebRobot.state_machine.states import *
 import traceback
 
+import cv2 as cv
+import numpy as np
+from mmap import mmap
+
+
 __author__ = 'Vincent LAMBERT'
 
 
@@ -37,24 +42,25 @@ class UIWebRobot:
     def __init__(self):
         self.__app = Flask(__name__)
         self.__setting_flask()
+        self.__reload_config()
         self.__init_flask_route()  # ROUTE FLASK
         self.__socketio = SocketIO(
             self.__app, async_mode=None, logger=False, engineio_logger=False)
         self.__init_socketio()  # SOCKET IO
-        self.__reload_config()
         self.__robot_state_client = RobotStateClient()
         self.init_params()
         self.demo_pause_client = utility.DemoPauseClient(
-            config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
-
+            self.__config.DEMO_PAUSES_HOST, self.__config.DEMO_PAUSES_PORT)
 
     def exit(self):
+        print(f"[{self.__class__.__name__}] -> Closing threads...")
+        self.__thread_notification_alive = False
+        self.__thread_notification.join()
+        print(f"[{self.__class__.__name__}] -> Threads closed ✅")
+        self.__generate_stream_alive = False
         print(f"[{self.__class__.__name__}] -> Send RobotSynthesis...")
         self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
         print(f"[{self.__class__.__name__}] -> Sent ✅")
-
-    def on_connect(self):
-        print("A client is connected.")
 
     def on_connect(self):
         print("A client is connected.")
@@ -85,6 +91,8 @@ class UIWebRobot:
         self.__app.add_url_rule("/actuator_screening", view_func=self.actuator_screening)
         self.__app.add_url_rule("/run_life_line", view_func=self.run_life_line)
         self.__app.add_url_rule("/analyse_data_vesc", view_func=self.analyse_data_vesc)
+        if self.__config.FRAME_SHOW:
+            self.__app.add_url_rule("/video_feed", view_func=self.video_feed)
 
     def __setting_flask(self):
         self.__app.register_error_handler(Exception, self.handle_exception)
@@ -106,9 +114,11 @@ class UIWebRobot:
         self.__filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
         with open("ui_language.json", "r", encoding='utf-8') as read_file:
             self.__ui_languages = json.load(read_file)
-        thread_notification = Thread(target=self.catch_send_notification)
-        thread_notification.setDaemon(True)
-        thread_notification.start()
+        self.__thread_notification_alive = True
+        self.__generate_stream_alive = True
+        self.__thread_notification = Thread(target=self.catch_send_notification)
+        self.__thread_notification.setDaemon(True)
+        self.__thread_notification.start()
         self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
 
     def get_state_machine(self) -> StateMachine:
@@ -158,17 +168,41 @@ class UIWebRobot:
             self.__config.QUEUE_NAME_UI_NOTIFICATION, posix_ipc.O_CREX)
         ui_language = self.__config.UI_LANGUAGE
 
-        while True:
+        while self.__thread_notification_alive:
             try:
                 notification = notificationQueue.receive(timeout=1)
                 message_name = json.loads(notification[0])["message_name"]
                 message = self.__ui_languages[message_name][ui_language]
                 self.__socketio.emit('notification', {
                                      "message_name": message_name, "message": message}, namespace='/broadcast', broadcast=True)
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
             except:
                 continue
+            
+    def rescale_frame(self, frame, percent=75):
+        width = int(frame.shape[1] * percent / 100)
+        height = int(frame.shape[0] * percent / 100)
+        dim = (width, height)
+        return cv.resize(frame, dim, interpolation=cv.INTER_AREA)
+
+    def generate_stream(self):
+        sharedMemory = posix_ipc.SharedMemory(self.__config.SHARED_MEMORY_NAME_DETECTED_FRAME)
+        sharedMem = mmap(fileno=sharedMemory.fd, length=0)
+        sharedMemory.close_fd()
+
+        img_w = self.__config.CAMERA_W
+        img_h = self.__config.CAMERA_H
+
+        sharedArray = np.ndarray((img_h, img_w, 3), dtype=np.uint8, buffer=sharedMem)
+
+        while self.__generate_stream_alive:
+            #frame = self.rescale_frame(sharedArray, percent=30)
+            ok, encoded = cv.imencode(".jpg", sharedArray)
+            if not ok:
+                continue
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' +
+                bytearray(encoded) +
+                b'\r\n')
 
     # SOCKET IO
     def on_socket_data(self, data):
@@ -230,6 +264,9 @@ class UIWebRobot:
                 {"type": "joystick", "x": 0, "y": 0})
 
     # ROUTE FLASK
+
+    def video_feed(self):
+        return Response(self.generate_stream(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
     def index(self):
         sn = self.__config.ROBOT_SN
@@ -454,6 +491,7 @@ def main():
             print("[UIWebRobot] -> Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
+        exit(0)
 
 if __name__ == "__main__":
     main()

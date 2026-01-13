@@ -15,11 +15,11 @@ import re
 from serial import SerialException
 import numpy as np
 from abc import ABC, abstractmethod
+import os
 
 import gi
 gi.require_version('Aravis', '0.8')
 from gi.repository import Aravis
-
 
 class SmoothieAdapter:
     RESPONSE_OK = "ok\r\n"
@@ -1019,6 +1019,8 @@ class CameraAdapterManager(CameraAdapterInterface):
             except Exception as e:
                 print(f"[{self.__class__.__name__}] ⚠️ Aravis unavailable: {e}")
                 print(f"[{self.__class__.__name__}] → Falling back to IMX219 backend.")
+                print(f"[{self.__class__.__name__}] 🔄 Restarting nvargus-daemon (if available)...")
+                os.system("sudo systemctl restart nvargus-daemon")
                 self._adapter = CameraAdapterIMX219_170(
                     crop_w_from, crop_w_to, crop_h_from, crop_h_to, cv_rotate_code,
                     ispdigitalgainrange_from, ispdigitalgainrange_to,
@@ -1039,6 +1041,8 @@ class CameraAdapterManager(CameraAdapterInterface):
             )
 
         elif self._backend_mode == "imx219":
+            print(f"[{self.__class__.__name__}] 🔄 Restarting nvargus-daemon (if available)...")
+            os.system("sudo systemctl restart nvargus-daemon")
             self._adapter = CameraAdapterIMX219_170(
                 crop_w_from, crop_w_to, crop_h_from, crop_h_to, cv_rotate_code,
                 ispdigitalgainrange_from, ispdigitalgainrange_to,
@@ -1245,7 +1249,6 @@ class CameraAdapterAravis(CameraAdapterInterface):
         self._running = False
         self._ready_index = 0
         self._lock = threading.Lock()
-        self._new_frame = False
         self._framerate = framerate
         
         self._cv_codes = {
@@ -1350,12 +1353,33 @@ class CameraAdapterAravis(CameraAdapterInterface):
         ]
 
         self.cam.start_acquisition()
+        
+        # ─────────── Timestamp offset calibration ───────────
+        if config.CAMERA_PRINT_LATENCY:
+            print(f"[{self.__class__.__name__}] Waiting for first buffer to calibrate timestamp offset...")
+            buf = None
+            while buf is None:
+                buf = self.stream.try_pop_buffer()
+
+            if buf.get_status() == Aravis.BufferStatus.SUCCESS:
+                # Get the camera’s hardware timestamp (in ns) and convert to seconds
+                cam_ts = buf.get_timestamp() / 1e9
+                # Get the current system time in seconds
+                sys_ts = time.time()
+                # Compute the offset so that future timestamps are expressed in system time
+                self._timestamp_offset = sys_ts - cam_ts
+                print(f"[{self.__class__.__name__}] Timestamp offset calibrated: {self._timestamp_offset:.6f}s")
+
+            # Push buffer back to the stream for reuse
+            self.stream.push_buffer(buf)
+        
         self._running = True
         self._thread = threading.Thread(target=self._capture_loop, daemon=True)
         self._thread.start()
         print(f"[{self.__class__.__name__}] Aravis acquisition launched in {self._framerate} FPS ({self._width}x{self._height})")
         
         self._pixel_format = self.cam.get_pixel_format_as_string()
+        
 
     # ─────────── Capture thread ───────────
     def _capture_loop(self):
@@ -1366,51 +1390,85 @@ class CameraAdapterAravis(CameraAdapterInterface):
                 continue
             if buf.get_status() == Aravis.BufferStatus.SUCCESS:
                 data = buf.get_data()
+                
+                if config.CAMERA_PRINT_LATENCY:
+                    # Hardware timestamp in seconds
+                    ts_ns = buf.get_timestamp()  # timestamp in nanoseconds
+                    capture_time = ts_ns / 1e9   # conversion in seconds
+                
                 np.copyto(self._buffers[idx], np.frombuffer(data, dtype=np.uint8).reshape(self._buffers[idx].shape))
+                
                 with self._lock:
                     self._ready_index = idx
-                    self._new_frame = True
+                    if config.CAMERA_PRINT_LATENCY:
+                        self._last_hw_timestamp = capture_time 
+                    
                 idx = 1 - idx
+                
             self.stream.push_buffer(buf)
 
     # ─────────── Public interface ───────────
-    def get_image(self, timeout_s: float = 2.0):
-        """Return the latest RGB frame, waiting up to `timeout_s` seconds if none is ready."""
-        start_time = time.time()
-
-        while True:
-            with self._lock:
-                if self._new_frame:
-                    frame = self._buffers[self._ready_index]
-                    self._new_frame = False
-                    break
-
-            # If no image has arrived yet, please wait a short while
-            if (time.time() - start_time) > timeout_s:
-                raise RuntimeError(f"[{self.__class__.__name__}] No image available after {timeout_s:.1f}s.")
-            time.sleep(0.05)# wait 50 ms before trying again
-            
-        frame_rgb = cv.cvtColor(frame, self._cv_codes.get(self._pixel_format, cv.COLOR_BAYER_GB2BGR))
+    def get_image(self):
+        """Return the latest RGB frame and log latency statistics every 10 seconds."""
         
+        # Get the current frame safely
+        with self._lock:
+            frame = self._buffers[self._ready_index]
+            hw_ts = getattr(self, "_last_hw_timestamp", None)
+        
+        # Convert Bayer → RGB
+        frame_rgb = cv.cvtColor(frame, self._cv_codes.get(self._pixel_format, cv.COLOR_BAYER_GB2BGR))
+
+        # Apply rotation if needed
         if self._software_rotate_code is not None:
             code = self._software_rotate_code
             if code == 1:
-                # rotate 90° counterclockwise
                 frame_rgb = cv.transpose(frame_rgb)
                 frame_rgb = cv.flip(frame_rgb, 0)
             elif code == 3:
-                # rotate 90° clockwise
                 frame_rgb = cv.transpose(frame_rgb)
                 frame_rgb = cv.flip(frame_rgb, 1)
             elif code == 5:
-                # upside down flip (vertical + horizontal)
                 frame_rgb = cv.flip(frame_rgb, -1)
             elif code == 7:
-                # transverse (transpose + 180°)
                 frame_rgb = cv.transpose(frame_rgb)
                 frame_rgb = cv.flip(frame_rgb, -1)
 
+        # ─────────── Latency & FPS stats ───────────
+        if config.CAMERA_PRINT_LATENCY:
+            hw_ts += getattr(self, "_timestamp_offset", 0.0)
+            now = time.time()
+            if hw_ts is not None:
+                latency_ms = (now - hw_ts) * 1000.0
+
+                # Initialize stats on first frame
+                if not hasattr(self, "_stats_start_time"):
+                    self._stats_start_time = now
+                    self._latencies = []
+                    self._frames = 0
+
+                self._latencies.append(latency_ms)
+                self._frames += 1
+
+                # Every 10 seconds → compute and print statistics
+                if (now - self._stats_start_time) >= 10.0:
+                    avg_latency = sum(self._latencies) / len(self._latencies)
+                    min_latency = min(self._latencies)
+                    max_latency = max(self._latencies)
+
+                    print(
+                        f"[{self.__class__.__name__}] "
+                        f"Latency avg: {avg_latency:.2f} ms "
+                        f"(min: {min_latency:.2f}, max: {max_latency:.2f})"
+                    )
+
+                    # Reset stats window
+                    self._stats_start_time = now
+                    self._latencies.clear()
+                    self._frames = 0
+
         return frame_rgb
+
 
     def release(self):
         """Stop the capture process cleanly."""

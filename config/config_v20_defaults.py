@@ -641,7 +641,7 @@ CAMERA_FRAMERATE = 30
 CAMERA_FLIP_METHOD = 2  # 0=none, 1=counterclockwise, 2=rotate 180, 3=clockwise, 4=horizontal flip, 5=upside down flip, 6=transpose, 7=transverse
 SCENE_CENTER_X = CAMERA_W//2
 SCENE_CENTER_Y = 1944//2//2
-ONE_MM_IN_PX = 3.2
+ONE_MM_IN_PX = 2.9
 ISP_DIGITAL_GAIN_RANGE_FROM = 4
 ISP_DIGITAL_GAIN_RANGE_TO = 4
 GAIN_RANGE_FROM = 12

@@ -21,15 +21,17 @@ def rescale_frame(frame, percent=75):
 
 def generate():
     sharedMemory = posix_ipc.SharedMemory(config.SHARED_MEMORY_NAME_DETECTED_FRAME)
+    
     sharedMem = mmap(fileno=sharedMemory.fd, length=0)
     sharedMemory.close_fd()
 
-    if config.APPLY_IMAGE_CROPPING:
-        img_w = config.CROP_W_TO - config.CROP_W_FROM
-        img_h = config.CROP_H_TO - config.CROP_H_FROM
-    else:
-        img_w = config.CAMERA_W
-        img_h = config.CAMERA_H
+    # if config.APPLY_IMAGE_CROPPING:
+    #     img_w = config.CROP_W_TO - config.CROP_W_FROM
+    #     img_h = config.CROP_H_TO - config.CROP_H_FROM
+    # else:
+    
+    img_w = config.CAMERA_W
+    img_h = config.CAMERA_H
 
     sharedArray = np.ndarray((img_h, img_w, 3), dtype=np.uint8, buffer=sharedMem)
 

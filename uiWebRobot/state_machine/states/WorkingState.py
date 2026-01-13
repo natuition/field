@@ -144,12 +144,12 @@ class WorkingState(State.State):
             
             self.main.wait()
             
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Restart camera"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+            # if config.UI_VERBOSE_LOGGING:
+            #     msg = f"[{self.__class__.__name__}] -> Restart camera"
+            #     self.logger.write_and_flush(msg + "\n")
+            #     print(msg)
             
-            os.system("sudo systemctl restart nvargus-daemon")
+            # os.system("sudo systemctl restart nvargus-daemon")
             
             if config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> Try to stop main thread if alive"
@@ -210,12 +210,12 @@ class WorkingState(State.State):
                   
             self.main.wait()
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Restart camera"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+            # if config.UI_VERBOSE_LOGGING:
+            #     msg = f"[{self.__class__.__name__}] -> Restart camera"
+            #     self.logger.write_and_flush(msg + "\n")
+            #     print(msg)
 
-            os.system("sudo systemctl restart nvargus-daemon")
+            # os.system("sudo systemctl restart nvargus-daemon")
 
             if config.UI_VERBOSE_LOGGING:
                 msg = f"[{self.__class__.__name__}] -> Try to stop main thread if alive"

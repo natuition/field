@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import cv2
 import threading
-import os
 import signal
 import sys
 import numpy as np
@@ -153,7 +152,7 @@ class ServerCamLive:
                 except Exception as e:
                     print(f"[{self.__class__.__name__}] ⚠️ Zone drawing failed: {e}")
 
-            frame = self.rescale_frame(frame, percent=50)
+            #frame = self.rescale_frame(frame, percent=50)
             ok, encoded = cv2.imencode(".jpg", frame)
             if not ok:
                 continue
@@ -173,8 +172,6 @@ class ServerCamLive:
     def start(self):
         """Initialize camera, detector, and capture thread.
         If no external app, also runs Flask server."""
-        print(f"[{self.__class__.__name__}] 🔄 Restarting nvargus-daemon (if available)...")
-        os.system("sudo systemctl restart nvargus-daemon")
 
         self.init_camera()
 
