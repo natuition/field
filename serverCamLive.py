@@ -4,7 +4,7 @@ import threading
 import signal
 import sys
 import numpy as np
-from flask import Flask, Response, jsonify
+from flask import Flask, Response, jsonify, render_template, request
 from flask_cors import CORS
 from config import config
 import detection
@@ -25,7 +25,7 @@ class ServerCamLive:
         :param use_detector: Enable YOLO TRT detection on frames.
         """
         self.external_app = app is not None
-        self.app = app or Flask(__name__)
+        self.app = app or Flask(__name__, template_folder="./serverCamLiveTemplate")
         CORS(self.app)
 
         self.port = port
@@ -57,7 +57,9 @@ class ServerCamLive:
         """Attach /video and /info routes to the Flask app."""
         self.app.add_url_rule("/video", view_func=self.stream_frames)
         self.app.add_url_rule("/info", view_func=self.camera_info)
-        
+        self.app.add_url_rule("/focus", view_func=self.liveFocusPage)
+        self.app.add_url_rule("/update_rectangles", view_func=self.update_rectangles, methods=["POST"])
+
     def _unregister_routes(self):
         """Remove previously added routes from the Flask app."""
         removed = []
@@ -77,7 +79,68 @@ class ServerCamLive:
                 "class": self.cam.whoami()
             })
         return jsonify({"status": "camera not initialized"})
+    
+    def liveFocusPage(self):
+        """Serve the index.html page for focus"""
+        return render_template("index.html")
+        
+    def update_rectangles(self):
+        """calculates the focus percentage using the Sobel method"""
+        
+        data = request.get_json()
+        if data:
+            rectangles = data.get("rectangles")
+            img_size = data.get("image_size")
+            
+            # Crop frames
+    
+            with self.thread_lock:
+                frame = self.video_frame.copy() if self.video_frame is not None else None
 
+            if frame is not None:
+                scale_x = frame.shape[1] / img_size["width"]
+                scale_y = frame.shape[0] / img_size["height"]
+                scores = dict()
+                for i, rect in enumerate(rectangles):
+                    x_real = int(rect["x"] * scale_x)
+                    y_real = int(rect["y"] * scale_y)
+                    w_real = int(rect["w"] * scale_x)
+                    h_real = int(rect["h"] * scale_y)
+
+                    # Limites
+                    x_real = max(0, x_real)
+                    y_real = max(0, y_real)
+                    w_real = min(w_real, frame.shape[1] - x_real)
+                    h_real = min(h_real, frame.shape[0] - y_real)
+
+                    crop = frame[y_real:y_real+h_real, x_real:x_real+w_real]
+                    
+                    # Conversion to gray frames
+                    if len(crop.shape) == 3:
+                        crop_gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+                    else:
+                        crop_gray = crop
+
+                    # Sobel horizontal and vertical
+                    sobelx = cv2.Sobel(crop_gray, cv2.CV_64F, 1, 0, ksize=3)
+                    sobely = cv2.Sobel(crop_gray, cv2.CV_64F, 0, 1, ksize=3)
+
+                    # Gradient magnitude
+                    gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
+
+                    # focus score
+                    score = np.mean(gradient_magnitude)
+                    scores[rect["color"]] = f"{score:.0f}"
+                    
+                    
+                    #filename = f"/tmp/crop_{i}.jpg"
+                    #cv2.imwrite(filename, crop)
+                return jsonify({"status": "ok", "scores": scores})
+            
+        return jsonify({"status": "error"}), 400
+    
+        
+    
     # ─────────── CAMERA ───────────
     def init_camera(self):
         """Initialize camera with CameraAdapterManager."""
@@ -139,8 +202,12 @@ class ServerCamLive:
 
             # Optional detector
             if self.detector:
-                boxes = self.detector.detect(frame, True)
-                frame = detection.draw_boxes(frame, boxes)
+                try:
+                    boxes = self.detector.detect(frame, True)
+                    frame = detection.draw_boxes(frame, boxes)
+                except:
+                    frame = frame
+                    pass
                 
             # Optional zone display
             if self.display_zones:

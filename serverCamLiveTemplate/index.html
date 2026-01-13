@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Camera focus with target</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 24px 32px;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+            pointer-events: none;
+        }
+
+        h2 {
+            color: #fff;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: all;
+        }
+
+        #sendRect {
+            padding: 14px 32px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            background: rgba(37, 99, 235, 0.9);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        #sendRect.running {
+            background: rgba(220, 38, 38, 0.9);
+        }
+
+        #sendRect:hover {
+            background: rgba(29, 78, 216, 0.95);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        #sendRect.running:hover {
+            background: rgba(185, 28, 28, 0.95);
+        }
+
+        #sendRect:active {
+            transform: translateY(0);
+        }
+
+        #scores {
+            position: absolute;
+            bottom: 90px;
+            left: 32px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            padding: 24px 32px;
+            border-radius: 12px;
+            min-width: 250px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        #scores span {
+            display: block;
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        #scores span:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+
+        <div id="overlay">
+            <div id="header">
+                <h2>Camera focus with target</h2>
+            </div>
+
+            <div id="controls">
+                <button id="sendRect">Start scores update</button>
+            </div>
+
+            <section id="scores" style="display:none;"></section>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // MJPEG flux
+        const img = new Image();
+        img.src = "/video";
+
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            draw();
+        };
+
+        // 2 initial boxes
+        let rectangles = [
+            { x: 58 * 2, y: 36 * 2, w: 70 * 2, h: 70 * 2, color: 'orange' },
+            { x: 265 * 2, y: 177 * 2, w: 80 * 2, h: 80 * 2, color: 'purple' }
+        ];
+
+        let selectedRect = null;
+        let offsetX, offsetY;
+        let resizing = false;
+
+        // Draw flux + rectangles
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            rectangles.forEach(rect => {
+                ctx.strokeStyle = rect.color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+
+                ctx.fillStyle = 'red';
+                ctx.fillRect(rect.x + rect.w - 5, rect.y + rect.h - 5, 10, 10);
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+
+            rectangles.forEach((rect, idx) => {
+                if (mx >= rect.x + rect.w - 10 && mx <= rect.x + rect.w + 10 &&
+                    my >= rect.y + rect.h - 10 && my <= rect.y + rect.h + 10) {
+                    selectedRect = idx;
+                    resizing = true;
+                    return;
+                }
+
+                if (mx > rect.x && mx < rect.x + rect.w &&
+                    my > rect.y && my < rect.y + rect.h) {
+                    selectedRect = idx;
+                    resizing = false;
+                    offsetX = mx - rect.x;
+                    offsetY = my - rect.y;
+                }
+            });
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            if (selectedRect === null) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+            
+
+            if (resizing) {
+
+                const dx = mx - rectangles[selectedRect].x;
+                const dy = my - rectangles[selectedRect].y;
+                const size = Math.max(dx, dy);
+
+                rectangles[selectedRect].w = size;
+                rectangles[selectedRect].h = size;
+            } else {
+                rectangles[selectedRect].x = mx - offsetX;
+                rectangles[selectedRect].y = my - offsetY;
+            }
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+            let onHandle = false;
+            let onRect = false;
+
+            rectangles.forEach(rect => {
+                // Vérifier poignée de redimension
+                if (mx >= rect.x + rect.w - 10 && mx <= rect.x + rect.w + 10 &&
+                    my >= rect.y + rect.h - 10 && my <= rect.y + rect.h + 10) {
+                    onHandle = true;
+                }
+
+                // Vérifier intérieur rectangle
+                if (mx > rect.x && mx < rect.x + rect.w &&
+                    my > rect.y && my < rect.y + rect.h) {
+                    onRect = true;
+                }
+            });
+
+            if (onHandle) {
+                canvas.style.cursor = 'se-resize'; // redimensionnement
+            } else if (onRect) {
+                canvas.style.cursor = 'grab';      // déplacement
+            } else {
+                canvas.style.cursor = 'default';   // curseur normal
+            }
+        });
+
+
+        canvas.addEventListener('mouseup', () => selectedRect = null);
+        canvas.addEventListener('mouseleave', () => selectedRect = null);
+        let scoreInterval = null;
+        let running = false;
+
+        const sendBtn = document.getElementById("sendRect");
+        sendBtn.addEventListener("click", () => {
+
+            if (!running) {
+                //start update 
+                running = true;
+                sendBtn.textContent = "Stop scores update";
+                sendBtn.classList.add('running');
+
+                scoreInterval = setInterval(() => {
+                    const data = {
+                        rectangles: rectangles,
+                        image_size: { width: canvas.width, height: canvas.height }
+                    };
+
+                    fetch("/update_rectangles", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(data)
+                    })
+                        .then(res => res.json())
+                        .then(res => {
+                            if (res.status === "ok") {
+                                const sectionScore = document.getElementById("scores");
+                                sectionScore.innerHTML = "";
+                                sectionScore.style.display = "block";
+                                for (const [key, value] of Object.entries(res.scores)) {
+                                    const span = document.createElement('span');
+                                    span.innerHTML = `${key} box: ${value}`;
+                                    span.style.display = "block";
+                                    span.style.textTransform = "capitalize";
+                                    sectionScore.appendChild(span);
+                                }
+                            }
+                        });
+                }, 250); // every 1/4 seconds
+
+            } else {
+                //  stop update
+                running = false;
+                sendBtn.textContent = "Start scores update";
+                sendBtn.classList.remove('running');
+                const sectionScore = document.getElementById("scores");
+                sectionScore.innerHTML = "";
+                sectionScore.style.display = "none";
+                clearInterval(scoreInterval);
+                scoreInterval = null;
+            }
+        });
+
+    </script>
+</body>
+
+</html>
