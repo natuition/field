@@ -12,9 +12,14 @@ import threading
 import serial
 import pyvesc
 import re
-#import RPi.GPIO as GPIO
 from serial import SerialException
+import numpy as np
+from abc import ABC, abstractmethod
+import os
 
+import gi
+gi.require_version('Aravis', '0.8')
+from gi.repository import Aravis
 
 class SmoothieAdapter:
     RESPONSE_OK = "ok\r\n"
@@ -907,90 +912,66 @@ class SmoothieAdapter:
             self.__smc.write("G92 {0}{1}".format(axis_label, sm_val))
             return self.__smc.read_some()
 
+class CameraAdapterInterface(ABC):
+    """
+    Abstract camera adapter interface.
+    Defines the minimal API every camera backend must implement.
+    """
 
-class PiCameraAdapter:
-
-    def __init__(self):
-        from picamera.array import PiRGBArray
-        from picamera import PiCamera
-        self._camera = PiCamera()
-        self._camera.resolution = (config.CAMERA_W, config.CAMERA_H)
-        self._camera.framerate = config.CAMERA_FRAMERATE
-        self._raw_capture = PiRGBArray(self._camera, size=(config.CAMERA_W, config.CAMERA_H))
-        self._gen = self._camera.capture_continuous(self._raw_capture, format="rgb")
-        time.sleep(2)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.release()
-
-    def release(self):
-        self._camera.close()
-
-    def get_image(self):
-        image = cv.cvtColor(next(self._gen).array, cv.COLOR_RGB2BGR)
-        self._raw_capture.truncate(0)
-        return image
-
-
-'''
-# test
-class CameraAdapterIMX219_170_BS1:
-    """Buffer size is set to 1 frame, getting 2 frames per call, return last"""
-
+    @abstractmethod
     def __init__(self,
-                 capture_width=config.CAMERA_W,
-                 capture_height=config.CAMERA_H,
-                 display_width=config.CAMERA_W,
-                 display_height=config.CAMERA_H,
-                 framerate=config.CAMERA_FRAMERATE,
-                 flip_method=config.CAMERA_FLIP_METHOD):
+                 crop_w_from,
+                 crop_w_to,
+                 crop_h_from,
+                 crop_h_to,
+                 cv_rotate_code,
+                 ispdigitalgainrange_from,
+                 ispdigitalgainrange_to,
+                 gainrange_from,
+                 gainrange_to,
+                 exposuretimerange_from,
+                 exposuretimerange_to,
+                 aelock,
+                 capture_width,
+                 capture_height,
+                 display_width,
+                 display_height,
+                 framerate,
+                 nvidia_flip_method):
+        """Initialize the camera with configuration parameters."""
+        pass
 
-        gst_config = (
-                "nvarguscamerasrc ! "
-                "video/x-raw(memory:NVMM), "
-                "width=(int)%d, height=(int)%d, "
-                "format=(string)NV12, framerate=(fraction)%d/1 ! "
-                "nvvidconv flip-method=%d ! "
-                "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
-                "videoconvert ! "
-                "video/x-raw, format=(string)BGR ! appsink"
-                % (
-                    capture_width,
-                    capture_height,
-                    framerate,
-                    flip_method,
-                    display_width,
-                    display_height
-                )
-        )
-        self._cap = cv.VideoCapture(gst_config, cv.CAP_GSTREAMER)
-        self._cap = cv.VideoCapture(cv.CAP_PROP_BUFFERSIZE, 1)
+    @abstractmethod
+    def get_image(self):
+        """Return the latest frame (as np.ndarray in BGR)."""
+        pass
+
+    @abstractmethod
+    def release(self):
+        """Stop acquisition and release all resources."""
+        pass
 
     def __enter__(self):
+        """Context manager entry point."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit point."""
         self.release()
 
-    def release(self):
-        self._cap.release()
+    # ─────────── Common utility ───────────
+    def whoami(self):
+        """
+        Return the readable name of the active adapter class.
+        Example: "CameraAdapterAravis_ZeroLatency"
+        """
+        return self.__class__.__name__
 
-    def get_image(self):
-        if self._cap.isOpened():
-            for i in range(self._cap.get(cv.CAP_PROP_BUFFERSIZE) + 1):
-                ret, image = self._cap.read()
-            # rotate for 90 degrees and crop black zones
-            return cv.rotate(image, 2)[config.CROP_H_FROM:config.CROP_H_TO, config.CROP_W_FROM:config.CROP_W_TO]
-        else:
-            raise RuntimeError("Unable to open camera")
-'''
-
-
-# old with no shutter, gain and rest camera control
-class CameraAdapterIMX219_170_Auto:
+class CameraAdapterManager(CameraAdapterInterface):
+    """
+    Universal camera adapter manager.
+    Automatically selects and delegates to the appropriate backend.
+    """
 
     def __init__(self,
                  crop_w_from,
@@ -1011,69 +992,98 @@ class CameraAdapterIMX219_170_Auto:
                  display_height,
                  framerate,
                  nvidia_flip_method):
+        """
+        backend: "auto" | "aravis" | "imx219"
+        - "auto": try Aravis first, fallback to IMX219 if no camera found
+        - "aravis": force Aravis backend
+        - "imx219": force Jetson IMX219 backend
+        """
+        self._adapter = None
+        self._backend_name = None
+        backend = config.CAMERA_BACKEND.lower()
+        self._backend_mode = backend
 
-        self._crop_w_from = crop_w_from
-        self._crop_w_to = crop_w_to
-        self._crop_h_from = crop_h_from
-        self._crop_h_to = crop_h_to
-        self._cv_rotate_code = cv_rotate_code
-        aelock = "aelock=true " if aelock else ""
-
-        gst_config = (
-                "nvarguscamerasrc ! "
-                "video/x-raw(memory:NVMM), "
-                "width=(int)%d, height=(int)%d, "
-                "format=(string)NV12, framerate=(fraction)%d/1 ! "
-                "nvvidconv flip-method=%d ! "
-                "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
-                "videoconvert ! "
-                "video/x-raw, format=(string)BGR ! appsink"
-                % (
-                    capture_width,
-                    capture_height,
-                    framerate,
-                    nvidia_flip_method,
-                    display_width,
-                    display_height
+        # ─────────── Backend selection ───────────
+        if self._backend_mode == "auto":
+            try:
+                print(f"[{self.__class__.__name__}] Trying Aravis backend...")
+                self._adapter = CameraAdapterAravis(
+                    crop_w_from, crop_w_to, crop_h_from, crop_h_to, cv_rotate_code,
+                    ispdigitalgainrange_from, ispdigitalgainrange_to,
+                    gainrange_from, gainrange_to,
+                    exposuretimerange_from, exposuretimerange_to,
+                    aelock, capture_width, capture_height,
+                    display_width, display_height, framerate, nvidia_flip_method
                 )
-        )
+                print(f"[{self.__class__.__name__}] ✅ Aravis backend selected: {self._adapter.whoami()}")
+            except Exception as e:
+                print(f"[{self.__class__.__name__}] ⚠️ Aravis unavailable: {e}")
+                print(f"[{self.__class__.__name__}] → Falling back to IMX219 backend.")
+                print(f"[{self.__class__.__name__}] 🔄 Restarting nvargus-daemon (if available)...")
+                os.system("sudo systemctl restart nvargus-daemon")
+                self._adapter = CameraAdapterIMX219_170(
+                    crop_w_from, crop_w_to, crop_h_from, crop_h_to, cv_rotate_code,
+                    ispdigitalgainrange_from, ispdigitalgainrange_to,
+                    gainrange_from, gainrange_to,
+                    exposuretimerange_from, exposuretimerange_to,
+                    aelock, capture_width, capture_height,
+                    display_width, display_height, framerate, nvidia_flip_method
+                )
 
-        if config.APPLY_THREAD_BUFF_CLEANING:
-            self._cap = VideoCaptureNoBuffer(gst_config, cv.CAP_GSTREAMER)
+        elif self._backend_mode == "aravis":
+            self._adapter = CameraAdapterAravis(
+                crop_w_from, crop_w_to, crop_h_from, crop_h_to, cv_rotate_code,
+                ispdigitalgainrange_from, ispdigitalgainrange_to,
+                gainrange_from, gainrange_to,
+                exposuretimerange_from, exposuretimerange_to,
+                aelock, capture_width, capture_height,
+                display_width, display_height, framerate, nvidia_flip_method
+            )
+
+        elif self._backend_mode == "imx219":
+            print(f"[{self.__class__.__name__}] 🔄 Restarting nvargus-daemon (if available)...")
+            os.system("sudo systemctl restart nvargus-daemon")
+            self._adapter = CameraAdapterIMX219_170(
+                crop_w_from, crop_w_to, crop_h_from, crop_h_to, cv_rotate_code,
+                ispdigitalgainrange_from, ispdigitalgainrange_to,
+                gainrange_from, gainrange_to,
+                exposuretimerange_from, exposuretimerange_to,
+                aelock, capture_width, capture_height,
+                display_width, display_height, framerate, nvidia_flip_method
+            )
+
         else:
-            self._cap = cv.VideoCapture(gst_config, cv.CAP_GSTREAMER)
+            raise ValueError(f"[{self.__class__.__name__}] Unknown backend '{backend}', expected 'auto', 'aravis' or 'imx219'.")
+
+        # ─────────── Automatic backend name ───────────
+        raw_name = self._adapter.whoami()
+        self._backend_name = raw_name.replace("CameraAdapter", "").split("_")[0].lower()
+        print(f"[{self.__class__.__name__}] Active backend: {self._backend_name} ({raw_name})")
+
+    # ─────────── Interface delegation ───────────
+    def get_image(self):
+        return self._adapter.get_image()
+
+    def release(self):
+        return self._adapter.release()
 
     def __enter__(self):
+        self._adapter.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.release()
+        self._adapter.__exit__(exc_type, exc_val, exc_tb)
 
-    def release(self):
-        self._cap.release()
+    def whoami(self):
+        """Return the manager and its active backend class name."""
+        return f"[{self.__class__.__name__}] → {self._adapter.whoami()} ({self._backend_name})"
 
-    def get_image(self):
-        if self._cap.isOpened():
-            if config.BUFF_CLEANING_DELAY > 0:
-                time.sleep(config.BUFF_CLEANING_DELAY)
-
-            if config.APPLY_THREAD_BUFF_CLEANING:
-                image = self._cap.read()
-            else:
-                ret, image = self._cap.read()
-
-            if config.CV_APPLY_ROTATION:
-                image = cv.rotate(image, self._cv_rotate_code)
-
-            # crop black zones
-            #if config.APPLY_IMAGE_CROPPING:
-            #    image = image[self._crop_h_from:self._crop_h_to, self._crop_w_from:self._crop_w_to]
-            return image
-        else:
-            raise RuntimeError("Unable to open camera")
+    def backend(self):
+        """Return short backend identifier, e.g., 'aravis' or 'imx219'."""
+        return self._backend_name
 
 
-class CameraAdapterIMX219_170:
+class CameraAdapterIMX219_170(CameraAdapterInterface):
 
     def __init__(self,
                  crop_w_from,
@@ -1205,6 +1215,278 @@ class CameraAdapterIMX219_170:
             raise RuntimeError(f"[{self.__class__.__name__}] -> Unable to open camera")
 
 
+class CameraAdapterAravis(CameraAdapterInterface):
+    """
+    Aravis-based version compatible with the DR-U3-50Y2C-C3-S camera.
+    Uses a double-buffer (ping-pong) numpy architecture for zero-latency capture.
+    """
+
+    def __init__(self,
+                 crop_w_from,
+                 crop_w_to,
+                 crop_h_from,
+                 crop_h_to,
+                 cv_rotate_code,
+                 ispdigitalgainrange_from,
+                 ispdigitalgainrange_to,
+                 gainrange_from,
+                 gainrange_to,
+                 exposuretimerange_from,
+                 exposuretimerange_to,
+                 aelock,
+                 capture_width,
+                 capture_height,
+                 display_width,
+                 display_height,
+                 framerate,
+                 nvidia_flip_method):
+        
+        # Convert exposure time from nvarguscamerasrc units (nanoseconds) to Aravis units (µs).
+        # Therefore: 1 µs = 1000 ns → divide by 1000
+        exposuretimerange_from = exposuretimerange_from / 1000
+        exposuretimerange_to = exposuretimerange_to / 1000.0 
+
+        self._running = False
+        self._ready_index = 0
+        self._lock = threading.Lock()
+        self._framerate = framerate
+        
+        self._cv_codes = {
+            "BayerBG8": cv.COLOR_BAYER_RG2BGR,
+            "BayerGB8": cv.COLOR_BAYER_GR2BGR,
+            "BayerRG8": cv.COLOR_BAYER_BG2BGR,
+            "BayerGR8": cv.COLOR_BAYER_GB2BGR,
+        }
+
+        # ─────────── Camera initialization ───────────
+        Aravis.update_device_list()
+        if Aravis.get_n_devices() == 0:
+            raise RuntimeError(f"[{self.__class__.__name__}] No Aravis camera detected.")
+        self.cam = Aravis.Camera.new(None)
+        print(f"[{self.__class__.__name__}] Aravis camera detected : {self.cam.get_model_name()}")
+
+        # ─────────── Binning configuration ───────────
+        try:
+            self.cam.set_integer("BinningHorizontal", config.CAMERA_BINNING_H)
+            self.cam.set_integer("BinningVertical", config.CAMERA_BINNING_V)
+        except Exception:
+            pass
+
+        sensor_w, sensor_h = self.cam.get_sensor_size()
+        bx = self.cam.get_integer("BinningHorizontal") if self.cam.is_feature_available("BinningHorizontal") else 1
+        by = self.cam.get_integer("BinningVertical") if self.cam.is_feature_available("BinningVertical") else 1
+        eff_w, eff_h = sensor_w // bx, sensor_h // by
+
+        # ─────────── Configure ROI ───────────
+        if config.APPLY_IMAGE_CROPPING:
+            # ─────────── Centered ROI ───────────
+            target_w, target_h = min(capture_width, eff_w), min(capture_height, eff_h)
+            ox = ((eff_w - target_w) // 2)
+            oy = (eff_h - target_h)
+            self.cam.set_region(ox, oy, target_w, target_h)
+            self._width, self._height = target_w, target_h
+        else:
+            # ─────────── Full sensor ROI ───────────
+            self.cam.set_region(0, 0, eff_w, eff_h)
+            self._width, self._height = eff_w, eff_h
+
+        # ─────────── ExposureTime, gain and framerate ───────────
+        
+        if gainrange_from != gainrange_to:
+            raise ValueError(f"[{self.__class__.__name__}] gainrange_from and gainrange_to must be equal.")
+        if exposuretimerange_from != exposuretimerange_to:
+            raise ValueError(f"[{self.__class__.__name__}] exposuretimerange_from and exposuretimerange_to must be equal.")
+
+        for (k, v) in [("ExposureAuto", "Off"), ("GainAuto", "Off")]:
+            try: self.cam.set_string(k, v)
+            except Exception: pass
+        for (k, v) in [("ExposureTime", float(exposuretimerange_from)), ("Gain", float(gainrange_from))]:
+            try: self.cam.set_float(k, v)
+            except Exception: pass
+
+        try:
+            self.cam.set_boolean("AcquisitionFrameRateEnable", True)
+            self.cam.set_float("AcquisitionFrameRate", self._framerate)
+        except Exception:
+            pass
+        
+        # ─────────── Flip / rotation mapping (hardware + software hybrid) ───────────
+        # nvarguscamerasrc flip-method values:
+        # 0: none            → ReverseX=0, ReverseY=0
+        # 1: rotate 90° CCW  → emulate in software
+        # 2: rotate 180°     → ReverseX=1, ReverseY=1
+        # 3: rotate 90° CW   → emulate in software
+        # 4: horizontal flip → ReverseX=1, ReverseY=0
+        # 5: vertical flip + rotate 180° (upside down) → emulate in software
+        # 6: vertical flip   → ReverseX=0, ReverseY=1
+        # 7: transverse (transpose + 180°) → emulate in software
+
+        flip_mapping = {0: (False, False), 2: (True, True), 4: (True, False), 6: (False, True)}
+        
+        self._software_rotate_code = None
+
+        if nvidia_flip_method in flip_mapping:
+            reverse_x, reverse_y = flip_mapping[nvidia_flip_method]
+            try:
+                if self.cam.is_feature_available("ReverseX"):
+                    self.cam.set_boolean("ReverseX", reverse_x)
+                if self.cam.is_feature_available("ReverseY"):
+                    self.cam.set_boolean("ReverseY", reverse_y)
+                print(f"[{self.__class__.__name__}] → Applied ReverseX={reverse_x}, ReverseY={reverse_y} (flip-method={nvidia_flip_method})")
+            except Exception as e:
+                print(f"[{self.__class__.__name__}] ⚠️ Unable to set ReverseX/ReverseY: {e}")
+        else:
+            self._software_rotate_code = nvidia_flip_method
+            print(f"[{self.__class__.__name__}] ⚠️ flip-method={nvidia_flip_method} not supported by Aravis (only 0,2,4,6).")
+
+        # ─────────── Stream & Buffers ───────────
+        self.stream = self.cam.create_stream(None, None)
+        self.stream.set_emit_signals(False)
+        payload = self.cam.get_payload()
+        for _ in range(2):
+            self.stream.push_buffer(Aravis.Buffer.new_allocate(payload))
+
+        # ─────────── Double buffer numpy ───────────
+        self._buffers = [
+            np.empty((self._height, self._width), dtype=np.uint8),
+            np.empty((self._height, self._width), dtype=np.uint8)
+        ]
+
+        self.cam.start_acquisition()
+        
+        # ─────────── Timestamp offset calibration ───────────
+        if config.CAMERA_PRINT_LATENCY:
+            print(f"[{self.__class__.__name__}] Waiting for first buffer to calibrate timestamp offset...")
+            buf = None
+            while buf is None:
+                buf = self.stream.try_pop_buffer()
+
+            if buf.get_status() == Aravis.BufferStatus.SUCCESS:
+                # Get the camera’s hardware timestamp (in ns) and convert to seconds
+                cam_ts = buf.get_timestamp() / 1e9
+                # Get the current system time in seconds
+                sys_ts = time.time()
+                # Compute the offset so that future timestamps are expressed in system time
+                self._timestamp_offset = sys_ts - cam_ts
+                print(f"[{self.__class__.__name__}] Timestamp offset calibrated: {self._timestamp_offset:.6f}s")
+
+            # Push buffer back to the stream for reuse
+            self.stream.push_buffer(buf)
+        
+        self._running = True
+        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._thread.start()
+        print(f"[{self.__class__.__name__}] Aravis acquisition launched in {self._framerate} FPS ({self._width}x{self._height})")
+        
+        self._pixel_format = self.cam.get_pixel_format_as_string()
+        
+
+    # ─────────── Capture thread ───────────
+    def _capture_loop(self):
+        idx = 0
+        while self._running:
+            buf = self.stream.try_pop_buffer()
+            if not buf:
+                continue
+            if buf.get_status() == Aravis.BufferStatus.SUCCESS:
+                data = buf.get_data()
+                
+                if config.CAMERA_PRINT_LATENCY:
+                    # Hardware timestamp in seconds
+                    ts_ns = buf.get_timestamp()  # timestamp in nanoseconds
+                    capture_time = ts_ns / 1e9   # conversion in seconds
+                
+                np.copyto(self._buffers[idx], np.frombuffer(data, dtype=np.uint8).reshape(self._buffers[idx].shape))
+                
+                with self._lock:
+                    self._ready_index = idx
+                    if config.CAMERA_PRINT_LATENCY:
+                        self._last_hw_timestamp = capture_time 
+                    
+                idx = 1 - idx
+                
+            self.stream.push_buffer(buf)
+
+    # ─────────── Public interface ───────────
+    def get_image(self):
+        """Return the latest RGB frame and log latency statistics every 10 seconds."""
+        
+        # Get the current frame safely
+        with self._lock:
+            frame = self._buffers[self._ready_index]
+            hw_ts = getattr(self, "_last_hw_timestamp", None)
+        
+        # Convert Bayer → RGB
+        frame_rgb = cv.cvtColor(frame, self._cv_codes.get(self._pixel_format, cv.COLOR_BAYER_GB2BGR))
+
+        # Apply rotation if needed
+        if self._software_rotate_code is not None:
+            code = self._software_rotate_code
+            if code == 1:
+                frame_rgb = cv.transpose(frame_rgb)
+                frame_rgb = cv.flip(frame_rgb, 0)
+            elif code == 3:
+                frame_rgb = cv.transpose(frame_rgb)
+                frame_rgb = cv.flip(frame_rgb, 1)
+            elif code == 5:
+                frame_rgb = cv.flip(frame_rgb, -1)
+            elif code == 7:
+                frame_rgb = cv.transpose(frame_rgb)
+                frame_rgb = cv.flip(frame_rgb, -1)
+
+        # ─────────── Latency & FPS stats ───────────
+        if config.CAMERA_PRINT_LATENCY:
+            hw_ts += getattr(self, "_timestamp_offset", 0.0)
+            now = time.time()
+            if hw_ts is not None:
+                latency_ms = (now - hw_ts) * 1000.0
+
+                # Initialize stats on first frame
+                if not hasattr(self, "_stats_start_time"):
+                    self._stats_start_time = now
+                    self._latencies = []
+                    self._frames = 0
+
+                self._latencies.append(latency_ms)
+                self._frames += 1
+
+                # Every 10 seconds → compute and print statistics
+                if (now - self._stats_start_time) >= 10.0:
+                    avg_latency = sum(self._latencies) / len(self._latencies)
+                    min_latency = min(self._latencies)
+                    max_latency = max(self._latencies)
+
+                    print(
+                        f"[{self.__class__.__name__}] "
+                        f"Latency avg: {avg_latency:.2f} ms "
+                        f"(min: {min_latency:.2f}, max: {max_latency:.2f})"
+                    )
+
+                    # Reset stats window
+                    self._stats_start_time = now
+                    self._latencies.clear()
+                    self._frames = 0
+
+        return frame_rgb
+
+
+    def release(self):
+        """Stop the capture process cleanly."""
+        self._running = False
+        time.sleep(0.1)
+        try:
+            self.cam.stop_acquisition()
+        except Exception:
+            pass
+        print(f"[{self.__class__.__name__}] 🛑 Aravis capture stopped.")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+
 class VideoCaptureNoBuffer:
     """Minimalistic layer for cv2's VideoCapture with buffer cleaning thread ()"""
 
@@ -1236,75 +1518,6 @@ class VideoCaptureNoBuffer:
 
     def read(self):
         return self._queue.get()
-
-
-class CompassOldAdapter:
-    """Provides to the robot's on-board compass (some old card, the first one, not sure about model)"""
-
-    def __init__(self):
-        import smbus
-        self._register_a = 0  # Address of Configuration register A
-        self._register_b = 0x01  # Address of configuration register B
-        self._register_mode = 0x02  # Address of mode register
-        self._x_axis_h = 0x03  # Address of X-axis MSB data register
-        self._z_axis_h = 0x05  # Address of Z-axis MSB data register
-        self._y_axis_h = 0x07  # Address of Y-axis MSB data register
-        self._bus = smbus.SMBus(1)  # or bus = smbus.SMBus(0) for older version boards
-
-        # write to Configuration Register A
-        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_a, 0x70)
-        # Write to Configuration Register B for gain
-        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_b, 0xa0)
-        # Write to mode Register for selecting mode
-        self._bus.write_byte_data(config.COMPASS_DEVICE_ADDRESS, self._register_mode, 0)
-
-    def _read_raw_data(self, address):
-        """Reads raw data from compass"""
-
-        # Read raw 16-bit value
-        high = self._bus.read_byte_data(config.COMPASS_DEVICE_ADDRESS, address)
-        low = self._bus.read_byte_data(config.COMPASS_DEVICE_ADDRESS, address + 1)
-
-        # concatenate higher and lower value
-        value = ((high << 8) | low)
-
-        # get signed value from module
-        return value - 65536 if value > 32768 else value
-
-    def get_heading_angle(self):
-        """Returns current heading angle in degrees"""
-
-        x = self._read_raw_data(self._x_axis_h)
-        y = self._read_raw_data(self._y_axis_h)
-        heading = math.atan2(y, x) + config.COMPASS_DECLINATION
-
-        # Due to declination check for > 360 degree
-        if heading > 2 * math.pi:
-            heading -= 2 * math.pi
-        # check for sign
-        if heading < 0:
-            heading += 2 * math.pi
-
-        # convert into angle
-        return int(heading * 180 / math.pi)
-
-
-class CompassBNO055Adapter:
-    """Provides access to the robot's on-board compass"""
-
-    def __init__(self):
-        import adafruit_bno055
-        from busio import I2C
-        import board
-
-        self._i2c = I2C(board.SCL, board.SDA)
-        self._sensor = adafruit_bno055.BNO055(self._i2c)
-        # turn on "compass mode"
-        self._sensor.mode = adafruit_bno055.COMPASS_MODE
-        # sensor.mode = adafruit_bno055.M4G_MODE
-
-    def get_euler_angle(self):
-        return self._sensor.euler
 
 
 class VescAdapter:

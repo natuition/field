@@ -164,7 +164,7 @@ class YoloDarknetDetector:
 
         if config.FRAME_SHOW and not disable_frame_show:
 
-            t1 = time.time()
+            #t1 = time.time()
 
             #img = draw_boxes(image, plant_boxes)
             img = image
@@ -184,19 +184,19 @@ class YoloDarknetDetector:
 
             #print(time.time() - t1)
 
-            if not YoloDarknetDetector.WEBSTREAM:
-                template_dir = os.path.abspath('./liveMain')
-                app = Flask("webstreaming", template_folder=template_dir)
-                CORS(app)
-                app.add_url_rule('/', view_func=webstreaming.index)
-                app.add_url_rule('/video_feed', view_func=webstreaming.video_feed)
+            # if not YoloDarknetDetector.WEBSTREAM:
+            #     template_dir = os.path.abspath('./liveMain')
+            #     app = Flask("webstreaming", template_folder=template_dir)
+            #     CORS(app)
+            #     app.add_url_rule('/', view_func=webstreaming.index)
+            #     app.add_url_rule('/video_feed', view_func=webstreaming.video_feed)
 
-                logging.getLogger('werkzeug').disabled = True
-                os.environ['WERKZEUG_RUN_MAIN'] = 'true'
+            #     logging.getLogger('werkzeug').disabled = True
+            #     os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
-                YoloDarknetDetector.webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
-                YoloDarknetDetector.webStream.start()
-                YoloDarknetDetector.WEBSTREAM = True
+            #     YoloDarknetDetector.webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
+            #     YoloDarknetDetector.webStream.start()
+            #     YoloDarknetDetector.WEBSTREAM = True
         
         return plant_boxes
 
@@ -286,7 +286,7 @@ class YoloTRTDetector:
 
         if config.FRAME_SHOW and not disable_frame_show:
 
-            t1 = time.time()
+            #t1 = time.time()
 
             #img = draw_boxes(image, plant_boxes)
             img = image
@@ -306,19 +306,19 @@ class YoloTRTDetector:
 
             #print(time.time() - t1)
 
-            if not YoloTRTDetector.WEBSTREAM:
-                template_dir = os.path.abspath('./liveMain')
-                app = Flask("webstreaming", template_folder=template_dir)
-                CORS(app)
-                app.add_url_rule('/', view_func=webstreaming.index)
-                app.add_url_rule('/video_feed', view_func=webstreaming.video_feed)
+            # if not YoloTRTDetector.WEBSTREAM:
+            #     template_dir = os.path.abspath('./liveMain')
+            #     app = Flask("webstreaming", template_folder=template_dir)
+            #     CORS(app)
+            #     app.add_url_rule('/', view_func=webstreaming.index)
+            #     app.add_url_rule('/video_feed', view_func=webstreaming.video_feed)
 
-                logging.getLogger('werkzeug').disabled = True
-                os.environ['WERKZEUG_RUN_MAIN'] = 'true'
+            #     logging.getLogger('werkzeug').disabled = True
+            #     os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
-                YoloTRTDetector.webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
-                YoloTRTDetector.webStream.start()
-                YoloTRTDetector.WEBSTREAM = True
+            #     YoloTRTDetector.webStream = Process(target=app.run, args=("0.0.0.0",8888,False))
+            #     YoloTRTDetector.webStream.start()
+            #     YoloTRTDetector.WEBSTREAM = True
         
         return plant_boxes
 
@@ -353,8 +353,34 @@ class YoloTRTDetector:
                 outputs.append(HostDeviceMem(host_mem, device_mem))
 
         return inputs, outputs, bindings, stream
+    
+    def letterbox_fast(self, img, target_size=(416, 416)):
+        ih, iw = img.shape[:2]
+        h, w = target_size
+        
+        scale = min(w / iw, h / ih)
+        nw, nh = int(iw * scale), int(ih * scale)
+        
+        # Resize
+        img_resized = cv.resize(img, (nw, nh), interpolation=cv.INTER_LINEAR)
+        
+        # Padding avec copyMakeBorder (plus rapide)
+        top = (h - nh) // 2
+        bottom = h - nh - top
+        left = (w - nw) // 2
+        right = w - nw - left
+        
+        img_padded = cv.copyMakeBorder(
+            img_resized,
+            top, bottom, left, right,
+            cv.BORDER_CONSTANT,
+            value=[114, 114, 114]
+        )
+        
+        return img_padded, scale, (left, top)
         
     def _preprocess(self, image):
+        #processed_image = self.letterbox_fast(image, (self.__width, self.__height))[0]
         processed_image = cv.resize(image, (self.__width, self.__height))
         processed_image = cv.cvtColor(processed_image, cv.COLOR_BGR2RGB)
         processed_image = processed_image.transpose((2, 0, 1)).astype(np.float32)

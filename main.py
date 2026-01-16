@@ -144,7 +144,7 @@ def move_to_point_and_extract(coords_from_to: list,
                               gps: adapters.GPSUbloxAdapter,
                               vesc_engine: adapters.VescAdapterV4,
                               smoothie: adapters.SmoothieAdapter,
-                              camera: adapters.CameraAdapterIMX219_170,
+                              camera: adapters.CameraAdapterInterface,
                               periphery_det: detection.YoloOpenCVDetection,
                               precise_det: detection.YoloOpenCVDetection,
                               logger_full: utility.Logger,
@@ -2162,7 +2162,7 @@ def main():
                                    config.VESC_STOPPER_CHECK_FREQ, logger_full) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
-            adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+            adapters.CameraAdapterManager(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                              config.CROP_H_TO, config.CV_ROTATE_CODE,
                                              config.ISP_DIGITAL_GAIN_RANGE_FROM,
                                              config.ISP_DIGITAL_GAIN_RANGE_TO,

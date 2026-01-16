@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Aravis WebRTC Stream</title>
+    <style>
+        body {
+            background: #111;
+            color: #eee;
+            font-family: sans-serif;
+            text-align: center;
+        }
+
+        video {
+            width: 90vw;
+            height: auto;
+            margin-top: 2vh;
+            border-radius: 10px;
+            background: #000;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>📡 Live Stream from Jetson / Aravis</h2>
+    <video id="video" autoplay playsinline></video>
+    <p id="status">Connecting...</p>
+
+    <script>
+        const pc = new RTCPeerConnection();
+        const video = document.getElementById("video");
+        const status = document.getElementById("status");
+
+        pc.ontrack = e => {
+            video.srcObject = e.streams[0];
+            status.textContent = "✅ Connected – live stream active";
+        };
+
+        async function start() {
+            try {
+                // create offer
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                // send offer to Jetson server
+                const jetsonHost = window.location.hostname;
+                const response = await fetch(`http://${jetsonHost}:8080/offer`, {
+                    method: "POST",
+                    body: JSON.stringify(pc.localDescription),
+                    headers: { "Content-Type": "application/json" }
+                });
+
+                // receive answer
+                const answer = await response.json();
+                await pc.setRemoteDescription(answer);
+            } catch (err) {
+                console.error(err);
+                status.textContent = "❌ Connection failed: " + err;
+            }
+        }
+
+        start();
+    </script>
+</body>
+
+</html>

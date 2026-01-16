@@ -7,8 +7,6 @@ import time
 import utility
 import select
 
-OUTPUT_DIR = ""
-
 def markup_5_points(image):
     img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
     # center
@@ -31,6 +29,7 @@ def manual_photos_making(camera):
     label = input("Please type a label to be added to photos: ")
     sep = " "
     counter = 1
+    global OUTPUT_DIR
     path_piece = OUTPUT_DIR + label + sep
 
     while True:
@@ -53,6 +52,7 @@ def run_performance_test(camera):
     label = input("Please type a label to be added to photos: ")
     sep = " "
     counter = 1
+    global OUTPUT_DIR
     path_piece = OUTPUT_DIR + label + sep
 
     paused = False
@@ -80,6 +80,7 @@ def main():
         print("Usage: python v3_make_photos_manual.py <output_directory>")
         sys.exit(1)
 
+    global OUTPUT_DIR
     OUTPUT_DIR = sys.argv[1]
     if not os.path.exists(OUTPUT_DIR):
         create = input(f"The directory '{OUTPUT_DIR}' does not exist. Do you want to create it? (y/n): ").strip().lower()
@@ -91,13 +92,13 @@ def main():
             sys.exit(1)
 
     print("Loading...")
-    with adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
-                                          config.CROP_H_TO, config.CV_ROTATE_CODE,
-                                          config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
-                                          config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                          config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
-                                          config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
-                                          config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD) \
+    with adapters.CameraAdapterManager( config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+                                        config.CROP_H_TO, config.CV_ROTATE_CODE,
+                                        config.ISP_DIGITAL_GAIN_RANGE_FROM, config.ISP_DIGITAL_GAIN_RANGE_TO,
+                                        config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
+                                        config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
+                                        config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
+                                        config.CAMERA_H, config.CAMERA_FRAMERATE, config.CAMERA_FLIP_METHOD) \
             as camera:
 
         time.sleep(2)

@@ -1,7 +1,7 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "2.2.1"
+CONFIG_VERSION = "2.2.2"
 
 
 # ======================================================================================================================
@@ -91,6 +91,7 @@ EMERGENCY_MOVING_TIME = 10  # seconds of moving forward for vector getting
 CONTINUE_PREVIOUS_PATH = False
 PREVIOUS_PATH_POINTS_FILE = "path_points.dat"
 PREVIOUS_PATH_INDEX_FILE = "path_index.txt"
+PREVIOUS_GNSS_INDEX_FILE = "path_gnss_index.txt"
 
 #Cyril covid
 ORIGIN_AVERAGE_SAMPLES = 8
@@ -623,22 +624,28 @@ PRECISE_DATA_FILE = "yolo/Y0016.data"
 # ======================================================================================================================
 # CAMERA SETTINGS
 # ======================================================================================================================
-CAMERA_W = 1920
-CAMERA_H = 1080
-APPLY_IMAGE_CROPPING = False
+CAMERA_BACKEND = "auto" # "auto" | "aravis" | "imx219"
+#- "auto": try Aravis first, fallback to IMX219 if no camera found
+#- "aravis": force Aravis backend
+#- "imx219": force Jetson IMX219 backend "gstreamer", "v4l2", "auto"
+CAMERA_BINNING_H = 2
+CAMERA_BINNING_V = 2
+CAMERA_W = 2160//CAMERA_BINNING_H#2592//CAMERA_BINNING_H
+CAMERA_H = 1216//CAMERA_BINNING_V#1944//CAMERA_BINNING_V
+APPLY_IMAGE_CROPPING = True
 CROP_W_FROM = 0 
 CROP_W_TO = 1920 
 CROP_H_FROM = 0 
 CROP_H_TO = 1080
-CAMERA_FRAMERATE = 16
-CAMERA_FLIP_METHOD = 0
-SCENE_CENTER_X = 1000
-SCENE_CENTER_Y = 980
-ONE_MM_IN_PX = 3.2
+CAMERA_FRAMERATE = 30
+CAMERA_FLIP_METHOD = 2  # 0=none, 1=counterclockwise, 2=rotate 180, 3=clockwise, 4=horizontal flip, 5=upside down flip, 6=transpose, 7=transverse
+SCENE_CENTER_X = CAMERA_W//2
+SCENE_CENTER_Y = 1944//2//2
+ONE_MM_IN_PX = 2.9
 ISP_DIGITAL_GAIN_RANGE_FROM = 4
 ISP_DIGITAL_GAIN_RANGE_TO = 4
-GAIN_RANGE_FROM = 4
-GAIN_RANGE_TO = 4
+GAIN_RANGE_FROM = 12
+GAIN_RANGE_TO = 12
 EXPOSURE_TIME_RANGE_FROM = 660000
 EXPOSURE_TIME_RANGE_TO = 660000
 AE_LOCK = True
