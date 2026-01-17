@@ -7,8 +7,6 @@ import time
 import utility
 import select
 
-OUTPUT_DIR = ""
-
 def markup_5_points(image):
     img_y_c, img_x_c = int(image.shape[0] / 2), int(image.shape[1] / 2)
     # center
@@ -31,6 +29,7 @@ def manual_photos_making(camera):
     label = input("Please type a label to be added to photos: ")
     sep = " "
     counter = 1
+    global OUTPUT_DIR
     path_piece = OUTPUT_DIR + label + sep
 
     while True:
@@ -53,6 +52,7 @@ def run_performance_test(camera):
     label = input("Please type a label to be added to photos: ")
     sep = " "
     counter = 1
+    global OUTPUT_DIR
     path_piece = OUTPUT_DIR + label + sep
 
     paused = False
@@ -80,6 +80,7 @@ def main():
         print("Usage: python v3_make_photos_manual.py <output_directory>")
         sys.exit(1)
 
+    global OUTPUT_DIR
     OUTPUT_DIR = sys.argv[1]
     if not os.path.exists(OUTPUT_DIR):
         create = input(f"The directory '{OUTPUT_DIR}' does not exist. Do you want to create it? (y/n): ").strip().lower()

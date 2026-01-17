@@ -5,7 +5,7 @@ from flask_socketio import SocketIO
 import threading
 import os
 import json
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import CreateFieldState
@@ -358,6 +358,28 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == "wait_working_state_refresh" :
             self.__check_ui_refresh_thread_alive = False
+            
+        elif data["type"] == 'getContinuePoint':
+            previous_gnss_file_path = "../" + config.PREVIOUS_GNSS_INDEX_FILE
+            if os.path.exists(previous_gnss_file_path):
+                with open(previous_gnss_file_path, "r") as f:
+                    previous_gnss_index_lines = f.readlines()
+                    if len(previous_gnss_index_lines) == 3:
+                        
+                        link_path = os.path.realpath("../field.txt")
+                        current_field = (link_path.split("/")[-1]).split(".")[0]
+                        current_field = unquote(current_field, encoding='utf-8')
+                        
+                        if current_field == previous_gnss_index_lines[0].strip():
+                            self.socketio.emit('showContinuePoint', 
+                                            json.dumps({"A": previous_gnss_index_lines[1].strip().split(), "B": previous_gnss_index_lines[2].strip().split()}), 
+                                            namespace='/map')
+            else:
+                msg = f"[{self.__class__.__name__}] -> File {previous_gnss_file_path} does not exist"
+                self.logger.write_and_flush(msg + "\n")
+                print(msg)
+                        
+            return self
         return self
 
     def getStatusOfControls(self):

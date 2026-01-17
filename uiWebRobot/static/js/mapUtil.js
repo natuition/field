@@ -93,8 +93,6 @@ function createMap(coords_field, coords_other) {
     }
 
     map.on('load', function () {
-
-
         map.loadImage('http://' + document.domain + ':' + location.port + '/static/nav.png', (error, image) => {
             if (error) throw error;
             map.addImage('nav-img', image);
@@ -232,7 +230,9 @@ function createMap(coords_field, coords_other) {
                         'icon-rotate': ['get', 'rotate'],
                         'icon-rotation-alignment': 'map',
                         'icon-image': 'nav-img',
-                        'icon-size': 0.3
+                        'icon-size': 0.3,
+                        'icon-ignore-placement': true,
+                        'icon-allow-overlap': true
                     }
                 });
             }
@@ -358,16 +358,38 @@ function createMap(coords_field, coords_other) {
                 });
             }
 
-            map.getSource('lastPos').setData({
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': last_coord
-                },
-                "properties": {
-                    'quality': quality
-                },
-            });
+            if (typeof (map.getSource('lastPos')) == "undefined") {
+                map.addSource('lastPos', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': last_coord
+                        }
+                    }
+                });
+                map.addLayer({
+                    id: "lastPosLayer",
+                    type: "circle",
+                    source: "lastPos",
+                    paint: {
+                        "circle-radius": 5,
+                        "circle-color": "#ff00e0",
+                    },
+                });
+            } else {
+                map.getSource('lastPos').setData({
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': last_coord
+                    },
+                    "properties": {
+                        'quality': quality
+                    },
+                });
+            }
 
             if (coords.length > 1 || !firstFocus) {
                 map.panTo(last_coord);
@@ -378,11 +400,173 @@ function createMap(coords_field, coords_other) {
         socketMap.on('updateLastPath', function (dataServ) {
             lastPathCoords = JSON.parse(dataServ);
         });
-
         socketio.emit('data', { type: "getLastPath" });
+
+        //Continue point
+        map.loadImage('http://' + document.domain + ':' + location.port + '/static/nav_continue.png', (error, image_continue) => {
+            if (error) throw error;
+            map.addImage('nav_continue-img', image_continue);
+            socketMap.on('showContinuePoint', function (dataServ) {
+                A_B_continue_points = JSON.parse(dataServ);
+                let A = A_B_continue_points["A"];
+                let B = A_B_continue_points["B"];
+                var degrees_continue = 0;
+                var start_point_continue_btn = [];
+                if (coords_field.length > 0) {
+                    degrees_continue = Math.atan2(A[0] - B[0], A[1] - B[1]) * 180 / Math.PI;
+                    start_point_continue_btn = [A[1], A[0]];
+                }
+                if (typeof (map.getSource('field_continue')) == "undefined") {
+                    map.addSource('field_continue', {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'geometry': {
+                                'type': 'Point',
+                                'coordinates': start_point_continue_btn
+                            },
+                            "properties": {
+                                'rotate': degrees_continue
+                            },
+                        }
+                    });
+                    map.addLayer({
+                        'id': 'field_continueLayer',
+                        'type': 'symbol',
+                        'source': 'field_continue',
+                        'layout': {
+                            'icon-rotate': ['get', 'rotate'],
+                            'icon-rotation-alignment': 'map',
+                            'icon-image': 'nav_continue-img',
+                            'icon-size': 0.3,
+                            'icon-ignore-placement': true,
+                            'icon-allow-overlap': true
+                        }
+                    }, 'field_startLayer'); // Ajouter avant field_startLayer
+                }
+            });
+        });
+
+        socketio.emit('data', { type: "getContinuePoint" });
     });
 
 }
+
+// --- Create or update a MultiLine layer ---
+function updateLineLayer(map, idSource, idLayer, segments, color) {
+    const geojsonData = {
+        'type': 'Feature',
+        'geometry': {
+            'type': 'MultiLineString',
+            'coordinates': segments
+        }
+    };
+
+    if (typeof map.getSource(idSource) === "undefined") {
+        map.addSource(idSource, {
+            'type': 'geojson',
+            'data': geojsonData
+        });
+
+        const paint = {
+            'line-color': color,
+            'line-width': 3
+        };
+
+        map.addLayer({
+            'id': idLayer,
+            'type': 'line',
+            'source': idSource,
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': paint
+        });
+    } else {
+        map.getSource(idSource).setData(geojsonData);
+    }
+}
+
+function updateDisplayInstructionPathLayer(map, dataServ) {
+    dataServ = JSON.parse(dataServ);
+
+    let forwardSegments = [];
+    let backwardSegments = [];
+    let currentSegment = [];
+    let currentType = null;
+
+    for (let i = 0; i < dataServ.length - 1; i++) {
+        const [curSpeed, curPosRaw] = dataServ[i];
+        const [nextSpeed, nextPosRaw] = dataServ[i + 1];
+
+        // Convert [lat, lon] → [lon, lat]
+        const curPos = [curPosRaw[1], curPosRaw[0]];
+        const nextPos = [nextPosRaw[1], nextPosRaw[0]];
+        const segmentType = curSpeed >= 0 ? 'forward' : 'backward';
+
+        // Detect direction change (forward ↔ backward)
+        if (currentType !== segmentType && currentSegment.length > 0) {
+            if (currentType === 'forward') forwardSegments.push([...currentSegment]);
+            else backwardSegments.push([...currentSegment]);
+            currentSegment = [];
+        }
+
+        // Add both points to current segment
+        currentSegment.push(curPos, nextPos);
+        currentType = segmentType;
+    }
+
+    // Push the last remaining segment
+    if (currentSegment.length > 0) {
+        if (currentType === 'forward') forwardSegments.push(currentSegment);
+        else backwardSegments.push(currentSegment);
+    }
+
+    // --- Draw forward (orange) and backward (blue) lines ---
+    updateLineLayer(map, 'instruction_line_forward', 'instruction_lineLayer_forward', forwardSegments, '#FF8C15');
+    updateLineLayer(map, 'instruction_line_backward', 'instruction_lineLayer_backward', backwardSegments, '#157CFF');
+
+    // --- Points colored based on speed ---
+    const pointFeatures = dataServ.map(([speed, [lat, lon]]) => ({
+        'type': 'Feature',
+        'geometry': { 'type': 'Point', 'coordinates': [lon, lat] },
+        'properties': { 'speed': speed }
+    }));
+
+    const pointCollection = { 'type': 'FeatureCollection', 'features': pointFeatures };
+
+    const circlePaint = {
+        'circle-radius': 3.5,
+        'circle-color': [
+            'case',
+            ['>=', ['get', 'speed'], 0],
+            '#FF8C15', // forward
+            '#157CFF'  // backward
+        ]
+    };
+
+    if (typeof map.getSource('instruction_point') === "undefined") {
+        map.addSource('instruction_point', {
+            'type': 'geojson',
+            'data': pointCollection
+        });
+        map.addLayer({
+            'id': 'instruction_pointLayer',
+            'type': 'circle',
+            'source': 'instruction_point',
+            'paint': circlePaint
+        });
+    } else {
+        map.getSource('instruction_point').setData(pointCollection);
+    }
+}
+
+// --- Socket listener ---
+socketMap.on('updateDisplayInstructionPath', function (dataServ) {
+    updateDisplayInstructionPathLayer(map, dataServ);
+});
+
 
 socketMap.on('updateDisplayInstructionPath', function (dataServ) {
     dataServ = JSON.parse(dataServ)
@@ -453,6 +637,12 @@ socketMap.on('updateDisplayInstructionPath', function (dataServ) {
 });
 
 socketMap.on('newField', function (dataServ) {
+
+    if (typeof (map.getSource('field_continue')) != "undefined") {
+        map.removeLayer('field_continueLayer');
+        map.removeSource('field_continue');
+    }
+
     dataServ = JSON.parse(dataServ);
 
     if (dataServ["current_field_name"] == "") {
@@ -627,5 +817,7 @@ socketMap.on('newField', function (dataServ) {
     }
 
     socketBroadcast.emit('data', { type: "reloader", status: false });
+
+    socketio.emit('data', { type: "getContinuePoint" });
 
 });

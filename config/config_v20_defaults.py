@@ -1,14 +1,15 @@
 """Configuration file."""
 
 
-CONFIG_VERSION = "2.2.1"
+CONFIG_VERSION = "2.2.2"
 
 
 # ======================================================================================================================
 # CONTENTS:
 
 # NAVIGATION ROUTING SETTINGS
-# ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
+# TRAJECTORY PLANNER SETTINGS
+# NAVIGATION TEST MODE SETTINGS
 # EXTRACTION SETTINGS
 # VESC SETTINGS
 # PENETROMETRY SETTINGS
@@ -26,7 +27,6 @@ CONFIG_VERSION = "2.2.1"
 # CAMERA SETTINGS
 # PATHS SETTINGS
 # PREDICTION SETTINGS
-# NAVIGATION TEST MODE SETTINGS
 # PHYSICAL BLOCAGE SETTINGS
 # UNSORTED KEYS
 # ======================================================================================================================
@@ -91,6 +91,7 @@ EMERGENCY_MOVING_TIME = 10  # seconds of moving forward for vector getting
 CONTINUE_PREVIOUS_PATH = False
 PREVIOUS_PATH_POINTS_FILE = "path_points.dat"
 PREVIOUS_PATH_INDEX_FILE = "path_index.txt"
+PREVIOUS_GNSS_INDEX_FILE = "path_gnss_index.txt"
 
 #Cyril covid
 ORIGIN_AVERAGE_SAMPLES = 8
@@ -104,7 +105,7 @@ SI_SPEED_STEP_FORWARD = 0.175
 #SPEEDS
 SI_SPEED_UI = 1 #0.8 for 12v
 SI_SPEED_FWD = 0.175 
-SI_SPEED_REV = -0.5
+SI_SPEED_REV = -0.175 #-0.5 for forward backward
 SI_SPEED_FAST = 0.5 
 MULTIPLIER_SI_SPEED_TO_RPM = -14285 #multiplier to go from speed to rpm vesc
 
@@ -121,16 +122,17 @@ LEAVING_PROTECTION_DISTANCE_MAX = 5000
 
 
 # ======================================================================================================================
-# ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
+# TRAJECTORY PLANNER SETTINGS
 # ======================================================================================================================
 #Only one of the following three parameters must be true
 TRADITIONAL_PATH = False #Snail path
 BEZIER_PATH = True #Snail path and use of bezier curve for turns
 FORWARD_BACKWARD_PATH = False #Path where the robot goes straight in extraction then reverses without extraction ....
+MANEUVER_PATH = False 
 
-#This params work only if TRADITIONAL_PATH or BEZIER_PATH are true. 
-ADD_FORWARD_BACKWARD_TO_END_PATH = True #Adds the path FORWARD_BACKWARD to complete the missing center.
-#This params work only if BEZIER_PATH are true. 
+#This params work only if BEZIER_PATH are true : 
+ADD_FORWARD_BACKWARD_TO_END_OF_BEZIER_PATH = False #Adds the path FORWARD_BACKWARD to complete the missing center.
+ADD_MANEUVER_PATH_TO_END_OF_BEZIER_PATH = True #Adds the path MANEUVER_PATH to complete the missing center.
 ADD_CORNER_TO_BEZIER_PATH = False #Add management of corner for bezier curve
 
 #This params work only if BEZIER_CORNER_PATH are true.
@@ -149,6 +151,22 @@ USE_SMOOTH_APPROACHING_TO_FIELD = True
 # previous points than this value (default value for bezier path is NUMBER_OF_BEZIER_POINT * 4 + 10;
 # default value for bezier with filled corners *not implemented yet*)
 SMOOTH_APPROACHING_MAX_POINTS = NUMBER_OF_BEZIER_POINT * 4 + 10
+
+
+# ======================================================================================================================
+# NAVIGATION TEST MODE SETTINGS
+# ======================================================================================================================
+DISPLAY_INSTRUCTION_PATH = True #Allows to display the robot guide points on the ui.
+DELTA_DISPLAY_INSTRUCTION_PATH = 15 #Number of guide points display on the ui.
+
+NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
+#The robot will aim for the furthest point, 
+#when it reaches this point it will wait for a press on enter to go to the furthest point from it.
+POINT_A = [[46.1546931, -1.1198362], -0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+# the speed represents the speed the robot will apply to reach this point.
+POINT_B = [[46.1545618, -1.119885], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
+# the speed represents the speed the robot will apply to reach this point.
+RELOAD_CONFIG_DURING_NAVIGATION_TEST = False
 
 
 # ======================================================================================================================
@@ -538,7 +556,7 @@ RTK_ID_SEND = [(1005, 1006), (1124, 1127), (1084, 1087), (1074, 1077)] #Id of th
 # GPS (USA)             1074        1077
 # GLONASS (Russie)      1084        1087
 # Galileo (UE)          1094        1097
-NTRIP_SLEEP_TIME = 10 # Time in seconds between two sessions of getting data (MSM and ARP)
+NTRIP_SLEEP_TIME = 5 # Time in seconds between two sessions of getting data (MSM and ARP)
 
 CASTER_RESPONSE_DECODE= "ascii"  #"iso-8859-16" for swissgreen
 
@@ -694,21 +712,6 @@ STATISTICS_DB_FILE_NAME = "statistics_db.sqlite3"
 # PREDICTION SETTINGS
 # ======================================================================================================================
 ZONE_THRESHOLD_DEGREE = [(436,5),(697,7),(796,17),(849,15),(953,6)]
-
-
-# ======================================================================================================================
-# NAVIGATION TEST MODE SETTINGS
-# ======================================================================================================================
-NAVIGATION_TEST_MODE = False # mode allowing the robot to do A->B, B->A
-#The robot will aim for the furthest point, 
-#when it reaches this point it will wait for a press on enter to go to the furthest point from it.
-DISPLAY_INSTRUCTION_PATH = False #Allows to display the robot guide points on the ui.
-DELTA_DISPLAY_INSTRUCTION_PATH = 15 #Number of guide points display on the ui.
-POINT_A = [[46.1546931, -1.1198362], -0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
-# the speed represents the speed the robot will apply to reach this point.
-POINT_B = [[46.1545618, -1.119885], 0.5] #Point coordinate for test navigation mode, [[lat,long],speed]
-# the speed represents the speed the robot will apply to reach this point.
-RELOAD_CONFIG_DURING_NAVIGATION_TEST = False
 
 
 # ======================================================================================================================

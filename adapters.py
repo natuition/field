@@ -14,6 +14,7 @@ import pyvesc
 import re
 #import RPi.GPIO as GPIO
 from serial import SerialException
+import time
 
 
 class SmoothieAdapter:
@@ -2690,27 +2691,72 @@ class GPSUbloxAdapterWithoutThread:
 
         raise NotImplementedError(f"[{self.__class__.__name__}] -> Test without list")
 
-    def _read_from_gps(self):
-        """Returns GPS coordinates of the current position"""
+    def _read_from_gps(self, timeout=3.0):
+        """
+        Returns [latitude, longitude, quality] when a complete GNGGA sentence is received.
+        Returns None if no valid sentence within the timeout period (in seconds).
+        """
+        buffer = ""
+        start_time = time.time()
 
         while True:
+            if time.time() - start_time > timeout:
+                return None
+
             try:
-                read_line = self._serial.readline()
-                if isinstance(read_line, bytes):
-                    data = str(read_line)
-                    # if len(data) == 3:
-                    #    print("None GNGGA or RTCM threads")
-                    if "GNGGA" in data and ",,," not in data:
-                        # bad string with no position data
-                        # print(data)  # debug
-                        data = data.split(",")
-                        lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
-                        point_quality = data[6]
-                        return [lati, longi, point_quality]  # , float(data[11])  # alti
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
-            except:
+                chunk = self._serial.read(self._serial.in_waiting or 1).decode(errors='ignore')
+                if not chunk:
+                    time.sleep(0.01)
+                    continue
+
+                buffer += chunk
+
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    if not line.startswith("$GNGGA"):
+                        continue
+
+                    parts = line.split(",")
+                    if len(parts) < 7 or parts[2] == "":
+                        continue
+
+                    try:
+                        lat, lon = self._D2M2(parts[2], parts[3], parts[4], parts[5])
+                        quality = parts[6]
+                        return [lat, lon, quality]
+                    except Exception as e:
+                        print(f"[GPS] Parsing error: {e} | frame: {line}")
+                        continue
+
+            except Exception as e:
+                print("[GPS] Read error:", e)
                 continue
+
+    # def _read_from_gps(self):
+    #     """Returns GPS coordinates of the current position"""
+
+    #     while True:
+    #         try:
+    #             read_line = self._serial.readline()
+    #             print("read_line",read_line)
+    #             if not read_line:
+    #                 return None
+    #             if isinstance(read_line, bytes):
+    #                 data = str(read_line)
+    #                 # if len(data) == 3:
+    #                 #    print("None GNGGA or RTCM threads")
+    #                 if "GNGGA" in data and ",,," not in data:
+    #                     # bad string with no position data
+    #                     # print(data)  # debug
+    #                     data = data.split(",")
+    #                     lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
+    #                     point_quality = data[6]
+    #                     return [lati, longi, point_quality]  # , float(data[11])  # alti
+    #         except KeyboardInterrupt:
+    #             raise KeyboardInterrupt
+    #         except:
+    #             continue
 
     def _D2M2(self, Lat, NS, Lon, EW):
         """Traduce NMEA format ddmmss to ddmmmm"""

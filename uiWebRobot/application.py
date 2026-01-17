@@ -1,8 +1,8 @@
 import sys
 sys.path.append('../')
 
-import safe_import_of_config
-safe_import_of_config.make_import("../config", "../configBackup")
+from check_config import prepare_valid_config
+prepare_valid_config("../config", "../configBackup")
 
 from state_machine.Events import Events
 from state_machine.utilsFunction import *
@@ -45,7 +45,7 @@ class UIWebRobot:
         self.__robot_state_client = RobotStateClient()
         self.init_params()
         self.demo_pause_client = utility.DemoPauseClient(
-            config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
+            self.__config.DEMO_PAUSES_HOST, self.__config.DEMO_PAUSES_PORT)
 
 
     def exit(self):
@@ -218,6 +218,10 @@ class UIWebRobot:
                 self.get_state_machine().on_event(Events.VALIDATE_FIELD)
 
             elif data["type"] == "removeField":
+                if isinstance(self.get_state_machine().currentState, WaitWorkingState):
+                    self.get_state_machine().on_socket_data(data)
+                    
+            elif data["type"] == "getContinuePoint":
                 if isinstance(self.get_state_machine().currentState, WaitWorkingState):
                     self.get_state_machine().on_socket_data(data)
 
