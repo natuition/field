@@ -122,6 +122,7 @@ class ExtractionManagerV3:
 
             # take a photo and look for a plants
             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+            # TODO MVI: add MVI client target finder camera
             frame = self.__camera.get_image()
             plants_boxes = self.__precise_det.detect(frame)
             # get plants boxes and keep only that are in PDZ
@@ -284,6 +285,7 @@ class ExtractionManagerV3:
                 # TODO: possibly here will be multiple scans with average coordinates
                 ext_img_start_t = time.time()
                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                # TODO MVI: add MVI client target finder camera
                 frame = self.__camera.get_image()
                 plants_boxes = self.__precise_det.detect(frame)
                 self.__data_collector.add_all_ext_img_t(time.time() - ext_img_start_t)
@@ -390,6 +392,7 @@ class ExtractionManagerV3:
                                 # make a scan, keep only plants that are in undistorted zone
                                 # TODO data collection image analysis time in case if delta's should be included into it
                                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                                # TODO MVI: add MVI client target finder camera
                                 frame = self.__camera.get_image()
                                 cur_pos_plant_boxes_undist = list(filter(
                                     lambda plant_box_1: self.is_point_in_circle(
@@ -641,6 +644,7 @@ class ExtractionManagerV3:
                 # make a scan, keep only plants that are in undistorted zone
                 # TODO: possibly here will be multiple scans with average coordinates
                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                # TODO MVI: add MVI client target finder camera
                 frame = self.__camera.get_image()
                 plants_boxes = self.__precise_det.detect(frame)
                 cur_pos_plant_boxes_undist = list(filter(
@@ -721,6 +725,7 @@ class ExtractionManagerV3:
 
                                 # make a scan, keep only plants that are in undistorted zone
                                 time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                                # TODO MVI: add MVI client target finder camera
                                 frame = self.__camera.get_image()
                                 cur_pos_plant_boxes_undist = list(filter(
                                     lambda plant_box_1: self.is_point_in_circle(

@@ -254,10 +254,10 @@ def move_to_point_and_extract(coords_from_to: list,
     x_scan_idx_increasing = True
 
     # set camera to the Y min
+    # TODO MVI: X_MIN is set to don't block the overhead camera's view
     res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                               Y_F=config.Y_F_MAX,
-                                              X=smoothie.smoothie_to_mm(
-                                                  (config.X_MAX - config.X_MIN) / 2, "X"),
+                                              X=smoothie.smoothie_to_mm(config.X_MIN, "X"),
                                               Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
     if res != smoothie.RESPONSE_OK:
         msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
@@ -297,6 +297,7 @@ def move_to_point_and_extract(coords_from_to: list,
         if have_time_for_inference:
             # EXTRACTION CONTROL
             start_t = time.time()
+            # TODO MVI: add MVI client overhead camera
             frame = camera.get_image()
             frame_t = time.time()
 
@@ -333,6 +334,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
                 # count detected plant boxes for each type
                 plants_count = dict()
+                # TODO MVI: add MVI client overhead camera
                 for plant_box in plants_boxes:
                     plant_box_name = plant_box.get_name()
                     if plant_box_name in plants_count:
@@ -384,6 +386,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         # single precise center scan before calling for PDZ scanning and extractions
                         if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
                             time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                            # TODO MVI: add MVI client overhead camera
                             frame = camera.get_image()
                             plants_boxes = precise_det.detect(frame)
 
@@ -2155,6 +2158,7 @@ def main():
 
         # stubs.GPSStub(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
         # utility.MemoryManager(config.DATA_GATHERING_DIR, config.FILES_TO_KEEP_COUNT) as memory_manager, \
+        # TODO MVI: add MVI client
         with \
             utility.TrajectorySaver(log_cur_dir + "used_gps_history.txt",
                                     config.CONTINUE_PREVIOUS_PATH) as trajectory_saver, \
