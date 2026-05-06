@@ -144,19 +144,15 @@ def move_to_point_and_extract(coords_from_to: list,
                               gps: adapters.GPSUbloxAdapter,
                               vesc_engine: adapters.VescAdapterV4,
                               smoothie: adapters.SmoothieAdapter,
-                              camera: adapters.CameraAdapterIMX219_170,
-                              periphery_det: detection.YoloOpenCVDetection,
-                              precise_det: detection.YoloOpenCVDetection,
+                              client_mvi: adapters.ClientMVI,
                               logger_full: utility.Logger,
                               myPenetrometryAnalyse,
                               report_field_names,
                               trajectory_saver: utility.TrajectorySaver,
                               working_zone_polygon,
-                              img_output_dir,
                               nav: navigation.GPSComputing,
                               data_collector: datacollection.DataCollector,
                               log_cur_dir,
-                              image_saver: utility.ImageSaver,
                               notification: NotificationClient,
                               extraction_manager_v3: ExtractionManagerV3,
                               ui_msg_queue: posix_ipc.MessageQueue,
@@ -173,18 +169,14 @@ def move_to_point_and_extract(coords_from_to: list,
     :param gps:
     :param vesc_engine:
     :param smoothie:
-    :param camera:
-    :param periphery_det:
-    :param precise_det:
+    :param client_mvi:
     :param logger_full:
     :param report_field_names:
     :param trajectory_saver:
     :param working_zone_polygon:
-    :param img_output_dir:
     :param nav:
     :param data_collector:
     :param log_cur_dir:
-    :param image_saver:
     :param notification:
     :param extraction_manager_v3:
     :param cur_field: None or list of 4 ABCD points which are describing current field robot is working on.
@@ -253,14 +245,13 @@ def move_to_point_and_extract(coords_from_to: list,
     x_scan_cur_idx = 0
     x_scan_idx_increasing = True
 
-    # set camera to the Y min
-    # TODO MVI: X_MIN is set to don't block the overhead camera's view
+    # set target-finder to the Y min and X_MIN is set to don't block the overhead camera's view
     res = smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                               Y_F=config.Y_F_MAX,
                                               X=smoothie.smoothie_to_mm(config.X_MIN, "X"),
                                               Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
     if res != smoothie.RESPONSE_OK:
-        msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
+        msg = "INIT: Failed to move camera to Y min and X_MIN, smoothie response:\n" + res
         logger_full.write(msg + "\n")
     smoothie.wait_for_all_actions_done()
 
@@ -286,6 +277,11 @@ def move_to_point_and_extract(coords_from_to: list,
 
     have_time_for_inference = True
     predictor_next_gps_expected_ts = float("inf")
+    
+    if extract:
+        client_mvi.run_active_detection_on_MVI()
+    else:
+        client_mvi.run_passive_detection_on_MVI()
 
     # main navigation control loop
     while True:
@@ -297,281 +293,163 @@ def move_to_point_and_extract(coords_from_to: list,
         if have_time_for_inference:
             # EXTRACTION CONTROL
             start_t = time.time()
-            # TODO MVI: add MVI client overhead camera
-            frame = camera.get_image()
-            frame_t = time.time()
-
-            per_det_start_t = time.time()
-            if extract:
-                plants_boxes = periphery_det.detect(frame)
-            else:
-                plants_boxes = list()
+            # TODO MVI
+            violette_is_stopped = client_mvi.violette_is_stopped()
             per_det_end_t = time.time()
             detections_period.append(per_det_end_t - start_t)
-
-            if config.SAVE_DEBUG_IMAGES:
-                image_saver.save_image(
-                    frame,
-                    img_output_dir,
-                    label="PE_view_M=" + str(current_working_mode),
-                    plants_boxes=plants_boxes)
-            if config.ALLOW_GATHERING and current_working_mode == working_mode_slow and \
-                    image_saver.get_counter("gathering") < config.DATA_GATHERING_MAX_IMAGES:
-                image_saver.save_image(frame, config.DATA_GATHERING_DIR,
-                                       plants_boxes=plants_boxes, counter_key="gathering")
-
-            if extract:
-                msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. time: " + \
-                      str(per_det_end_t - per_det_start_t)
-            else:
-                msg = "View frame time: " + str(frame_t - start_t) + "\t\tPeri. det. (extractions are off) time: " + \
-                      str(per_det_end_t - per_det_start_t)
+                
+            msg = "Get detection for MVI time: " + str(per_det_end_t - start_t)
             logger_full.write(msg + "\n")
 
-            # MOVEMENT AND ACTIONS MODES
-            if config.AUDIT_MODE:
-                dc_start_t = time.time()
+            # slow mode
+            if current_working_mode == working_mode_slow:
+                if last_working_mode != current_working_mode:
+                    last_working_mode = current_working_mode
+                    msg = "[Working mode] : slow"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
 
-                # count detected plant boxes for each type
-                plants_count = dict()
-                # TODO MVI: add MVI client overhead camera
-                for plant_box in plants_boxes:
-                    plant_box_name = plant_box.get_name()
-                    if plant_box_name in plants_count:
-                        plants_count[plant_box_name] += 1
-                    else:
-                        plants_count[plant_box_name] = 1
+                if violette_is_stopped:
+                    if config.VERBOSE_EXTRACT:
+                        msg = "[VERBOSE EXTRACT] Violette is stopped because we have detected plant(s)."
+                        logger_full.write_and_flush(msg+"\n")
+                    data_collector.add_vesc_moving_time_data(
+                        vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
 
-                # save info into data collector
-                for plant_label in plants_count:
-                    data_collector.add_detections_data(plant_label,
-                                                       math.ceil((plants_count[plant_label]) / config.AUDIT_DIVIDER))
+                    # single precise center scan before calling for PDZ scanning and extractions
+                    if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
+                        time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+                        # TODO MVI
+                        plants_boxes = client_mvi.get_latest_detections()
 
-                # flush updates into the audit output file and log measured time
-                if len(plants_boxes) > 0:
-                    data_collector.save_all_data(
-                        log_cur_dir + config.AUDIT_OUTPUT_FILE)
-
-                dc_t = time.time() - dc_start_t
-                msg = "Last scan weeds detected: " + str(len(plants_boxes)) + \
-                      ", audit processing tick time: " + str(dc_t)
-                logger_full.write(msg + "\n")
-            else:
-                # slow mode
-                if current_working_mode == working_mode_slow:
-                    if last_working_mode != current_working_mode:
-                        last_working_mode = current_working_mode
-                        msg = "[Working mode] : slow"
-                        if config.LOG_SPEED_MODES:
-                            logger_full.write(msg + "\n")
-                        if config.PRINT_SPEED_MODES:
-                            print(msg)
-
-                    if ExtractionManagerV3.any_plant_in_zone(
-                            plants_boxes,
-                            x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
-                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                        if config.VERBOSE_EXTRACT:
-                            msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
-                            logger_full.write_and_flush(msg+"\n")
-                        data_collector.add_vesc_moving_time_data(
-                            vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
-                        # TODO this 0 rpm "movement" is to prevent robot movement during extractions, need to add this in future to rest speed modes too
-                        vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
-                        vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
-                        vesc_engine.set_current_rpm(0, vesc_engine.PROPULSION_KEY)
-                        vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
-                        
-
-                        # single precise center scan before calling for PDZ scanning and extractions
-                        if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
-                            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-                            # TODO MVI: add MVI client overhead camera
-                            frame = camera.get_image()
-                            plants_boxes = precise_det.detect(frame)
-
-                            # do PDZ scan and extract all plants if single precise scan got plants in working area
-                            if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
-                                if config.EXTRACTION_MODE == 1:
-                                    extraction_manager_v3.extract_all_plants()
-                                elif config.EXTRACTION_MODE == 2:
-                                    extraction_manager_v3.mill_all_plants()
-                                slow_mode_time = time.time()
-                        else:
+                        # do PDZ scan and extract all plants if single precise scan got plants in working area
+                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
                             if config.EXTRACTION_MODE == 1:
                                 extraction_manager_v3.extract_all_plants()
                             elif config.EXTRACTION_MODE == 2:
                                 extraction_manager_v3.mill_all_plants()
                             slow_mode_time = time.time()
+                    else:
+                        if config.EXTRACTION_MODE == 1:
+                            extraction_manager_v3.extract_all_plants()
+                        elif config.EXTRACTION_MODE == 2:
+                            extraction_manager_v3.mill_all_plants()
+                        slow_mode_time = time.time()
 
-                        if config.VERBOSE_EXTRACT:
-                            msg = "[VERBOSE EXTRACT] Extract cycle are finish."
-                            logger_full.write_and_flush(msg+"\n")
+                    if config.VERBOSE_EXTRACT:
+                        msg = "[VERBOSE EXTRACT] Extract cycle are finish."
+                        logger_full.write_and_flush(msg+"\n")
 
-                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
 
-                        msg = "Applying force step forward after extractions cycle(s)"
+                    msg = "Applying force step forward after extractions cycle(s)"
+                    logger_full.write(msg + "\n")
+                    if config.VERBOSE:
+                        print(msg)
+                    vesc_engine.set_time_to_move(config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(
+                        config.SI_SPEED_STEP_FORWARD * config.MULTIPLIER_SI_SPEED_TO_RPM,
+                        vesc_engine.PROPULSION_KEY)
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                    vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
+                    
+                    client_mvi.run_active_detection_on_MVI()
+
+                elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
+                    msg = "Switching from 'slow mode' to 'switching mode'"
+                    if config.LOG_SPEED_MODES:
                         logger_full.write(msg + "\n")
-                        if config.VERBOSE:
-                            print(msg)
-                        vesc_engine.set_time_to_move(config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
-                        vesc_engine.set_target_rpm(
-                            config.SI_SPEED_STEP_FORWARD * config.MULTIPLIER_SI_SPEED_TO_RPM,
-                            vesc_engine.PROPULSION_KEY)
-                        vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
-                        vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
+                    current_working_mode = working_mode_switching
 
-                    elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
-                        # move cork to fast mode scan position
-                        if config.VERBOSE:
-                            msg = "SLOW MODE: moving cork to fast mode position\n"
-                            logger_full.write(msg)
+                # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
+                if not vesc_engine.is_moving(vesc_engine.PROPULSION_KEY):
+                    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
-                        res = smoothie.custom_separate_xy_move_to(
-                            X_F=config.X_F_MAX,
-                            Y_F=config.Y_F_MAX,
-                            X=smoothie.smoothie_to_mm(
-                                (config.X_MAX - config.X_MIN) / 2, "X"),
-                            Y=smoothie.smoothie_to_mm((config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR,
-                                                      "Y"))
-                        if res != smoothie.RESPONSE_OK:
-                            msg = "INIT: Keeping in slow mode as failed to move camera to fast mode scan position, smoothie's response:\n" + res
-                            logger_full.write(msg + "\n")
-                        else:
-                            msg = "Switching from 'slow mode' to 'switching mode'"
-                            if config.LOG_SPEED_MODES:
-                                logger_full.write(msg + "\n")
-                            if config.PRINT_SPEED_MODES:
-                                print(msg)
-                            current_working_mode = working_mode_switching
+            # switching (from slow to fast) mode
+            elif current_working_mode == working_mode_switching:
+                if last_working_mode != current_working_mode:
+                    last_working_mode = current_working_mode
+                    msg = "[Working mode] : switching to fast"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
 
-                    # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
-                    if not vesc_engine.is_moving(vesc_engine.PROPULSION_KEY):
-                        vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
-                        vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
-                        vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
+                if violette_is_stopped:
+                    data_collector.add_vesc_moving_time_data(
+                        vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
 
-                # switching (from slow to fast) mode
-                elif current_working_mode == working_mode_switching:
-                    if last_working_mode != current_working_mode:
-                        last_working_mode = current_working_mode
-                        msg = "[Working mode] : switching to fast"
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                    vesc_engine.set_target_rpm(
+                        vesc_speed, vesc_engine.PROPULSION_KEY)
+                    continue
+
+                msg = "Switching from 'switching mode' to 'fast mode'"
+                if config.LOG_SPEED_MODES:
+                    logger_full.write(msg + "\n")
+                if config.PRINT_SPEED_MODES:
+                    print(msg)
+                current_working_mode = working_mode_fast
+
+            # fast mode
+            elif current_working_mode == working_mode_fast:
+                if last_working_mode != current_working_mode:
+                    last_working_mode = current_working_mode
+                    msg = "[Working mode] : fast"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write_and_flush(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
+
+                if violette_is_stopped:
+                    data_collector.add_vesc_moving_time_data(
+                        vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+
+                    msg = "Switching from 'fast mode' to 'slow mode'"
+                    if config.LOG_SPEED_MODES:
+                        logger_full.write(msg + "\n")
+                    if config.PRINT_SPEED_MODES:
+                        print(msg)
+                    current_working_mode = working_mode_slow
+                    slow_mode_time = time.time()
+                    # TODO dont need anymore? as rpm is set at the end of slow mode
+                    # vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
+                    continue
+                elif close_to_end:
+                    cur_vesc_rpm = vesc_engine.get_current_rpm(
+                        vesc_engine.PROPULSION_KEY)
+                    if cur_vesc_rpm != vesc_speed:
+                        msg = f"Applying slow speed {vesc_speed} at 'fast mode' " \
+                                f"(was {cur_vesc_rpm}) " \
+                                f"because of close_to_end flag trigger"
                         if config.LOG_SPEED_MODES:
                             logger_full.write(msg + "\n")
                         if config.PRINT_SPEED_MODES:
                             print(msg)
-
-                    if ExtractionManagerV3.any_plant_in_zone(
-                            plants_boxes,
-                            x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
-                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                        data_collector.add_vesc_moving_time_data(
-                            vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
-
-                        if config.VERBOSE:
-                            msg = "Moving cork to slow mode scan position\n"
-                            logger_full.write(msg)
-
-                        # smoothie.wait_for_all_actions_done()
-                        res = smoothie.custom_separate_xy_move_to(
-                            X_F=config.X_F_MAX,
-                            Y_F=config.Y_F_MAX,
-                            X=smoothie.smoothie_to_mm(
-                                (config.X_MAX - config.X_MIN) / 2, "X"),
-                            Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
-                        if res != smoothie.RESPONSE_OK:
-                            msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
-                            logger_full.write(msg + "\n")
-                        smoothie.wait_for_all_actions_done()
-
-                        current_working_mode = working_mode_slow
-                        slow_mode_time = time.time()
                         vesc_engine.set_target_rpm(
                             vesc_speed, vesc_engine.PROPULSION_KEY)
-                        continue
-
-                    sm_cur_pos = smoothie.get_smoothie_current_coordinates(
-                        convert_to_mms=False)
-                    if abs(sm_cur_pos["X"] - (config.X_MAX - config.X_MIN) / 2) < 0.001 and \
-                            abs(sm_cur_pos["Y"] - (config.Y_MAX - config.Y_MIN) * config.SLOW_FAST_MODE_HEAD_FACTOR) < 0.001:
-                        msg = "Switching from 'switching mode' to 'fast mode'"
+                        vesc_engine.set_current_rpm(
+                            vesc_speed, vesc_engine.PROPULSION_KEY)
+                else:
+                    cur_vesc_rpm = vesc_engine.get_current_rpm(
+                        vesc_engine.PROPULSION_KEY)
+                    if cur_vesc_rpm != vesc_speed_fast:
+                        msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' (was {cur_vesc_rpm})"
                         if config.LOG_SPEED_MODES:
                             logger_full.write(msg + "\n")
                         if config.PRINT_SPEED_MODES:
                             print(msg)
-                        current_working_mode = working_mode_fast
-
-                # fast mode
-                elif current_working_mode == working_mode_fast:
-                    if last_working_mode != current_working_mode:
-                        last_working_mode = current_working_mode
-                        msg = "[Working mode] : fast"
-                        if config.LOG_SPEED_MODES:
-                            logger_full.write_and_flush(msg + "\n")
-                        if config.PRINT_SPEED_MODES:
-                            print(msg)
-
-                    if ExtractionManagerV3.any_plant_in_zone(
-                            plants_boxes,
-                            x_scan_poly[x_scan_cur_idx] if config.ALLOW_X_MOVEMENT_DURING_SCANS else working_zone_polygon):
-                        vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                        data_collector.add_vesc_moving_time_data(
-                            vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
-
-                        if config.VERBOSE:
-                            msg = "Moving cork to slow mode scan position\n"
-                            logger_full.write(msg)
-
-                        # smoothie.wait_for_all_actions_done()
-                        res = smoothie.custom_separate_xy_move_to(
-                            X_F=config.X_F_MAX,
-                            Y_F=config.Y_F_MAX,
-                            X=smoothie.smoothie_to_mm(
-                                (config.X_MAX - config.X_MIN) / 2, "X"),
-                            Y=smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
-                        if res != smoothie.RESPONSE_OK:
-                            msg = "INIT: Failed to move camera to Y min, smoothie response:\n" + res
-                            logger_full.write(msg + "\n")
-                        smoothie.wait_for_all_actions_done()
-
-                        msg = "Switching from 'fast mode' to 'slow mode'"
-                        if config.LOG_SPEED_MODES:
-                            logger_full.write(msg + "\n")
-                        if config.PRINT_SPEED_MODES:
-                            print(msg)
-                        current_working_mode = working_mode_slow
-                        slow_mode_time = time.time()
-                        # TODO dont need anymore? as rpm is set at the end of slow mode
-                        # vesc_engine.set_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
-                        continue
-                    elif close_to_end:
-                        cur_vesc_rpm = vesc_engine.get_current_rpm(
-                            vesc_engine.PROPULSION_KEY)
-                        if cur_vesc_rpm != vesc_speed:
-                            msg = f"Applying slow speed {vesc_speed} at 'fast mode' " \
-                                  f"(was {cur_vesc_rpm}) " \
-                                  f"because of close_to_end flag trigger"
-                            if config.LOG_SPEED_MODES:
-                                logger_full.write(msg + "\n")
-                            if config.PRINT_SPEED_MODES:
-                                print(msg)
-                            vesc_engine.set_target_rpm(
-                                vesc_speed, vesc_engine.PROPULSION_KEY)
-                            vesc_engine.set_current_rpm(
-                                vesc_speed, vesc_engine.PROPULSION_KEY)
-                    else:
-                        cur_vesc_rpm = vesc_engine.get_current_rpm(
-                            vesc_engine.PROPULSION_KEY)
-                        if cur_vesc_rpm != vesc_speed_fast:
-                            msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' (was {cur_vesc_rpm})"
-                            if config.LOG_SPEED_MODES:
-                                logger_full.write(msg + "\n")
-                            if config.PRINT_SPEED_MODES:
-                                print(msg)
-                            vesc_engine.set_target_rpm(
-                                vesc_speed_fast, vesc_engine.PROPULSION_KEY)
-                            vesc_engine.set_current_rpm(
-                                vesc_speed_fast, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_target_rpm(
+                            vesc_speed_fast, vesc_engine.PROPULSION_KEY)
+                        vesc_engine.set_current_rpm(
+                            vesc_speed_fast, vesc_engine.PROPULSION_KEY)
 
         # NAVIGATION CONTROL
         cur_pos_obj = gps.get_last_position_v2()
@@ -2166,7 +2044,7 @@ def main():
                                    config.VESC_STOPPER_CHECK_FREQ, logger_full) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
-            adapters.CameraAdapterIMX219_170(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
+            adapters.ClientMVI(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
                                              config.CROP_H_TO, config.CV_ROTATE_CODE,
                                              config.ISP_DIGITAL_GAIN_RANGE_FROM,
                                              config.ISP_DIGITAL_GAIN_RANGE_TO,
@@ -2174,10 +2052,9 @@ def main():
                                              config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
                                              config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
                                              config.CAMERA_H, config.CAMERA_FRAMERATE,
-                                             config.CAMERA_FLIP_METHOD) as camera, \
-            ExtractionManagerV3(smoothie, camera, logger_full, data_collector, image_saver,
-                                log_cur_dir, periphery_detector, precise_detector,
-                                config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \
+                                             config.CAMERA_FLIP_METHOD) as client_mvi, \
+            ExtractionManagerV3(smoothie, client_mvi, logger_full, data_collector,
+                                log_cur_dir, config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \
             navigation.NavigationPrediction(
                 logger_full=logger_full,
                 nav=nav,
@@ -2591,19 +2468,15 @@ def main():
                                 gps,
                                 vesc_engine,
                                 smoothie,
-                                camera,
-                                periphery_detector,
-                                precise_detector,
+                                client_mvi,
                                 logger_full,
                                 myPenetrometryAnalyse,
                                 report_field_names,
                                 trajectory_saver,
                                 working_zone_polygon,
-                                config.DEBUG_IMAGES_PATH,
                                 nav,
                                 data_collector,
                                 log_cur_dir,
-                                image_saver,
                                 notification,
                                 extraction_manager_v3,
                                 ui_msg_queue,
@@ -2628,19 +2501,15 @@ def main():
                                         gps,
                                         vesc_engine,
                                         smoothie,
-                                        camera,
-                                        periphery_detector,
-                                        precise_detector,
+                                        client_mvi,
                                         logger_full,
                                         myPenetrometryAnalyse,
                                         report_field_names,
                                         trajectory_saver,
                                         working_zone_polygon,
-                                        config.DEBUG_IMAGES_PATH,
                                         nav,
                                         data_collector,
                                         log_cur_dir,
-                                        image_saver,
                                         notification,
                                         extraction_manager_v3,
                                         ui_msg_queue,
@@ -2723,19 +2592,15 @@ def main():
                         gps,
                         vesc_engine,
                         smoothie,
-                        camera,
-                        periphery_detector,
-                        precise_detector,
+                        client_mvi,
                         logger_full,
                         myPenetrometryAnalyse,
                         report_field_names,
                         trajectory_saver,
                         working_zone_polygon,
-                        config.DEBUG_IMAGES_PATH,
                         nav,
                         data_collector,
                         log_cur_dir,
-                        image_saver,
                         notification,
                         extraction_manager_v3,
                         ui_msg_queue,

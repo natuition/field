@@ -1,4 +1,5 @@
 import cv2 as cv
+from natuition_rpc.protos.detection_dto import DetectionDTO
 import numpy as np
 import os
 import glob
@@ -570,6 +571,21 @@ class DetectedPlantBox:
 
         return \
             DetectedPlantBox(left, top, right, bottom, name, yolo_name_id, confidence, img_w, img_h, center_x, center_y)
+            
+    @staticmethod
+    def from_mvi_result(detect: DetectionDTO, names: list[str]):
+        
+        left=detect["bbox"][0]
+        top=detect["bbox"][1]
+        right=left+detect["bbox"][2]
+        bottom=top+detect["bbox"][3]
+        name=names[detect["class_id"]]
+        name_id=detect["class_id"]
+        confidence=detect["confidence"]
+        img_w=0
+        img_h=0
+        return \
+            DetectedPlantBox(left, top, right, bottom, name, name_id, confidence, img_w, img_h)
 
 
 # Draw the predicted bounding box

@@ -10,31 +10,26 @@ import pickle
 from sklearn.preprocessing import PolynomialFeatures
 import posix_ipc
 import json
+from natuition_rpc.client import Client as MVIClient
 
 class ExtractionManagerV3:
     """Implements extraction logic and control"""
 
     def __init__(self,
                  smoothie: adapters.SmoothieAdapter,
-                 camera: adapters.CameraAdapterIMX219_170,
+                 mvi_client: MVIClient,
                  logger_full: utility.Logger,
                  data_collector: datacollection.DataCollector,
-                 image_saver: utility.ImageSaver,
                  log_cur_dir,
-                 periphery_det: detection.YoloOpenCVDetection,  # not used atm
-                 precise_det: detection.YoloOpenCVDetection,
                  camera_positions: list,
                  pdz_distances: list,
                  vesc_engine: adapters.VescAdapterV4):
 
         self.__smoothie = smoothie
-        self.__camera = camera
+        self.__mvi_client = mvi_client
         self.__logger_full = logger_full
         self.__data_collector = data_collector
-        self.__image_saver = image_saver
         self.__log_cur_dir = log_cur_dir
-        self.__periphery_det = periphery_det
-        self.__precise_det = precise_det
         self.__camera_positions = camera_positions
         self.__pdz_polygons = self.pdz_dist_to_poly(pdz_distances)
         self.__pdz_cv_rects = self.pdz_dist_to_rect_cv(pdz_distances)

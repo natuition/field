@@ -1,4 +1,5 @@
 import collections
+import json
 import connectors
 import multiprocessing
 import time
@@ -14,6 +15,14 @@ import pyvesc
 import re
 #import RPi.GPIO as GPIO
 from serial import SerialException
+
+from detection import DetectedPlantBox
+from natuition_rpc.client import Client
+from natuition_rpc.common.enums_domain import MVICustomResultType, MVIPipelineDesciptor, MVIProperty, MVIState
+from natuition_rpc.protos.detection_pb2 import DetectionResult
+from natuition_rpc.message.enums import CallType
+from natuition_rpc.protos.detection_dto import DetectionResultDTO
+from natuition_rpc.protos.generics_dto import ResultDTO
 
 
 class SmoothieAdapter:
@@ -2738,3 +2747,109 @@ class GPSUbloxAdapterWithoutThread:
     def _hot_reset(self):
         Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
         self._serial.write(bytearray.fromhex(Mythread))
+        
+        
+class ClientMVI:
+
+    def __init__(self,
+                 crop_w_from,
+                 crop_w_to,
+                 crop_h_from,
+                 crop_h_to,
+                 cv_rotate_code,
+                 ispdigitalgainrange_from,
+                 ispdigitalgainrange_to,
+                 gainrange_from,
+                 gainrange_to,
+                 exposuretimerange_from,
+                 exposuretimerange_to,
+                 aelock,
+                 capture_width,
+                 capture_height,
+                 display_width,
+                 display_height,
+                 framerate,
+                 nvidia_flip_method):
+        
+        self.__current_MVI_pipeline_desciptor = None
+        self.__client = Client(transport=config.MVI_TRANSPORT_PROTOCOL)
+        
+        self.__client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult)
+        self.__client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
+        self.__client.connect(config.MVI_HOST, config.MVI_PORT)
+        self.switch_active_pipeline(MVIPipelineDesciptor.OVERHEAD_DETECTION)
+        self.__id_name_map: dict[MVIPipelineDesciptor,list[str]] = dict()
+        
+        
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+    def release(self):
+        self.__client.disconnect()
+        
+    def __check_result(self, res):
+        if res.message["code"] is not 0:
+            raise RuntimeError(f"[{self.__class__.__name__}] -> MVI error code: {res.message['code']}, message: {res.message['message']}")
+        
+    def __get_id_name_map(self, new_pipeline: MVIPipelineDesciptor):
+        res = self.__client.call(CallType.GET,{
+            "property": MVIProperty.ID_NAME_MAP,
+            "param": new_pipeline
+        })
+        self.__check_result(res)
+        result: ResultDTO = res
+        self.__id_name_map[new_pipeline] = json.loads(result["payload"])
+        
+
+    def get_latest_detections(self) -> list[DetectedPlantBox]:
+        res = self.__client.call(CallType.GET,{
+            "property": MVIProperty.LATEST_DETECTIONS,
+            "result_type": MVICustomResultType.DETECTION_RESULT,
+        })
+        self.__check_result(res)
+        
+        detection_result : DetectionResultDTO= res.message
+        plants_boxes: list[DetectedPlantBox] = list()
+        
+        for detection in detection_result["detections"]:
+            plants_boxes.append(DetectedPlantBox.from_mvi_result(detection, self.__id_name_map[self.__current_MVI_pipeline_desciptor]))
+        
+        return plants_boxes
+    
+    def violette_is_stopped(self):
+        res = self.__client.call(CallType.GET,{
+            "property": MVIProperty.STATE,
+        })
+        self.__check_result(res)
+        result: ResultDTO = res
+        return result["payload"] == MVIState.PASSIVE_DETECTION
+    
+    def run_active_detection_on_MVI(self):
+        res = self.__client.call(CallType.SET,{
+            "property": MVIProperty.STATE,
+            "value": MVIState.ACTIVE_DETECTION
+        })
+        self.__check_result(res)
+        
+    def run_passive_detection_on_MVI(self):
+        res = self.__client.call(CallType.SET,{
+            "property": MVIProperty.STATE,
+            "value": MVIState.PASSIVE_DETECTION
+        })
+        self.__check_result(res)
+        
+    def switch_active_pipeline(self, new_pipeline: MVIPipelineDesciptor):
+        res = self.__client.call(CallType.SET,{
+            "property": MVIProperty.ACTIVE_PIPELINE,
+            "param": new_pipeline,
+        })
+        self.__check_result(res)
+        
+        if new_pipeline not in self.__id_name_map:
+            self.__get_id_name_map(new_pipeline)
+            
+        self.__current_MVI_pipeline_desciptor = new_pipeline
