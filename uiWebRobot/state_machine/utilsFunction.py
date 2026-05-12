@@ -1,13 +1,3 @@
-import sys
-sys.path.append('../')
-
-from config import config
-
-from navigation import NavigationV3
-from navigation import GPSComputing
-
-from uiWebRobot.state_machine import Events
-
 from typing import Tuple, Dict, List
 from flask_socketio import SocketIO
 import socketio
@@ -18,12 +8,16 @@ import grp
 import fileinput
 import os
 import pwd
-from uiWebRobot.state_machine.Events import Events
-import utility
 import json
 import adapters
 import time
-import sys
+
+from config import config
+from navigation import NavigationV3
+from navigation import GPSComputing
+from uiWebRobot.state_machine import Events
+from uiWebRobot.state_machine.Events import Events
+import utility
 
 
 

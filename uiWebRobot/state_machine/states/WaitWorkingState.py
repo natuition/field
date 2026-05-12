@@ -1,5 +1,3 @@
-import sys
-sys.path.append('../')
 import time
 from flask_socketio import SocketIO
 import threading
@@ -7,6 +5,7 @@ import os
 import json
 from urllib.parse import quote
 
+from config import config
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import CreateFieldState
 from uiWebRobot.state_machine.states import StartingState
@@ -15,15 +14,12 @@ from uiWebRobot.state_machine.states import ErrorState
 from uiWebRobot.state_machine.states import CalibrateState
 from uiWebRobot.state_machine.states import ActuatorScreeningState
 from uiWebRobot.state_machine.Events import Events
-from shared_class.robot_synthesis import RobotSynthesis
-
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
 from uiWebRobot.state_machine import utilsFunction
-from config import config
+from uiWebRobot.EnvironnementConfig import EnvironnementConfig
+from shared_class.robot_synthesis import RobotSynthesis
 import adapters
 import utility
-
-from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.

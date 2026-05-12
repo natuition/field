@@ -1,6 +1,3 @@
-import sys
-sys.path.append('../')
-
 from flask_socketio import SocketIO
 
 import utility

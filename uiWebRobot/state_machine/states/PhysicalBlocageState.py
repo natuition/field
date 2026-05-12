@@ -1,24 +1,15 @@
-import string
-import sys
 import threading
 import time
-
-sys.path.append('../')
-
 from flask_socketio import SocketIO
 
+from config import config
 from uiWebRobot.state_machine.State import State
 from uiWebRobot.state_machine.states.ResumeState import ResumeState
-from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import utilsFunction
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
-
-
 from shared_class.robot_synthesis import RobotSynthesis
-
 from uiWebRobot.state_machine.FrontEndObjects import ButtonState, FrontEndObjects, PhysicalBlocageFEO
-from config import config
 import utility
 import adapters
 

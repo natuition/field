@@ -1,16 +1,15 @@
-import sys
 import threading
-sys.path.append('../')
+import os
+from flask_socketio import SocketIO
+
 from config import config
 from uiWebRobot.state_machine import utilsFunction
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.states import WaitWorkingState
 from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
-from flask_socketio import SocketIO
 from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 import utility
-import os
 
 # This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
 

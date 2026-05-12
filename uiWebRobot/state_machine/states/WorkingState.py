@@ -1,8 +1,3 @@
-import sys
-
-import requests
-sys.path.append('../')
-
 from flask_socketio import SocketIO
 import signal
 import posix_ipc
@@ -12,21 +7,18 @@ import os
 import json
 import time
 
+from config import config
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import WaitWorkingState
 from uiWebRobot.state_machine.states import PhysicalBlocageState
 from uiWebRobot.state_machine.states import ErrorState
 from uiWebRobot.state_machine.Events import Events
-from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
-
 from uiWebRobot.state_machine.FrontEndObjects import AuditButtonState, ButtonState, FrontEndObjects, PhysicalBlocageFEO
 from uiWebRobot.state_machine import GearboxProtection, utilsFunction
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
-from config import config
+from shared_class.robot_synthesis import RobotSynthesis
 import utility
-
-from queue import Queue
 
 # This state corresponds when the robot is working.
 class WorkingState(State.State):

@@ -1,4 +1,3 @@
-from unicodedata import category
 from typing import Callable
 from flask_socketio import SocketIO
 import fileinput

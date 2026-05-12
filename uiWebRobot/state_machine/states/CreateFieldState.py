@@ -1,13 +1,11 @@
-import sys
-sys.path.append('../')
-
 from flask_socketio import SocketIO
-import navigation
 import posix_ipc
 import os
 import json
 from urllib.parse import quote, unquote
+import time
 
+from config import config
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.states import WaitWorkingState
 from uiWebRobot.state_machine.states import ErrorState
@@ -15,12 +13,9 @@ from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
-
-from config import config
-import time
 import utility
 import adapters
-from navigation import NavigationV3
+import navigation
 
 
 # This state corresponds when the robot is generating the work area.

@@ -1,21 +1,18 @@
-import sys
-sys.path.append('../')
-
 from flask_socketio import SocketIO
-
-from uiWebRobot.state_machine import State
-from uiWebRobot.state_machine.states.ErrorState import ErrorState
-from uiWebRobot.state_machine.Events import Events
-from uiWebRobot.state_machine import utilsFunction
-from config import config
-from shared_class.robot_synthesis import RobotSynthesis
-from deployement.cameraCalibration import CameraCalibration
-import utility
 import adapters
 import hashlib
 import json
 import os
 import subprocess
+
+from config import config
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.states.ErrorState import ErrorState
+from uiWebRobot.state_machine.Events import Events
+from uiWebRobot.state_machine import utilsFunction
+from shared_class.robot_synthesis import RobotSynthesis
+from deployement.cameraCalibration import CameraCalibration
+import utility
 
 
 # This state corresponds when the robot is calibrate of plant targeting precision.
