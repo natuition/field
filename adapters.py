@@ -1,11 +1,8 @@
-import collections
-import json
 import connectors
 import multiprocessing
 import time
 import navigation
 import utility
-from config import config
 import cv2 as cv
 import math
 import queue
@@ -16,6 +13,7 @@ import re
 #import RPi.GPIO as GPIO
 from serial import SerialException
 
+from config import config
 from detection import DetectedPlantBox
 #from natuition_rpc.client import Client
 #from natuition_rpc.common.enums_domain import MVICustomResultType, MVIPipelineDesciptor, MVIProperty, MVIState

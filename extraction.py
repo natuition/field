@@ -1,16 +1,15 @@
-from config import config
-import adapters
-import detection
 import math
-import utility
 import datacollection
 from matplotlib.patches import Polygon
 import time
 import pickle
 from sklearn.preprocessing import PolynomialFeatures
-import posix_ipc
-import json
-from natuition_rpc.client import Client as MVIClient
+
+from config import config
+import adapters
+import detection
+import utility
+#from natuition_rpc.client import Client as MVIClient
 
 class ExtractionManagerV3:
     """Implements extraction logic and control"""
