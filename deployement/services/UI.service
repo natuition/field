@@ -5,8 +5,8 @@ After=launcher.service
 [Service]
 Type=simple
 User=violette
-WorkingDirectory=/home/violette/field/uiWebRobot/
-ExecStart=/usr/bin/sudo /usr/bin/python3.6 /home/violette/field/uiWebRobot/application.py
+WorkingDirectory=/home/violette/field/
+ExecStart=/usr/bin/sudo /usr/bin/python3.6 -m uiWebRobot.application
 Restart=on-failure
 
 [Install]
