@@ -1,11 +1,11 @@
 from flask_socketio import SocketIO
 
 import utility
-from state_machine.states import CheckState
-from state_machine.states import ErrorState
-from state_machine.Events import Events
-from state_machine import State
-from state_machine.FrontEndObjects import FrontEndObjects
+from uiWebRobot.state_machine.states import CheckState
+from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine.Events import Events
+from uiWebRobot.state_machine import State
+from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects
 from notification import RobotStateClient
 
 
