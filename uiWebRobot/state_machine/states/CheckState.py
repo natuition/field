@@ -7,7 +7,6 @@ from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.states import WaitWorkingState
 from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
-import signal
 from flask_socketio import SocketIO
 from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 import utility
@@ -22,16 +21,6 @@ class CheckState(State.State):
         self.robot_synthesis_value = RobotSynthesis.UI_CHECK_STATE
         self.socketio = socketio
         self.logger = logger
-        self.cam = None
-
-        try:
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> startLiveCam"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-            self.cam = utilsFunction.startLiveCam()
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
 
         self.statusOfUIObject = {}
 
@@ -72,17 +61,6 @@ class CheckState(State.State):
             self.socketio.emit('data', {"ACK": "list_validation"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
             self.__stop_thread()
-            if self.cam:
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Sending kill signal to camera process..."
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                os.killpg(os.getpgid(self.cam.pid), signal.SIGKILL)
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Restarting camera nvargus-daemon service..."
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                os.system("sudo systemctl restart nvargus-daemon")
             if config.NTRIP:
                 if config.UI_VERBOSE_LOGGING:
                     msg = f"[{self.__class__.__name__}] -> Restarting ntripClient.service..."
