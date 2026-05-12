@@ -1,5 +1,5 @@
+from typing import List
 import cv2 as cv
-from natuition_rpc.protos.detection_dto import DetectionDTO
 import numpy as np
 import os
 import glob
@@ -9,7 +9,6 @@ import platform
 import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda
-from config import config
 import posix_ipc
 from mmap import mmap
 import time
@@ -18,6 +17,9 @@ from liveMain import webstreaming
 from flask import Flask
 import logging
 from flask_cors import CORS
+
+from config import config
+from natuition_rpc.protos.detection_dto import DetectionDTO
 
 
 class YoloOpenCVDetection:
@@ -573,7 +575,7 @@ class DetectedPlantBox:
             DetectedPlantBox(left, top, right, bottom, name, yolo_name_id, confidence, img_w, img_h, center_x, center_y)
             
     @staticmethod
-    def from_mvi_result(detect: DetectionDTO, names: list[str]):
+    def from_mvi_result(detect: DetectionDTO, names: List[str]):
         
         left=detect["bbox"][0]
         top=detect["bbox"][1]

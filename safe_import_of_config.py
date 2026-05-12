@@ -5,8 +5,8 @@ import shutil
 import pytz
 import pwd
 import grp
+import importlib
 
-# load config, if failed - copy and load config backups until success or no more backups
 def is_config_empty(config_full_path: str):
     with open(config_full_path, "r") as config_file:
         for line in config_file:
@@ -14,7 +14,9 @@ def is_config_empty(config_full_path: str):
                 return False
     return True
 
-def make_import(config_directory_path: str = "config", config_backup_path : str = "configBackup"):
+def make_import(config_directory_path: str = "config",
+                config_backup_path: str = "configBackup"):
+
     try:
         if not os.path.isfile(f"{config_directory_path}/config.py"):
             raise Exception("config file doesn't exist")
@@ -22,20 +24,29 @@ def make_import(config_directory_path: str = "config", config_backup_path : str 
         if is_config_empty(f"{config_directory_path}/config.py"):
             raise Exception("config file is empty")
 
-        from config import config
+        # import dynamique
+        config_module = importlib.import_module("config.config")
+
         print("Config.py file works good !")
+
+        return config_module
+
     except KeyboardInterrupt:
-        raise KeyboardInterrupt
+        raise
+
     except Exception as exc:
         print(f"Failed to load current config.py ! ({str(exc)})")
 
-        # load config backups
-        config_backups = [path for path in glob.glob(
-            f"{config_backup_path}/*.py") if "config" in path]
+        config_backups = [
+            path for path in glob.glob(f"{config_backup_path}/*.py")
+            if "config" in path
+        ]
+
         for i in range(len(config_backups)):
-            ds = config_backups[i].split("_")[1:]  # date structure
+            ds = config_backups[i].split("_")[1:]
             ds.extend(ds.pop(-1).split(":"))
             ds[-1] = ds[-1][:ds[-1].find(".")]
+
             config_backups[i] = [
                 config_backups[i],
                 datetime.datetime(
@@ -47,35 +58,62 @@ def make_import(config_directory_path: str = "config", config_backup_path : str 
                     second=int(ds[5])
                 ).timestamp()
             ]
-        # make last backups to be placed and used first
+
         config_backups.sort(key=lambda item: item[1], reverse=True)
 
-        # try to find and set as current last valid config
         for config_backup in config_backups:
             try:
                 try:
                     os.rename(
                         f"{config_directory_path}/config.py",
-                        f"{config_directory_path}/ERROR_{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y %H-%M-%S %f')}"
-                        f"_config.py")
+                        f"{config_directory_path}/ERROR_"
+                        f"{datetime.datetime.now(pytz.timezone('Europe/Berlin')).strftime('%d-%m-%Y_%H-%M-%S_%f')}"
+                        f"_config.py"
+                    )
                 except:
                     pass
-                shutil.copy(config_backup[0], f"{config_directory_path}/config.py")
+
+                shutil.copy(
+                    config_backup[0],
+                    f"{config_directory_path}/config.py"
+                )
+
                 uid = pwd.getpwnam("violette").pw_uid
                 gid = grp.getgrnam("violette").gr_gid
-                os.chown(f"{config_directory_path}/config.py", uid, gid)
+
+                os.chown(
+                    f"{config_directory_path}/config.py",
+                    uid,
+                    gid
+                )
 
                 if is_config_empty(f"{config_directory_path}/config.py"):
                     raise Exception("config file is empty")
 
-                from config import config
+                # IMPORTANT :
+                importlib.invalidate_caches()
+
+                config_module = importlib.import_module("config.config")
+
+                # force reload
+                config_module = importlib.reload(config_module)
+
                 print("Successfully loaded config:", config_backup[0])
-                break
+
+                return config_module
+
             except KeyboardInterrupt:
-                raise KeyboardInterrupt
+                raise
+
             except Exception as e:
                 print(e)
-                pass
-        else:
-            print(f"Couldn't find proper '{config_directory_path}/config.py' file and '{config_backup_path}' directories!")
-            exit()
+
+        print(
+            f"Couldn't find proper "
+            f"'{config_directory_path}/config.py' "
+            f"file and '{config_backup_path}' directories!"
+        )
+        exit()
+
+
+config = make_import("./config", "./configBackup")

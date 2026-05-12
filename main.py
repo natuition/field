@@ -7,7 +7,6 @@ This is required to prevent modules loading corrupted config before main resolve
 import threading
 import os
 import sys
-from turtle import speed
 import time
 import traceback
 from matplotlib.patches import Polygon
@@ -19,18 +18,12 @@ import posix_ipc
 import json
 import glob
 import importlib
-import subprocess
 
-import safe_import_of_config
-safe_import_of_config.make_import()
-from config import config
-
+from safe_import_of_config import config
 import adapters
 import navigation
 import utility
 import detection
-import stubs
-import extraction
 import datacollection
 from extraction import ExtractionManagerV3
 from shared_class.robot_synthesis import RobotSynthesis

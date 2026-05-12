@@ -1,19 +1,8 @@
-import sys
-sys.path.append('../')
-
-import safe_import_of_config
-safe_import_of_config.make_import("../config", "../configBackup")
-
-from state_machine.Events import Events
-from state_machine.utilsFunction import *
-from state_machine.StateMachine import StateMachine
-
 import importlib.util
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
 from flask import Flask, render_template, make_response, send_from_directory, request, redirect
-
 import logging
 import json
 import os
@@ -22,12 +11,16 @@ from urllib.parse import unquote
 import posix_ipc
 from threading import Thread
 from datetime import datetime
-from setting_page import SettingPageManager
+
+from safe_import_of_config import config
+from uiWebRobot.state_machine.Events import Events
+from uiWebRobot.state_machine.utilsFunction import *
+from uiWebRobot.state_machine.StateMachine import StateMachine
+from uiWebRobot.setting_page import SettingPageManager
+from uiWebRobot.state_machine.states import *
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from uiWebRobot.state_machine.states import *
-import traceback
 
 __author__ = 'Vincent LAMBERT'
 
@@ -97,7 +90,7 @@ class UIWebRobot:
     def __reload_config(self):
         print(f"[{self.__class__.__name__}] -> Reload config in application.py...")
         spec = importlib.util.spec_from_file_location(
-            "config.name", "../config/config.py")
+            "config.name", "./config/config.py")
         self.__config = importlib.util.module_from_spec(spec)
         sys.modules["config.name"] = self.__config
         spec.loader.exec_module(self.__config)
@@ -236,15 +229,15 @@ class UIWebRobot:
         # sn = "SNXXX"
         statusOfUIObject = self.get_state_machine().getStatusOfControls()
 
-        IA_list = UIWebRobot.load_ai_list("../yolo")
-        Field_list = load_field_list("../fields")
+        IA_list = UIWebRobot.load_ai_list("./yolo")
+        Field_list = load_field_list("./fields")
 
         if not Field_list:
             Field_list = None
             current_field = None
         else:
             Field_list.sort(key=str.casefold)
-            link_path = os.path.realpath("../field.txt")
+            link_path = os.path.realpath("./field.txt")
             current_field = (link_path.split("/")[-1]).split(".")[0]
             current_field = unquote(current_field, encoding='utf-8')
 
@@ -301,7 +294,7 @@ class UIWebRobot:
             field = self.get_state_machine().getField()
 
         if (field is None) or (len(field) == 0):
-            field = self.load_coordinates("../field.txt")
+            field = self.load_coordinates("./field.txt")
         if (field is None) or (len(field) == 0):
             return render_template('map.html', myCoords=myCoords, now=datetime.now().strftime("%H_%M_%S__%f"))
         else:
