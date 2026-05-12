@@ -387,7 +387,7 @@ def get_ui_language() -> Tuple[dict, str]:
             - dict: ui languages
             - str: current language
     """
-    with open("ui_language.json", "r", encoding='utf-8') as read_file:
+    with open("./uiWebRobot/ui_language.json", "r", encoding='utf-8') as read_file:
             ui_languages = json.load(read_file)
     ui_language = config.UI_LANGUAGE
     if ui_language not in ui_languages["Supported Language"]:

@@ -98,7 +98,7 @@ class UIWebRobot:
 
     def init_params(self):
         self.__filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
-        with open("ui_language.json", "r", encoding='utf-8') as read_file:
+        with open("./uiWebRobot/ui_language.json", "r", encoding='utf-8') as read_file:
             self.__ui_languages = json.load(read_file)
         thread_notification = Thread(target=self.catch_send_notification)
         thread_notification.setDaemon(True)

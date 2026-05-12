@@ -71,7 +71,7 @@ class ActuatorScreeningState(State.State):
         try:
             fieldnames = ["avg_iq", "rpm"]
             if ActuatorScreeningState.DATA_IN_CSV:
-                csvfile = open('force.csv', 'w', newline='')
+                csvfile = open('./uiWebRobot/force.csv', 'w', newline='')
                 csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter='\t')
                 csv_writer.writeheader()
             while(self.__z_motor_stats_thread_alive):
