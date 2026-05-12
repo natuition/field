@@ -6,7 +6,7 @@ import threading
 from time import sleep
 import psutil
 import glob
-import detection
+#import detection
 import cv2 as cv
 import math
 from config import config
@@ -16,96 +16,96 @@ import socket
 import subprocess
 
 
-class ImageSaver:
-    """Implements flexible ways to save images and detected objects on them
+# class ImageSaver:
+#     """Implements flexible ways to save images and detected objects on them
 
-    Supports user-defined counters.
-    Has two built-in counters:
-    "main" - default counter which is used if no counter was set;
-    "total" - contains total count of saved images during this class instance life, this counter is always increasing
-    during saving independent on other counters."""
+#     Supports user-defined counters.
+#     Has two built-in counters:
+#     "main" - default counter which is used if no counter was set;
+#     "total" - contains total count of saved images during this class instance life, this counter is always increasing
+#     during saving independent on other counters."""
 
-    def __init__(self, counter: int = 0):
-        if type(counter) is not int:
-            raise TypeError("'counter' type should be int, got " + type(counter).__name__)
+#     def __init__(self, counter: int = 0):
+#         if type(counter) is not int:
+#             raise TypeError("'counter' type should be int, got " + type(counter).__name__)
 
-        self.__counters = {"total": 0, "main": counter}
+#         self.__counters = {"total": 0, "main": counter}
 
-    def has_counter(self, counter_key):
-        return counter_key in self.__counters
+#     def has_counter(self, counter_key):
+#         return counter_key in self.__counters
 
-    def get_counter(self, counter_key="main"):
-        return self.__counters[counter_key]
+#     def get_counter(self, counter_key="main"):
+#         return self.__counters[counter_key]
 
-    def set_counter(self, counter: int, counter_key="main"):
-        if type(counter) is not int:
-            raise TypeError("'counter' type should be int, got " + type(counter).__name__)
-        if counter_key == "total":
-            raise ValueError("'total' counter is class internal counter and can't be changed")
+#     def set_counter(self, counter: int, counter_key="main"):
+#         if type(counter) is not int:
+#             raise TypeError("'counter' type should be int, got " + type(counter).__name__)
+#         if counter_key == "total":
+#             raise ValueError("'total' counter is class internal counter and can't be changed")
 
-        self.__counters[counter_key] = counter
+#         self.__counters[counter_key] = counter
 
-    def save_image(self,
-                   image,
-                   directory: str,
-                   extension: str = "jpg",
-                   sep: str = "_",
-                   specific_name=None,
-                   label=None,
-                   plants_boxes=None,
-                   counter_key="main"):
-        """
-        Saves image in different ways.
+#     def save_image(self,
+#                    image,
+#                    directory: str,
+#                    extension: str = "jpg",
+#                    sep: str = "_",
+#                    specific_name=None,
+#                    label=None,
+#                    plants_boxes=None,
+#                    counter_key="main"):
+#         """
+#         Saves image in different ways.
 
-        extension should not contain point separator: "jpg"
-        specific_name should not contain file extension
-        """
+#         extension should not contain point separator: "jpg"
+#         specific_name should not contain file extension
+#         """
 
-        # define file name (image and txt if plants_boxes are passed)
-        if specific_name:
-            file_name = specific_name
-        else:
-            cur_dt = get_current_time()
-            file_name = cur_dt[:cur_dt.rfind(" ")] + sep + str(self.__counters[counter_key])
-            self.__counters[counter_key] += 1
-            if label:
-                file_name += sep + label
-        self.__counters["total"] += 1
+#         # define file name (image and txt if plants_boxes are passed)
+#         if specific_name:
+#             file_name = specific_name
+#         else:
+#             cur_dt = get_current_time()
+#             file_name = cur_dt[:cur_dt.rfind(" ")] + sep + str(self.__counters[counter_key])
+#             self.__counters[counter_key] += 1
+#             if label:
+#                 file_name += sep + label
+#         self.__counters["total"] += 1
 
-        file_name = file_name.replace(" ", "_")
+#         file_name = file_name.replace(" ", "_")
 
-        # save image
-        cv.imwrite(directory + file_name + "." + extension, image)
+#         # save image
+#         cv.imwrite(directory + file_name + "." + extension, image)
 
-        # save plants boxes if passed
-        if type(plants_boxes) is list and len(plants_boxes) > 0:
-            with open(directory + file_name + ".txt", "w") as txt_file:
-                plant_box: detection.DetectedPlantBox
-                for plant_box in plants_boxes:
-                    txt_file.write(plant_box.get_as_yolo(return_as_text=True) + "\n")
+#         # save plants boxes if passed
+#         if type(plants_boxes) is list and len(plants_boxes) > 0:
+#             with open(directory + file_name + ".txt", "w") as txt_file:
+#                 plant_box: detection.DetectedPlantBox
+#                 for plant_box in plants_boxes:
+#                     txt_file.write(plant_box.get_as_yolo(return_as_text=True) + "\n")
 
-    @staticmethod
-    def draw_data_in_frame(frame, undistorted_zone_radius=None, poly_zone_points_cv=None, pdz_cv_rect=None, plants_boxes=None):
-        if undistorted_zone_radius is not None:
-            frame = ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius, (255, 40, 162))
-            frame = ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, 5, (255, 40, 162), -1)
-        if poly_zone_points_cv is not None:
-            frame = ImageSaver.draw_zone_poly(frame, poly_zone_points_cv, (255, 0, 0))
-        if plants_boxes is not None:
-            frame = detection.draw_boxes(frame, plants_boxes)
-        if pdz_cv_rect is not None:
-            frame = cv.rectangle(frame, pdz_cv_rect[0], pdz_cv_rect[1], (16, 127, 237), 3)
-        return frame
+#     @staticmethod
+#     def draw_data_in_frame(frame, undistorted_zone_radius=None, poly_zone_points_cv=None, pdz_cv_rect=None, plants_boxes=None):
+#         if undistorted_zone_radius is not None:
+#             frame = ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius, (255, 40, 162))
+#             frame = ImageSaver.draw_zone_circle(frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, 5, (255, 40, 162), -1)
+#         if poly_zone_points_cv is not None:
+#             frame = ImageSaver.draw_zone_poly(frame, poly_zone_points_cv, (255, 0, 0))
+#         if plants_boxes is not None:
+#             frame = detection.draw_boxes(frame, plants_boxes)
+#         if pdz_cv_rect is not None:
+#             frame = cv.rectangle(frame, pdz_cv_rect[0], pdz_cv_rect[1], (16, 127, 237), 3)
+#         return frame
 
-    @staticmethod
-    def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius, color=(0, 0, 255), thickness=3):
-        """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
-        return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, color, thickness=thickness)
+#     @staticmethod
+#     def draw_zone_circle(image, circle_center_x, circle_center_y, circle_radius, color=(0, 0, 255), thickness=3):
+#         """Draws received circle on image. Used for drawing undistorted zone edges on photo"""
+#         return cv.circle(image, (circle_center_x, circle_center_y), circle_radius, color, thickness=thickness)
 
-    @staticmethod
-    def draw_zone_poly(image, np_poly_points, color=(0, 0, 255)):
-        """Draws received polygon on image. Used for drawing working zone edges on photo"""
-        return cv.polylines(image, [np_poly_points], isClosed=True, color=color, thickness=5)
+#     @staticmethod
+#     def draw_zone_poly(image, np_poly_points, color=(0, 0, 255)):
+#         """Draws received polygon on image. Used for drawing working zone edges on photo"""
+#         return cv.polylines(image, [np_poly_points], isClosed=True, color=color, thickness=5)
 
 
 class TrajectorySaver:
