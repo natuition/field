@@ -125,8 +125,8 @@ class WaitWorkingState(State.State):
         self.learn_go_straight_angle = 0
 
         if config.LEARN_GO_STRAIGHT_UI:
-            if os.path.isfile(f"../{config.LEARN_GO_STRAIGHT_FILE}"):
-                with open(f"../{config.LEARN_GO_STRAIGHT_FILE}", "r") as learn_go_straight_file:
+            if os.path.isfile(f"./{config.LEARN_GO_STRAIGHT_FILE}"):
+                with open(f"./{config.LEARN_GO_STRAIGHT_FILE}", "r") as learn_go_straight_file:
                     self.learn_go_straight_angle = float(
                         learn_go_straight_file.read())
                     self.logger.write_and_flush(
@@ -317,7 +317,7 @@ class WaitWorkingState(State.State):
             try :
                 coords, other_fields, current_field_name = utilsFunction.updateFields(
                     data["field_name"])
-                fields_list = utilsFunction.load_field_list("../fields")
+                fields_list = utilsFunction.load_field_list("./fields")
                 self.socketio.emit('newField', json.dumps(
                     {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
                     "fields_list": fields_list}), namespace='/map')
@@ -326,8 +326,8 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == 'removeField':
             try :
-                os.remove("../fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
-                fields_list = utilsFunction.load_field_list("../fields")
+                os.remove("./fields/" + quote(data["field_name"], safe="", encoding='utf-8') + ".txt")
+                fields_list = utilsFunction.load_field_list("./fields")
 
                 if len(fields_list) > 0:
                     coords, other_fields, current_field_name = utilsFunction.updateFields(

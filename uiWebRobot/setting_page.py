@@ -339,7 +339,7 @@ class SettingPageManager:
 
     def __applyConfigValue(self):
         if self.__change_config_value:
-            with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
+            with fileinput.FileInput("./config/config.py", inplace=True, backup='.bak') as file:
                 for line in file:
                     find = False
                     for path, value_is_str in self.__change_config_value.items():
@@ -356,7 +356,7 @@ class SettingPageManager:
                         print(line, end='')
             uid = pwd.getpwnam("violette").pw_uid
             gid = grp.getgrnam("violette").gr_gid
-            os.chown("../config/config.py", uid, gid)
+            os.chown("./config/config.py", uid, gid)
 
     def __get_ia_list(self, dir_path) -> list:
         ia_list = []
@@ -447,7 +447,7 @@ class SettingPageManager:
         """selector_periph = Selector(
             "periph", "Periphery mod:", lambda new_value: self.__set_ia_in_config("PERIPHERY", new_value))
         selector_periph.set_content_list(self.__get_ia_list(
-            "../yolo"), self.__config.PERIPHERY_MODEL_PATH.split("yolo/")[1].split(".trt")[0])
+            "./yolo"), self.__config.PERIPHERY_MODEL_PATH.split("yolo/")[1].split(".trt")[0])
         selector_periph.set_choose_description(
             "Please choose artificial intelligence")"""
 
@@ -459,7 +459,7 @@ class SettingPageManager:
         """selector_precise = Selector(
             "precise", "Precise mod:", lambda new_value: self.__set_ia_in_config("PRECISE", new_value))
         selector_precise.set_content_list(self.__get_ia_list(
-            "../yolo"), self.__config.PRECISE_MODEL_PATH.split("yolo/")[1].split(".trt")[0])
+            "./yolo"), self.__config.PRECISE_MODEL_PATH.split("yolo/")[1].split(".trt")[0])
         selector_precise.set_choose_description(
             "Please choose artificial intelligence")"""
 

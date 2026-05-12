@@ -179,11 +179,11 @@ class CreateFieldState(State.State):
         elif data["type"] == "validate_field_name":
             self.statusOfUIObject.fieldButton = ButtonState.CHARGING
             #patch bug field
-            #utilsFunction.save_gps_coordinates(self.field, "../fields/tmp.txt")
-            field_path, field_name = self.fieldCreator.saveField("../fields/", data["name"] + ".txt")
+            #utilsFunction.save_gps_coordinates(self.field, "./fields/tmp.txt")
+            field_path, field_name = self.fieldCreator.saveField("./fields/", data["name"] + ".txt")
 
             if utilsFunction.is_valid_field_file(field_path, self.logger):
-                fields_list = utilsFunction.load_field_list("../fields")
+                fields_list = utilsFunction.load_field_list("./fields")
 
                 if len(fields_list) > 0:
                     coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
@@ -284,7 +284,7 @@ class FieldCreator:
 
         other_fields = utilsFunction.get_other_field()
 
-        link_path = os.path.realpath("../field.txt")
+        link_path = os.path.realpath("./field.txt")
         current_field_name = (link_path.split("/")[-1]).split(".")[0]
 
         self.socketio.emit('newField', json.dumps(

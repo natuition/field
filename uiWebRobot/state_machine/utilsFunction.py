@@ -227,7 +227,7 @@ def changeConfigValue(path: str, value: str) -> None:
             - path: name of the variable in the config file.
             - value: new value.
     """
-    with fileinput.FileInput("../config/config.py", inplace=True, backup='.bak') as file:
+    with fileinput.FileInput("./config/config.py", inplace=True, backup='.bak') as file:
         found_key = False
 
         for line in file:
@@ -250,7 +250,7 @@ def changeConfigValue(path: str, value: str) -> None:
 
     uid = pwd.getpwnam("violette").pw_uid
     gid = grp.getgrnam("violette").gr_gid
-    os.chown("../config/config.py", uid, gid)
+    os.chown("./config/config.py", uid, gid)
 
 
 def startMain():
@@ -275,10 +275,10 @@ def startLiveCam():
 def updateFields(field_name: str) -> Tuple[List[float], list, str]:
     field_name_quote = quote(field_name, safe="", encoding='utf-8')
     
-    cmd = "ln -sf 'fields/" + field_name_quote + ".txt' ../field.txt"
+    cmd = "ln -sf 'fields/" + field_name_quote + ".txt' ./field.txt"
     os.system(cmd)
 
-    with open("../field.txt") as file:
+    with open("./field.txt") as file:
         points = file.readlines()
 
     coords = list()
@@ -303,14 +303,14 @@ def load_field_list(dir_path) -> List[str]:
 
 
 def get_other_field() -> list:
-    link_path = os.path.realpath("../field.txt")
+    link_path = os.path.realpath("./field.txt")
     current_field = (link_path.split("/")[-1]).split(".")[0]
-    field_list = load_field_list("../fields")
+    field_list = load_field_list("./fields")
     if len(field_list) >= 2:
         coords_other = []
         for field_name in field_list:
             if field_name != unquote(current_field, encoding='utf-8') and field_name != "tmp.txt":
-                with open("../fields/" + quote(field_name, safe="", encoding='utf-8') + ".txt", encoding='utf-8') as file:
+                with open("./fields/" + quote(field_name, safe="", encoding='utf-8') + ".txt", encoding='utf-8') as file:
                     points = file.readlines()
 
                 coords = list()

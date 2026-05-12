@@ -76,7 +76,7 @@ class CheckState(State.State):
     def on_socket_data(self, data):
         if data["type"] == 'list_validation':
             try:
-                with open("../yolo/" + data["strategy"] + ".conf") as file:
+                with open("./yolo/" + data["strategy"] + ".conf") as file:
                     for line in file:
                         content = line.split("#")[0].strip()
                         if content != "" and "=" in content:

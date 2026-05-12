@@ -69,17 +69,17 @@ class CalibrateState(State.State):
                     tmp_res = json.loads(line)
             res=tmp_res["result"]
             self.__coins_in_undistorted_zone = res[0]
-            with open('../deployement/target_detection.jpg', 'rb') as f:
+            with open('./deployement/target_detection.jpg', 'rb') as f:
                 image_data = f.read()
             self.socketio.emit('image', {
                                'image_data': image_data, "label": self.__coins_in_undistorted_zone}, namespace='/server', broadcast=True)
             return self
         elif event == Events.CALIBRATION_MOVE:
-            self.cameraCalibration.set_targets("../deployement/")
+            self.cameraCalibration.set_targets("./deployement/")
 
             # GO TO COINS
             if self.__coins_in_undistorted_zone:
-                self.cameraCalibration.go_to_coins(self.smoothie,"../deployement/")
+                self.cameraCalibration.go_to_coins(self.smoothie,"./deployement/")
 
             self.statusOfUIObject["currentHTML"] = "CalibrateMove.html"
             self.socketio.emit(

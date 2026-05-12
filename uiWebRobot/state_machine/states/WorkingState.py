@@ -352,7 +352,7 @@ class WorkingState(State.State):
 
                 elif "last_gps_list_file" in data:
                     last_gps_list_file = data["last_gps_list_file"]
-                    with open("../" + last_gps_list_file, "r") as gps_his_file:
+                    with open("./" + last_gps_list_file, "r") as gps_his_file:
                         self.last_path_all_points.append(list())
                         for line in gps_his_file.readlines():
                             if line.startswith("[") and line.endswith("]\n"):
