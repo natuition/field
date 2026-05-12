@@ -16,7 +16,7 @@ class ExtractionManagerV3:
 
     def __init__(self,
                  smoothie: adapters.SmoothieAdapter,
-                 mvi_client: MVIClient,
+                 mvi_client,
                  logger_full: utility.Logger,
                  data_collector: datacollection.DataCollector,
                  log_cur_dir,
