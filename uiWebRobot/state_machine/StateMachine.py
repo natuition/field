@@ -1,4 +1,5 @@
 from flask_socketio import SocketIO
+import sys
 
 import utility
 from uiWebRobot.state_machine.states import CheckState
