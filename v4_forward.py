@@ -1,18 +1,15 @@
 from config import config
 from adapters import VescAdapterV4
-from utility import get_smoothie_vesc_addresses, life_line_reset
+from utility import Logger
 
-def main():
-    life_line_reset()
-    smoothie_vesc_addr = get_smoothie_vesc_addresses()
-    if "vesc" in smoothie_vesc_addr:
-        vesc_address = smoothie_vesc_addr["vesc"]
-    else:
-        msg = "Couldn't get vesc's USB address!"
-        print(msg)
-        exit()
-    with VescAdapterV4(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ,
-                              config.VESC_CHECK_FREQ, config.VESC_STOPPER_CHECK_FREQ) as vesc_engine:
+def main():        
+    logger = Logger("/dev/null")
+    with VescAdapterV4("/dev/serial/by-id/usb-STMicroelectronics_ChibiOS_RT_Virtual_COM_Port_304-if00", 
+                        config.VESC_BAUDRATE, 
+                        config.VESC_ALIVE_FREQ,
+                        config.VESC_CHECK_FREQ, 
+                        config.VESC_STOPPER_CHECK_FREQ, 
+                        logger) as vesc_engine:
         try:
             rpm = config.SI_SPEED_FAST * config.MULTIPLIER_SI_SPEED_TO_RPM  #int(input("Set RPM: "))
             input_str = input("Set moving time (seconds; will start moving immediately, or inf): ")
