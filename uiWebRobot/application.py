@@ -11,6 +11,7 @@ from urllib.parse import unquote
 import posix_ipc
 from threading import Thread
 from datetime import datetime
+import sys
 
 from safe_import_of_config import config
 from uiWebRobot.state_machine.Events import Events
