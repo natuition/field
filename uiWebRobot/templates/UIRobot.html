@@ -437,8 +437,13 @@
                 </label>
             </div>
             <div id="cam_div">
-                <img id="frameCam" src="{{ url_for('static', filename='loading.gif') }}" style="width: 80%;
-                                        border-radius: 20px;">
+                <!-- <img id="frameCam" src="{{ url_for('static', filename='loading.gif') }}" style="width: 80%;
+                                        border-radius: 20px;"> -->
+                <video id="stream" autoplay playsinline muted style="width: 80%; border-radius: 20px;"
+                    poster="{{ url_for('static', filename='loading.gif') }}">
+                    <p>Your browser does not support the video tag.</p>
+                </video>
+
                 <div>
                     <p id="no_cam" style="margin-top: 10px;">
                         {{(ui_languages["Waiting camera"])[ui_language] }}
@@ -507,6 +512,12 @@
         </section>
     </div>
     <script src="/static/{{ now }}/js/checkList.js"></script>
+    <script src="/static/{{ now }}/js/webrtc.js"></script>
+    <script>
+        window.addEventListener("DOMContentLoaded", () => {
+            web_rtc_connect();
+        })
+    </script>
     {% if statusOfUIObject['checkbox'] %}
     <script defer>
         document.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
