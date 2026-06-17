@@ -104,6 +104,8 @@ class Session {
       return;
     }
 
+    // Ensure we start from a clean media element state after reconnects.
+    videoElement.pause();
     videoElement.srcObject = stream;
     logStep(
       `Session:${this.peer_id}`,
@@ -160,6 +162,8 @@ class Session {
       videoElement.pause();
       videoElement.src = "";
       videoElement.srcObject = null;
+      // Reload the element to force poster rendering while no stream is attached.
+      videoElement.load();
     }
 
     const session_div = document.getElementById(`session-${this.our_id}`);
