@@ -106,7 +106,7 @@ class Session {
     videoElement.style.backgroundPosition = "center";
     videoElement.style.backgroundRepeat = "no-repeat";
     videoElement.style.backgroundSize = "contain";
-    videoElement.style.backgroundColor = "#000";
+    videoElement.style.backgroundColor = "#ffffff";
   };
 
   hidePosterFallback = videoElement => {
