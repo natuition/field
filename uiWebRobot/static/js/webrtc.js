@@ -189,9 +189,12 @@ class Session {
     const videoElement = this.getVideoElement();
     if (videoElement) {
       logStep(`Session:${this.peer_id}`, "Arret et nettoyage de la source video HTML");
+      const posterUrl = videoElement.getAttribute("poster");
       videoElement.pause();
+      videoElement.removeAttribute("controls");
       videoElement.srcObject = null;
-      videoElement.removeAttribute("src");
+      videoElement.src = "";
+      if (posterUrl) videoElement.poster = posterUrl;
       videoElement.load(); // Force the media element back to HAVE_NOTHING so native poster can render.
       videoElement.removeEventListener("playing", this.onVideoPlaying, false);
     }
