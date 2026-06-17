@@ -638,3 +638,5 @@ const setup = () => {
   logStep("Global", "Setup front WebRTC: demarrage sequence de connexion globale");
   connect();
 };
+
+const web_rtc_connect = () => setup();
