@@ -617,10 +617,8 @@ const onServerError = () => {
 
 const connect = () => {
   const ws_port_local = ws_port || "8443";
-  const ws_server_local =
-    window.location.protocol.startsWith("file")
-      ? ws_server || "127.0.0.1"
-      : ws_server || window.location.hostname;
+  const ws_server_local = window.location.hostname === "sn015-nano.natuition.vpn"
+    ? "sn015-orin.natuition.vpn" : "192.168.9.99";
 
   const ws_url = `${getWebSocketScheme()}://${ws_server_local}:${ws_port_local}`;
   logStep("Global", "Connexion WebSocket globale au serveur", { ws_url });
