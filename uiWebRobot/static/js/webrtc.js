@@ -70,6 +70,7 @@ class Session {
     this.closed_callback = closed_callback;
     this.data_channel = null;
     this.input = null;
+    this.onVideoPlaying = this.streamIsPlaying.bind(this);
 
     logStep(
       `Session:${this.peer_id}`,
@@ -79,7 +80,7 @@ class Session {
 
     document
       .getElementById("stream")
-      .addEventListener("playing", this.streamIsPlaying.bind(this), false);
+      .addEventListener("playing", this.onVideoPlaying, false);
 
     const videoElement = this.getVideoElement();
     if (videoElement) {
@@ -103,9 +104,6 @@ class Session {
       logWarn(`Session:${this.peer_id}`, "Element video introuvable pour attacher le stream");
       return;
     }
-
-    // Ensure we start from a clean media element state after reconnects.
-    videoElement.pause();
     videoElement.srcObject = stream;
     logStep(
       `Session:${this.peer_id}`,
@@ -160,10 +158,9 @@ class Session {
     if (videoElement) {
       logStep(`Session:${this.peer_id}`, "Arret et nettoyage de la source video HTML");
       videoElement.pause();
-      videoElement.src = "";
       videoElement.srcObject = null;
-      // Reload the element to force poster rendering while no stream is attached.
-      videoElement.load();
+      videoElement.removeAttribute("src");
+      videoElement.removeEventListener("playing", this.onVideoPlaying, false);
     }
 
     const session_div = document.getElementById(`session-${this.our_id}`);
@@ -183,7 +180,7 @@ class Session {
   handleIncomingError = error => {
     logError(`Session:${this.peer_id}`, "Erreur entrante recu, fermeture session", error);
     this.resetState();
-    this.closed_callback(this.our_id);
+    this.closed_callback(this.peer_id);
   };
 
   setStatus = text => logStep(`Session:${this.peer_id}`, `Status: ${text}`);
@@ -196,7 +193,7 @@ class Session {
       span.classList.add("error");
     }
     this.resetState();
-    this.closed_callback(this.our_id);
+    this.closed_callback(this.peer_id);
   };
 
   onLocalDescription = desc => {
@@ -299,7 +296,7 @@ class Session {
       case "endSession":
         logStep(`Session:${this.peer_id}`, "Signal endSession recu, fermeture propre");
         this.resetState();
-        this.closed_callback(this.our_id);
+        this.closed_callback(this.peer_id);
         break;
       case "peer":
         logStep(
@@ -333,7 +330,7 @@ class Session {
       "WebSocket de signalisation ferme. Session locale nettoyee"
     );
     this.resetState();
-    this.closed_callback(this.our_id);
+    this.closed_callback(this.peer_id);
   };
 
   onServerError = () => {
@@ -559,7 +556,16 @@ const addPeer = (peer_id, meta = { "display-name": peer_id }) => {
   sessions[peer_id] = new Session(getOurId(), peer_id, session_closed);
 };
 
-const clearPeers = () => logStep("Global", "Nettoyage liste peers locale");
+const clearPeers = () => {
+  logStep("Global", "Nettoyage liste peers locale");
+  Object.keys(sessions).forEach(peer_id => {
+    const session = sessions[peer_id];
+    if (session && typeof session.resetState === "function") {
+      session.resetState();
+    }
+    sessions[peer_id] = null;
+  });
+};
 
 const onServerMessage = event => {
   logStep("Global", "Message recu sur WebSocket global", event.data);
