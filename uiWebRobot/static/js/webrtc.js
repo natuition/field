@@ -159,6 +159,7 @@ class Session {
       logStep(`Session:${this.peer_id}`, "Arret et nettoyage de la source video HTML");
       videoElement.pause();
       videoElement.src = "";
+      videoElement.srcObject = null;
     }
 
     const session_div = document.getElementById(`session-${this.our_id}`);
@@ -318,6 +319,8 @@ class Session {
       `Session:${this.peer_id}`,
       "Lecture media demarree: les pistes distantes sont attachees a la balise video"
     );
+    document.getElementById("no_cam").style.display = "none";
+    this.getVideoElement().setAttribute("controls", "");
   };
 
   onServerClose = () => {
@@ -543,7 +546,8 @@ const startSession = () => {
 const session_closed = peer_id => {
   logStep("Global", "Session fermee et retiree du registre local", { peer_id });
   sessions[peer_id] = null;
-  // ici
+  document.getElementById("no_cam").style.display = "block";
+  document.getElementById("stream").removeAttribute("controls");
 };
 
 const addPeer = (peer_id, meta = { "display-name": peer_id }) => {
