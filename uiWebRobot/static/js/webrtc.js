@@ -70,6 +70,7 @@ class Session {
     this.closed_callback = closed_callback;
     this.data_channel = null;
     this.input = null;
+    this.remote_stream_attached = false;
     this.onVideoPlaying = this.streamIsPlaying.bind(this);
 
     logStep(
@@ -97,6 +98,36 @@ class Session {
   }
 
   getVideoElement = () => document.getElementById("stream");
+
+  attachRemoteStreamOnce = (stream, source) => {
+    if (!stream) return;
+    if (this.remote_stream_attached) {
+      logStep(
+        `Session:${this.peer_id}`,
+        "Flux distant deja attache, evenement ignore",
+        { source }
+      );
+      return;
+    }
+
+    const videoTracks = stream.getVideoTracks();
+    if (videoTracks.length === 0) {
+      logWarn(
+        `Session:${this.peer_id}`,
+        "Evenement media sans piste video, attente d'un stream valide",
+        { source }
+      );
+      return;
+    }
+
+    this.remote_stream_attached = true;
+    logStep(
+      `Session:${this.peer_id}`,
+      "Attachement du flux distant sur l'element video",
+      { source, videoTracks: videoTracks.length }
+    );
+    this.attachStreamToVideo(stream);
+  };
 
   attachStreamToVideo = stream => {
     const videoElement = this.getVideoElement();
@@ -154,6 +185,7 @@ class Session {
       this.peer_connection.close();
       this.peer_connection = null;
     }
+    this.remote_stream_attached = false;
     const videoElement = this.getVideoElement();
     if (videoElement) {
       logStep(`Session:${this.peer_id}`, "Arret et nettoyage de la source video HTML");
@@ -386,14 +418,7 @@ class Session {
         audioTracks: event.stream.getAudioTracks().length,
       }
     );
-    const videoTracks = event.stream.getVideoTracks();
-    const audioTracks = event.stream.getAudioTracks();
-
-    if (videoTracks.length > 0) {
-      this.attachStreamToVideo(event.stream);
-    } else {
-      this.handleIncomingError("Stream with unknown tracks added, resetting");
-    }
+    this.attachRemoteStreamOnce(event.stream, "onaddstream");
   };
 
   createCall = msg => {
@@ -403,7 +428,40 @@ class Session {
       { rtc_configuration, msgType: msg?.type }
     );
     this.peer_connection = new RTCPeerConnection(rtc_configuration);
+    this.remote_stream_attached = false;
     this.peer_connection.onaddstream = this.onRemoteStreamAdded;
+    this.peer_connection.ontrack = event => {
+      logStep(
+        `Session:${this.peer_id}`,
+        "Evenement ontrack recu (compat mobile), attente piste active",
+        {
+          kind: event.track?.kind,
+          streams: event.streams?.length ?? 0,
+          muted: event.track?.muted,
+          readyState: event.track?.readyState,
+        }
+      );
+
+      const stream = event.streams && event.streams.length > 0
+        ? event.streams[0]
+        : null;
+
+      if (!stream) {
+        logWarn(
+          `Session:${this.peer_id}`,
+          "ontrack sans stream associe, attachement impossible"
+        );
+        return;
+      }
+
+      if (event.track && event.track.readyState === "live" && !event.track.muted) {
+        this.attachRemoteStreamOnce(stream, "ontrack-live");
+      }
+
+      event.track.onunmute = () => {
+        this.attachRemoteStreamOnce(stream, "ontrack-onunmute");
+      };
+    };
 
     this.peer_connection.ondatachannel = event => {
       logStep(
