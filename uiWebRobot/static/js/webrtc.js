@@ -98,12 +98,33 @@ class Session {
 
   getVideoElement = () => document.getElementById("stream");
 
+  showPosterFallback = videoElement => {
+    if (!videoElement) return;
+    const posterUrl = videoElement.getAttribute("poster");
+    if (!posterUrl) return;
+    videoElement.style.backgroundImage = `url("${posterUrl}")`;
+    videoElement.style.backgroundPosition = "center";
+    videoElement.style.backgroundRepeat = "no-repeat";
+    videoElement.style.backgroundSize = "contain";
+    videoElement.style.backgroundColor = "#000";
+  };
+
+  hidePosterFallback = videoElement => {
+    if (!videoElement) return;
+    videoElement.style.backgroundImage = "";
+    videoElement.style.backgroundPosition = "";
+    videoElement.style.backgroundRepeat = "";
+    videoElement.style.backgroundSize = "";
+    videoElement.style.backgroundColor = "";
+  };
+
   attachStreamToVideo = stream => {
     const videoElement = this.getVideoElement();
     if (!videoElement) {
       logWarn(`Session:${this.peer_id}`, "Element video introuvable pour attacher le stream");
       return;
     }
+    this.hidePosterFallback(videoElement);
     videoElement.srcObject = stream;
     logStep(
       `Session:${this.peer_id}`,
@@ -160,6 +181,8 @@ class Session {
       videoElement.pause();
       videoElement.srcObject = null;
       videoElement.removeAttribute("src");
+      videoElement.load();
+      this.showPosterFallback(videoElement);
       videoElement.removeEventListener("playing", this.onVideoPlaying, false);
     }
 
@@ -315,6 +338,7 @@ class Session {
   };
 
   streamIsPlaying = () => {
+    this.hidePosterFallback(this.getVideoElement());
     this.setStatus("Streaming");
     logStep(
       `Session:${this.peer_id}`,
