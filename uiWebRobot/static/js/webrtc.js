@@ -98,33 +98,12 @@ class Session {
 
   getVideoElement = () => document.getElementById("stream");
 
-  showPosterFallback = videoElement => {
-    if (!videoElement) return;
-    const posterUrl = videoElement.getAttribute("poster");
-    if (!posterUrl) return;
-    videoElement.style.backgroundImage = `url("${posterUrl}")`;
-    videoElement.style.backgroundPosition = "center";
-    videoElement.style.backgroundRepeat = "no-repeat";
-    videoElement.style.backgroundSize = "contain";
-    videoElement.style.backgroundColor = "#ffffff";
-  };
-
-  hidePosterFallback = videoElement => {
-    if (!videoElement) return;
-    videoElement.style.backgroundImage = "";
-    videoElement.style.backgroundPosition = "";
-    videoElement.style.backgroundRepeat = "";
-    videoElement.style.backgroundSize = "";
-    videoElement.style.backgroundColor = "";
-  };
-
   attachStreamToVideo = stream => {
     const videoElement = this.getVideoElement();
     if (!videoElement) {
       logWarn(`Session:${this.peer_id}`, "Element video introuvable pour attacher le stream");
       return;
     }
-    this.hidePosterFallback(videoElement);
     videoElement.srcObject = stream;
     logStep(
       `Session:${this.peer_id}`,
@@ -179,10 +158,8 @@ class Session {
     if (videoElement) {
       logStep(`Session:${this.peer_id}`, "Arret et nettoyage de la source video HTML");
       videoElement.pause();
+      videoElement.src = "";
       videoElement.srcObject = null;
-      videoElement.removeAttribute("src");
-      videoElement.load();
-      this.showPosterFallback(videoElement);
       videoElement.removeEventListener("playing", this.onVideoPlaying, false);
     }
 
@@ -338,7 +315,6 @@ class Session {
   };
 
   streamIsPlaying = () => {
-    this.hidePosterFallback(this.getVideoElement());
     this.setStatus("Streaming");
     logStep(
       `Session:${this.peer_id}`,
@@ -428,25 +404,6 @@ class Session {
     );
     this.peer_connection = new RTCPeerConnection(rtc_configuration);
     this.peer_connection.onaddstream = this.onRemoteStreamAdded;
-    this.peer_connection.ontrack = event => {
-      logStep(
-        `Session:${this.peer_id}`,
-        "Evenement ontrack recu (voie moderne). Attachement du stream distant.",
-        {
-          kind: event.track?.kind,
-          streams: event.streams?.length ?? 0,
-        }
-      );
-
-      if (event.streams && event.streams.length > 0) {
-        this.attachStreamToVideo(event.streams[0]);
-        return;
-      }
-
-      const fallbackStream = new MediaStream();
-      fallbackStream.addTrack(event.track);
-      this.attachStreamToVideo(fallbackStream);
-    };
 
     this.peer_connection.ondatachannel = event => {
       logStep(
