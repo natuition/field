@@ -10,17 +10,18 @@ import threading
 import serial
 import pyvesc
 import re
+import json
 #import RPi.GPIO as GPIO
 from serial import SerialException
 
 from config import config
 from detection import DetectedPlantBox
-#from natuition_rpc.client import Client
-#from natuition_rpc.common.enums_domain import MVICustomResultType, MVIPipelineDesciptor, MVIProperty, MVIState
-#from natuition_rpc.protos.detection_pb2 import DetectionResult
-#from natuition_rpc.message.enums import CallType
-#from natuition_rpc.protos.detection_dto import DetectionResultDTO
-#from natuition_rpc.protos.generics_dto import ResultDTO
+from natuition_rpc.client import Client
+from natuition_rpc.common.enums_domain import MVICustomResultType, MVIPipelineDesciptor, MVIProperty, MVIState
+from natuition_rpc.protos.detection_pb2 import DetectionResult
+from natuition_rpc.message.enums import CallType
+from natuition_rpc.protos.detection_dto import DetectionResultDTO
+from natuition_rpc.protos.generics_dto import ResultDTO
 
 
 class SmoothieAdapter:
@@ -2122,20 +2123,21 @@ class VescAdapterV4:
                             try :
                                 if self.__is_moving[engine_key]:
                                     self.__ser.write(pyvesc.encode(pyvesc.SetAlive(can_id=self.__can_ids[engine_key])))
-                                    
-                                vesc_rpm = self.__get_rpm_sensor_data(engine_key)
                                 
-                                if vesc_rpm is not None:
-                                    if vesc_rpm == 0 and self.__current_rpm[engine_key] != 0:
-                                        self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
-                                        self.__ser.write(
-                                            pyvesc.encode(
-                                                pyvesc.SetRPM(
-                                                    self.__current_rpm[engine_key],
-                                                    can_id=self.__can_ids[engine_key]
-                                                )
-                                            )
-                                        )
+                                # On ne peux pas avoir ça car si la Orin change le RPM il ne faut pas que la Jetson remettent un RPM
+                                # vesc_rpm = self.__get_rpm_sensor_data(engine_key)
+                                
+                                # if vesc_rpm is not None:
+                                #     if vesc_rpm == 0 and self.__current_rpm[engine_key] != 0:
+                                #         self.__logger_full.write_and_flush(f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n")
+                                #         self.__ser.write(
+                                #             pyvesc.encode(
+                                #                 pyvesc.SetRPM(
+                                #                     self.__current_rpm[engine_key],
+                                #                     can_id=self.__can_ids[engine_key]
+                                #                 )
+                                #             )
+                                #         )
                                         
                             except SerialException or OSError as e :
                                 if e.errno == 5 or isinstance(e, SerialException):
@@ -2145,21 +2147,21 @@ class VescAdapterV4:
         except serial.SerialException as ex:
             print(f"[{self.__class__.__name__}] -> {ex}")  # TODO should these exceptions to be ignored?
             
-    def __get_rpm_sensor_data(self, engine_key):
-        self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-        in_buf = b''
-        while self.__ser.in_waiting > 0:
-            try:
-                in_buf += self.__ser.read(self.__ser.in_waiting)
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
-            except Exception as e:
-                self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
-        if len(in_buf) != 0:
-            response, consumed = pyvesc.decode(in_buf)
-            if consumed != 0 and response is not None:
-                return response.__dict__["rpm"]
-        return None
+    # def __get_rpm_sensor_data(self, engine_key):
+    #     self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+    #     in_buf = b''
+    #     while self.__ser.in_waiting > 0:
+    #         try:
+    #             in_buf += self.__ser.read(self.__ser.in_waiting)
+    #         except KeyboardInterrupt:
+    #             raise KeyboardInterrupt
+    #         except Exception as e:
+    #             self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
+    #     if len(in_buf) != 0:
+    #         response, consumed = pyvesc.decode(in_buf)
+    #         if consumed != 0 and response is not None:
+    #             return response.__dict__["rpm"]
+    #     return None
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
@@ -2745,109 +2747,104 @@ class GPSUbloxAdapterWithoutThread:
     def _hot_reset(self):
         Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
         self._serial.write(bytearray.fromhex(Mythread))
-        
-        
-# class ClientMVI:
 
-#     def __init__(self,
-#                  crop_w_from,
-#                  crop_w_to,
-#                  crop_h_from,
-#                  crop_h_to,
-#                  cv_rotate_code,
-#                  ispdigitalgainrange_from,
-#                  ispdigitalgainrange_to,
-#                  gainrange_from,
-#                  gainrange_to,
-#                  exposuretimerange_from,
-#                  exposuretimerange_to,
-#                  aelock,
-#                  capture_width,
-#                  capture_height,
-#                  display_width,
-#                  display_height,
-#                  framerate,
-#                  nvidia_flip_method):
-        
-#         self.__current_MVI_pipeline_desciptor = None
-#         self.__client = Client(transport=config.MVI_TRANSPORT_PROTOCOL)
-        
-#         self.__client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult)
-#         self.__client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
-#         self.__client.connect(config.MVI_HOST, config.MVI_PORT)
-#         self.switch_active_pipeline(MVIPipelineDesciptor.OVERHEAD_DETECTION)
-#         self.__id_name_map: dict[MVIPipelineDesciptor,list[str]] = dict()
-        
-        
 
-#     def __enter__(self):
-#         return self
+class ClientMVI:
 
-#     def __exit__(self, exc_type, exc_val, exc_tb):
-#         self.release()
+    OVERHEAD_DETECTION = MVIPipelineDesciptor.OVERHEAD_DETECTION
+    TARGET_FINDER_DETECTION = MVIPipelineDesciptor.TARGET_FINDER_DETECTION
 
-#     def release(self):
-#         self.__client.disconnect()
+    def __init__(self,
+                 host: str,
+                 port: int):
+        self.__current_MVI_pipeline_desciptor = None
+        self.__client = Client(transport=config.MVI_TRANSPORT_PROTOCOL)
+        self.__client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult)
+        self.__client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
+        self.__client.connect(host, port)
+        self.switch_active_pipeline(self.OVERHEAD_DETECTION)
+        self.__id_name_map: dict[MVIPipelineDesciptor,list[str]] = dict()
         
-#     def __check_result(self, res):
-#         if res.message["code"] is not 0:
-#             raise RuntimeError(f"[{self.__class__.__name__}] -> MVI error code: {res.message['code']}, message: {res.message['message']}")
-        
-#     def __get_id_name_map(self, new_pipeline: MVIPipelineDesciptor):
-#         res = self.__client.call(CallType.GET,{
-#             "property": MVIProperty.ID_NAME_MAP,
-#             "param": new_pipeline
-#         })
-#         self.__check_result(res)
-#         result: ResultDTO = res
-#         self.__id_name_map[new_pipeline] = json.loads(result["payload"])
-        
+    def __enter__(self):
+        return self
 
-#     def get_latest_detections(self) -> list[DetectedPlantBox]:
-#         res = self.__client.call(CallType.GET,{
-#             "property": MVIProperty.LATEST_DETECTIONS,
-#             "result_type": MVICustomResultType.DETECTION_RESULT,
-#         })
-#         self.__check_result(res)
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+    def release(self):
+        self.__client.disconnect()
         
-#         detection_result : DetectionResultDTO= res.message
-#         plants_boxes: list[DetectedPlantBox] = list()
+    def __check_result(self, res):
+        if res.message["code"] is not 0:
+            raise RuntimeError(f"[{self.__class__.__name__}] -> MVI error code: {res.message['code']}, message: {res.message['message']}")
         
-#         for detection in detection_result["detections"]:
-#             plants_boxes.append(DetectedPlantBox.from_mvi_result(detection, self.__id_name_map[self.__current_MVI_pipeline_desciptor]))
+    def __get_id_name_map(self, new_pipeline: MVIPipelineDesciptor):
+        res = self.__client.call(CallType.GET,{
+            "property": MVIProperty.ID_NAME_MAP,
+            "param": new_pipeline
+        })
+        self.__check_result(res)
+        result: ResultDTO = res
+        self.__id_name_map[new_pipeline] = json.loads(result["payload"])
         
-#         return plants_boxes
     
-#     def violette_is_stopped(self):
-#         res = self.__client.call(CallType.GET,{
-#             "property": MVIProperty.STATE,
-#         })
-#         self.__check_result(res)
-#         result: ResultDTO = res
-#         return result["payload"] == MVIState.PASSIVE_DETECTION
+    def get_last_detections(self) -> DetectionResultDTO:
+        res = self.__client.call(CallType.GET,{
+            "property": MVIProperty.LATEST_DETECTIONS,
+            "result_type": MVICustomResultType.DETECTION_RESULT,
+        })
+        self.__check_result(res)
+        
+        return res.message
+
+    def parse_detected_boxes(self, detection_result: DetectionResultDTO) -> list[DetectedPlantBox]:        
+        plants_boxes: list[DetectedPlantBox] = list()
+        
+        for detection in detection_result["detections"]:
+            plants_boxes.append(DetectedPlantBox.from_mvi_result(detection, self.__id_name_map[self.__current_MVI_pipeline_desciptor]))
+        
+        return plants_boxes
     
-#     def run_active_detection_on_MVI(self):
-#         res = self.__client.call(CallType.SET,{
-#             "property": MVIProperty.STATE,
-#             "value": MVIState.ACTIVE_DETECTION
-#         })
-#         self.__check_result(res)
+    def parse_plants_positions(self, detection_result: DetectionResultDTO) -> list[tuple[float]]:
+        smoothie_positions = list()
         
-#     def run_passive_detection_on_MVI(self):
-#         res = self.__client.call(CallType.SET,{
-#             "property": MVIProperty.STATE,
-#             "value": MVIState.PASSIVE_DETECTION
-#         })
-#         self.__check_result(res)
+        for detection in detection_result["detections"]:
+            if detection["keypoint"] is not None:
+                smoothie_positions.append((float(detection.get("keypoint",{}).get("x",0)), float(detection.get("keypoint",{}).get("y",0))))
         
-#     def switch_active_pipeline(self, new_pipeline: MVIPipelineDesciptor):
-#         res = self.__client.call(CallType.SET,{
-#             "property": MVIProperty.ACTIVE_PIPELINE,
-#             "param": new_pipeline,
-#         })
-#         self.__check_result(res)
+        return smoothie_positions
         
-#         if new_pipeline not in self.__id_name_map:
-#             self.__get_id_name_map(new_pipeline)
+    
+    def violette_is_stopped(self):
+        res = self.__client.call(CallType.GET,{
+            "property": MVIProperty.STATE,
+        })
+        self.__check_result(res)
+        result: ResultDTO = res
+        return result["payload"] == MVIState.PASSIVE_DETECTION
+    
+    def run_active_detection_on_MVI(self):
+        res = self.__client.call(CallType.SET,{
+            "property": MVIProperty.STATE,
+            "value": MVIState.ACTIVE_DETECTION
+        })
+        self.__check_result(res)
+        
+    def run_passive_detection_on_MVI(self):
+        res = self.__client.call(CallType.SET,{
+            "property": MVIProperty.STATE,
+            "value": MVIState.PASSIVE_DETECTION
+        })
+        self.__check_result(res)
+        
+    def switch_active_pipeline(self, new_pipeline: MVIPipelineDesciptor):
+        res = self.__client.call(CallType.SET,{
+            "property": MVIProperty.ACTIVE_PIPELINE,
+            "param": new_pipeline,
+        })
+        self.__check_result(res)
+        
+        if new_pipeline not in self.__id_name_map:
+            self.__get_id_name_map(new_pipeline)
             
-#         self.__current_MVI_pipeline_desciptor = new_pipeline
+        self.__current_MVI_pipeline_desciptor = new_pipeline

@@ -318,7 +318,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         plants_boxes = client_mvi.get_latest_detections()
 
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
-                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon):
+                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon): 
                             if config.EXTRACTION_MODE == 1:
                                 extraction_manager_v3.extract_all_plants()
                             elif config.EXTRACTION_MODE == 2:
@@ -2037,15 +2037,7 @@ def main():
                                    config.VESC_STOPPER_CHECK_FREQ, logger_full) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
             adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
-            adapters.ClientMVI(config.CROP_W_FROM, config.CROP_W_TO, config.CROP_H_FROM,
-                                             config.CROP_H_TO, config.CV_ROTATE_CODE,
-                                             config.ISP_DIGITAL_GAIN_RANGE_FROM,
-                                             config.ISP_DIGITAL_GAIN_RANGE_TO,
-                                             config.GAIN_RANGE_FROM, config.GAIN_RANGE_TO,
-                                             config.EXPOSURE_TIME_RANGE_FROM, config.EXPOSURE_TIME_RANGE_TO,
-                                             config.AE_LOCK, config.CAMERA_W, config.CAMERA_H, config.CAMERA_W,
-                                             config.CAMERA_H, config.CAMERA_FRAMERATE,
-                                             config.CAMERA_FLIP_METHOD) as client_mvi, \
+            adapters.ClientMVI(config.MVI_HOST, config.MVI_PORT) as client_mvi, \
             ExtractionManagerV3(smoothie, client_mvi, logger_full, data_collector,
                                 log_cur_dir, config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \
             navigation.NavigationPrediction(

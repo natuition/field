@@ -9,14 +9,14 @@ from config import config
 import adapters
 import detection
 import utility
-#from natuition_rpc.client import Client as MVIClient
+from calibration_utils import load_homography, raw_pixel_to_image_center_mm, raw_pixel_to_robot_mm_from_json
 
 class ExtractionManagerV3:
     """Implements extraction logic and control"""
 
     def __init__(self,
                  smoothie: adapters.SmoothieAdapter,
-                 mvi_client,
+                 client_mvi: adapters.ClientMVI,
                  logger_full: utility.Logger,
                  data_collector: datacollection.DataCollector,
                  log_cur_dir,
@@ -25,7 +25,7 @@ class ExtractionManagerV3:
                  vesc_engine: adapters.VescAdapterV4):
 
         self.__smoothie = smoothie
-        self.__mvi_client = mvi_client
+        self.__client_mvi = client_mvi
         self.__logger_full = logger_full
         self.__data_collector = data_collector
         self.__log_cur_dir = log_cur_dir
@@ -34,10 +34,7 @@ class ExtractionManagerV3:
         self.__pdz_cv_rects = self.pdz_dist_to_rect_cv(pdz_distances)
         self.__extraction_map = ExtractionMap(config.EXTRACTION_MAP_CELL_SIZE_MM)
         # self.__converter = PxToMMConverter()
-        self.__converter = PxToMmPredictorCP(
-            config.SCENE_CENTER_X,
-            config.SCENE_CENTER_Y,
-            config.CONTROL_POINTS_CSV_PATH)
+        self.__homography,_,_ = load_homography(config.CALIBRATION_JSON_TARGET_FINDER)
         self.__vesc_engine = vesc_engine
 
         # check if PDZ data is correct
@@ -89,76 +86,76 @@ class ExtractionManagerV3:
             ])
         return pdz_zones_cv
 
-    def scan_sectors(self):
-        """Detects plants under robot's working zone, optimizes extractions order and returns list of plants as smoothie
-        absolute coordinates (coordinates out of working range are skipped).
-        """
+    # def scan_sectors(self):
+    #     """Detects plants under robot's working zone, optimizes extractions order and returns list of plants as smoothie
+    #     absolute coordinates (coordinates out of working range are skipped).
+    #     """
 
-        pdz_start_t = time.time()
+    #     pdz_start_t = time.time()
 
-        smoothie_plants_positions = []
+    #     smoothie_plants_positions = []
 
-        # loop over camera positions (cam positions, pdz zones and pdz cv zones lists must have a same length)
-        for i in range(len(self.__camera_positions)):
-            cam_sm_x, cam_sm_y = self.__camera_positions[i]
+    #     # loop over camera positions (cam positions, pdz zones and pdz cv zones lists must have a same length)
+    #     for i in range(len(self.__camera_positions)):
+    #         cam_sm_x, cam_sm_y = self.__camera_positions[i]
 
-            # move cork to camera position
-            res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
-                                                             Y_F=config.Y_F_MAX,
-                                                             X=cam_sm_x,
-                                                             Y=cam_sm_y)
-            self.__smoothie.wait_for_all_actions_done()
-            if res != self.__smoothie.RESPONSE_OK:
-                msg = f"Could not move cork to camera position (x={cam_sm_x}, y={cam_sm_y}) - \
-                smoothie error occurred:\n" + res
-                self.__logger_full.write(msg + "\n")
-                continue
+    #         # move cork to camera position
+    #         res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
+    #                                                          Y_F=config.Y_F_MAX,
+    #                                                          X=cam_sm_x,
+    #                                                          Y=cam_sm_y)
+    #         self.__smoothie.wait_for_all_actions_done()
+    #         if res != self.__smoothie.RESPONSE_OK:
+    #             msg = f"Could not move cork to camera position (x={cam_sm_x}, y={cam_sm_y}) - \
+    #             smoothie error occurred:\n" + res
+    #             self.__logger_full.write(msg + "\n")
+    #             continue
 
-            # take a photo and look for a plants
-            time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-            # TODO MVI: add MVI client target finder camera
-            frame = self.__camera.get_image()
-            plants_boxes = self.__precise_det.detect(frame)
-            # get plants boxes and keep only that are in PDZ
-            cur_pos_plant_boxes_pdz = list(filter(
-                lambda box: self.is_point_in_poly(
-                    box.center_x,
-                    box.center_y,
-                    self.__pdz_polygons[i]),
-                plants_boxes
-            ))
+    #         # take a photo and look for a plants
+    #         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
+    #         # TODO MVI: add MVI client target finder camera
+    #         frame = self.__camera.get_image()
+    #         plants_boxes = self.__precise_det.detect(frame)
+    #         # get plants boxes and keep only that are in PDZ
+    #         cur_pos_plant_boxes_pdz = list(filter(
+    #             lambda box: self.is_point_in_poly(
+    #                 box.center_x,
+    #                 box.center_y,
+    #                 self.__pdz_polygons[i]),
+    #             plants_boxes
+    #         ))
 
-            if config.SAVE_DEBUG_IMAGES:
-                frame = utility.ImageSaver.draw_data_in_frame(
-                    frame,
-                    pdz_cv_rect=self.__pdz_cv_rects[i],
-                    plants_boxes=cur_pos_plant_boxes_pdz)
-                self.__image_saver.save_image(
-                    frame,
-                    config.DEBUG_IMAGES_PATH,
-                    label=f"PR_PDZ_view_at_{round(cam_sm_x, 1)}_{round(cam_sm_y, 1)}",
-                    plants_boxes=plants_boxes)
+    #         # if config.SAVE_DEBUG_IMAGES:
+    #         #     frame = utility.ImageSaver.draw_data_in_frame(
+    #         #         frame,
+    #         #         pdz_cv_rect=self.__pdz_cv_rects[i],
+    #         #         plants_boxes=cur_pos_plant_boxes_pdz)
+    #         #     self.__image_saver.save_image(
+    #         #         frame,
+    #         #         config.DEBUG_IMAGES_PATH,
+    #         #         label=f"PR_PDZ_view_at_{round(cam_sm_x, 1)}_{round(cam_sm_y, 1)}",
+    #         #         plants_boxes=plants_boxes)
 
-            # convert plants boxes px coordinates into absolute smoothie coordinates
-            for plant_box in cur_pos_plant_boxes_pdz:
-                # calculate values to move camera over a plant from current position (coords are relative)
-                # rel_sm_x, rel_sm_y = self.__converter.convert_px_to_mm(plant_box.center_x, plant_box.center_y)
-                rel_sm_x, rel_sm_y, cp_idx = self.__converter.predict(plant_box.center_x, plant_box.center_y)
+    #         # convert plants boxes px coordinates into absolute smoothie coordinates
+    #         for plant_box in cur_pos_plant_boxes_pdz:
+    #             # calculate values to move camera over a plant from current position (coords are relative)
+    #             # rel_sm_x, rel_sm_y = self.__converter.convert_px_to_mm(plant_box.center_x, plant_box.center_y)
+    #             rel_sm_x, rel_sm_y, cp_idx = self.__converter.predict(plant_box.center_x, plant_box.center_y)
 
-                # convert smoothie relative coordinates to absolute
-                cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()
-                abs_sm_x, abs_sm_y = cur_sm_pos["X"] + float(rel_sm_x), cur_sm_pos["Y"] + float(rel_sm_y)
+    #             # convert smoothie relative coordinates to absolute
+    #             cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()
+    #             abs_sm_x, abs_sm_y = cur_sm_pos["X"] + float(rel_sm_x), cur_sm_pos["Y"] + float(rel_sm_y)
 
-                # skip coordinates that are out of working range
-                if not (config.X_MIN < abs_sm_x < config.X_MAX and config.Y_MIN < abs_sm_y < config.Y_MAX):
-                    continue
+    #             # skip coordinates that are out of working range
+    #             if not (config.X_MIN < abs_sm_x < config.X_MAX and config.Y_MIN < abs_sm_y < config.Y_MAX):
+    #                 continue
 
-                # add absolute coordinates to the result list
-                smoothie_plants_positions.append((abs_sm_x, abs_sm_y))
+    #             # add absolute coordinates to the result list
+    #             smoothie_plants_positions.append((abs_sm_x, abs_sm_y))
 
-        sorted_smoothie_plants_positions = self.optimize_corkscrew_way(smoothie_plants_positions)
-        self.__data_collector.add_pdz_scan_t(time.time() - pdz_start_t)
-        return sorted_smoothie_plants_positions
+    #     sorted_smoothie_plants_positions = self.optimize_corkscrew_way(smoothie_plants_positions)
+    #     self.__data_collector.add_pdz_scan_t(time.time() - pdz_start_t)
+    #     return sorted_smoothie_plants_positions
 
     def extract_all_plants(self):
         """Find and extract all plants found in current robot's position
@@ -172,7 +169,17 @@ class ExtractionManagerV3:
             msg = "[VERBOSE EXTRACT] Run PDZ scan..."
             self.__logger_full.write_and_flush(msg+"\n")
         # do sectored scans
-        smoothie_positions = self.scan_sectors()
+        
+        # TODO MVI
+        #smoothie_positions = self.scan_sectors()
+        detection_result = self.__client_mvi.get_last_detections()
+        plant_positions = self.__client_mvi.parse_plants_positions(detection_result)
+        smoothie_positions = []
+        for u_o, v_o in plant_positions:
+            x_mm_overhead, y_mm_overhead = raw_pixel_to_robot_mm_from_json(u_o, v_o, config.CALIBRATION_JSON_OVERHEAD) 
+            smoothie_positions.append(x_mm_overhead, y_mm_overhead)
+        self.__client_mvi.switch_active_pipeline(self.__client_mvi.TARGET_FINDER_DETECTION)
+        
         if config.VERBOSE_EXTRACT:
             msg = "[VERBOSE EXTRACT] Found " + str(len(smoothie_positions)) + " plants after PDZ scan"
             self.__logger_full.write_and_flush(msg + "\n")
@@ -278,42 +285,35 @@ class ExtractionManagerV3:
                 # make a scan, keep only plants that are in undistorted zone
                 # TODO: possibly here will be multiple scans with average coordinates
                 ext_img_start_t = time.time()
-                time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                 # TODO MVI: add MVI client target finder camera
-                frame = self.__camera.get_image()
-                plants_boxes = self.__precise_det.detect(frame)
+                detection_result = self.__client_mvi.get_last_detections()
+                plants_boxes = self.__client_mvi.parse_detected_boxes(detection_result)
+                plants_positions = self.__client_mvi.parse_plants_smoothie_positions(detection_result)
                 self.__data_collector.add_all_ext_img_t(time.time() - ext_img_start_t)
-                cur_pos_plant_boxes_undist = list(filter(
-                    lambda plant_box_1: self.is_point_in_circle(
-                        plant_box_1.center_x,
-                        plant_box_1.center_y,
-                        config.SCENE_CENTER_X,
-                        config.SCENE_CENTER_Y,
-                        config.UNDISTORTED_ZONE_RADIUS),
-                    plants_boxes
-                ))
+                
+                cur_pos_plant_boxes_undist = (plants_boxes, plants_positions)
 
-                if config.SAVE_DEBUG_IMAGES:
-                    if len(cur_pos_plant_boxes_undist) > 0:
-                        frame = utility.ImageSaver.draw_data_in_frame(
-                            frame,
-                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
-                            plants_boxes=cur_pos_plant_boxes_undist)
-                        self.__image_saver.save_image(
-                            frame,
-                            config.DEBUG_IMAGES_PATH,
-                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),weeds_in_undist",
-                            plants_boxes=cur_pos_plant_boxes_undist)
-                    else:
-                        frame = utility.ImageSaver.draw_data_in_frame(
-                            frame,
-                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
-                            plants_boxes=plants_boxes)
-                        self.__image_saver.save_image(
-                            frame,
-                            config.DEBUG_IMAGES_PATH,
-                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_weeds_in_undist",
-                            plants_boxes=plants_boxes)
+                # if config.SAVE_DEBUG_IMAGES:
+                #     if len(cur_pos_plant_boxes_undist) > 0:
+                #         frame = utility.ImageSaver.draw_data_in_frame(
+                #             frame,
+                #             undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                #             plants_boxes=cur_pos_plant_boxes_undist)
+                #         self.__image_saver.save_image(
+                #             frame,
+                #             config.DEBUG_IMAGES_PATH,
+                #             label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),weeds_in_undist",
+                #             plants_boxes=cur_pos_plant_boxes_undist)
+                #     else:
+                #         frame = utility.ImageSaver.draw_data_in_frame(
+                #             frame,
+                #             undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                #             plants_boxes=plants_boxes)
+                #         self.__image_saver.save_image(
+                #             frame,
+                #             config.DEBUG_IMAGES_PATH,
+                #             label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_weeds_in_undist",
+                #             plants_boxes=plants_boxes)
 
                 if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                     msg = f"EXT. PAUSE: Found {str(len(cur_pos_plant_boxes_undist))} plants in undistorted zone " \
@@ -385,34 +385,27 @@ class ExtractionManagerV3:
 
                                 # make a scan, keep only plants that are in undistorted zone
                                 # TODO data collection image analysis time in case if delta's should be included into it
-                                time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                                 # TODO MVI: add MVI client target finder camera
-                                frame = self.__camera.get_image()
-                                cur_pos_plant_boxes_undist = list(filter(
-                                    lambda plant_box_1: self.is_point_in_circle(
-                                        plant_box_1.center_x,
-                                        plant_box_1.center_y,
-                                        config.SCENE_CENTER_X,
-                                        config.SCENE_CENTER_Y,
-                                        config.UNDISTORTED_ZONE_RADIUS),
-                                    self.__precise_det.detect(frame)
-                                ))
+                                detection_result = self.__client_mvi.get_last_detections()
+                                plants_boxes = self.__client_mvi.parse_detected_boxes(detection_result)
+                                plants_positions = self.__client_mvi.parse_plants_positions(detection_result)
+                                cur_pos_plant_boxes_undist = (plants_boxes, plants_positions)
 
                                 # stop seeking and save current position as new current position. This position is also
                                 # used during check rescan after extractions
                                 if len(cur_pos_plant_boxes_undist) > 0:
                                     cur_pos_sm_x, cur_pos_sm_y = delta_sm_x, delta_sm_y
 
-                                    if config.SAVE_DEBUG_IMAGES:
-                                        frame = utility.ImageSaver.draw_data_in_frame(
-                                            frame,
-                                            undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
-                                            plants_boxes=cur_pos_plant_boxes_undist)
-                                        self.__image_saver.save_image(
-                                            frame,
-                                            config.DEBUG_IMAGES_PATH,
-                                            label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),delta_weeds_in_undist",
-                                            plants_boxes=cur_pos_plant_boxes_undist)
+                                    # if config.SAVE_DEBUG_IMAGES:
+                                    #     frame = utility.ImageSaver.draw_data_in_frame(
+                                    #         frame,
+                                    #         undistorted_zone_radius=config.UNDISTORTED_ZONE_RADIUS,
+                                    #         plants_boxes=cur_pos_plant_boxes_undist)
+                                    #     self.__image_saver.save_image(
+                                    #         frame,
+                                    #         config.DEBUG_IMAGES_PATH,
+                                    #         label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),delta_weeds_in_undist",
+                                    #         plants_boxes=cur_pos_plant_boxes_undist)
 
                                     if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                                         msg = f"EXT. PAUSE: Found {str(len(cur_pos_plant_boxes_undist))} plants " \
@@ -456,14 +449,22 @@ class ExtractionManagerV3:
                 # so skip it
                 if config.FILTER_EXTRACTED_PLANTS:
                     if scan_is_first:
-                        initial_plants = cur_pos_plant_boxes_undist
+                        initial_plants = [elements[0] for elements in cur_pos_plant_boxes_undist]
                     else:
-                        cur_pos_plant_boxes_undist = self.__filter_extracted_plants(
+                        cur_pos_plant_boxes_undist_filtered = self.__filter_extracted_plants(
                             initial_plants,
                             cur_pos_plant_boxes_undist,
                             config.FILTER_EXT_PLANTS_TRIGGER_DIST,
                             self.__logger_full)
-
+                        
+                        cur_pos_plant_boxes_undist_final = []
+                        
+                        for plants_boxes, plants_positions in cur_pos_plant_boxes_undist:
+                            if plants_boxes in cur_pos_plant_boxes_undist_filtered:
+                                cur_pos_plant_boxes_undist_final.append((plants_boxes, plants_positions))
+                                
+                        cur_pos_plant_boxes_undist = cur_pos_plant_boxes_undist_final
+                        
                         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE and \
                                 len(initial_plants) != len(cur_pos_plant_boxes_undist):
                             msg = f"EXT. PAUSE: Plants list was filtered due to config.FILTER_EXTRACTED_PLANTS " \
@@ -475,11 +476,13 @@ class ExtractionManagerV3:
 
                 # convert plant boxes into smoothie absolute coordinates pairs and her type
                 smoothie_plants_positions = []
-                for plant_box in cur_pos_plant_boxes_undist:
+                for plant_box, plants_positions in cur_pos_plant_boxes_undist:
                     plant_box: detection.DetectedPlantBox = plant_box
-                    rel_sm_x = self.px_to_smoothie_value(plant_box.center_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
-                    rel_sm_y = -self.px_to_smoothie_value(plant_box.center_y, config.SCENE_CENTER_Y,
-                                                          config.ONE_MM_IN_PX)
+                    # rel_sm_x = self.px_to_smoothie_value(plant_box.center_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
+                    # rel_sm_y = -self.px_to_smoothie_value(plant_box.center_y, config.SCENE_CENTER_Y,
+                    #                                       config.ONE_MM_IN_PX)
+                    
+                    rel_sm_x, rel_sm_y = raw_pixel_to_image_center_mm(plants_positions[0], plants_positions[1], self.__homography)
 
                     # swap camera and cork for extraction immediately (coords are relative)
                     rel_sm_x += config.CORK_TO_CAMERA_DISTANCE_X
@@ -551,12 +554,11 @@ class ExtractionManagerV3:
                             self.__logger_full.write(msg + "\n")
                             input(msg)
 
-        # set camera back to the Y min X max / 2
+        # set camera back to the Y min, X_MIN
         ext_xy_start_t = time.time()
         res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
                                                          Y_F=config.Y_F_MAX,
-                                                         X=self.__smoothie.smoothie_to_mm(
-                                                             (config.X_MAX - config.X_MIN) / 2, "X"),
+                                                         X=self.__smoothie.smoothie_to_mm(config.X_MIN, "X"),
                                                          Y=self.__smoothie.smoothie_to_mm(config.Y_MIN, "Y"))
         self.__smoothie.wait_for_all_actions_done()
         self.__data_collector.add_all_ext_xy_t(time.time() - ext_xy_start_t)
