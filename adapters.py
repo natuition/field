@@ -2789,6 +2789,7 @@ class ClientMVI:
         self.__check_result(res)
         result: ResultDTO = res
         self.__id_name_map[new_pipeline] = json.loads(result["payload"])
+        print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {self.__id_name_map[new_pipeline]}")
         
     
     def get_last_detections(self) -> DetectionResultDTO:
