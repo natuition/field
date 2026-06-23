@@ -2783,8 +2783,7 @@ class ClientMVI:
         
     def __get_id_name_map(self, new_pipeline: MVIPipelineDescriptor):
         res = self.__client.call(CallType.GET,{
-            "property": MVIProperty.ID_NAME_MAP_OF_ACTIVE_PIPELINE.value,
-            "param": new_pipeline
+            "property": MVIProperty.ID_NAME_MAP_OF_ACTIVE_PIPELINE.value
         })
         self.__check_result(res)
         result: ResultDTO = res
