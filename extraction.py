@@ -448,37 +448,37 @@ class ExtractionManagerV3:
                 # if plant in a new list is away from all plants in old - then it probably was extracted and shifted
                 # so skip it                
                 
-                if config.FILTER_EXTRACTED_PLANTS:
-                    if scan_is_first:
-                        initial_plants = cur_pos_plant_boxes_undist[0]
-                    else:
-                        cur_pos_plant_boxes_undist_filtered = self.__filter_extracted_plants(
-                            initial_plants,
-                            cur_pos_plant_boxes_undist[0],
-                            config.FILTER_EXT_PLANTS_TRIGGER_DIST,
-                            self.__logger_full)
+                # if config.FILTER_EXTRACTED_PLANTS:
+                #     if scan_is_first:
+                #         initial_plants = cur_pos_plant_boxes_undist[0]
+                #     else:
+                #         cur_pos_plant_boxes_undist_filtered = self.__filter_extracted_plants(
+                #             initial_plants,
+                #             cur_pos_plant_boxes_undist[0],
+                #             config.FILTER_EXT_PLANTS_TRIGGER_DIST,
+                #             self.__logger_full)
                         
-                        cur_pos_plant_boxes_undist_final = []
+                #         cur_pos_plant_boxes_undist_final = []
                         
-                        print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist)
-                        print("cur_pos_plant_boxes_undist_filtered", cur_pos_plant_boxes_undist_filtered)
+                #         print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist)
+                #         print("cur_pos_plant_boxes_undist_filtered", cur_pos_plant_boxes_undist_filtered)
                         
-                        for plant_box, plant_position in zip(cur_pos_plant_boxes_undist[0], cur_pos_plant_boxes_undist[1]):
-                            print("plant_box", plant_box)
-                            print("recherche : ", plants_boxes in cur_pos_plant_boxes_undist_filtered)
-                            if plants_boxes in cur_pos_plant_boxes_undist_filtered:
-                                cur_pos_plant_boxes_undist_final.append((plant_box, plants_positions))
+                #         for plant_box, plant_position in zip(cur_pos_plant_boxes_undist[0], cur_pos_plant_boxes_undist[1]):
+                #             print("plant_box", plant_box)
+                #             print("recherche : ", plants_boxes in cur_pos_plant_boxes_undist_filtered)
+                #             if plants_boxes in cur_pos_plant_boxes_undist_filtered:
+                #                 cur_pos_plant_boxes_undist_final.append((plant_box, plants_positions))
                                 
-                        print("cur_pos_plant_boxes_undist_final", cur_pos_plant_boxes_undist_final)
+                #         print("cur_pos_plant_boxes_undist_final", cur_pos_plant_boxes_undist_final)
                                 
-                        cur_pos_plant_boxes_undist = cur_pos_plant_boxes_undist_final
+                #         cur_pos_plant_boxes_undist = cur_pos_plant_boxes_undist_final
                         
-                        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE and \
-                                len(initial_plants) != len(cur_pos_plant_boxes_undist):
-                            msg = f"EXT. PAUSE: Plants list was filtered due to config.FILTER_EXTRACTED_PLANTS " \
-                                  f"setting, check log file for details; press enter:"
-                            self.__logger_full.write_and_flush(msg + "\n")
-                            input(msg)
+                #         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE and \
+                #                 len(initial_plants) != len(cur_pos_plant_boxes_undist):
+                #             msg = f"EXT. PAUSE: Plants list was filtered due to config.FILTER_EXTRACTED_PLANTS " \
+                #                   f"setting, check log file for details; press enter:"
+                #             self.__logger_full.write_and_flush(msg + "\n")
+                #             input(msg)
 
                 scan_is_first = False
 
