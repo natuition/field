@@ -2793,9 +2793,8 @@ class ClientMVI:
             "property": MVIProperty.LATEST_DETECTIONS.value,
             "result_type": MVICustomResultType.DETECTION_RESULT.value,
         })
-        self.__check_result(res)
-        
-        return json.loads(res.message["payload"])
+        self.__check_result(res) 
+        return res.message
 
     def parse_detected_boxes(self, detection_result: DetectionResultDTO) -> List[DetectedPlantBox]:        
         plants_boxes: list[DetectedPlantBox] = list()
