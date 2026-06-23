@@ -288,7 +288,7 @@ class ExtractionManagerV3:
                 # TODO MVI: add MVI client target finder camera
                 detection_result = self.__client_mvi.get_last_detections()
                 plants_boxes = self.__client_mvi.parse_detected_boxes(detection_result)
-                plants_positions = self.__client_mvi.parse_plants_smoothie_positions(detection_result)
+                plants_positions = self.__client_mvi.parse_plants_positions(detection_result)
                 self.__data_collector.add_all_ext_img_t(time.time() - ext_img_start_t)
                 
                 cur_pos_plant_boxes_undist = (plants_boxes, plants_positions)
