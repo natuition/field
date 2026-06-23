@@ -2808,7 +2808,7 @@ class ClientMVI:
         smoothie_positions = list()
         
         for detection in detection_result["detections"]:
-            if detection["keypoint"] is not None:
+            if "keypoint" in detection:
                 smoothie_positions.append((float(detection.get("keypoint",{}).get("x",0)), float(detection.get("keypoint",{}).get("y",0))))
         
         return smoothie_positions
