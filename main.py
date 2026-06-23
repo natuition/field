@@ -2716,7 +2716,7 @@ def main():
             ui_msg_queue.close()
     finally:
         
-        if send_voltage_thread_alive:
+        if "send_voltage_thread_alive" in globals():
             send_voltage_thread_alive["value"] = False
             if send_voltage_thread is not None:
                 send_voltage_thread.join()
