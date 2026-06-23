@@ -18,11 +18,9 @@ from typing import List, Tuple
 from config import config
 from detection import DetectedPlantBox
 from client import Client
-from common.enums_domain import MVICustomResultType, MVIPipelineDescriptor, MVIProperty, MVIState
-from protos.detection_pb2 import DetectionResult
-from message.enums import CallType
-from protos.detection_dto import DetectionResultDTO
-from protos.generics_dto import ResultDTO
+from common import MVICustomResultType, MVIPipelineDescriptor, MVIProperty, MVIState
+from message import CallType, ResultMessage
+from protos import DetectionResultDTO, ResultDTO, DetectionResult
 
 
 class SmoothieAdapter:
@@ -2786,10 +2784,9 @@ class ClientMVI:
             "property": MVIProperty.ID_NAME_MAP_OF_ACTIVE_PIPELINE.value
         })
         self.__check_result(res)
-        result: ResultDTO = res
+        result: ResultMessage = res
         print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {result}")
         print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map type: {type(result)}")
-        self.__id_name_map[new_pipeline] = json.loads(result["payload"])
         print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {self.__id_name_map[new_pipeline]}")
         
     
