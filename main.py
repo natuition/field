@@ -2715,10 +2715,11 @@ def main():
         if ui_msg_queue is not None:
             ui_msg_queue.close()
     finally:
-
-        send_voltage_thread_alive["value"] = False
-        if send_voltage_thread is not None:
-            send_voltage_thread.join()
+        
+        if send_voltage_thread_alive:
+            send_voltage_thread_alive["value"] = False
+            if send_voltage_thread is not None:
+                send_voltage_thread.join()
 
         # put the wheel straight
         # vesc z axis calibration in case it's used for z axis control instead of smoothie
