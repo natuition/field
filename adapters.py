@@ -2785,7 +2785,7 @@ class ClientMVI:
         })
         self.__check_result(res)
         result: Message = res
-        self.__id_name_map[new_pipeline] = result["message"]
+        self.__id_name_map[new_pipeline] = result.message
         print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {self.__id_name_map[new_pipeline]}")
         
     
