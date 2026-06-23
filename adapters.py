@@ -2759,12 +2759,14 @@ class ClientMVI:
                  host: str,
                  port: int):
         self.__current_MVI_pipeline_desciptor = None
+        self.__id_name_map: dict[MVIPipelineDescriptor,list[str]] = dict()
+        
         self.__client = Client(transport=config.MVI_TRANSPORT_PROTOCOL)
         self.__client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult)
         # self.__client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
         self.__client.connect(host, port)
+        
         self.switch_active_pipeline(self.OVERHEAD_DETECTION)
-        self.__id_name_map: dict[MVIPipelineDescriptor,list[str]] = dict()
         
     def __enter__(self):
         return self
