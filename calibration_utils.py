@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 import csv
 import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -19,18 +17,18 @@ ARUCO_DICTIONARY_NAMES = {
 IMAGE_EXTENSIONS = ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.tif", "*.tiff")
 
 
-@dataclass(slots=True)
+@dataclass
 class DetectionResult:
     image_path: Path
-    image_size: tuple[int, int]
+    image_size: Tuple[int, int]
     marker_count: int
     charuco_count: int
-    marker_corners: list[np.ndarray]
-    marker_ids: np.ndarray | None
-    charuco_corners: np.ndarray | None
-    charuco_ids: np.ndarray | None
+    marker_corners: List[np.ndarray]
+    marker_ids: Optional[np.ndarray]
+    charuco_corners: Optional[np.ndarray]
+    charuco_ids: Optional[np.ndarray]
     debug_image: np.ndarray
-    reason: str | None = None
+    reason: Optional[str] = None
 
     @property
     def is_valid(self) -> bool:
@@ -47,7 +45,7 @@ def ensure_directory(path: str | Path) -> Path:
     return directory
 
 
-def get_aruco_dictionary(dictionary_name: str) -> cv2.aruco.Dictionary:
+def get_aruco_dictionary(dictionary_name: str):
     if dictionary_name not in ARUCO_DICTIONARY_NAMES:
         available = ", ".join(sorted(ARUCO_DICTIONARY_NAMES))
         raise CalibrationError(f"Dictionnaire ArUco inconnu: {dictionary_name}. Disponibles: {available}")
@@ -61,7 +59,7 @@ def create_charuco_board(
     marker_length_mm: float,
     dictionary_name: str,
     legacy_pattern: bool = False,
-) -> tuple[Any, cv2.aruco.Dictionary]:
+) -> Tuple[Any, cv2.aruco.Dictionary]:
     dictionary = get_aruco_dictionary(dictionary_name)
     try:
         board = cv2.aruco.CharucoBoard(
@@ -91,9 +89,9 @@ def board_corner_coordinates_mm(board: Any) -> np.ndarray:
     return np.asarray(corners, dtype=np.float64)
 
 
-def list_image_paths(folder: str | Path) -> list[Path]:
+def list_image_paths(folder: str | Path) -> List[Path]:
     root = Path(folder)
-    image_paths: list[Path] = []
+    image_paths: List[Path] = []
     for pattern in IMAGE_EXTENSIONS:
         image_paths.extend(root.glob(pattern))
     image_paths = sorted(path for path in image_paths if path.is_file())
@@ -109,7 +107,7 @@ def load_bgr_image(image_path: str | Path) -> np.ndarray:
     return image
 
 
-def image_size_wh(image: np.ndarray) -> tuple[int, int]:
+def image_size_wh(image: np.ndarray) -> Tuple[int, int]:
     height, width = image.shape[:2]
     return width, height
 
@@ -120,7 +118,7 @@ def create_detector_parameters() -> Any:
     return cv2.aruco.DetectorParameters_create()
 
 
-def detect_markers(gray_image: np.ndarray, dictionary: cv2.aruco.Dictionary) -> tuple[list[np.ndarray], np.ndarray | None]:
+def detect_markers(gray_image: np.ndarray, dictionary) -> Tuple[List[np.ndarray], Optional[np.ndarray]]:
     parameters = create_detector_parameters()
     if hasattr(cv2.aruco, "ArucoDetector"):
         detector = cv2.aruco.ArucoDetector(dictionary, parameters)
@@ -132,10 +130,10 @@ def detect_markers(gray_image: np.ndarray, dictionary: cv2.aruco.Dictionary) -> 
 
 def annotate_detection(
     image: np.ndarray,
-    marker_corners: list[np.ndarray],
-    marker_ids: np.ndarray | None,
-    charuco_corners: np.ndarray | None,
-    charuco_ids: np.ndarray | None,
+    marker_corners: List[np.ndarray],
+    marker_ids: Optional[np.ndarray],
+    charuco_corners: Optional[np.ndarray],
+    charuco_ids: Optional[np.ndarray],
     label: str,
 ) -> np.ndarray:
     debug_image = image.copy()
@@ -202,7 +200,7 @@ def save_debug_image(debug_dir: str | Path, detection: DetectionResult) -> Path:
     return target
 
 
-def save_report_csv(report_path: str | Path, rows: Iterable[dict[str, Any]]) -> Path:
+def save_report_csv(report_path: str | Path, rows: Iterable[Dict[str, Any]]) -> Path:
     rows = list(rows)
     if not rows:
         raise CalibrationError("Impossible d'ecrire un rapport vide")
@@ -228,7 +226,7 @@ def numpy_to_native(value: Any) -> Any:
     return value
 
 
-def write_json(path: str | Path, payload: dict[str, Any]) -> Path:
+def write_json(path: str | Path, payload: Dict[str, Any]) -> Path:
     target = Path(path)
     ensure_directory(target.parent)
     with target.open("w", encoding="utf-8") as handle:
@@ -237,12 +235,12 @@ def write_json(path: str | Path, payload: dict[str, Any]) -> Path:
     return target
 
 
-def read_json(path: str | Path) -> dict[str, Any]:
+def read_json(path: str | Path) -> Dict[str, Any]:
     with Path(path).open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
-def validate_same_image_size(results: Sequence[DetectionResult]) -> tuple[int, int]:
+def validate_same_image_size(results: Sequence[DetectionResult]) -> Tuple[int, int]:
     if not results:
         raise CalibrationError("Aucun resultat de detection fourni")
     sizes = {result.image_size for result in results}
@@ -291,7 +289,7 @@ def raw_pixel_to_robot_mm(
     camera_matrix: np.ndarray,
     dist_coeffs: np.ndarray,
     homography: np.ndarray,
-) -> tuple[float, float]:
+) -> Tuple[float, float]:
     point_raw = np.array([[[u, v]]], dtype=np.float64)
     point_undistorted = cv2.undistortPoints(point_raw, camera_matrix, dist_coeffs, P=camera_matrix)
     point_mm = cv2.perspectiveTransform(point_undistorted, homography)
@@ -304,8 +302,8 @@ def raw_pixel_to_robot_mm_from_json(
     u: float,
     v: float,
     calibration_robot_json_path: str | Path,
-    offset_override_mm: Sequence[float] | None = None,
-) -> tuple[float, float]:
+    offset_override_mm: Optional[Sequence[float]] = None,
+) -> Tuple[float, float]:
     payload = read_json(calibration_robot_json_path)
     camera_matrix = np.asarray(payload["camera_matrix"], dtype=np.float64)
     dist_coeffs = np.asarray(payload["dist_coeffs"], dtype=np.float64)
@@ -326,7 +324,7 @@ def apply_homography(points_px: np.ndarray, homography: np.ndarray) -> np.ndarra
     return projected.reshape(-1, 2)
 
 
-def compute_mm_errors(predicted_mm: np.ndarray, expected_mm: np.ndarray) -> dict[str, float]:
+def compute_mm_errors(predicted_mm: np.ndarray, expected_mm: np.ndarray) -> Dict[str, float]:
     predicted = np.asarray(predicted_mm, dtype=np.float64).reshape(-1, 2)
     expected = np.asarray(expected_mm, dtype=np.float64).reshape(-1, 2)
     if predicted.shape != expected.shape:
@@ -348,8 +346,8 @@ def validate_homography(
     board: Any,
     grid_to_robot_translation_mm: Sequence[float] = (0.0, 0.0),
     grid_to_robot_rotation_deg: float = 0.0,
-    grid_y_flip_max_mm: float | None = None,
-) -> dict[str, float]:
+    grid_y_flip_max_mm: Optional[float] = None,
+) -> Dict[str, float]:
     raw_points = np.asarray(raw_charuco_corners_px, dtype=np.float64).reshape(-1, 1, 2)
     world_grid_mm = charuco_ids_to_world_points_mm(charuco_ids, board)
     if grid_y_flip_max_mm is not None:
@@ -369,9 +367,9 @@ def build_intrinsics_payload(
     camera_matrix: np.ndarray,
     dist_coeffs: np.ndarray,
     rms_reprojection_error: float,
-    image_size: tuple[int, int],
-    charuco_config: dict[str, Any],
-) -> dict[str, Any]:
+    image_size: Tuple[int, int],
+    charuco_config: Dict[str, Any],
+) -> Dict[str, Any]:
     width, height = image_size
     return {
         "camera_matrix": np.asarray(camera_matrix, dtype=np.float64),
@@ -384,14 +382,14 @@ def build_intrinsics_payload(
 
 
 def build_robot_payload(
-    intrinsics_payload: dict[str, Any],
+    intrinsics_payload: Dict[str, Any],
     homography: np.ndarray,
     homography_reprojection_error_mm: float,
     camera_height_mm: float,
-    frame: dict[str, str],
-    homography_charuco_config: dict[str, Any],
+    frame: Dict[str, str],
+    homography_charuco_config: Dict[str, Any],
     origin_offset_mm: Sequence[float] = (0.0, 0.0),
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     if len(origin_offset_mm) != 2:
         raise CalibrationError("origin_offset_mm doit contenir exactement 2 valeurs [offset_x_mm, offset_y_mm]")
     return {
@@ -422,7 +420,7 @@ def find_planar_homography(image_points_px: np.ndarray, world_points_mm: np.ndar
     return np.asarray(homography, dtype=np.float64)
 
 
-def load_intrinsics(path: str | Path) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+def load_intrinsics(path: str | Path) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
     payload = read_json(path)
     camera_matrix = np.asarray(payload["camera_matrix"], dtype=np.float64)
     dist_coeffs = np.asarray(payload["dist_coeffs"], dtype=np.float64)
@@ -433,7 +431,7 @@ def format_matrix(matrix: np.ndarray) -> str:
     return np.array2string(np.asarray(matrix, dtype=np.float64), precision=6, suppress_small=False)
 
 
-def load_homography(calibration_json: Path) -> tuple[np.ndarray, int, int]:
+def load_homography(calibration_json: Path) -> Tuple[np.ndarray, int, int]:
     """Charge l'homographie pixels bruts -> mm relatifs au centre image."""
     with calibration_json.open("r", encoding="utf-8") as file:
         payload = json.load(file)
@@ -453,7 +451,7 @@ def raw_pixel_to_image_center_mm(
     u: float,
     v: float,
     homography: np.ndarray,
-) -> tuple[float, float]:
+) -> Tuple[float, float]:
     """
     Convertit un pixel brut (u, v) vers une position au sol en mm.
 
