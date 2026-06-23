@@ -465,7 +465,7 @@ class ExtractionManagerV3:
                         
                         print("cur_pos_plant_boxes_undist_filtered", cur_pos_plant_boxes_undist_filtered)
                         
-                        for plants_boxes, plants_positions in cur_pos_plant_boxes_undist:
+                        for plant_box, plant_position in zip(cur_pos_plant_boxes_undist[0], cur_pos_plant_boxes_undist[1]):
                             if plants_boxes in cur_pos_plant_boxes_undist_filtered:
                                 cur_pos_plant_boxes_undist_final.append((plants_boxes, plants_positions))
                                 
