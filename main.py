@@ -271,6 +271,7 @@ def move_to_point_and_extract(coords_from_to: list,
     have_time_for_inference = True
     predictor_next_gps_expected_ts = float("inf")
     
+    client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
     if extract:
         client_mvi.run_active_detection_on_MVI()
     else:
@@ -349,6 +350,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
                     
+                    client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
                     client_mvi.run_active_detection_on_MVI()
 
                 elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
