@@ -1874,10 +1874,10 @@ def main():
     except:
         ui_msg_queue = None
 
-    image_saver = utility.ImageSaver()
-    if config.ALLOW_GATHERING:
-        image_saver.set_counter(
-            len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
+    # image_saver = utility.ImageSaver()
+    # if config.ALLOW_GATHERING:
+    #     image_saver.set_counter(
+    #         len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
 
     notification = NotificationClient(time_start)
     notification.set_robot_state(RobotSynthesis.WORKING)
