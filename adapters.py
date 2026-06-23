@@ -2781,7 +2781,7 @@ class ClientMVI:
         
     def __get_id_name_map(self, new_pipeline: MVIPipelineDescriptor):
         res = self.__client.call(CallType.GET,{
-            "property": MVIProperty.ID_NAME_MAP,
+            "property": MVIProperty.ID_NAME_MAP.value,
             "param": new_pipeline
         })
         self.__check_result(res)
@@ -2791,8 +2791,8 @@ class ClientMVI:
     
     def get_last_detections(self) -> DetectionResultDTO:
         res = self.__client.call(CallType.GET,{
-            "property": MVIProperty.LATEST_DETECTIONS,
-            "result_type": MVICustomResultType.DETECTION_RESULT,
+            "property": MVIProperty.LATEST_DETECTIONS.value,
+            "result_type": MVICustomResultType.DETECTION_RESULT.value,
         })
         self.__check_result(res)
         
@@ -2818,23 +2818,23 @@ class ClientMVI:
     
     def violette_is_stopped(self):
         res = self.__client.call(CallType.GET,{
-            "property": MVIProperty.STATE,
+            "property": MVIProperty.STATE.value,
         })
         self.__check_result(res)
         result: ResultDTO = res
-        return result["payload"] == MVIState.PASSIVE_DETECTION
+        return result["payload"] == MVIState.PASSIVE_DETECTION.value
     
     def run_active_detection_on_MVI(self):
         res = self.__client.call(CallType.SET,{
-            "property": MVIProperty.STATE,
-            "value": MVIState.ACTIVE_DETECTION
+            "property": MVIProperty.STATE.value,
+            "value": MVIState.ACTIVE_DETECTION.value
         })
         self.__check_result(res)
         
     def run_passive_detection_on_MVI(self):
         res = self.__client.call(CallType.SET,{
-            "property": MVIProperty.STATE,
-            "value": MVIState.PASSIVE_DETECTION
+            "property": MVIProperty.STATE.value,
+            "value": MVIState.PASSIVE_DETECTION.value
         })
         self.__check_result(res)
         
