@@ -17,7 +17,7 @@ from serial import SerialException
 from config import config
 from detection import DetectedPlantBox
 from client import Client
-from common.enums_domain import MVICustomResultType, MVIPipelineDesciptor, MVIProperty, MVIState
+from common.enums_domain import MVICustomResultType, MVIPipelineDescriptor, MVIProperty, MVIState
 from protos.detection_pb2 import DetectionResult
 from message.enums import CallType
 from protos.detection_dto import DetectionResultDTO
@@ -2751,8 +2751,8 @@ class GPSUbloxAdapterWithoutThread:
 
 class ClientMVI:
 
-    OVERHEAD_DETECTION = MVIPipelineDesciptor.OVERHEAD_DETECTION
-    TARGET_FINDER_DETECTION = MVIPipelineDesciptor.TARGET_FINDER_DETECTION
+    OVERHEAD_DETECTION = MVIPipelineDescriptor.OVERHEAD_DETECTION
+    TARGET_FINDER_DETECTION = MVIPipelineDescriptor.TARGET_FINDER_DETECTION
 
     def __init__(self,
                  host: str,
@@ -2763,7 +2763,7 @@ class ClientMVI:
         self.__client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
         self.__client.connect(host, port)
         self.switch_active_pipeline(self.OVERHEAD_DETECTION)
-        self.__id_name_map: dict[MVIPipelineDesciptor,list[str]] = dict()
+        self.__id_name_map: dict[MVIPipelineDescriptor,list[str]] = dict()
         
     def __enter__(self):
         return self
@@ -2778,7 +2778,7 @@ class ClientMVI:
         if res.message["code"] is not 0:
             raise RuntimeError(f"[{self.__class__.__name__}] -> MVI error code: {res.message['code']}, message: {res.message['message']}")
         
-    def __get_id_name_map(self, new_pipeline: MVIPipelineDesciptor):
+    def __get_id_name_map(self, new_pipeline: MVIPipelineDescriptor):
         res = self.__client.call(CallType.GET,{
             "property": MVIProperty.ID_NAME_MAP,
             "param": new_pipeline
@@ -2837,7 +2837,7 @@ class ClientMVI:
         })
         self.__check_result(res)
         
-    def switch_active_pipeline(self, new_pipeline: MVIPipelineDesciptor):
+    def switch_active_pipeline(self, new_pipeline: MVIPipelineDescriptor):
         res = self.__client.call(CallType.SET,{
             "property": MVIProperty.ACTIVE_PIPELINE,
             "param": new_pipeline,
