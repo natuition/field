@@ -2840,8 +2840,8 @@ class ClientMVI:
         
     def switch_active_pipeline(self, new_pipeline: MVIPipelineDescriptor):
         res = self.__client.call(CallType.SET,{
-            "property": MVIProperty.ACTIVE_PIPELINE,
-            "param": new_pipeline,
+            "property": MVIProperty.ACTIVE_PIPELINE.value,
+            "value": new_pipeline.value,
         })
         self.__check_result(res)
         
