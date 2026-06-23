@@ -13,7 +13,7 @@ import re
 import json
 #import RPi.GPIO as GPIO
 from serial import SerialException
-from typing import List
+from typing import List, Tuple
 
 from config import config
 from detection import DetectedPlantBox
@@ -2806,7 +2806,7 @@ class ClientMVI:
         
         return plants_boxes
     
-    def parse_plants_positions(self, detection_result: DetectionResultDTO) -> List[tuple[float]]:
+    def parse_plants_positions(self, detection_result: DetectionResultDTO) -> List[Tuple[float]]:
         smoothie_positions = list()
         
         for detection in detection_result["detections"]:
