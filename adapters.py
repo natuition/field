@@ -2820,7 +2820,7 @@ class ClientMVI:
             "property": MVIProperty.STATE.value,
         })
         self.__check_result(res)
-        result: ResultDTO = json.loads(res.message)
+        result: ResultDTO = res.message
         return MVIState(json.loads(result["payload"])) == MVIState.PASSIVE_DETECTION
     
     def run_active_detection_on_MVI(self):
