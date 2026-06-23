@@ -13,6 +13,11 @@ from threading import Thread
 from datetime import datetime
 import sys
 
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from safe_import_of_config import config
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.utilsFunction import *
