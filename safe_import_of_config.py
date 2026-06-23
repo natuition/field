@@ -16,6 +16,10 @@ def is_config_empty(config_full_path: str):
 
 def make_import(config_directory_path: str = "config",
                 config_backup_path: str = "configBackup"):
+    
+    if not os.path.isfile(f"{config_directory_path}/config.py"):
+        config_directory_path = os.path.join("..", config_directory_path)
+        config_backup_path = os.path.join("..", config_backup_path)
 
     try:
         if not os.path.isfile(f"{config_directory_path}/config.py"):
