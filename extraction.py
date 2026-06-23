@@ -447,6 +447,9 @@ class ExtractionManagerV3:
                 # try to filter extracted plants by comparison new plants list and initial plants list
                 # if plant in a new list is away from all plants in old - then it probably was extracted and shifted
                 # so skip it
+                
+                print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist)
+                
                 if config.FILTER_EXTRACTED_PLANTS:
                     if scan_is_first:
                         initial_plants = [elements[0] for elements in cur_pos_plant_boxes_undist]
@@ -459,9 +462,13 @@ class ExtractionManagerV3:
                         
                         cur_pos_plant_boxes_undist_final = []
                         
+                        print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist_filtered)
+                        
                         for plants_boxes, plants_positions in cur_pos_plant_boxes_undist:
                             if plants_boxes in cur_pos_plant_boxes_undist_filtered:
                                 cur_pos_plant_boxes_undist_final.append((plants_boxes, plants_positions))
+                                
+                        print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist_final)
                                 
                         cur_pos_plant_boxes_undist = cur_pos_plant_boxes_undist_final
                         
