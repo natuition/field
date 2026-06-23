@@ -2822,8 +2822,7 @@ class ClientMVI:
         })
         self.__check_result(res)
         result: ResultDTO = res.message
-        print(f"[{self.__class__.__name__}] -> MVI state: {result['payload']}")
-        return result["payload"] == MVIState.PASSIVE_DETECTION.name
+        return MVIState(result["payload"]) == MVIState.PASSIVE_DETECTION
     
     def run_active_detection_on_MVI(self):
         res = self.__client.call(CallType.SET,{
