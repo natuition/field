@@ -19,7 +19,7 @@ from flask_cors import CORS
 
 from config import config
 from liveMain import webstreaming
-from natuition_rpc.protos.detection_dto import DetectionDTO
+from protos.detection_dto import DetectionDTO
 
 
 class YoloOpenCVDetection:

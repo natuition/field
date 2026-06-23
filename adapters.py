@@ -16,12 +16,12 @@ from serial import SerialException
 
 from config import config
 from detection import DetectedPlantBox
-from natuition_rpc.client import Client
-from natuition_rpc.common.enums_domain import MVICustomResultType, MVIPipelineDesciptor, MVIProperty, MVIState
-from natuition_rpc.protos.detection_pb2 import DetectionResult
-from natuition_rpc.message.enums import CallType
-from natuition_rpc.protos.detection_dto import DetectionResultDTO
-from natuition_rpc.protos.generics_dto import ResultDTO
+from client import Client
+from common.enums_domain import MVICustomResultType, MVIPipelineDesciptor, MVIProperty, MVIState
+from protos.detection_pb2 import DetectionResult
+from message.enums import CallType
+from protos.detection_dto import DetectionResultDTO
+from protos.generics_dto import ResultDTO
 
 
 class SmoothieAdapter:
