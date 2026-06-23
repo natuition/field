@@ -450,13 +450,14 @@ class ExtractionManagerV3:
                 
                 print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist)
                 
+                
                 if config.FILTER_EXTRACTED_PLANTS:
                     if scan_is_first:
                         initial_plants = [elements[0] for elements in cur_pos_plant_boxes_undist]
                     else:
                         cur_pos_plant_boxes_undist_filtered = self.__filter_extracted_plants(
                             initial_plants,
-                            cur_pos_plant_boxes_undist,
+                            [elements[0] for elements in cur_pos_plant_boxes_undist],
                             config.FILTER_EXT_PLANTS_TRIGGER_DIST,
                             self.__logger_full)
                         
@@ -958,6 +959,8 @@ class ExtractionManagerV3:
         """Removes each plant from new scan list if all plants in initial list are further than trigger distance.
         Does no changes to argument lists, returns result as a new list.
         """
+        
+        print("initial_scan_plants", initial_scan_plants)
 
         filtered_plants = []
         for new_plant_box in new_scan_plants:
