@@ -729,7 +729,8 @@ STEP_PERCENTAGE_OF_MIN_SPEED = 10 # Rate of increase in percentage points of the
 MVI_HOST = "192.168.9.99" #IP address of MVI for udp connection.
 MVI_PORT = 6000 # port for udp connection. 
 MVI_TRANSPORT_PROTOCOL = "udp" # transport protocol for MVI connection, can be "udp" or "tcp".
-
+EXTRACTION_MAP_CELL_SIZE_MM = "calibration_homographie_overhead.json"
+CALIBRATION_JSON_TARGET_FINDER = "calibration_homographie_target_finder.json"
 
 # ======================================================================================================================
 # UNSORTED KEYS

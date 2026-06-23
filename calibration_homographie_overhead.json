@@ -1,0 +1,89 @@
+{
+  "camera_matrix": [
+    [
+      2741.8381977873387,
+      0.0,
+      675.442710110186
+    ],
+    [
+      0.0,
+      2750.2365934336685,
+      450.1983308049626
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "dist_coeffs": [
+    [
+      -0.34208610250683014,
+      2.9357824615195973,
+      0.0029639944769537948,
+      -0.004657223942621219,
+      -14.248520075054412
+    ]
+  ],
+  "homography_undistorted_px_to_robot_mm": [
+    [
+      0.4032449684164861,
+      0.003599093670424666,
+      -7.013884277291551
+    ],
+    [
+      -0.001538102176268154,
+      -0.4029693095109498,
+      328.562944703753
+    ],
+    [
+      -6.652105064708489e-06,
+      1.8873985581647735e-05,
+      0.9999999999999999
+    ]
+  ],
+  "rms_reprojection_error": 0.3077776457722728,
+  "homography_reprojection_error_mm": 0.10921307141696325,
+  "units": "mm",
+  "image_width": 1224,
+  "image_height": 1024,
+  "camera_height_mm": 473.0,
+  "origin_offset_mm": [
+    -26.287542816892337,
+    -78.58886307050622
+  ],
+  "frame": {
+    "origin": "grid_bottom_left",
+    "x_axis": "grid_left_to_right",
+    "y_axis": "grid_bottom_to_top"
+  },
+  "charuco": {
+    "squares_x": 25,
+    "squares_y": 12,
+    "square_length_mm": 20.0,
+    "marker_length_mm": 15.0,
+    "dictionary": "DICT_4X4_250",
+    "legacy_pattern": true
+  },
+  "intrinsics_charuco": {
+    "squares_x": 11,
+    "squares_y": 8,
+    "square_length_mm": 20.0,
+    "marker_length_mm": 15.0,
+    "dictionary": "DICT_4X4_50",
+    "legacy_pattern": true
+  },
+  "origin_offset_source": {
+    "images_folder": "images_target_finder",
+    "valid_images": 1,
+    "board": {
+      "squares_x": 25,
+      "squares_y": 12,
+      "square_length_mm": 20.0,
+      "marker_length_mm": 15.0,
+      "dictionary": "DICT_4X4_250",
+      "legacy_pattern": true
+    },
+    "method": "local_homography_from_visible_charuco"
+  }
+}

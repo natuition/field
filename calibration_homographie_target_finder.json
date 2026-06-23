@@ -1,0 +1,47 @@
+{
+  "homography_raw_px_to_image_center_mm": [
+    [
+      0.13436270754538052,
+      -0.0009015814446292279,
+      -54.20503845253906
+    ],
+    [
+      -0.0009250761588096186,
+      -0.13452817505904502,
+      42.011588563171756
+    ],
+    [
+      -2.1446886445497363e-07,
+      5.100846031200373e-06,
+      1.0
+    ]
+  ],
+  "homography_reprojection_error_mm": 0.019915112471762707,
+  "units": "mm",
+  "image_space": "raw_distorted_pixels",
+  "image_width": 812,
+  "image_height": 620,
+  "image_center_px": [
+    405.5,
+    309.5
+  ],
+  "image_center_grid_mm_before_origin_shift": [
+    51.737977795678056,
+    200.68286899985577
+  ],
+  "camera_height_mm": 237.0,
+  "frame": {
+    "origin": "image_center_pixel_projected_on_ground",
+    "x_axis": "calibration_grid_left_to_right",
+    "y_axis": "calibration_grid_bottom_to_top",
+    "z_axis": "visualisation_only_not_metric"
+  },
+  "homography_charuco_config": {
+    "squares_x": 25,
+    "squares_y": 12,
+    "square_length_mm": 20.0,
+    "marker_length_mm": 15.0,
+    "dictionary": "DICT_4X4_250",
+    "legacy_pattern": true
+  }
+}
