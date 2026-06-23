@@ -2784,11 +2784,8 @@ class ClientMVI:
             "property": MVIProperty.ID_NAME_MAP_OF_ACTIVE_PIPELINE.value
         })
         self.__check_result(res)
-        print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {res.message}")
         result: ResultDTO = res.message
-        print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {result}")
-        self.__id_name_map[new_pipeline] = result["payload"]
-        print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {self.__id_name_map[new_pipeline]}")
+        self.__id_name_map[new_pipeline] = json.loads(result["payload"])
         
     
     def get_last_detections(self) -> DetectionResultDTO:
@@ -2798,7 +2795,7 @@ class ClientMVI:
         })
         self.__check_result(res)
         
-        return json.loads(res.message)
+        return res.message
 
     def parse_detected_boxes(self, detection_result: DetectionResultDTO) -> List[DetectedPlantBox]:        
         plants_boxes: list[DetectedPlantBox] = list()
@@ -2824,7 +2821,7 @@ class ClientMVI:
         })
         self.__check_result(res)
         result: ResultDTO = json.loads(res.message)
-        return MVIState(result["payload"]) == MVIState.PASSIVE_DETECTION
+        return MVIState(json.loads(result["payload"])) == MVIState.PASSIVE_DETECTION
     
     def run_active_detection_on_MVI(self):
         res = self.__client.call(CallType.SET,{
