@@ -462,13 +462,13 @@ class ExtractionManagerV3:
                         
                         cur_pos_plant_boxes_undist_final = []
                         
-                        print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist_filtered)
+                        print("cur_pos_plant_boxes_undist_filtered", cur_pos_plant_boxes_undist_filtered)
                         
                         for plants_boxes, plants_positions in cur_pos_plant_boxes_undist:
                             if plants_boxes in cur_pos_plant_boxes_undist_filtered:
                                 cur_pos_plant_boxes_undist_final.append((plants_boxes, plants_positions))
                                 
-                        print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist_final)
+                        print("cur_pos_plant_boxes_undist_final", cur_pos_plant_boxes_undist_final)
                                 
                         cur_pos_plant_boxes_undist = cur_pos_plant_boxes_undist_final
                         
@@ -483,13 +483,13 @@ class ExtractionManagerV3:
 
                 # convert plant boxes into smoothie absolute coordinates pairs and her type
                 smoothie_plants_positions = []
-                for plant_box, plants_positions in cur_pos_plant_boxes_undist:
+                for plant_box, plant_position in zip(cur_pos_plant_boxes_undist[0], cur_pos_plant_boxes_undist[1]):
                     plant_box: detection.DetectedPlantBox = plant_box
                     # rel_sm_x = self.px_to_smoothie_value(plant_box.center_x, config.SCENE_CENTER_X, config.ONE_MM_IN_PX)
                     # rel_sm_y = -self.px_to_smoothie_value(plant_box.center_y, config.SCENE_CENTER_Y,
                     #                                       config.ONE_MM_IN_PX)
                     
-                    rel_sm_x, rel_sm_y = raw_pixel_to_image_center_mm(plants_positions[0], plants_positions[1], self.__homography)
+                    rel_sm_x, rel_sm_y = raw_pixel_to_image_center_mm(plant_position[0], plant_position[1], self.__homography)
 
                     # swap camera and cork for extraction immediately (coords are relative)
                     rel_sm_x += config.CORK_TO_CAMERA_DISTANCE_X
