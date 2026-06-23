@@ -453,11 +453,11 @@ class ExtractionManagerV3:
                 
                 if config.FILTER_EXTRACTED_PLANTS:
                     if scan_is_first:
-                        initial_plants = [elements[0] for elements in cur_pos_plant_boxes_undist]
+                        initial_plants = cur_pos_plant_boxes_undist[0]
                     else:
                         cur_pos_plant_boxes_undist_filtered = self.__filter_extracted_plants(
                             initial_plants,
-                            [elements[0] for elements in cur_pos_plant_boxes_undist],
+                            cur_pos_plant_boxes_undist[0],
                             config.FILTER_EXT_PLANTS_TRIGGER_DIST,
                             self.__logger_full)
                         
