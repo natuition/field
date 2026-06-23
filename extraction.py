@@ -326,7 +326,7 @@ class ExtractionManagerV3:
                     self.__demo_server.wait_for_resume_cmd()
 
                 # do rescan using delta seeking if nothing detected, it was 1rst scan and delta seeking is allowed
-                if len(cur_pos_plant_boxes_undist) == 0:
+                if len(cur_pos_plant_boxes_undist[0]) == 0:
                     if scan_is_first:
                         msg = "No plants detected (plant was in working zone before)"
                         self.__logger_full.write(msg + "\n")
@@ -393,7 +393,7 @@ class ExtractionManagerV3:
 
                                 # stop seeking and save current position as new current position. This position is also
                                 # used during check rescan after extractions
-                                if len(cur_pos_plant_boxes_undist) > 0:
+                                if len(cur_pos_plant_boxes_undist[0]) > 0:
                                     cur_pos_sm_x, cur_pos_sm_y = delta_sm_x, delta_sm_y
 
                                     # if config.SAVE_DEBUG_IMAGES:
