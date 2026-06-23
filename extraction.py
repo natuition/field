@@ -177,7 +177,7 @@ class ExtractionManagerV3:
         smoothie_positions = []
         for u_o, v_o in plant_positions:
             x_mm_overhead, y_mm_overhead = raw_pixel_to_robot_mm_from_json(u_o, v_o, config.CALIBRATION_JSON_OVERHEAD) 
-            smoothie_positions.append(x_mm_overhead, y_mm_overhead)
+            smoothie_positions.append((x_mm_overhead, y_mm_overhead))
         self.__client_mvi.switch_active_pipeline(self.__client_mvi.TARGET_FINDER_DETECTION)
         
         if config.VERBOSE_EXTRACT:
