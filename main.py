@@ -88,49 +88,49 @@ def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
     return [point_a, point_b]
 
 
-def save_image(path_to_save, image, counter, session_label, date, sep="_"):
-    """
-    Assembles image file name and saves received image under this name to specified directory.
-    Counter and session label may be passed if was set to None.
-    """
+# def save_image(path_to_save, image, counter, session_label, date, sep="_"):
+#     """
+#     Assembles image file name and saves received image under this name to specified directory.
+#     Counter and session label may be passed if was set to None.
+#     """
 
-    date = sep + date if date else ""
-    session_label = sep + session_label if session_label else ""
-    counter = sep + str(counter) if counter or counter == 0 else ""
-    cv.imwrite(path_to_save + date + session_label + counter + ".jpg", image)
+#     date = sep + date if date else ""
+#     session_label = sep + session_label if session_label else ""
+#     counter = sep + str(counter) if counter or counter == 0 else ""
+#     cv.imwrite(path_to_save + date + session_label + counter + ".jpg", image)
 
 
-def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
-    # TODO: temp counter debug
-    global IMAGES_COUNTER
-    IMAGES_COUNTER += 1
+# def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
+#     # TODO: temp counter debug
+#     global IMAGES_COUNTER
+#     IMAGES_COUNTER += 1
 
-    # TODO: data gathering temporary hardcoded
-    if config.ALLOW_GATHERING:
-        save_image(config.DATA_GATHERING_DIR, frame, IMAGES_COUNTER,
-                   label, utility.get_current_time())
+#     # TODO: data gathering temporary hardcoded
+#     if config.ALLOW_GATHERING:
+#         save_image(config.DATA_GATHERING_DIR, frame, IMAGES_COUNTER,
+#                    label, utility.get_current_time())
 
-    # debug image saving
-    if config.SAVE_DEBUG_IMAGES:
-        # draw time on frame
-        cur_time = utility.get_current_time()
-        left, top = 30, 30
-        label_size, base_line = cv.getTextSize(
-            cur_time + " No: " + str(IMAGES_COUNTER), cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        top = max(top, label_size[1])
-        frame = cv.rectangle(frame, (left, top - round(1.5 * label_size[1])),
-                             (left + round(1.5 *
-                              label_size[0]), top + base_line),
-                             (0, 0, 255), cv.FILLED)
-        frame = cv.putText(frame, cur_time + " No: " + str(IMAGES_COUNTER), (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75,
-                           (0, 0, 0), 2)
+#     # debug image saving
+#     if config.SAVE_DEBUG_IMAGES:
+#         # draw time on frame
+#         cur_time = utility.get_current_time()
+#         left, top = 30, 30
+#         label_size, base_line = cv.getTextSize(
+#             cur_time + " No: " + str(IMAGES_COUNTER), cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+#         top = max(top, label_size[1])
+#         frame = cv.rectangle(frame, (left, top - round(1.5 * label_size[1])),
+#                              (left + round(1.5 *
+#                               label_size[0]), top + base_line),
+#                              (0, 0, 255), cv.FILLED)
+#         frame = cv.putText(frame, cur_time + " No: " + str(IMAGES_COUNTER), (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75,
+#                            (0, 0, 0), 2)
 
-        # draw data on frame
-        frame = utility.ImageSaver.draw_zone_circle(
-            frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
-        frame = utility.ImageSaver.draw_zone_poly(frame, poly_zone_points_cv)
-        frame = detection.draw_boxes(frame, plants_boxes)
-        save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
+#         # draw data on frame
+#         frame = utility.ImageSaver.draw_zone_circle(
+#             frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
+#         frame = utility.ImageSaver.draw_zone_poly(frame, poly_zone_points_cv)
+#         frame = detection.draw_boxes(frame, plants_boxes)
+#         save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
 
 
 def move_to_point_and_extract(coords_from_to: list,
