@@ -19,7 +19,7 @@ from config import config
 from detection import DetectedPlantBox
 from client import Client
 from common import MVICustomResultType, MVIPipelineDescriptor, MVIProperty, MVIState
-from message import CallType, ResultMessage
+from message import CallType, Message
 from protos import DetectionResultDTO, ResultDTO, DetectionResult
 
 
@@ -2784,9 +2784,10 @@ class ClientMVI:
             "property": MVIProperty.ID_NAME_MAP_OF_ACTIVE_PIPELINE.value
         })
         self.__check_result(res)
-        result: ResultMessage = res
+        result: Message = res
         print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {result}")
         print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map type: {type(result)}")
+        self.__id_name_map[new_pipeline] = result["message"]
         print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {self.__id_name_map[new_pipeline]}")
         
     
