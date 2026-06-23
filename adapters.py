@@ -2787,6 +2787,8 @@ class ClientMVI:
         })
         self.__check_result(res)
         result: ResultDTO = res
+        print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {result}")
+        print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map type: {type(result)}")
         self.__id_name_map[new_pipeline] = json.loads(result["payload"])
         print(f"[{self.__class__.__name__}] -> MVI pipeline {new_pipeline.value} id-name map: {self.__id_name_map[new_pipeline]}")
         
