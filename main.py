@@ -316,7 +316,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                         # TODO MVI
                         plants_boxes = client_mvi.get_last_detections()
-                        print(f"[{adapters.ClientMVI.__name__}] -> MVI pipeline {client_mvi.get_active_pipeline()} last detections: {plants_boxes}")
+                        print(f"[{adapters.ClientMVI.__name__}] -> MVI last detections: {plants_boxes}")
 
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon): 
