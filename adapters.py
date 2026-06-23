@@ -2845,6 +2845,6 @@ class ClientMVI:
         self.__check_result(res)
         
         if new_pipeline not in self.__id_name_map:
-            self.__id_name_map[new_pipeline] = self.__get_id_name_map(new_pipeline)
+            self.__id_name_map[new_pipeline] = self.__get_id_name_map()
             
         self.__current_MVI_pipeline_desciptor = new_pipeline
