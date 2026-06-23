@@ -1931,79 +1931,80 @@ def main():
             exit()
 
     # load yolo networks
-    if config.NN_MODELS_COUNT < 1:
-        msg = f"Key 'config.NN_MODELS_COUNT' has 0 or negative value which is wrong as need at least 1 model for work"
-        print(msg)
-        logger_full.write(msg + "\n")
-        exit()
+    # if config.NN_MODELS_COUNT < 1:
+    #     msg = f"Key 'config.NN_MODELS_COUNT' has 0 or negative value which is wrong as need at least 1 model for work"
+    #     print(msg)
+    #     logger_full.write(msg + "\n")
+    #     exit()
 
-    # load periphery NN
-    msg = "Loading periphery detector..."
-    print(msg)
-    logger_full.write(msg + "\n")
-    if config.PERIPHERY_WRAPPER == 1:
-        periphery_detector = detection.YoloTRTDetector(
-            config.PERIPHERY_MODEL_PATH,
-            config.PERIPHERY_CLASSES_FILE,
-            config.PERIPHERY_CONFIDENCE_THRESHOLD,
-            config.PERIPHERY_NMS_THRESHOLD,
-            config.PERIPHERY_INPUT_SIZE)
-    elif config.PERIPHERY_WRAPPER == 2:
-        periphery_detector = detection.YoloOpenCVDetection(
-            config.PERIPHERY_CLASSES_FILE,
-            config.PERIPHERY_CONFIG_FILE,
-            config.PERIPHERY_WEIGHTS_FILE,
-            config.PERIPHERY_INPUT_SIZE,
-            config.PERIPHERY_CONFIDENCE_THRESHOLD,
-            config.PERIPHERY_NMS_THRESHOLD,
-            config.PERIPHERY_DNN_BACKEND,
-            config.PERIPHERY_DNN_TARGET)
-    else:
-        msg = "Wrong config.PERIPHERY_WRAPPER = " + \
-            str(config.PERIPHERY_WRAPPER) + " code. Exiting."
-        logger_full.write(msg + "\n")
-        notification.set_robot_state(RobotSynthesis.HS)
-        exit()
+    # # load periphery NN
+    # msg = "Loading periphery detector..."
+    # print(msg)
+    # logger_full.write(msg + "\n")
+    # if config.PERIPHERY_WRAPPER == 1:
+    #     periphery_detector = detection.YoloTRTDetector(
+    #         config.PERIPHERY_MODEL_PATH,
+    #         config.PERIPHERY_CLASSES_FILE,
+    #         config.PERIPHERY_CONFIDENCE_THRESHOLD,
+    #         config.PERIPHERY_NMS_THRESHOLD,
+    #         config.PERIPHERY_INPUT_SIZE)
+    # elif config.PERIPHERY_WRAPPER == 2:
+    #     periphery_detector = detection.YoloOpenCVDetection(
+    #         config.PERIPHERY_CLASSES_FILE,
+    #         config.PERIPHERY_CONFIG_FILE,
+    #         config.PERIPHERY_WEIGHTS_FILE,
+    #         config.PERIPHERY_INPUT_SIZE,
+    #         config.PERIPHERY_CONFIDENCE_THRESHOLD,
+    #         config.PERIPHERY_NMS_THRESHOLD,
+    #         config.PERIPHERY_DNN_BACKEND,
+    #         config.PERIPHERY_DNN_TARGET)
+    # else:
+    #     msg = "Wrong config.PERIPHERY_WRAPPER = " + \
+    #         str(config.PERIPHERY_WRAPPER) + " code. Exiting."
+    #     logger_full.write(msg + "\n")
+    #     notification.set_robot_state(RobotSynthesis.HS)
+    #     exit()
 
-    # load precise NN
-    if config.NN_MODELS_COUNT > 1:
-        msg = "Loading precise detector..."
-        print(msg)
-        logger_full.write(msg + "\n")
-        if config.PRECISE_WRAPPER == 1:
-            precise_detector = detection.YoloTRTDetector(
-                config.PRECISE_MODEL_PATH,
-                config.PRECISE_CLASSES_FILE,
-                config.PRECISE_CONFIDENCE_THRESHOLD,
-                config.PRECISE_NMS_THRESHOLD,
-                config.PRECISE_INPUT_SIZE)
-        elif config.PRECISE_WRAPPER == 2:
-            precise_detector = detection.YoloOpenCVDetection(
-                config.PRECISE_CLASSES_FILE,
-                config.PRECISE_CONFIG_FILE,
-                config.PRECISE_WEIGHTS_FILE,
-                config.PRECISE_INPUT_SIZE,
-                config.PRECISE_CONFIDENCE_THRESHOLD,
-                config.PRECISE_NMS_THRESHOLD,
-                config.PRECISE_DNN_BACKEND,
-                config.PRECISE_DNN_TARGET)
-        else:
-            msg = "Wrong config.PRECISE_WRAPPER = " + \
-                str(config.PRECISE_WRAPPER) + " code. Exiting."
-            logger_full.write(msg + "\n")
-            notification.set_robot_state(RobotSynthesis.HS)
-            exit()
-    else:
-        msg = "Using periphery detector as precise."
-        print(msg)
-        logger_full.write(msg + "\n")
-        precise_detector = periphery_detector
+    # # load precise NN
+    # if config.NN_MODELS_COUNT > 1:
+    #     msg = "Loading precise detector..."
+    #     print(msg)
+    #     logger_full.write(msg + "\n")
+    #     if config.PRECISE_WRAPPER == 1:
+    #         precise_detector = detection.YoloTRTDetector(
+    #             config.PRECISE_MODEL_PATH,
+    #             config.PRECISE_CLASSES_FILE,
+    #             config.PRECISE_CONFIDENCE_THRESHOLD,
+    #             config.PRECISE_NMS_THRESHOLD,
+    #             config.PRECISE_INPUT_SIZE)
+    #     elif config.PRECISE_WRAPPER == 2:
+    #         precise_detector = detection.YoloOpenCVDetection(
+    #             config.PRECISE_CLASSES_FILE,
+    #             config.PRECISE_CONFIG_FILE,
+    #             config.PRECISE_WEIGHTS_FILE,
+    #             config.PRECISE_INPUT_SIZE,
+    #             config.PRECISE_CONFIDENCE_THRESHOLD,
+    #             config.PRECISE_NMS_THRESHOLD,
+    #             config.PRECISE_DNN_BACKEND,
+    #             config.PRECISE_DNN_TARGET)
+    #     else:
+    #         msg = "Wrong config.PRECISE_WRAPPER = " + \
+    #             str(config.PRECISE_WRAPPER) + " code. Exiting."
+    #         logger_full.write(msg + "\n")
+    #         notification.set_robot_state(RobotSynthesis.HS)
+    #         exit()
+    # else:
+    #     msg = "Using periphery detector as precise."
+    #     print(msg)
+    #     logger_full.write(msg + "\n")
+    #     precise_detector = periphery_detector
 
-    if config.CONTINUOUS_INFORMATION_SENDING:
-        treated_plants = set()
-        treated_plants.update(periphery_detector.get_classes_names())
-        treated_plants.update(precise_detector.get_classes_names())
-        notification.set_treated_weed_types(treated_plants)
+    #TODO MVI: get classes names from MVI
+    # if config.CONTINUOUS_INFORMATION_SENDING:
+        # treated_plants = set()
+        # treated_plants.update(periphery_detector.get_classes_names())
+        # treated_plants.update(precise_detector.get_classes_names())
+        # notification.set_treated_weed_types(treated_plants)
 
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
