@@ -461,8 +461,10 @@ class ExtractionManagerV3:
                         cur_pos_plant_boxes_undist_final = []
                         
                         print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist)
+                        print("cur_pos_plant_boxes_undist_filtered", cur_pos_plant_boxes_undist_filtered)
                         
                         for plant_box, plant_position in zip(cur_pos_plant_boxes_undist[0], cur_pos_plant_boxes_undist[1]):
+                            print("plant_box", plant_box, "plant_position", plant_position)
                             if plants_boxes in cur_pos_plant_boxes_undist_filtered:
                                 cur_pos_plant_boxes_undist_final.append((plants_boxes, plants_positions))
                                 
@@ -956,8 +958,6 @@ class ExtractionManagerV3:
         Does no changes to argument lists, returns result as a new list.
         """
         
-        print("initial_scan_plants", initial_scan_plants)
-
         filtered_plants = []
         for new_plant_box in new_scan_plants:
             new_plant_box: detection.DetectedPlantBox
