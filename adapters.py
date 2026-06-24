@@ -1942,6 +1942,8 @@ class VescAdapterV4:
         # do any new calibrations (add vesc calibration code here)
         # ...
         self.__last_reconnect_time = time.time() - 60
+        
+        self.__last_alive_debug_time = 0
 
     def __enter__(self):
         return self
