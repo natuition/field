@@ -3,7 +3,7 @@ from adapters import VescAdapterV4
 from utility import Logger
 
 def main():        
-    logger = Logger("/dev/null")
+    logger = Logger("/tmp/vesc_v4_forward.log")
     with VescAdapterV4("/dev/serial/by-id/usb-STMicroelectronics_ChibiOS_RT_Virtual_COM_Port_304-if00", 
                         config.VESC_BAUDRATE, 
                         config.VESC_ALIVE_FREQ,
