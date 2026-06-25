@@ -2134,25 +2134,6 @@ class VescAdapterV4:
                                     if time.time() - self.__last_alive_debug_time > 1.0:
                                         self.__last_alive_debug_time = time.time()
 
-                                # On ne peut pas avoir ça car si la Orin change le RPM,
-                                # il ne faut pas que la Jetson remette un RPM.
-                                #
-                                # vesc_rpm = self.__get_rpm_sensor_data(engine_key)
-                                #
-                                # if vesc_rpm is not None:
-                                #     if vesc_rpm == 0 and self.__current_rpm[engine_key] != 0:
-                                #         self.__logger_full.write_and_flush(
-                                #             f"[{self.__class__.__name__}] Detect stop propulsion, send RPM again.\n"
-                                #         )
-                                #         self.__ser.write(
-                                #             pyvesc.encode(
-                                #                 pyvesc.SetRPM(
-                                #                     self.__current_rpm[engine_key],
-                                #                     can_id=self.__can_ids[engine_key]
-                                #                 )
-                                #             )
-                                #         )
-
                             except (SerialException, OSError) as e:
                                 if getattr(e, "errno", None) == 5 or isinstance(e, SerialException):
                                     self.reconnect_vesc()
@@ -2164,22 +2145,6 @@ class VescAdapterV4:
             print(f"[{self.__class__.__name__}] -> {ex}")
         finally:
             print(f"[{self.__class__.__name__}] -> Movement control thread stopped")
-            
-    # def __get_rpm_sensor_data(self, engine_key):
-    #     self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
-    #     in_buf = b''
-    #     while self.__ser.in_waiting > 0:
-    #         try:
-    #             in_buf += self.__ser.read(self.__ser.in_waiting)
-    #         except KeyboardInterrupt:
-    #             raise KeyboardInterrupt
-    #         except Exception as e:
-    #             self.__logger_full.write_and_flush("[Error] "+str(e)+"\n")
-    #     if len(in_buf) != 0:
-    #         response, consumed = pyvesc.decode(in_buf)
-    #         if consumed != 0 and response is not None:
-    #             return response.__dict__["rpm"]
-    #     return None
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
