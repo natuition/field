@@ -2130,10 +2130,6 @@ class VescAdapterV4:
                                         )
                                     )
 
-                                    # Log SetAlive only once per second to avoid huge logs
-                                    if time.time() - self.__last_alive_debug_time > 1.0:
-                                        self.__last_alive_debug_time = time.time()
-
                             except (SerialException, OSError) as e:
                                 if getattr(e, "errno", None) == 5 or isinstance(e, SerialException):
                                     self.reconnect_vesc()
