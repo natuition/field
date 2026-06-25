@@ -11,7 +11,6 @@ import serial
 import pyvesc
 import re
 import json
-#import RPi.GPIO as GPIO
 from serial import SerialException
 from typing import List, Tuple
 
@@ -19,7 +18,7 @@ from config import config
 from detection import DetectedPlantBox
 from client import Client
 from common import MVICustomResultType, MVIPipelineDescriptor, MVIProperty, MVIState
-from message import CallType, Message
+from message import CallType
 from protos import DetectionResultDTO, ResultDTO, DetectionResult
 
 
@@ -1458,7 +1457,6 @@ class VescAdapterV3:
     EXTRACTION_KEY = 1
 
     def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
-        gpio_is_initialized = False
         self.__stopper_check_freq = stopper_check_freq
         self.__alive_freq = alive_freq
         self.__check_freq = check_freq
@@ -1471,7 +1469,6 @@ class VescAdapterV3:
         self.__is_moving = dict()
         self.__last_stop_time = dict()
         self.__stopper_signals = dict()
-        self.__gpio_stoppers_pins = dict()
 
         self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
         self.__ser.flushInput()
@@ -1491,13 +1488,6 @@ class VescAdapterV3:
             self.__is_moving[self.PROPULSION_KEY] = False
             self.__last_stop_time[self.PROPULSION_KEY] = None
             self.__stopper_signals[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOP_SIGNAL
-            self.__gpio_stoppers_pins[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOPPER_PIN
-            if self.__gpio_stoppers_pins[self.PROPULSION_KEY] is not None:
-                if not gpio_is_initialized:
-                    raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
-                    #GPIO.setmode(GPIO.BOARD)
-                    #gpio_is_initialized = True
-                #GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
 
         # init EXTRACTION vesc
         if config.VESC_ALLOW_EXTRACTION:
@@ -1514,13 +1504,6 @@ class VescAdapterV3:
                 self.__is_moving[self.EXTRACTION_KEY] = False
                 self.__last_stop_time[self.EXTRACTION_KEY] = None
                 self.__stopper_signals[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOP_SIGNAL
-                self.__gpio_stoppers_pins[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOPPER_PIN
-                if self.__gpio_stoppers_pins[self.EXTRACTION_KEY] is not None:
-                    if not gpio_is_initialized:
-                        raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
-                        #GPIO.setmode(GPIO.BOARD)
-                        #gpio_is_initialized = True
-                    #GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
             else:
                 # TODO what robot should do if initialization was failed?
                 print("extraction vesc initialization fail: couldn't determine extraction vesc ID")
@@ -1583,17 +1566,9 @@ class VescAdapterV3:
 
     def close(self):
         self.__keep_thread_alive = False
-        cleanup_gpio = False
 
         for engine_key in self.__can_ids:
             self.stop_moving(engine_key)
-            #if self.__gpio_stoppers_pins[engine_key] is not None:
-                #GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
-                #if not cleanup_gpio:
-                    #cleanup_gpio = True
-
-        #if cleanup_gpio:
-            #GPIO.cleanup()
 
         self._movement_ctrl_th.join(1)
         self.__ser.close()
@@ -1715,15 +1690,8 @@ class VescAdapterV3:
         or engine was stopped by it's own work timer.
         """
 
-        if self.__gpio_stoppers_pins[engine_key] is None:
-            self.stop_moving(engine_key)
-            raise RuntimeError("stopper usage is not allowed in config \
-                (engine movement is terminated to prevent occasional damage cause)")
-
         end_t = time.time() + timeout if timeout is not None else float("inf")
         while self.__is_moving[engine_key]:
-            #if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
-                #return True
             if time.time() > end_t:
                 if stop_engine_if_timeout:
                     self.stop_moving(engine_key)
@@ -1817,7 +1785,6 @@ class VescAdapterV4:
         self.__ser_port = ser_port
         self.__ser_baudrate = ser_baudrate
 
-        gpio_is_initialized = False
         self.__stopper_check_freq = stopper_check_freq
         self.__alive_freq = alive_freq
         self.__check_freq = check_freq
@@ -1837,7 +1804,6 @@ class VescAdapterV4:
         self.__stop_request = dict()
         self.__last_stop_time = dict()
         self.__stopper_signals = dict()
-        self.__gpio_stoppers_pins = dict()
 
         self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
         self.__ser.flushInput()
@@ -1864,13 +1830,6 @@ class VescAdapterV4:
             self.__stop_request[self.PROPULSION_KEY] = False
             self.__last_stop_time[self.PROPULSION_KEY] = 0.0
             self.__stopper_signals[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOP_SIGNAL
-            self.__gpio_stoppers_pins[self.PROPULSION_KEY] = config.VESC_PROPULSION_STOPPER_PIN
-            if self.__gpio_stoppers_pins[self.PROPULSION_KEY] is not None:
-                if not gpio_is_initialized:
-                    raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
-                    #GPIO.setmode(GPIO.BOARD)
-                    #gpio_is_initialized = True
-                #GPIO.setup(self.__gpio_stoppers_pins[self.PROPULSION_KEY], GPIO.IN)
 
         # init EXTRACTION vesc
         if config.VESC_ALLOW_EXTRACTION:
@@ -1893,13 +1852,6 @@ class VescAdapterV4:
                 self.__stop_request[self.EXTRACTION_KEY] = False
                 self.__last_stop_time[self.EXTRACTION_KEY] = 0.0
                 self.__stopper_signals[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOP_SIGNAL
-                self.__gpio_stoppers_pins[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOPPER_PIN
-                if self.__gpio_stoppers_pins[self.EXTRACTION_KEY] is not None:
-                    if not gpio_is_initialized:
-                        raise NotImplementedError("Gpio disabled due to non-compatible library issue and non-use")
-                        #GPIO.setmode(GPIO.BOARD)
-                        #gpio_is_initialized = True
-                    #GPIO.setup(self.__gpio_stoppers_pins[self.EXTRACTION_KEY], GPIO.IN)
             else:
                 # TODO what robot should do if initialization was failed?
                 print(f"[{self.__class__.__name__}] -> Extraction vesc initialization fail: couldn't determine extraction vesc ID.")
@@ -1942,8 +1894,6 @@ class VescAdapterV4:
         # do any new calibrations (add vesc calibration code here)
         # ...
         self.__last_reconnect_time = time.time() - 60
-        
-        self.__last_alive_debug_time = 0
 
     def __enter__(self):
         return self
@@ -1959,17 +1909,9 @@ class VescAdapterV4:
         
         if self.__ser.is_open:
             self.__keep_thread_alive = False
-            cleanup_gpio = False
 
             for engine_key in self.__can_ids:
                 self.stop_moving(engine_key)
-                #if self.__gpio_stoppers_pins[engine_key] is not None:
-                    #GPIO.cleanup(self.__gpio_stoppers_pins[engine_key])
-                    #if not cleanup_gpio:
-                        #cleanup_gpio = True
-
-            #if cleanup_gpio:
-                #GPIO.cleanup()
 
             self._movement_ctrl_th.join(1)
             self.__ser.close()
@@ -2039,14 +1981,6 @@ class VescAdapterV4:
                 report_row[field_name] = getattr(response, field_name)
             return report_row
         return None
-    
-    def __debug_vesc(self, msg):
-        text = f"[{time.time():.3f}] [{self.__class__.__name__}] {msg}"
-        print(text)
-        try:
-            self.__logger_full.write_and_flush(text + "\n")
-        except Exception:
-            pass
 
     def _movement_ctrl_th_tf(self):
         """Target function of movement control thread (only inner usage).
@@ -2054,8 +1988,6 @@ class VescAdapterV4:
         Implements keeping multiple vesc engines alive and stopping them by timers if they were set.
         """
         try:
-            self.__debug_vesc("movement control thread started")
-
             while self.__keep_thread_alive:
                 with self.__locker:
                     now = time.time()
@@ -2075,43 +2007,21 @@ class VescAdapterV4:
                         stop_requested = self.__stop_request[engine_key]
 
                         if timeout_reached or stop_requested:
-                            self.__debug_vesc(
-                                f"STOP CONDITION engine={engine_key} can_id={can_id} "
-                                f"timeout_reached={timeout_reached} "
-                                f"stop_requested={stop_requested} "
-                                f"current_rpm_memory={self.__current_rpm[engine_key]} "
-                                f"target_rpm={self.__target_rpm[engine_key]} "
-                                f"smooth_decel={self.__use_smooth_decel[engine_key]}"
-                            )
-
                             # Immediate engine stop
                             if not self.__use_smooth_decel[engine_key]:
                                 try:
-                                    self.__debug_vesc(
-                                        f"USB SEND SetRPM STOP IMMEDIATE engine={engine_key} "
-                                        f"can_id={can_id} rpm=0"
-                                    )
                                     self.__ser.write(
                                         pyvesc.encode(
                                             pyvesc.SetRPM(0, can_id=can_id)
                                         )
                                     )
                                 except SerialException:
-                                    self.__debug_vesc(
-                                        f"SerialException while sending immediate stop engine={engine_key} can_id={can_id}"
-                                    )
                                     self.reconnect_vesc()
 
                                 self.__current_rpm[engine_key] = 0
                                 self.__last_stop_time[engine_key] = time.time()
                                 self.__is_moving[engine_key] = False
                                 self.__stop_request[engine_key] = False
-
-                                self.__debug_vesc(
-                                    f"ENGINE STOPPED IMMEDIATE engine={engine_key} can_id={can_id} "
-                                    f"is_moving={self.__is_moving[engine_key]} "
-                                    f"current_rpm_memory={self.__current_rpm[engine_key]}"
-                                )
 
                             # Smooth engine stop
                             elif time.time() >= self.__smooth_decel_next_t[engine_key]:
@@ -2130,12 +2040,6 @@ class VescAdapterV4:
                                     )
 
                                     try:
-                                        self.__debug_vesc(
-                                            f"USB SEND SetRPM SMOOTH DECEL engine={engine_key} "
-                                            f"can_id={can_id} old_rpm={old_rpm} "
-                                            f"new_rpm={self.__current_rpm[engine_key]} "
-                                            f"target_rpm={self.__target_rpm[engine_key]}"
-                                        )
                                         self.__ser.write(
                                             pyvesc.encode(
                                                 pyvesc.SetRPM(
@@ -2145,39 +2049,23 @@ class VescAdapterV4:
                                             )
                                         )
                                     except SerialException:
-                                        self.__debug_vesc(
-                                            f"SerialException while sending smooth decel engine={engine_key} can_id={can_id}"
-                                        )
                                         self.reconnect_vesc()
 
                                 # Stop engine
                                 else:
                                     try:
-                                        self.__debug_vesc(
-                                            f"USB SEND SetRPM SMOOTH DECEL FINAL STOP engine={engine_key} "
-                                            f"can_id={can_id} rpm=0"
-                                        )
                                         self.__ser.write(
                                             pyvesc.encode(
                                                 pyvesc.SetRPM(0, can_id=can_id)
                                             )
                                         )
                                     except SerialException:
-                                        self.__debug_vesc(
-                                            f"SerialException while sending smooth final stop engine={engine_key} can_id={can_id}"
-                                        )
                                         self.reconnect_vesc()
 
                                     self.__current_rpm[engine_key] = 0
                                     self.__last_stop_time[engine_key] = time.time()
                                     self.__is_moving[engine_key] = False
                                     self.__stop_request[engine_key] = False
-
-                                    self.__debug_vesc(
-                                        f"ENGINE STOPPED SMOOTH DECEL engine={engine_key} can_id={can_id} "
-                                        f"is_moving={self.__is_moving[engine_key]} "
-                                        f"current_rpm_memory={self.__current_rpm[engine_key]}"
-                                    )
 
                         # Smooth start engine if needed
                         elif (
@@ -2192,11 +2080,6 @@ class VescAdapterV4:
                             if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= config.VESC_SMOOTH_ACCEL_RPM_STEP:
                                 if self.__current_rpm[engine_key] != self.__target_rpm[engine_key]:
                                     try:
-                                        self.__debug_vesc(
-                                            f"USB SEND SetRPM SMOOTH ACCEL TARGET REACHED engine={engine_key} "
-                                            f"can_id={can_id} rpm={self.__target_rpm[engine_key]} "
-                                            f"current_rpm_memory_before={self.__current_rpm[engine_key]}"
-                                        )
                                         self.__ser.write(
                                             pyvesc.encode(
                                                 pyvesc.SetRPM(
@@ -2206,9 +2089,6 @@ class VescAdapterV4:
                                             )
                                         )
                                     except SerialException:
-                                        self.__debug_vesc(
-                                            f"SerialException while sending smooth accel target engine={engine_key} can_id={can_id}"
-                                        )
                                         self.reconnect_vesc()
 
                                     self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
@@ -2224,12 +2104,6 @@ class VescAdapterV4:
                                 )
 
                                 try:
-                                    self.__debug_vesc(
-                                        f"USB SEND SetRPM SMOOTH ACCEL engine={engine_key} "
-                                        f"can_id={can_id} old_rpm={old_rpm} "
-                                        f"new_rpm={self.__current_rpm[engine_key]} "
-                                        f"target_rpm={self.__target_rpm[engine_key]}"
-                                    )
                                     self.__ser.write(
                                         pyvesc.encode(
                                             pyvesc.SetRPM(
@@ -2239,9 +2113,6 @@ class VescAdapterV4:
                                         )
                                     )
                                 except SerialException:
-                                    self.__debug_vesc(
-                                        f"SerialException while sending smooth accel engine={engine_key} can_id={can_id}"
-                                    )
                                     self.reconnect_vesc()
 
                     # Send alive to each active engine
@@ -2262,15 +2133,6 @@ class VescAdapterV4:
                                     # Log SetAlive only once per second to avoid huge logs
                                     if time.time() - self.__last_alive_debug_time > 1.0:
                                         self.__last_alive_debug_time = time.time()
-                                        self.__debug_vesc(
-                                            f"USB SEND SetAlive engine={engine_key} can_id={can_id} "
-                                            f"is_moving={self.__is_moving[engine_key]} "
-                                            f"current_rpm_memory={self.__current_rpm[engine_key]} "
-                                            f"target_rpm={self.__target_rpm[engine_key]} "
-                                            f"stop_request={self.__stop_request[engine_key]} "
-                                            f"time_to_move={self.__time_to_move[engine_key]} "
-                                            f"elapsed={time.time() - self.__start_time[engine_key]:.2f}"
-                                        )
 
                                 # On ne peut pas avoir ça car si la Orin change le RPM,
                                 # il ne faut pas que la Jetson remette un RPM.
@@ -2292,11 +2154,6 @@ class VescAdapterV4:
                                 #         )
 
                             except (SerialException, OSError) as e:
-                                self.__debug_vesc(
-                                    f"Serial/OSError while sending alive engine={engine_key} "
-                                    f"can_id={can_id} error={e}"
-                                )
-
                                 if getattr(e, "errno", None) == 5 or isinstance(e, SerialException):
                                     self.reconnect_vesc()
 
@@ -2304,10 +2161,9 @@ class VescAdapterV4:
                 time.sleep(1 / self.__check_freq)
 
         except serial.SerialException as ex:
-            self.__debug_vesc(f"movement control thread SerialException: {ex}")
             print(f"[{self.__class__.__name__}] -> {ex}")
         finally:
-            self.__debug_vesc("movement control thread stopped")
+            print(f"[{self.__class__.__name__}] -> Movement control thread stopped")
             
     # def __get_rpm_sensor_data(self, engine_key):
     #     self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
@@ -2327,14 +2183,6 @@ class VescAdapterV4:
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
-            self.__debug_vesc(
-                f"start_moving engine={engine_key} "
-                f"target_rpm={self.__target_rpm[engine_key]} "
-                f"current_rpm={self.__current_rpm[engine_key]} "
-                f"smooth_accel={smooth_acceleration} "
-                f"smooth_decel={smooth_deceleration} "
-                f"can_id={self.__can_ids[engine_key]}"
-            )
             self.__use_smooth_accel[engine_key] = smooth_acceleration
             self.__use_smooth_decel[engine_key] = smooth_deceleration
             self.__start_time[engine_key] = time.time()
@@ -2345,11 +2193,6 @@ class VescAdapterV4:
                 self.__smooth_accel_next_t[engine_key] = 0
             else:
                 try :
-                    self.__debug_vesc(
-                        f"USB SEND SetRPM direct engine={engine_key} "
-                        f"rpm={self.__target_rpm[engine_key]} "
-                        f"can_id={self.__can_ids[engine_key]}"
-                    )
                     self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
                         self.__target_rpm[engine_key],
                         can_id=self.__can_ids[engine_key])))
@@ -2404,21 +2247,12 @@ class VescAdapterV4:
         or engine was stopped by its own work timer.
         """
 
-        if self.__gpio_stoppers_pins[engine_key] is None:
-            self.stop_moving(engine_key)
-            raise RuntimeError(f"[{self.__class__.__name__}] -> Stopper usage is not allowed in config \
-                (engine movement is terminated to prevent occasional damage cause)")
-
         end_t = time.time() + timeout if timeout is not None else float("inf")
 
         while True:
             with self.__locker:
                 if not self.__is_moving[engine_key]:
                     return False
-            #if GPIO.input(self.__gpio_stoppers_pins[engine_key]) == self.__stopper_signals[engine_key]:
-                #if stop_engine_if_stopper_hit:
-                    #self.stop_moving(engine_key)
-                #return True
             if time.time() > end_t:
                 if stop_engine_if_timeout:
                     self.stop_moving(engine_key)
