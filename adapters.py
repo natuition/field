@@ -2190,27 +2190,28 @@ class VescAdapterV4:
 
                             # Set engine to target RPM because difference is <= RPM step
                             if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= config.VESC_SMOOTH_ACCEL_RPM_STEP:
-                                try:
-                                    self.__debug_vesc(
-                                        f"USB SEND SetRPM SMOOTH ACCEL TARGET REACHED engine={engine_key} "
-                                        f"can_id={can_id} rpm={self.__target_rpm[engine_key]} "
-                                        f"current_rpm_memory_before={self.__current_rpm[engine_key]}"
-                                    )
-                                    self.__ser.write(
-                                        pyvesc.encode(
-                                            pyvesc.SetRPM(
-                                                self.__target_rpm[engine_key],
-                                                can_id=can_id
+                                if self.__current_rpm[engine_key] != self.__target_rpm[engine_key]:
+                                    try:
+                                        self.__debug_vesc(
+                                            f"USB SEND SetRPM SMOOTH ACCEL TARGET REACHED engine={engine_key} "
+                                            f"can_id={can_id} rpm={self.__target_rpm[engine_key]} "
+                                            f"current_rpm_memory_before={self.__current_rpm[engine_key]}"
+                                        )
+                                        self.__ser.write(
+                                            pyvesc.encode(
+                                                pyvesc.SetRPM(
+                                                    self.__target_rpm[engine_key],
+                                                    can_id=can_id
+                                                )
                                             )
                                         )
-                                    )
-                                except SerialException:
-                                    self.__debug_vesc(
-                                        f"SerialException while sending smooth accel target engine={engine_key} can_id={can_id}"
-                                    )
-                                    self.reconnect_vesc()
+                                    except SerialException:
+                                        self.__debug_vesc(
+                                            f"SerialException while sending smooth accel target engine={engine_key} can_id={can_id}"
+                                        )
+                                        self.reconnect_vesc()
 
-                                self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
+                                    self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
 
                             # Increase current RPM by RPM step
                             else:
