@@ -2720,6 +2720,8 @@ class GPSUbloxAdapterWithoutThread:
 
 
 class ClientMVI:
+    
+    #TODO reconnection automatique du client !
 
     OVERHEAD_DETECTION = MVIPipelineDescriptor.OVERHEAD_DETECTION
     TARGET_FINDER_DETECTION = MVIPipelineDescriptor.TARGET_FINDER_DETECTION
