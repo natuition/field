@@ -2720,7 +2720,11 @@ class GPSUbloxAdapterWithoutThread:
 
 
 class ClientMVI:
-    
+    """Provides access to the robot's on-board MVI (Machine Vision Interface)
+    Attributes:
+        OVERHEAD_DETECTION: MVIPipelineDescriptor
+        TARGET_FINDER_DETECTION: MVIPipelineDescriptor
+    """
     #TODO reconnection automatique du client !
 
     OVERHEAD_DETECTION = MVIPipelineDescriptor.OVERHEAD_DETECTION
@@ -2729,6 +2733,11 @@ class ClientMVI:
     def __init__(self,
                  host: str,
                  port: int):
+        """Initializes the ClientMVI instance with the specified host and port for MVI communication.
+        Arguments:
+            host: str - The hostname or IP address of the MVI server.
+            port: int - The port number of the MVI server.
+        """
         self.__current_MVI_pipeline_desciptor = None
         self.__id_name_map: dict[MVIPipelineDescriptor,list[str]] = dict()
         
@@ -2740,19 +2749,34 @@ class ClientMVI:
         self.switch_active_pipeline(self.OVERHEAD_DETECTION)
         
     def __enter__(self):
+        """Enters the context manager for the ClientMVI instance, allowing it to be used with a 'with' statement."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exits the context manager for the ClientMVI instance, ensuring proper cleanup."""
         self.release()
 
     def release(self):
+        """Releases resources associated with the ClientMVI instance, including disconnecting from the MVI server."""
         self.__client.disconnect()
         
     def __check_result(self, res):
+        """Checks the result of an MVI operation and raises a RuntimeError if the operation was not successful.
+        Arguments:
+            res: ResultDTO - The result of an MVI operation.
+        Raises:
+            RuntimeError: If the MVI operation was not successful, with details about the error code and message.
+        """
         if res.message["code"] is not 0:
             raise RuntimeError(f"[{self.__class__.__name__}] -> MVI error code: {res.message['code']}, message: {res.message['message']}")
         
-    def __get_id_name_map(self):
+    def __get_id_name_map(self) -> list[str]:
+        """Retrieves the mapping of active pipeline IDs to their corresponding names from the MVI server.
+        Returns:
+            list[str]: A list of names corresponding to objects can be detected by pipeline.
+        Raises:
+            RuntimeError: If the MVI operation to retrieve the ID-name map was not successful.
+        """
         res = self.__client.call(CallType.GET,{
             "property": MVIProperty.ID_NAME_MAP_OF_ACTIVE_PIPELINE.value
         })
@@ -2760,8 +2784,13 @@ class ClientMVI:
         result: ResultDTO = res.message
         return json.loads(result["payload"])
         
-    
     def get_last_detections(self) -> DetectionResultDTO:
+        """Retrieves the latest detection results from the MVI server.
+        Returns:
+            DetectionResultDTO: The latest detection results from the MVI server.
+        Raises:
+            RuntimeError: If the MVI operation to retrieve the latest detections was not successful.
+        """
         res = self.__client.call(CallType.GET,{
             "property": MVIProperty.LATEST_DETECTIONS.value,
             "result_type": MVICustomResultType.DETECTION_RESULT.value,
@@ -2769,7 +2798,15 @@ class ClientMVI:
         self.__check_result(res) 
         return res.message
 
-    def parse_detected_boxes(self, detection_result: DetectionResultDTO) -> List[DetectedPlantBox]:        
+    def parse_detected_boxes(self, detection_result: DetectionResultDTO) -> List[DetectedPlantBox]:   
+        """Parses the detection results and returns a list of DetectedPlantBox instances.
+        Arguments:
+            detection_result: DetectionResultDTO - The detection results to parse.
+        Returns:
+            List[DetectedPlantBox]: A list of DetectedPlantBox instances representing the detected objects.
+        Raises:
+            RuntimeError: If the MVI operation to parse the detected boxes was not successful.
+        """     
         plants_boxes: list[DetectedPlantBox] = list()
         
         for detection in detection_result["detections"]:
@@ -2777,7 +2814,15 @@ class ClientMVI:
         
         return plants_boxes
     
-    def parse_plants_positions(self, detection_result: DetectionResultDTO) -> List[Tuple[float]] :
+    def parse_plants_positions(self, detection_result: DetectionResultDTO) -> List[Tuple[float]]:
+        """Parses the detection results and returns a list of tuples representing the positions of detected plants.
+        Arguments:
+            detection_result: DetectionResultDTO - The detection results to parse.
+        Returns:
+            List[Tuple[float]]: A list of tuples representing the positions of detected plants.
+        Raises:
+            RuntimeError: If the MVI operation to parse the plant positions was not successful.
+        """
         smoothie_positions = list()
         
         for detection in detection_result["detections"]:
@@ -2785,9 +2830,14 @@ class ClientMVI:
                 smoothie_positions.append((float(detection.get("keypoint",{}).get("x",0)), float(detection.get("keypoint",{}).get("y",0))))
         
         return smoothie_positions
-        
     
     def violette_is_stopped(self) -> bool:
+        """Checks if the MVI is in passive detection mode, indicating that it is stopped.
+        Returns:
+            bool: True if the MVI is in passive detection mode, False otherwise.
+        Raises:
+            RuntimeError: If the MVI operation to check the state was not successful.
+        """
         res = self.__client.call(CallType.GET,{
             "property": MVIProperty.STATE.value,
         })
@@ -2796,6 +2846,10 @@ class ClientMVI:
         return MVIState(json.loads(result["payload"])) == MVIState.PASSIVE_DETECTION
     
     def run_active_detection_on_MVI(self) -> None:
+        """Sets the MVI to active detection mode, allowing it to actively detect objects and stop the robot.
+        Raises:
+            RuntimeError: If the MVI operation to set the state was not successful.
+        """
         res = self.__client.call(CallType.SET,{
             "property": MVIProperty.STATE.value,
             "value": MVIState.ACTIVE_DETECTION.name
@@ -2803,6 +2857,10 @@ class ClientMVI:
         self.__check_result(res)
         
     def run_passive_detection_on_MVI(self) -> None:
+        """Sets the MVI to passive detection mode, indicating that it is stopped and not actively detecting objects.
+        Raises:
+            RuntimeError: If the MVI operation to set the state was not successful.
+        """
         res = self.__client.call(CallType.SET,{
             "property": MVIProperty.STATE.value,
             "value": MVIState.PASSIVE_DETECTION.name
@@ -2810,6 +2868,12 @@ class ClientMVI:
         self.__check_result(res)
         
     def switch_active_pipeline(self, new_pipeline: MVIPipelineDescriptor) -> None:
+        """Switches the active MVI pipeline to the specified new pipeline descriptor.
+        Arguments:
+            new_pipeline: MVIPipelineDescriptor - The new pipeline descriptor to switch to.
+        Raises:
+            RuntimeError: If the MVI operation to switch the active pipeline was not successful.
+        """
         add_switch_without_remove = "!" if new_pipeline == MVIPipelineDescriptor.OVERHEAD_DETECTION else ""
         res = self.__client.call(CallType.SET,{
             "property": MVIProperty.ACTIVE_PIPELINE.value,

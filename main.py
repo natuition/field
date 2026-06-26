@@ -312,8 +312,18 @@ def move_to_point_and_extract(coords_from_to: list,
                     if config.VERBOSE_EXTRACT:
                         msg = "[VERBOSE EXTRACT] Violette is stopped because we have detected plant(s)."
                         logger_full.write_and_flush(msg+"\n")
+                    vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                    if config.VERBOSE_EXTRACT:
+                        msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
+                        logger_full.write_and_flush(msg+"\n")
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
+                    
+                    # TODO this 0 rpm "movement" is to prevent robot movement during extractions, need to add this in future to rest speed modes too
+                    vesc_engine.set_time_to_move(config.VESC_MOVING_TIME, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_target_rpm(0, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.set_current_rpm(0, vesc_engine.PROPULSION_KEY)
+                    vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
                     # single precise center scan before calling for PDZ scanning and extractions
                     if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
