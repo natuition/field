@@ -2810,9 +2810,10 @@ class ClientMVI:
         self.__check_result(res)
         
     def switch_active_pipeline(self, new_pipeline: MVIPipelineDescriptor) -> None:
+        add_switch_without_remove = "!" if new_pipeline == MVIPipelineDescriptor.OVERHEAD_DETECTION else ""
         res = self.__client.call(CallType.SET,{
             "property": MVIProperty.ACTIVE_PIPELINE.value,
-            "value": new_pipeline.value,
+            "value": new_pipeline.value+add_switch_without_remove,
         })
         self.__check_result(res)
         
