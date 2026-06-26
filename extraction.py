@@ -993,6 +993,20 @@ class ExtractionManagerV3:
             if ExtractionManagerV3.is_point_in_poly(box_x, box_y, zone_polygon):
                 return True
         return False
+    
+    @staticmethod
+    def any_plant_in_zone_position(plants_positions: list, zone_polygon: Polygon):
+        """
+        Returns True if at least one plant box center is in given polygon, False otherwise.
+        :param plant_boxes:
+        :param zone_polygon:
+        :return:
+        """
+
+        for pos_x, pos_y in plants_positions:
+            if ExtractionManagerV3.is_point_in_poly(pos_x, pos_y, zone_polygon):
+                return True
+        return False
 
     @staticmethod
     def get_plants_in_circle(plants_boxes, circle_center_x, circle_center_y, circle_radius):

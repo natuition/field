@@ -320,10 +320,10 @@ def move_to_point_and_extract(coords_from_to: list,
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                         # TODO MVI
                         detection_result = client_mvi.get_last_detections()
-                        plants_boxes = client_mvi.parse_detected_boxes(detection_result)
+                        plants_positions = client_mvi.parse_plants_positions(detection_result)
 
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
-                        if ExtractionManagerV3.any_plant_in_zone(plants_boxes, working_zone_polygon): 
+                        if ExtractionManagerV3.any_plant_in_zone_position(plants_positions, working_zone_polygon): 
                             if config.EXTRACTION_MODE == 1:
                                 extraction_manager_v3.extract_all_plants()
                             elif config.EXTRACTION_MODE == 2:

@@ -1,0 +1,91 @@
+[
+    {
+        "id": 28456,
+        "annotations": [
+            {
+                "id": 3109,
+                "completed_by": 1,
+                "result": [
+                    {
+                        "original_width": 1224,
+                        "original_height": 1024,
+                        "image_rotation": 0,
+                        "value": {
+                            "x": 6.7488784131539425,
+                            "y": 32.578392170713194,
+                            "width": 85.33624962068005,
+                            "height": 48.17074285241714,
+                            "rotation": 0,
+                            "rectanglelabels": [
+                                "tool_reach_zone"
+                            ]
+                        },
+                        "id": "mFLnshM-ut",
+                        "from_name": "zone_label",
+                        "to_name": "image",
+                        "type": "rectanglelabels",
+                        "origin": "manual"
+                    },
+                    {
+                        "original_width": 1224,
+                        "original_height": 1024,
+                        "image_rotation": 0,
+                        "value": {
+                            "x": 6.748798439215954,
+                            "y": 14.459961891371764,
+                            "width": 85.33639438842403,
+                            "height": 66.28866539207641,
+                            "rotation": 0,
+                            "rectanglelabels": [
+                                "detection_zone_for_robot_stopping"
+                            ]
+                        },
+                        "id": "k7hqYIGMw5",
+                        "from_name": "zone_label",
+                        "to_name": "image",
+                        "type": "rectanglelabels",
+                        "origin": "manual"
+                    }
+                ],
+                "was_cancelled": false,
+                "ground_truth": false,
+                "created_at": "2026-06-25T09:19:40.532735Z",
+                "updated_at": "2026-06-25T09:20:26.631341Z",
+                "draft_created_at": "2026-06-25T09:17:55.916018Z",
+                "lead_time": 138.62300000000002,
+                "prediction": {},
+                "result_count": 2,
+                "unique_id": "865f7a96-97e6-42ec-a813-766ec0e5e16c",
+                "import_id": null,
+                "last_action": null,
+                "bulk_created": false,
+                "task": 28456,
+                "project": 27,
+                "updated_by": 1,
+                "parent_prediction": null,
+                "parent_annotation": null,
+                "last_created_by": null
+            }
+        ],
+        "file_upload": "0aaf32f1-frame_000000001.png",
+        "drafts": [],
+        "predictions": [],
+        "data": {
+            "image": "\/data\/upload\/27\/0aaf32f1-frame_000000001.png"
+        },
+        "meta": {},
+        "created_at": "2026-06-25T09:17:40.511868Z",
+        "updated_at": "2026-06-25T09:20:26.677347Z",
+        "allow_skip": true,
+        "inner_id": 1,
+        "total_annotations": 1,
+        "cancelled_annotations": 0,
+        "total_predictions": 0,
+        "comment_count": 0,
+        "unresolved_comment_count": 0,
+        "last_comment_updated_at": null,
+        "project": 27,
+        "updated_by": 1,
+        "comment_authors": []
+    }
+]
