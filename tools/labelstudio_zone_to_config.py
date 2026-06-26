@@ -4,9 +4,6 @@ Expected Label Studio object type is rectanglelabels with:
  - value.x, value.y, value.width, value.height in percents
  - original_width, original_height in pixels
 """
-
-from __future__ import annotations
-
 import argparse
 import json
 import math
