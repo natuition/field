@@ -2774,6 +2774,15 @@ class ClientMVI:
         if res.message["code"] is not 0:
             raise RuntimeError(f"[{self.__class__.__name__}] -> MVI error code: {res.message['code']}, message: {res.message['message']}")
         
+    def get_name_map(self, pipeline: MVIPipelineDescriptor) -> List[str]:
+        """Retrieves the mapping of active pipeline IDs to their corresponding names for the specified pipeline descriptor.
+        Arguments:
+            pipeline: MVIPipelineDescriptor - The pipeline descriptor for which to retrieve the ID-name map.
+        """
+        if pipeline not in self.__id_name_map:
+            self.__id_name_map[pipeline] = self.__get_id_name_map()
+        return self.__id_name_map[pipeline]
+        
     def __get_id_name_map(self) -> List[str]:
         """Retrieves the mapping of active pipeline IDs to their corresponding names from the MVI server.
         Returns:

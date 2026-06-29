@@ -284,6 +284,11 @@ def move_to_point_and_extract(coords_from_to: list,
     log_client_mvi("[Main][client_mvi] -> switch_active_pipeline(OVERHEAD_DETECTION)")
     client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
     log_client_mvi("[Main][client_mvi] <- switch_active_pipeline(OVERHEAD_DETECTION)")
+    
+    treated_plants = set()
+    treated_plants.update(client_mvi.get_name_map(client_mvi.OVERHEAD_DETECTION))
+    notification.set_treated_weed_types(treated_plants)
+    
     if extract:
         log_client_mvi("[Main][client_mvi] -> run_active_detection_on_MVI()")
         client_mvi.run_active_detection_on_MVI()
