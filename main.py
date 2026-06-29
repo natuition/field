@@ -29,7 +29,7 @@ from notification import NotificationClient
 import connectors
 from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
 
-MAIN_LOGGER = utility.NewLogger("Main")
+MAIN_LOGGER = utility.NewLogger.create("Main")
 
 def save_gps_coordinates(points: list, file_name: str):
     """
