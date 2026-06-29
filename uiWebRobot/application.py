@@ -26,6 +26,19 @@ import utility
 __author__ = 'Vincent LAMBERT'
 
 
+class IgnoreSocketIODisconnected:
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        try:
+            return self.app(environ, start_response)
+        except KeyError as e:
+            if str(e) == "'Session is disconnected'":
+                start_response("400 Bad Request", [("Content-Type", "text/plain")])
+                return [b"Socket.IO session already disconnected"]
+            raise
+
 class UIWebRobot:
 
     def __init__(self):
@@ -34,6 +47,7 @@ class UIWebRobot:
         self.__init_flask_route()  # ROUTE FLASK
         self.__socketio = SocketIO(
             self.__app, async_mode=None, logger=False, engineio_logger=False)
+        self.__app.wsgi_app = IgnoreSocketIODisconnected(self.__app.wsgi_app)
         self.__init_socketio()  # SOCKET IO
         self.__reload_config()
         self.__robot_state_client = RobotStateClient()
