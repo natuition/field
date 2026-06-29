@@ -14,9 +14,6 @@ import socket
 import subprocess
 from logger import Logger as NewLogger
 
-UTILITY_LOGGER = NewLogger.create("Utility")
-
-
 # class ImageSaver:
 #     """Implements flexible ways to save images and detected objects on them
 
@@ -267,6 +264,7 @@ class DemoPauseServer:
     """
 
     def __init__(self, host, port, tick_delay=0.005, buffer_size=1024):
+        self.__logger = NewLogger.create(self.__class__.__name__)
         self.__clients_conn_listener = socket.socket()
         self.__clients_conn_listener.bind((host, port))
         self.__clients_conn_listener.listen(5)
@@ -339,11 +337,11 @@ class DemoPauseServer:
                 with self.__current_clients_locker:
                     self.__current_clients.append(client)
             except KeyboardInterrupt:
-                UTILITY_LOGGER.warning("__new_clients_conn_listener_th for some reason got KeyboardInterrupt!")
+                self.__logger.warning("__new_clients_conn_listener_th for some reason got KeyboardInterrupt!")
                 raise KeyboardInterrupt
             except Exception as ex:
                 if self.__keep_clients_conn_listener_alive:
-                    UTILITY_LOGGER.warning("__new_clients_conn_listener_th error when accepting new client:", ex)
+                    self.__logger.warning("__new_clients_conn_listener_th error when accepting new client:", ex)
 
     def __clients_cmd_reader_tf(self):
         connections_to_close = []
@@ -374,11 +372,11 @@ class DemoPauseServer:
                         if idx not in connections_to_close:
                             connections_to_close.append(idx)
                     except KeyboardInterrupt:
-                        UTILITY_LOGGER.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        self.__logger.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
                         raise KeyboardInterrupt
                     except Exception as ex:
                         if self.__keep_clients_cmd_reader_alive:
-                            UTILITY_LOGGER.warning("__clients_cmd_reader_th error when reading from client:", ex)
+                            self.__logger.warning("__clients_cmd_reader_th error when reading from client:", ex)
                             pass
 
                 # try to close, and remove client objects which likely loss a connection
@@ -389,21 +387,21 @@ class DemoPauseServer:
                     try:
                         self.__current_clients[idx].shutdown(socket.SHUT_RDWR)
                     except KeyboardInterrupt:
-                        UTILITY_LOGGER.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        self.__logger.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
                         raise KeyboardInterrupt
                     except Exception as ex:
                         if self.__keep_clients_cmd_reader_alive:
-                            UTILITY_LOGGER.warning("__clients_cmd_reader_th error when shutting down connection:", ex)
+                            self.__logger.warning("__clients_cmd_reader_th error when shutting down connection:", ex)
                             pass
 
                     try:
                         self.__current_clients[idx].close()
                     except KeyboardInterrupt:
-                        UTILITY_LOGGER.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        self.__logger.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
                         raise KeyboardInterrupt
                     except Exception as ex:
                         if self.__keep_clients_cmd_reader_alive:
-                            UTILITY_LOGGER.warning("__clients_cmd_reader_th error when closing connection:", ex)
+                            self.__logger.warning("__clients_cmd_reader_th error when closing connection:", ex)
                             pass
 
                     del self.__current_clients[idx]
@@ -412,7 +410,7 @@ class DemoPauseServer:
                     connections_to_close.clear()
 
     def wait_for_resume_cmd(self):
-        UTILITY_LOGGER.info("Waiting for demo server resume command...")
+        self.__logger.info("Waiting for demo server resume command...")
         with self.__is_paused_locker:
             self.__is_paused = True
 
@@ -427,6 +425,7 @@ class DemoPauseClient:
     """Sends resume requests to DemoPauseServer"""
 
     def __init__(self, host, port, tick_delay=0.005):
+        self.__logger = NewLogger.create(self.__class__.__name__)
         self.__tick_delay = tick_delay
 
         self.__host = host
@@ -510,14 +509,14 @@ class DemoPauseClient:
                     self.__server_conn.send(b"resume")
                     break
                 except KeyboardInterrupt:
-                    UTILITY_LOGGER.warning("__sender_tf for some reason got KeyboardInterrupt!")
+                    self.__logger.warning("__sender_tf for some reason got KeyboardInterrupt!")
                     raise KeyboardInterrupt
                 except (socket.error, socket.herror, socket.gaierror):
                     need_to_reconnect = True
                     continue
                 except Exception as ex:
                     if self.__keep_sender_alive:
-                        UTILITY_LOGGER.warning("__sender_tf error when sending resume cmd:", ex)
+                        self.__logger.warning("__sender_tf error when sending resume cmd:", ex)
                         pass
 
 
@@ -529,7 +528,7 @@ def get_current_time():
 
 def create_directories(*args):
     """Creates directories, receives any args count, each arg is separate dir"""
-
+    UTILITY_LOGGER = NewLogger.create("Utility")
     for path in args:
         if not os.path.exists(path):
             try:
@@ -590,7 +589,7 @@ def mu_sigma(samples: list):
 
 
 def average_point(gps,trajectory_saver: TrajectorySaver,nav, logger_full: Logger=None):
-
+    UTILITY_LOGGER = NewLogger.create("Utility")
     #ORIGIN POINT SAVING
     lat = []     #latitude history
     long = []    #longitude history
@@ -650,6 +649,7 @@ def get_last_dir_name(parent_dir_path: str):
     return last_dir
 
 def life_line_reset():
+    UTILITY_LOGGER = NewLogger.create("Utility")
     dir_gpio = f"/sys/class/gpio/gpio{config.LIFE_LINE_PIN}"
     if os.path.isdir(dir_gpio):
         UTILITY_LOGGER.info(f"The directory '{dir_gpio}' exist.")
