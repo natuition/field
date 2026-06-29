@@ -9,12 +9,13 @@ import socket
 import time
 import _thread as thread
 import pytz
-import enum
 import traceback
 from shared_class.robot_synthesis import RobotSynthesis
+from logger import Logger as NewLogger
 
 class RobotStateServer:
     def __init__(self, fleet_tick_delay=60):
+        self.__logger = NewLogger.get_logger(self.__class__.__name__)
         self.__sync_locker = threading.Lock()
 
         self.__fleet_tick_delay = fleet_tick_delay
@@ -61,8 +62,8 @@ class RobotStateServer:
         self.__conn_accept_th.join()
 
     def __client_data_reader_tf(self, client_socket: socket.socket, addr):
-        msg = "[RobotStateServer] New client, ready to receive info"
-        print(msg, flush=True)
+        msg = "New client, ready to receive info"
+        self.__logger.info(msg)
 
         try:
             while self.__keep_conn_listener_alive:
@@ -77,9 +78,9 @@ class RobotStateServer:
                 except:
                     print(traceback.format_exc())
         except KeyboardInterrupt:
-            msg = f"[RobotStateServer] Robot state client reader thread '{threading.current_thread().name}' " \
+            msg = f"Robot state client reader thread '{threading.current_thread().name}' " \
                   f"caught KBI (parent process should get it instead)"
-            print(msg, flush=True)
+            self.__logger.error(msg)
             raise KeyboardInterrupt
         except:
             pass
@@ -87,15 +88,15 @@ class RobotStateServer:
             client_socket.close()
 
     def __client_conn_accept_tf(self):
-        print("[RobotStateServer] Ready to receive clients.", flush=True)
+        self.__logger.info("Ready to receive clients.")
         while self.__keep_conn_listener_alive:
             try:
                 client, address = self.__conn_listener.accept()
                 thread.start_new_thread(self.__client_data_reader_tf, (client, address))
             except KeyboardInterrupt:
-                msg = f"[RobotStateServer] Robot state conn accepting thread '{threading.current_thread().name}' " \
+                msg = f"Robot state conn accepting thread '{threading.current_thread().name}' " \
                       f"caught KBI (parent process should get it instead)"
-                print(msg, flush=True)
+                self.__logger.error(msg)
                 raise KeyboardInterrupt
             except:
                 if self.__keep_conn_listener_alive:
@@ -108,18 +109,18 @@ class RobotStateServer:
                     "robot_synthesis": self.__robot_state.value,
                     "robot_serial_number": self.__robot_sn
                 }
-            response = requests.post(
+            _ = requests.post(
                 f"http://{self.__fleet_ip}:{self.__fleet_port}/api/v1/data_gathering/robot_status",
                 json=[robot_state_to_send])
         except KeyboardInterrupt:
-            msg = f"[RobotStateServer] Robot state sender thread '{threading.current_thread().name}' caught KBI " \
+            msg = f"Robot state sender thread '{threading.current_thread().name}' caught KBI " \
                     f"(parent process should get it instead)"
-            print(msg, flush=True)
+            self.__logger.error(msg)
             raise KeyboardInterrupt
         except:
-            msg = f"[RobotStateServer] Failed send robot status to remote data gathering server:\n" \
+            msg = f"Failed send robot status to remote data gathering server:\n" \
                     f"{traceback.format_exc()}"
-            print(msg, flush=True)
+            self.__logger.error(msg)
 
     def __robot_state_sender_tf(self):
         while self.__keep_robot_state_sender_alive:
@@ -129,6 +130,7 @@ class RobotStateServer:
 
 class RobotStateClient:
     def __init__(self):
+        self.__logger = NewLogger.get_logger(self.__class__.__name__)
         self.__state_update_freq = 1  # how often to check if state was changed
 
         self.__host = config.ROBOT_SYNTHESIS_HOST
@@ -220,9 +222,9 @@ class RobotStateClient:
 
                 self.__robot_state_server_socket.send(state_to_send.value.encode())
             except KeyboardInterrupt:
-                msg = f"[RobotStateClient] Robot state client sender thread '{threading.current_thread().name}' " \
+                msg = f"Robot state client sender thread '{threading.current_thread().name}' " \
                       f"caught KBI (parent process should get it instead)"
-                print(msg, flush=True)
+                self.__logger.error(msg)
                 raise KeyboardInterrupt
             except (socket.error, socket.herror, socket.gaierror):
                 with self.__robot_state_locker:
@@ -231,9 +233,9 @@ class RobotStateClient:
             except (ValueError, IndexError):
                 pass
             except:
-                msg = f"[RobotStateClient] Robot state client sender thread '{threading.current_thread().name}' " \
+                msg = f"Robot state client sender thread '{threading.current_thread().name}' " \
                       f"unexpected error:\n{traceback.format_exc()}"
-                print(msg)
+                self.__logger.error(msg)
 
 
 class NotificationClient:
@@ -241,6 +243,7 @@ class NotificationClient:
     __RES_CODE_CREATED = 201
 
     def __init__(self, time_start):
+        self.__logger = NewLogger.get_logger(self.__class__.__name__)
         self.__port = config.DATAGATHERING_PORT
         self.__ip = config.DATAGATHERING_HOST
         self.__time_start = datetime.datetime.strptime(
@@ -291,8 +294,8 @@ class NotificationClient:
         self.close()
 
     def close(self):
-        msg = "[NotificationClient] Closing..."
-        print(msg, flush=True)
+        msg = "Closing..."
+        self.__logger.info(msg)
         self.__keep_data_sender_th_alive = False
         if self.__ws is not None:
             try:
@@ -365,9 +368,9 @@ class NotificationClient:
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:
-                msg = f"[NotificationClient] Failed to close connection before opening a new one:\n" \
+                msg = f"Failed to close connection before opening a new one:\n" \
                       f"{traceback.format_exc()}"
-                print(msg)
+                self.__logger.info(msg)
 
         # open new connection
         try:
@@ -378,8 +381,8 @@ class NotificationClient:
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except:
-            msg = f"[NotificationClient] Failed to open new connection:\n{traceback.format_exc()}"
-            print(msg)
+            msg = f"Failed to open new connection:\n{traceback.format_exc()}"
+            self.__logger.error(msg)
 
     def __data_sender_tf(self):
         self.__do_inits()
@@ -409,8 +412,8 @@ class NotificationClient:
                 except:
                     # TODO remove reconnection from here when list of all errors requiring reconnection is known and caught higher
                     self.__ws_reconnection_required = True
-                    msg = f"[NotificationClient] Failed to send points to remote server:\n{traceback.format_exc()}"
-                    print(msg)
+                    msg = f"Failed to send points to remote server:\n{traceback.format_exc()}"
+                    self.__logger.warning(msg)
 
             # don't send vesc data if need to stop working as it may delay class instance proper closing for a while
             if not self.__keep_data_sender_th_alive:
@@ -433,14 +436,14 @@ class NotificationClient:
                     if response.status_code == self.__RES_CODE_CREATED:
                         vesc_statistics_json.clear()
                     else:
-                        msg = f"[NotificationClient] Failed to send input voltage, res code: {response.status_code}"
-                        print(msg)
+                        msg = f"Failed to send input voltage, res code: {response.status_code}"
+                        self.__logger.warning(msg)
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except:
-                    msg = f"[NotificationClient] Failed to send input voltage, unexpected exception occured:\n" \
+                    msg = f"Failed to send input voltage, unexpected exception occured:\n" \
                           f"{traceback.format_exc()}"
-                    print(msg)
+                    self.__logger.warning(msg)
 
             time.sleep(config.ALIVE_SENDING_TIMEOUT)
 
@@ -489,14 +492,14 @@ class NotificationClient:
             if self.__session_id is None and self.__keep_data_sender_th_alive:
                 time.sleep(0.5)
 
-        msg = "[NotificationClient] Initializations of remote DB are successfully done"
-        print(msg)
+        msg = "Initializations of remote DB are successfully done"
+        self.__logger.info(msg)
 
     def __send_session(self):
         with self.__field_sync_locker:
             if self.__field_id is None:
-                msg = f"[NotificationClient] Failed to send current session as field_id is None"
-                print(msg)
+                msg = f"Failed to send current session as field_id is None"
+                self.__logger.info(msg)
                 return
 
             session_to_send = {
@@ -510,9 +513,9 @@ class NotificationClient:
                 json=session_to_send)
 
             if response.status_code != self.__RES_CODE_CREATED:
-                msg = f"[NotificationClient] Failed to send current session '{session_to_send}', res code: " \
+                msg = f"Failed to send current session '{session_to_send}', res code: " \
                       f"{response.status_code}"
-                print(msg)
+                self.__logger.warning(msg)
                 return
 
             self.__session_id = response.json()["id"]
@@ -522,24 +525,24 @@ class NotificationClient:
             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/robot",
             json={"serial_number": self.__robot_sn})
         if response.status_code != self.__RES_CODE_EXISTING and response.status_code != self.__RES_CODE_CREATED:
-            msg = f"[NotificationClient] Failed to send robot's serial, res code: {response.status_code}"
-            print(msg)
+            msg = f"Failed to send robot's serial, res code: {response.status_code}"
+            self.__logger.warning(msg)
             return
         self.__robot_sn_is_init = True
 
     def __send_treated_weed_types(self):
         with self.__treated_weed_types_sync_locker:
             if self.__treated_weed_types is None:
-                msg = f"[NotificationClient] Failed to setup treated plants as treated plants were not given " \
+                msg = f"Failed to setup treated plants as treated plants were not given " \
                       f"(they are None)"
-                print(msg)
+                self.__logger.warning(msg)
                 return
 
             # get list of weed types known by DB
             response = requests.get(f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weeds_types")
             if response.status_code != self.__RES_CODE_EXISTING:
-                msg = f"[NotificationClient] Failed to get weeds list from DB, res code: {response.status_code}"
-                print(msg)
+                msg = f"Failed to get weeds list from DB, res code: {response.status_code}"
+                self.__logger.warning(msg)
                 return
 
             # get set of weed types absent in DB
@@ -552,25 +555,25 @@ class NotificationClient:
                     f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/weed_type",
                     json=weed_type)
                 if response.status_code != self.__RES_CODE_EXISTING and response.status_code != self.__RES_CODE_CREATED:
-                    msg = f"[NotificationClient] Failed to send treated weed '{weed_type}', res code: " \
+                    msg = f"Failed to send treated weed '{weed_type}', res code: " \
                           f"{response.status_code}"
-                    print(msg)
+                    self.__logger.warning(msg)
                     return
             self.__treated_weed_types_are_init = True
 
     def __send_field(self):
         with self.__field_sync_locker:
             if self.__field_name is None:
-                msg = f"[NotificationClient] Failed to send field as stored field_name is None"
-                print(msg)
+                msg = f"Failed to send field as stored field_name is None"
+                self.__logger.info(msg)
                 return
             if self.__field is None:
-                msg = f"[NotificationClient] Failed to send field as stored field is None"
-                print(msg)
+                msg = f"Failed to send field as stored field is None"
+                self.__logger.info(msg)
                 return
             if len(self.__field) == 0:
-                msg = f"[NotificationClient] Failed to send field as stored field contains 0 points"
-                print(msg)
+                msg = f"Failed to send field as stored field contains 0 points"
+                self.__logger.info(msg)
                 return
 
             # create field
@@ -581,7 +584,7 @@ class NotificationClient:
             response = requests.post(f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/field", json=field)
 
             if response.status_code != self.__RES_CODE_EXISTING and response.status_code != self.__RES_CODE_CREATED:
-                print(f"[NotificationClient] Failed send field '{field}', res code: '{response.status_code}'")
+                self.__logger.warning(f"Failed send field '{field}', res code: '{response.status_code}'")
                 return
 
             self.__field_id = response.json()["id"]
@@ -602,11 +605,11 @@ class NotificationClient:
                             f"http://{self.__ip}:{self.__port}/api/v1/data_gathering/field_corner",
                             json=field_corner_to_send)
                         if response.status_code != self.__RES_CODE_CREATED:
-                            msg = f"[NotificationClient] Failed to create field corner '{field_corner_to_send}', " \
+                            msg = f"Failed to create field corner '{field_corner_to_send}', " \
                                   f"res code: '{response.status_code}'"
-                            print(msg)
+                            self.__logger.warning(msg)
                     else:
-                        msg = f"[NotificationClient] Failed to create gps point, res code: " \
+                        msg = f"Failed to create gps point, res code: " \
                               f"'{response.status_code}'"
-                        print(msg)
+                        self.__logger.warning(msg)
             self.__field_is_init = True
