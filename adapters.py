@@ -1291,6 +1291,8 @@ class VescAdapterV4:
 
         except serial.SerialException as ex:
             self.__logger.error(f"{ex}")
+        except Exception as ex:
+            self.__logger.error(f"Unexpected error in movement control thread: {ex}")
         finally:
             self.__logger.error(f"Movement control thread stopped")
 
