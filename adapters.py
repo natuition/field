@@ -1383,8 +1383,11 @@ class VescAdapter:
         self._ser.write(pyvesc.encode(pyvesc.SetCurrent(0)))
 
     def wait_for_stop(self):
-        while self._allow_movement:
-            time.sleep(self._check_freq)
+        try:
+            while self._allow_movement:
+                time.sleep(self._check_freq)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
 
     def apply_rpm(self, rpm):
         if self._rpm != rpm:  # TODO: bug to fix: if rpm was set by set_rpm - it won't be applied on vesc
