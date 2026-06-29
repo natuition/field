@@ -978,7 +978,7 @@ class ExtractionMethods:
     """Contains methods for different plants extraction strategies. All methods should have similar signatures.
     """
     
-    LOGGER = utility.NewLogger(__name__)
+    LOGGER = utility.NewLogger.create(__name__)
     
 
     @staticmethod
