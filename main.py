@@ -304,10 +304,12 @@ def move_to_point_and_extract(coords_from_to: list,
             # EXTRACTION CONTROL
             start_t = time.time()
             # TODO MVI
+            now = time.monotonic()
             if now - last_violette_false_log_ts >= VIOLETTE_STOPPED_LOG_INTERVAL:
                 log_client_mvi("[Main][client_mvi] -> violette_is_stopped()")
             violette_is_stopped = client_mvi.violette_is_stopped()
             if violette_is_stopped:
+                now = time.monotonic()
                 if now - last_violette_false_log_ts >= VIOLETTE_STOPPED_LOG_INTERVAL:
                     log_client_mvi("[Main][client_mvi] <- violette_is_stopped() = True")
                     last_violette_false_log_ts = now
