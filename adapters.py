@@ -2888,6 +2888,7 @@ class ClientMVI:
             RuntimeError: If the MVI operation to switch the active pipeline was not successful.
         """
         add_switch_without_remove = "!" if new_pipeline == MVIPipelineDescriptor.OVERHEAD_DETECTION else ""
+        add_switch_without_remove = ""
         res = self.__client.call(CallType.SET,{
             "property": MVIProperty.ACTIVE_PIPELINE.value,
             "value": new_pipeline.value+add_switch_without_remove,
