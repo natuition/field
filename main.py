@@ -292,7 +292,7 @@ def move_to_point_and_extract(coords_from_to: list,
         client_mvi.run_passive_detection_on_MVI()
         log_client_mvi("[Main][client_mvi] <- run_passive_detection_on_MVI()")
     
-    VIOLETTE_STOPPED_LOG_INTERVAL = 1  # seconds    
+    VIOLETTE_STOPPED_LOG_INTERVAL = 0.5  # seconds    
     last_violette_stopped_log_time_ms = time.time()
     
 
@@ -314,7 +314,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 log_client_mvi("[Main][client_mvi] <- violette_is_stopped() = True")
             else:
                 now = time.monotonic()
-                if now - last_violette_false_log_ts >= 0.5:
+                if now - last_violette_false_log_ts >= VIOLETTE_STOPPED_LOG_INTERVAL:
                     log_client_mvi("[Main][client_mvi] <- violette_is_stopped() = False")
                     last_violette_false_log_ts = now
             per_det_end_t = time.time()
