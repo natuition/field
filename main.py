@@ -275,6 +275,7 @@ def move_to_point_and_extract(coords_from_to: list,
     VIOLETTE_STOPPED_LOG_INTERVAL = 0.5  # seconds  
 
     def log_client_mvi(msg: str):
+        return
         logger_full.write(msg + "\n")
         if config.VERBOSE:
             caller = inspect.currentframe().f_back
