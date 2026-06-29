@@ -1291,10 +1291,11 @@ class VescAdapterV4:
 
         except serial.SerialException as ex:
             self.__logger.error(f"{ex}")
+            self.__logger.error(f"Movement control thread stopped")
         except Exception as ex:
             self.__logger.error(f"Unexpected error in movement control thread: {ex}")
-        finally:
             self.__logger.error(f"Movement control thread stopped")
+            
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
