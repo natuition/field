@@ -1782,6 +1782,7 @@ class VescAdapterV4:
     EXTRACTION_KEY = 1
 
     def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
+        self.__logger = NewLogger.create(self.__class__.__name__)
         self.__locker = threading.Lock()
         self.__reconnect_locker = threading.Lock()
 
@@ -2165,7 +2166,7 @@ class VescAdapterV4:
             self.__is_moving[engine_key] = True
 
     def stop_moving(self, engine_key, smooth_deceleration: bool = False):        
-        print("Stopping engine", engine_key, "with smooth deceleration:", smooth_deceleration)
+        self.__logger.info("Stopping engine", engine_key, "with smooth deceleration:", smooth_deceleration)
         with self.__locker:
             self.__use_smooth_decel[engine_key] = smooth_deceleration
 
