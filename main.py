@@ -28,8 +28,9 @@ from shared_class.robot_synthesis import RobotSynthesis
 from notification import NotificationClient
 import connectors
 from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
+from logger import Logger as NewLogger
 
-MAIN_LOGGER = utility.NewLogger.create("Main")
+MAIN_LOGGER = NewLogger.create("Main")
 
 def save_gps_coordinates(points: list, file_name: str):
     """
@@ -2248,6 +2249,6 @@ def main():
         MAIN_LOGGER.info("Safe disable is done.")
 
 if __name__ == '__main__':
-    utility.NewLogger.setLevel(config.LOG_LEVEL)
+    NewLogger.setLevel(config.LOG_LEVEL)
     main()
     exit(0)

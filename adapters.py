@@ -20,7 +20,7 @@ from client import Client
 from common import MVICustomResultType, MVIPipelineDescriptor, MVIProperty, MVIState
 from message import CallType
 from protos import DetectionResultDTO, ResultDTO, DetectionResult
-
+from logger import Logger as NewLogger
 
 class SmoothieAdapter:
     RESPONSE_OK = "ok\r\n"
