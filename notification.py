@@ -15,7 +15,7 @@ from logger import Logger as NewLogger
 
 class RobotStateServer:
     def __init__(self, fleet_tick_delay=60):
-        self.__logger = NewLogger.get_logger(self.__class__.__name__)
+        self.__logger = NewLogger.create(self.__class__.__name__)
         self.__sync_locker = threading.Lock()
 
         self.__fleet_tick_delay = fleet_tick_delay
@@ -130,7 +130,7 @@ class RobotStateServer:
 
 class RobotStateClient:
     def __init__(self):
-        self.__logger = NewLogger.get_logger(self.__class__.__name__)
+        self.__logger = NewLogger.create(self.__class__.__name__)
         self.__state_update_freq = 1  # how often to check if state was changed
 
         self.__host = config.ROBOT_SYNTHESIS_HOST
@@ -243,7 +243,7 @@ class NotificationClient:
     __RES_CODE_CREATED = 201
 
     def __init__(self, time_start):
-        self.__logger = NewLogger.get_logger(self.__class__.__name__)
+        self.__logger = NewLogger.create(self.__class__.__name__)
         self.__port = config.DATAGATHERING_PORT
         self.__ip = config.DATAGATHERING_HOST
         self.__time_start = datetime.datetime.strptime(
