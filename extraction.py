@@ -197,10 +197,9 @@ class ExtractionManagerV3:
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
             msg = f"EXT. PAUSE: Found {str(len(smoothie_positions))} plants after PDZ scan; press enter:"
             self.__logger_full.write(msg + "\n")
-            input(msg)
+            print(msg)
         # demo pause
         if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
-            print("Recupération des plantes par la caméra du haut")
             self.__demo_server.wait_for_resume_cmd()
 
         plant_index = 0
@@ -218,7 +217,7 @@ class ExtractionManagerV3:
                 print(msg)
                 msg = f"EXT. PAUSE: Target is X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
                 self.__logger_full.write(msg + "\n")
-                input(msg)
+                print(msg)
             # demo pause
             if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                 self.__demo_server.wait_for_resume_cmd()
@@ -234,14 +233,16 @@ class ExtractionManagerV3:
                         msg = f"EXT. PAUSE: Due to obscuring avoidance target has changed to " \
                               f"X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
                         self.__logger_full.write(msg + "\n")
-                        input(msg)
+                        print(msg)
+                        self.__demo_server.wait_for_resume_cmd()
                 if config.Y_MIN < init_pos_sm_y + config.AVOID_CORK_VIEW_OBSCURING_DIST_Y < config.Y_MAX:
                     cur_pos_sm_y += config.AVOID_CORK_VIEW_OBSCURING_DIST_Y
                     if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                         msg = f"EXT. PAUSE: Due to obscuring avoidance target has changed to " \
                               f"X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
                         self.__logger_full.write(msg + "\n")
-                        input(msg)
+                        print(msg)
+                        self.__demo_server.wait_for_resume_cmd()
 
             # affects robot's behaviour if no plants were detected; responsible for delta scans and extractions checking
             scan_is_first = True
@@ -282,7 +283,8 @@ class ExtractionManagerV3:
                 if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                     msg = f"EXT. PAUSE: Arrived to plant {str(plant_index)}, preparing to specify scan; press enter:"
                     self.__logger_full.write(msg + "\n")
-                    input(msg)
+                    print(msg)
+                    self.__demo_server.wait_for_resume_cmd()
 
                 # make a scan, keep only plants that are in undistorted zone
                 # TODO: possibly here will be multiple scans with average coordinates
@@ -322,7 +324,7 @@ class ExtractionManagerV3:
                           f"during specify scan (saved in debug images if allowed, going to do delta scans if 0 and" \
                           f" allowed); press enter:"
                     self.__logger_full.write(msg + "\n")
-                    input(msg)
+                    print(msg)
                 # demo pause
                 if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                     self.__demo_server.wait_for_resume_cmd()
@@ -359,7 +361,7 @@ class ExtractionManagerV3:
                                     msg = f"EXT. PAUSE: Starting delta X={str(delta_sm_x)} Y={str(delta_sm_y)} " \
                                           f"scan (will be skipped if out of working range); press enter:"
                                     self.__logger_full.write(msg + "\n")
-                                    input(msg)
+                                    print(msg)
                                 # demo pause
                                 if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                                     self.__demo_server.wait_for_resume_cmd()
@@ -415,7 +417,7 @@ class ExtractionManagerV3:
                                               f"plant {str(plant_index)} start position to X={str(cur_pos_sm_x)}, " \
                                               f"Y={str(cur_pos_sm_y)}; press enter:"
                                         self.__logger_full.write(msg + "\n")
-                                        input(msg)
+                                        print(msg)
                                     # demo pause
                                     if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                                         self.__demo_server.wait_for_resume_cmd()
@@ -517,7 +519,7 @@ class ExtractionManagerV3:
                     if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                         msg = f"EXT. PAUSE: Going to plant AbsX={str(ext_sm_x)}, AbsY={str(ext_sm_y)}; press enter:"
                         self.__logger_full.write(msg + "\n")
-                        input(msg)
+                        print(msg)
                     # demo pause
                     if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                         self.__demo_server.wait_for_resume_cmd()
@@ -563,7 +565,8 @@ class ExtractionManagerV3:
                             msg = f"EXT. PAUSE: Skipped plant as extraction strategy was None (already tried all " \
                                   f"strategies); press enter:"
                             self.__logger_full.write(msg + "\n")
-                            input(msg)
+                            print(msg)
+                            self.__demo_server.wait_for_resume_cmd()
 
         # set camera back to the Y min, X_MIN
         ext_xy_start_t = time.time()
@@ -1141,7 +1144,7 @@ class ExtractionMethods:
 
             if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                 msg = f"EXT. PAUSE: Cork is down, going to pick it up; press enter:"
-                input(msg)
+                print(msg)
             # demo pause
             if config.ALLOW_DEMO_PAUSES and demo_server is not None:
                 demo_server.wait_for_resume_cmd()
