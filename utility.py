@@ -411,6 +411,7 @@ class DemoPauseServer:
                     connections_to_close.clear()
 
     def wait_for_resume_cmd(self):
+        print("Waiting for demo server resume command...")
         with self.__is_paused_locker:
             self.__is_paused = True
 
