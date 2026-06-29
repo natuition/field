@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import traceback
+import inspect
 from matplotlib.patches import Polygon
 import math
 import cv2 as cv
@@ -270,11 +271,14 @@ def move_to_point_and_extract(coords_from_to: list,
 
     have_time_for_inference = True
     predictor_next_gps_expected_ts = float("inf")
+    last_violette_false_log_ts = 0.0
 
     def log_client_mvi(msg: str):
         logger_full.write(msg + "\n")
         if config.VERBOSE:
-            print(msg)
+            caller = inspect.currentframe().f_back
+            line_no = caller.f_lineno if caller is not None else -1
+            print(f"[L{line_no}] {msg}")
     
     log_client_mvi("[Main][client_mvi] -> switch_active_pipeline(OVERHEAD_DETECTION)")
     client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
@@ -301,7 +305,13 @@ def move_to_point_and_extract(coords_from_to: list,
             # TODO MVI
             log_client_mvi("[Main][client_mvi] -> violette_is_stopped()")
             violette_is_stopped = client_mvi.violette_is_stopped()
-            log_client_mvi(f"[Main][client_mvi] <- violette_is_stopped() = {violette_is_stopped}")
+            if violette_is_stopped:
+                log_client_mvi("[Main][client_mvi] <- violette_is_stopped() = True")
+            else:
+                now = time.monotonic()
+                if now - last_violette_false_log_ts >= 0.5:
+                    log_client_mvi("[Main][client_mvi] <- violette_is_stopped() = False")
+                    last_violette_false_log_ts = now
             per_det_end_t = time.time()
             detections_period.append(per_det_end_t - start_t)
                 
@@ -323,7 +333,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         msg = "[VERBOSE EXTRACT] Violette is stopped because we have detected plant(s)."
                         logger_full.write_and_flush(msg+"\n")
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                    print("2. Violette is stopped because we have detected plant(s).")
+                    print("[VERBOSE EXTRACT] 2.Violette is stopped because we have detected plant(s).")
                     if config.VERBOSE_EXTRACT:
                         msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
                         logger_full.write_and_flush(msg+"\n")
