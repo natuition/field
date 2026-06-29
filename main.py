@@ -268,9 +268,8 @@ def move_to_point_and_extract(coords_from_to: list,
                             extraction_manager_v3.mill_all_plants()
                         slow_mode_time = time.time()
 
-                    if config.VERBOSE_EXTRACT:
-                        msg = "[VERBOSE EXTRACT] Extract cycle are finish."
-                        logger_full.write_and_flush(msg+"\n")
+                    msg = "[VERBOSE EXTRACT] Extract cycle are finish."
+                    logger_full.write_and_flush(msg+"\n")
 
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
 
