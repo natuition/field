@@ -6,14 +6,13 @@ import threading
 from time import sleep
 import psutil
 import glob
-#import detection
-import cv2 as cv
 import math
 from config import config
 import time
 from pytz import timezone
 import socket
 import subprocess
+import logging
 
 
 # class ImageSaver:
@@ -255,6 +254,77 @@ class Logger:
 
     def close(self):
         self._file.close()
+
+class CustomFormatter(logging.Formatter):
+    COLOR_CODES = {
+        "BLACK": "\033[30m",
+        "RED": "\033[31m",
+        "GREEN": "\033[32m",
+        "YELLOW": "\033[33m",
+        "BLUE": "\033[34m",
+        "MAGENTA": "\033[35m",
+        "CYAN": "\033[36m",
+        "WHITE": "\033[37m",
+        "RESET": "\033[0m",
+    }
+
+    SEMANTIC_COLORS = {
+        "DEBUG": COLOR_CODES["MAGENTA"],
+        "INFO": COLOR_CODES["CYAN"],
+        "WARNING": COLOR_CODES["YELLOW"],
+        "ERROR": COLOR_CODES["RED"],
+        "CRITICAL": COLOR_CODES["RED"],
+    }
+    def __init__(self, tag: str):
+        super().__init__()
+        self.tag = tag
+
+    def format(self, record):
+        # Timestamp (Gunicorn style)
+        created = datetime.fromtimestamp(record.created).astimezone()
+        timestamp = created.strftime("[%Y-%m-%d %H:%M:%S %z]")
+
+        pid = os.getpid()
+
+        level = record.levelname
+        level_color = CustomFormatter.SEMANTIC_COLORS.get(level, "")
+
+        message = record.getMessage()
+
+        line = record.lineno  # line number of logging call
+
+        return (
+            f"{timestamp} [{pid}] [{level_color}{level}{CustomFormatter.COLOR_CODES['RESET']}] [{self.tag}:{line}] {message}"
+        )
+
+
+class NewLogger:
+    """Custom logger with color support and global log level configuration.
+
+    Usage:
+        ```python
+        Logger.setLevel("DEBUG")  # Set global log level
+        logger = Logger.create("MyTag")
+        logger.info("This is an info message")
+        ```
+    """
+
+    @staticmethod
+    def setLevel(level):
+        """Set the global log level for all loggers."""
+        if isinstance(level, str):
+            level = getattr(logging, level.upper(), logging.INFO)
+        logging.getLogger().setLevel(level)
+
+    @staticmethod
+    def create(tag: str):
+        """Create a logger with the specified tag. The tag will be included in all log messages from this logger."""
+        logger = logging.getLogger(tag)
+        if not logger.hasHandlers():
+            handler = logging.StreamHandler()
+            handler.setFormatter(CustomFormatter(tag))
+            logger.addHandler(handler)
+        return logger
 
 
 class DemoPauseServer:

@@ -83,11 +83,6 @@ SPIRAL_SIDES_INTERVAL = 450  # distance between sides of spiral robot movements,
 FIELD_REDUCE_SIZE = 200  # cut field's each side for this value, mms
 PREV_CUR_POINT_MIN_DIST = 10  # pass by cur points dist between them and prev point is lesser than this, mms
 
-#Field creation with main
-USE_EMERGENCY_FIELD_GENERATION = False  # allows to generate field by moving forward for a given duration
-EMERGENCY_FIELD_SIZE = 45000  # mms; side of the area that will be created if emergency field creation is enabled
-EMERGENCY_MOVING_TIME = 10  # seconds of moving forward for vector getting
-
 #Continue mode
 CONTINUE_PREVIOUS_PATH = False
 PREVIOUS_PATH_POINTS_FILE = "path_points.dat"
@@ -431,11 +426,10 @@ AUDIT_MODE = False
 AUDIT_DIVIDER = 6
 AUDIT_OUTPUT_FILE = "audit.txt"
 
+LOG_LEVEL = "INFO"
+
 VERBOSE = False
-VERBOSE_EXTRACT = True
 FILES_TO_KEEP_COUNT = 600
-LOG_SPEED_MODES = True
-PRINT_SPEED_MODES = True
 UI_VERBOSE_LOGGING = False
 
 LEARN_GO_STRAIGHT = False

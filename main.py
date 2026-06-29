@@ -29,6 +29,7 @@ from notification import NotificationClient
 import connectors
 from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
 
+MAIN_LOGGER = utility.NewLogger("Main")
 
 def save_gps_coordinates(points: list, file_name: str):
     """
@@ -113,13 +114,13 @@ def move_to_point_and_extract(coords_from_to: list,
         enable_field_leaving_protection = False
         if config.ALLOW_FIELD_LEAVING_PROTECTION:
             if cur_field is None:
-                msg = f"WARNING: robot field leaving protection WILL NOT WORK as given field is None"
-                print(msg)
+                msg = f"robot field leaving protection WILL NOT WORK as given field is None"
+                MAIN_LOGGER.warning(msg)
                 logger_full.write(msg)
             elif len(cur_field) < 3:
-                msg = f"WARNING: robot field leaving protection WILL NOT WORK as given field contains " \
+                msg = f"robot field leaving protection WILL NOT WORK as given field contains " \
                       f"{len(cur_field)} points (required ar least 3 points)"
-                print(msg)
+                MAIN_LOGGER.warning(msg)
                 logger_full.write(msg)
 
     extract = SI_speed > 0 and allow_extractions
@@ -224,20 +225,19 @@ def move_to_point_and_extract(coords_from_to: list,
                 if last_working_mode != current_working_mode:
                     last_working_mode = current_working_mode
                     msg = "[Working mode] : slow"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
+                    logger_full.write(msg + "\n")
+                    MAIN_LOGGER.info(msg)
 
                 if violette_is_stopped:
-                    if config.VERBOSE_EXTRACT:
-                        msg = "[VERBOSE EXTRACT] Violette is stopped because we have detected plant(s)."
-                        logger_full.write_and_flush(msg+"\n")
+                    msg = "[VERBOSE EXTRACT] Violette is stopped because we have detected plant(s)."
+                    logger_full.write_and_flush(msg+"\n")
+                    MAIN_LOGGER.debug(msg)
+                    
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                    print("[VERBOSE EXTRACT] 2.Violette is stopped because we have detected plant(s).")
-                    if config.VERBOSE_EXTRACT:
-                        msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
-                        logger_full.write_and_flush(msg+"\n")
+                    msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
+                    logger_full.write_and_flush(msg+"\n")
+                    MAIN_LOGGER.debug(msg)
+                    
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
                     
@@ -276,8 +276,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
                     msg = "Applying force step forward after extractions cycle(s)"
                     logger_full.write(msg + "\n")
-                    if config.VERBOSE:
-                        print(msg)
+                    MAIN_LOGGER.info(msg)
                     vesc_engine.set_time_to_move(config.STEP_FORWARD_TIME, vesc_engine.PROPULSION_KEY)
                     vesc_engine.set_target_rpm(
                         config.SI_SPEED_STEP_FORWARD * config.MULTIPLIER_SI_SPEED_TO_RPM,
@@ -290,10 +289,8 @@ def move_to_point_and_extract(coords_from_to: list,
 
                 elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                     msg = "Switching from 'slow mode' to 'switching mode'"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
+                    logger_full.write(msg + "\n")
+                    MAIN_LOGGER.info(msg)
                     current_working_mode = working_mode_switching
 
                 # TODO a bug: will not start moving if config.SLOW_MODE_MIN_TIME == 0 or too low (switch speed applies right after slow mode weeds extractions)
@@ -307,10 +304,8 @@ def move_to_point_and_extract(coords_from_to: list,
                 if last_working_mode != current_working_mode:
                     last_working_mode = current_working_mode
                     msg = "[Working mode] : switching to fast"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
+                    logger_full.write(msg + "\n")
+                    MAIN_LOGGER.info(msg)
 
                 if violette_is_stopped:
                     data_collector.add_vesc_moving_time_data(
@@ -323,10 +318,8 @@ def move_to_point_and_extract(coords_from_to: list,
                     continue
 
                 msg = "Switching from 'switching mode' to 'fast mode'"
-                if config.LOG_SPEED_MODES:
-                    logger_full.write(msg + "\n")
-                if config.PRINT_SPEED_MODES:
-                    print(msg)
+                logger_full.write(msg + "\n")
+                MAIN_LOGGER.info(msg)
                 current_working_mode = working_mode_fast
 
             # fast mode
@@ -334,20 +327,16 @@ def move_to_point_and_extract(coords_from_to: list,
                 if last_working_mode != current_working_mode:
                     last_working_mode = current_working_mode
                     msg = "[Working mode] : fast"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write_and_flush(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
+                    logger_full.write_and_flush(msg + "\n")
+                    MAIN_LOGGER.info(msg)
 
                 if violette_is_stopped:
                     data_collector.add_vesc_moving_time_data(
                         vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
 
                     msg = "Switching from 'fast mode' to 'slow mode'"
-                    if config.LOG_SPEED_MODES:
-                        logger_full.write(msg + "\n")
-                    if config.PRINT_SPEED_MODES:
-                        print(msg)
+                    logger_full.write(msg + "\n")
+                    MAIN_LOGGER.info(msg)
                     current_working_mode = working_mode_slow
                     slow_mode_time = time.time()
                     # TODO dont need anymore? as rpm is set at the end of slow mode
@@ -360,10 +349,8 @@ def move_to_point_and_extract(coords_from_to: list,
                         msg = f"Applying slow speed {vesc_speed} at 'fast mode' " \
                                 f"(was {cur_vesc_rpm}) " \
                                 f"because of close_to_end flag trigger"
-                        if config.LOG_SPEED_MODES:
-                            logger_full.write(msg + "\n")
-                        if config.PRINT_SPEED_MODES:
-                            print(msg)
+                        logger_full.write(msg + "\n")
+                        MAIN_LOGGER.info(msg)
                         vesc_engine.set_target_rpm(
                             vesc_speed, vesc_engine.PROPULSION_KEY)
                         vesc_engine.set_current_rpm(
@@ -373,10 +360,8 @@ def move_to_point_and_extract(coords_from_to: list,
                         vesc_engine.PROPULSION_KEY)
                     if cur_vesc_rpm != vesc_speed_fast:
                         msg = f"Applying fast speed {vesc_speed_fast} at 'fast mode' (was {cur_vesc_rpm})"
-                        if config.LOG_SPEED_MODES:
-                            logger_full.write(msg + "\n")
-                        if config.PRINT_SPEED_MODES:
-                            print(msg)
+                        logger_full.write(msg + "\n")
+                        MAIN_LOGGER.info(msg)
                         vesc_engine.set_target_rpm(
                             vesc_speed_fast, vesc_engine.PROPULSION_KEY)
                         vesc_engine.set_current_rpm(
@@ -398,7 +383,7 @@ def move_to_point_and_extract(coords_from_to: list,
         navigations_period.append(navigation_period)
         # time reference to decide the number of detection before resuming gps.get
         prev_maneuver_time = nav_start_t
-        # print("tock")
+        # MAIN_LOGGER.info("tock")
 
         if start_Nav_while:
             prev_pos_obj = cur_pos_obj
@@ -433,8 +418,7 @@ def move_to_point_and_extract(coords_from_to: list,
                             gps_reconnect_ts = time.time()
                             msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new GPS " \
                                   "point (new points filter)"
-                            if config.VERBOSE:
-                                print(msg)
+                            MAIN_LOGGER.info(msg)
                             logger_full.write_and_flush(msg + "\n")
                     else:
                         msg = "New GPS point received, continuing movement"
@@ -476,8 +460,7 @@ def move_to_point_and_extract(coords_from_to: list,
                             gps_reconnect_ts = time.time()
                             msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new " \
                                   "GPS point (quality filter)"
-                            if config.VERBOSE:
-                                print(msg)
+                            MAIN_LOGGER.info(msg)
                             logger_full.write_and_flush(msg + "\n")
                         continue
                     else:
@@ -490,8 +473,7 @@ def move_to_point_and_extract(coords_from_to: list,
                             logger_full)
                     else:
                         msg = "The gps has regained quality 4, starting movement"
-                        if config.VERBOSE:
-                            print(msg)
+                        MAIN_LOGGER.info(msg)
                         logger_full.write_and_flush(msg + "\n")
                         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                         break
@@ -514,8 +496,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 if time.time() - distance_wait_start_ts > config.GPS_DIST_WAIT_TIME_MAX:
                     msg = f"Stopping waiting for good prev-cur distance due to timeout, using current point " \
                           f"{cur_pos} and starting moving again"
-                    if config.VERBOSE:
-                        print(msg)
+                    MAIN_LOGGER.warning(msg)
                     logger_full.write_and_flush(msg + "\n")
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     break
@@ -531,8 +512,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         gps_reconnect_ts = time.time()
                         msg = "Called GPS adapter to reconnect to ublox due to waiting too much for a new " \
                               "GPS point (distance filter)"
-                        if config.VERBOSE:
-                            print(msg)
+                        MAIN_LOGGER.warning(msg)
                         logger_full.write_and_flush(msg + "\n")
                     continue
                 else:
@@ -605,7 +585,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     msg = f"Robot is stopped due to leaving the field. Cur pos: '{str(cur_pos)}'; " \
                           f"Field comparison vector - P1: '{str(cur_field[pt_idx])}', " \
                           f"P2: '{str(cur_field[0] if last_point else cur_field[pt_idx + 1])}'"
-                    print(msg)
+                    MAIN_LOGGER.warning(msg)
                     logger_full.write_and_flush(msg + "\n")
                     notification.set_robot_state_and_wait_send(RobotSynthesis.ANTI_THEFT)
                     raise Exception("LEAVING_FIELD")
@@ -621,7 +601,7 @@ def move_to_point_and_extract(coords_from_to: list,
             # msg = "Arrived (allowed destination distance difference " + str(config.COURSE_DESTINATION_DIFF) + " mm)"
             # TODO: service will reload script even if it done his work?
             msg = "Arrived to " + str(coords_from_to[1])
-            # print(msg)
+            # MAIN_LOGGER.info(msg)
             logger_full.write(msg + "\n")
 
             # put the wheel straight
@@ -630,7 +610,7 @@ def move_to_point_and_extract(coords_from_to: list,
                 if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                     msg = "Couldn't turn wheels to center (0), smoothie response:\n" + \
                         response
-                    print(msg)
+                    MAIN_LOGGER.info(msg)
                     logger_full.write(msg + "\n")
                 else:
                     # save wheels angle
@@ -648,7 +628,6 @@ def move_to_point_and_extract(coords_from_to: list,
                 vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
             msg = "Will have arrived before the next point to " + \
                 str(coords_from_to[1])
-            # print(msg)
             logger_full.write(msg + "\n")
 
             break
@@ -659,12 +638,10 @@ def move_to_point_and_extract(coords_from_to: list,
             close_to_end = distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD
 
             msg = "Distance to B: " + str(distance)
-            # print(msg)
             logger_full.write(msg + "\n")
 
             msg = "Prev: " + str(prev_pos) + " Cur: " + str(cur_pos) + " A: " + str(coords_from_to[0]) \
                 + " B: " + str(coords_from_to[1])
-            # print(msg)
             logger_full.write(msg + "\n")
 
             # pass by cur points which are very close to prev point to prevent angle errors when robot is staying
@@ -708,12 +685,10 @@ def move_to_point_and_extract(coords_from_to: list,
         # NAVIGATION STATE MACHINE
         if prev_cur_distance < config.PREV_CUR_POINT_MIN_DIST:
             raw_angle = last_correct_raw_angle
-            # print("The distance covered is low")
             point_status = "skipped"
 
             # register the last position where the robot almost stop
             # in order to disable the deviation servo for a config.POURSUIT_LIMIT length and then resume in cruise
-            last_skipped_point = cur_pos
         else:
             last_correct_raw_angle = raw_angle
             point_status = "correct"
@@ -722,13 +697,11 @@ def move_to_point_and_extract(coords_from_to: list,
         if len(raw_angles_history) >= config.WINDOW:
             raw_angles_history.pop(0)
         raw_angles_history.append(raw_angle)
-        # print("len(raw_angles_history):",len(raw_angles_history))
         sum_angles = sum(raw_angles_history)
         if sum_angles > config.SUM_ANGLES_HISTORY_MAX:
             msg = "Sum angles " + str(sum_angles) + " is bigger than max allowed value " + \
                 str(config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + \
                 str(config.SUM_ANGLES_HISTORY_MAX)
-            # print(msg)
             logger_full.write(msg + "\n")
             # Get Ready to go down as soon as the angle get negatif
             raw_angles_history[len(raw_angles_history) -
@@ -738,7 +711,6 @@ def move_to_point_and_extract(coords_from_to: list,
             msg = "Sum angles " + str(sum_angles) + " is less than min allowed value " + \
                 str(-config.SUM_ANGLES_HISTORY_MAX) + ", setting to " + \
                 str(-config.SUM_ANGLES_HISTORY_MAX)
-            # print(msg)
             logger_full.write(msg + "\n")
             # get Ready to go up as soon as the angle get positive:
             raw_angles_history[len(raw_angles_history)-1] += - \
@@ -772,7 +744,6 @@ def move_to_point_and_extract(coords_from_to: list,
             msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(
                 config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND +
                 config.A_ONE_DEGREE_IN_SMOOTHIE) + " due to exceeding degrees per tick allowed range."
-            # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND * \
                 config.A_ONE_DEGREE_IN_SMOOTHIE
@@ -781,7 +752,6 @@ def move_to_point_and_extract(coords_from_to: list,
             msg = "Order angle changed from " + str(order_angle_sm) + " to " + str(-(
                 config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
                 config.A_ONE_DEGREE_IN_SMOOTHIE)) + " due to exceeding degrees per tick allowed range."
-            # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = -(config.MANEUVERS_FREQUENCY * config.A_DEGREES_PER_SECOND *
                                config.A_ONE_DEGREE_IN_SMOOTHIE)
@@ -794,14 +764,12 @@ def move_to_point_and_extract(coords_from_to: list,
             msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MAX = " + \
                 str(config.A_MAX) + \
                 " due to exceeding smoothie allowed values range."
-            # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = config.A_MAX
         elif order_angle_sm < config.A_MIN:
             msg = "Global order angle changed from " + str(order_angle_sm) + " to config.A_MIN = " + \
                 str(config.A_MIN) + \
                 " due to exceeding smoothie allowed values range."
-            # print(msg)
             logger_full.write(msg + "\n")
             order_angle_sm = config.A_MIN
 
@@ -827,7 +795,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         if response != smoothie.RESPONSE_OK:
             msg = "Couldn't turn wheels! Smoothie response:\n" + response
-            print(msg)
+            MAIN_LOGGER.warning(msg)
             logger_full.write(msg + "\n")
         else:
             # TODO opening and closing file too often (likely 4 times per second)
@@ -865,7 +833,7 @@ def move_to_point_and_extract(coords_from_to: list,
             corridor.ljust(9) + \
             str(centroid_factor).ljust(16) + \
             str(cruise_factor).ljust(14)
-        print(msg)
+        MAIN_LOGGER.info(msg)
         logger_full.write(msg + "\n")
 
         # TODO vesc sensors are being asked 4 times per second
@@ -901,8 +869,7 @@ def move_to_point_and_extract(coords_from_to: list,
         ui_msg_queue_perf["avg_time"] = ui_msg_queue_perf["total_time"] / \
             ui_msg_queue_perf["total_sends"]
         msg = f"Position sending performance report: {ui_msg_queue_perf}"
-        if config.VERBOSE:
-            print(msg)
+        MAIN_LOGGER.info(msg)
         logger_full.write(msg + "\n")
 
 
@@ -924,7 +891,7 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                print(f"[Send voltage thread] -> Exception while getting VESC data: {e}")
+                MAIN_LOGGER.error(f"[Send voltage thread] -> Exception while getting VESC data: {e}")
                 break
 
         if vesc_data is not None:
@@ -937,7 +904,7 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
                         if isBumped == False:
                             msg = f"[Send voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
                             logger.write_and_flush(msg + "\n")
-                            print(msg)
+                            MAIN_LOGGER.info(msg)
                         isBumped = True
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"input_voltage": "Bumper"}))
@@ -945,7 +912,7 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
                     elif isBumped and vesc_voltage >= 12.0:
                         msg = f"[Send voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
                         logger.write_and_flush(msg + "\n")
-                        print(msg)
+                        MAIN_LOGGER.info(msg)
                         isBumped = False
                         nowReset = True
                         if ui_msg_queue is not None:
@@ -956,7 +923,7 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
                         if nowReset:
                             msg = f"[Send voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected."
                             logger.write_and_flush(msg + "\n")
-                            print(msg)
+                            MAIN_LOGGER.info(msg)
                             nowReset = False
                         if ui_msg_queue is not None:
                             ui_msg_queue.send(json.dumps({"input_voltage": vesc_voltage}))
@@ -968,8 +935,7 @@ def getSpeedDependentConfigParam(configParam: dict, SI_speed: float, paramName: 
         return configParam[SI_speed]
     else:
         msg = f"Speed SI {SI_speed} not present in {paramName}."
-        if config.VERBOSE:
-            print(msg)
+        MAIN_LOGGER.error(msg)
         logger_full.write(msg + "\n")
         exit()
 
@@ -993,7 +959,6 @@ def compute_x1_x2_points(point_a: list, point_b: list, nav: navigation.GPSComput
         msg = "No place for maneuvers; config start maneuver distance is (that will be multiplied by 2): " + \
               str(config.MANEUVER_START_DISTANCE) + " current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
-        # print(msg)
         logger.write(msg + "\n")
         return None, None
 
@@ -1023,7 +988,6 @@ def compute_x2_spiral(point_a: list, point_b: list, nav: navigation.GPSComputing
               str(config.MANEUVER_START_DISTANCE) + " Config spiral interval: " + str(config.SPIRAL_SIDES_INTERVAL) + \
               " Current moving vector distance is: " + str(cur_vec_dist) + " Given points are: " + str(point_a) + \
               " " + str(point_b)
-        # print(msg)
         logger.write(msg + "\n")
         return None
     return nav.get_point_on_vector(
@@ -1049,8 +1013,7 @@ def compute_x1_x2_int_points(point_a: list, point_b: list, nav: navigation.GPSCo
         msg = "No place for maneuvers; Config spiral interval (that will be multiplied by 2): " + \
               str(config.SPIRAL_SIDES_INTERVAL) + " Current moving vector distance is: " + str(cur_vec_dist) + \
               " Given points are: " + str(point_a) + " " + str(point_b)
-        if config.VERBOSE:
-            print(msg)
+        MAIN_LOGGER.info(msg)
         logger.write(msg + "\n")
         return None, None
 
@@ -1110,8 +1073,7 @@ def get_rectangle_isosceles_side(turning_radius):
 
 
 def corner_finish_rounds(turning_radius: float):
-    if config.VERBOSE:
-        print("black corridor width at full steering %2.0f" %
+    MAIN_LOGGER.info("black corridor width at full steering %2.0f" %
               get_rectangle_isosceles_side(turning_radius), " millimeters")
     # how many corner round due to robot working width
     return int((get_rectangle_isosceles_side(turning_radius))/config.FIELD_REDUCE_SIZE)+1
@@ -1350,45 +1312,6 @@ def reduce_field_size(abcd_points: list, reduce_size, nav: navigation.GPSComputi
     return [a_new, b_new, c_new, d_new]
 
 
-def emergency_field_defining(vesc_engine: adapters.VescAdapterV4, gps: adapters.GPSUbloxAdapter,
-                             nav: navigation.GPSComputing, cur_log_dir, logger_full: utility.Logger):
-    msg = "Using emergency field creation..."
-    logger_full.write(msg + "\n")
-    print(msg)
-
-    starting_point = gps.get_last_position()
-
-    msg = "Moving forward..."
-    logger_full.write(msg + "\n")
-    print(msg)
-    vesc_engine.set_time_to_move(float("inf"), vesc_engine.PROPULSION_KEY)
-    vesc_engine.start_moving(engine_key=vesc_engine.PROPULSION_KEY)
-    time.sleep(config.EMERGENCY_MOVING_TIME)
-    vesc_engine.stop_moving(engine_key=vesc_engine.PROPULSION_KEY)
-
-    msg = "Getting point A..."
-    logger_full.write(msg + "\n")
-    print(msg)
-    time.sleep(2)
-    A = gps.get_last_position()
-
-    msg = "Computing rest points..."
-    logger_full.write(msg + "\n")
-    print(msg)
-    B = nav.get_coordinate(A, starting_point, 180, config.EMERGENCY_FIELD_SIZE)
-    C = nav.get_coordinate(B, A, 90, config.EMERGENCY_FIELD_SIZE)
-    D = nav.get_coordinate(C, B, 90, config.EMERGENCY_FIELD_SIZE)
-
-    msg = "Saving field.txt file..."
-    logger_full.write(msg + "\n")
-    print(msg)
-    field = [A, B, C, D]
-    save_gps_coordinates(field, "field.txt")
-    save_gps_coordinates_raw(
-        [starting_point, A, B, C, D], cur_log_dir + "emergency_raw_field.txt")
-    return field
-
-
 def send_name_of_file_of_gps_history(ui_msg_queue: posix_ipc.MessageQueue,
                                      gps_file_dir: str,
                                      gps_file_name: str,
@@ -1402,8 +1325,7 @@ def send_name_of_file_of_gps_history(ui_msg_queue: posix_ipc.MessageQueue,
     else:
         msg = f"Could not find {gps_file_dir}/used_gps_history.txt file to send previous points to the web UI"
         logger_full.write(msg + "\n")
-        if config.VERBOSE:
-            print(msg)
+        MAIN_LOGGER.info(msg)
 
 
 def get_bezier_indexes(path_points: list):
@@ -1487,7 +1409,7 @@ def main():
             msg = "Disabling X axis movement during scans as lengths of positions/forces/image areas are not equal " \
                   "or there's less than 2 elements in list of positions/forces/image areas!"
             logger_full.write(msg + "\n")
-            print(msg)
+            MAIN_LOGGER.warning(msg)
             config.ALLOW_X_MOVEMENT_DURING_SCANS = False
 
     # get smoothie and vesc addresses
@@ -1496,7 +1418,7 @@ def main():
         vesc_address = smoothie_vesc_addr["vesc"]
     else:
         msg = "Couldn't get vesc's USB address!"
-        print(msg)
+        MAIN_LOGGER.error(msg)
         logger_full.write(msg + "\n")
         notification.set_robot_state(RobotSynthesis.HS)
         exit()
@@ -1507,7 +1429,7 @@ def main():
             smoothie_address = smoothie_vesc_addr["smoothie"]
         else:
             msg = "Couldn't get smoothie's USB address!"
-            print(msg)
+            MAIN_LOGGER.error(msg)
             logger_full.write(msg + "\n")
             notification.set_robot_state(RobotSynthesis.HS)
             exit()
@@ -1520,8 +1442,7 @@ def main():
         else:
             msg = "GPS message queue connection is not established (None), canceling gps sending to UI"
             logger_full.write(msg + "\n")
-            if config.VERBOSE:
-                print(msg)
+            MAIN_LOGGER.warning(msg)
 
     # sensors picking
     report_field_names = ['temp_fet_filtered', 'temp_motor_filtered', 'avg_motor_current',
@@ -1529,7 +1450,7 @@ def main():
 
     try:
         msg = "Initializing..."
-        print(msg)
+        MAIN_LOGGER.warning(msg)
         logger_full.write(msg + "\n")
 
         vesc_speed = config.SI_SPEED_FWD*config.MULTIPLIER_SI_SPEED_TO_RPM
@@ -1569,54 +1490,51 @@ def main():
             # try to load field ABCD points
             field_gps_coords = None
             field_name = None
-            if config.USE_EMERGENCY_FIELD_GENERATION and not config.CONTINUE_PREVIOUS_PATH:
-                field_gps_coords = emergency_field_defining(vesc_engine, gps, nav, log_cur_dir, logger_full)
-            else:
-                # check if shortcut exists
-                if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
-                    # check if shortcut target file exists
-                    # old way: shortcut_target_path = subprocess.check_output(['readlink', '-f', config.INPUT_GPS_FIELD_FILE]).decode("utf-8").strip()
-                    shortcut_target_path = os.path.realpath(config.INPUT_GPS_FIELD_FILE)
-                    field_name = (shortcut_target_path.split("/")[-1]).split(".")[0]
-                    if os.path.isfile(shortcut_target_path):
-                        msg = f"Loading '{config.INPUT_GPS_FIELD_FILE}' field file"
-                        logger_full.write(msg + "\n")
-
-                        try:
-                            field_gps_coords = utility.load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
-                        except ValueError:
-                            msg = f"Failed to load field '{shortcut_target_path}' due " \
-                                  f"to ValueError (file is likely corrupted)"
-                            print(msg)
-                            logger_full.write(msg + "\n")
-
-                        msg = f"Loaded field: {str(field_gps_coords)}"
-                        print(msg)
-                        logger_full.write(msg + "\n")
-                    else:
-                        msg = f"Couldn't find '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' target file with" \
-                              f"field points"
-                        print(msg)
-                        logger_full.write(msg + "\n")
-                else:
-                    msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' shortcut file with field points"
-                    print(msg)
+            # check if shortcut exists
+            if os.path.isfile(config.INPUT_GPS_FIELD_FILE):
+                # check if shortcut target file exists
+                # old way: shortcut_target_path = subprocess.check_output(['readlink', '-f', config.INPUT_GPS_FIELD_FILE]).decode("utf-8").strip()
+                shortcut_target_path = os.path.realpath(config.INPUT_GPS_FIELD_FILE)
+                field_name = (shortcut_target_path.split("/")[-1]).split(".")[0]
+                if os.path.isfile(shortcut_target_path):
+                    msg = f"Loading '{config.INPUT_GPS_FIELD_FILE}' field file"
                     logger_full.write(msg + "\n")
+
+                    try:
+                        field_gps_coords = utility.load_coordinates(config.INPUT_GPS_FIELD_FILE)  # [A, B, C, D]
+                    except ValueError:
+                        msg = f"Failed to load field '{shortcut_target_path}' due " \
+                                f"to ValueError (file is likely corrupted)"
+                        MAIN_LOGGER.info(msg)
+                        logger_full.write(msg + "\n")
+
+                    msg = f"Loaded field: {str(field_gps_coords)}"
+                    MAIN_LOGGER.info(msg)
+                    logger_full.write(msg + "\n")
+                else:
+                    msg = f"Couldn't find '{os.path.realpath(config.INPUT_GPS_FIELD_FILE)}' target file with" \
+                            f"field points"
+                    MAIN_LOGGER.info(msg)
+                    logger_full.write(msg + "\n")
+            else:
+                msg = f"Couldn't find '{config.INPUT_GPS_FIELD_FILE}' shortcut file with field points"
+                MAIN_LOGGER.info(msg)
+                logger_full.write(msg + "\n")
 
             # set field to notification
             if config.CONTINUOUS_INFORMATION_SENDING:
                 if field_gps_coords is None:
                     msg = f"Sending field to notification is aborted as field is None"
-                    print(msg)
+                    MAIN_LOGGER.info(msg)
                     logger_full.write(msg)
                 elif field_name is None:
                     msg = f"Sending field to notification is aborted as field name is None"
-                    print(msg)
+                    MAIN_LOGGER.info(msg)
                     logger_full.write(msg)
                 elif len(field_gps_coords) < 1:
                     msg = f"Loaded '{shortcut_target_path}' field contains 0" \
                           f"points. Sending to notification is aborted."
-                    print(msg)
+                    MAIN_LOGGER.info(msg)
                     logger_full.write(msg + "\n")
                 else:
                     notification.set_field(field_gps_coords.copy(), field_name)
@@ -1634,7 +1552,7 @@ def main():
                     loading_previous_path_failed = True
                     msg = f"Couldn't find '{config.PREVIOUS_PATH_POINTS_FILE}' file with previous path points. " \
                           f"Trying to generate path points of current field from scratch."
-                    print(msg)
+                    MAIN_LOGGER.warning(msg)
                     logger_full.write(msg + "\n")
                 else:
                     # data validation is done later as it needed both to loaded and new generated path
@@ -1644,7 +1562,7 @@ def main():
                     if not os.path.isfile(config.PREVIOUS_PATH_INDEX_FILE):
                         loading_previous_index_failed = True
                         msg = f"Couldn't find '{config.PREVIOUS_PATH_INDEX_FILE}' file with point index to continue."
-                        print(msg)
+                        MAIN_LOGGER.warning(msg)
                         logger_full.write(msg + "\n")
                     else:
                         with open(config.PREVIOUS_PATH_INDEX_FILE, "r+") as path_index_file:
@@ -1654,12 +1572,12 @@ def main():
                         except ValueError:
                             loading_previous_index_failed = True
                             msg = f"Couldn't convert path point index '{str_index}' into int."
-                            print(msg)
+                            MAIN_LOGGER.warning(msg)
                             logger_full.write(msg + "\n")
 
                     if path_start_index == -1:
                         msg = "Previous path is already passed"
-                        print(msg)
+                        MAIN_LOGGER.warning(msg)
                         logger_full.write_and_flush(msg + "\n")
                         notification.close()
                         exit()
@@ -1667,13 +1585,13 @@ def main():
                         loading_previous_index_failed = True
                         msg = f"Path start index {path_start_index} is out of path points list range (loaded " \
                               f"{len(path_points)} points)"
-                        print(msg)
+                        MAIN_LOGGER.warning(msg)
                         logger_full.write(msg + "\n")
 
                     if loading_previous_index_failed:
                         msg = "Creating new path index storage file, and going to start this field from 1rst point " \
                               "due to index loading troubles (see log above for details)"
-                        print(msg)
+                        MAIN_LOGGER.warning(msg)
                         logger_full.write(msg + "\n")
                         path_start_index = 1
                         with open(config.PREVIOUS_PATH_INDEX_FILE, "w") as path_index_file:
@@ -1683,7 +1601,7 @@ def main():
             if not config.CONTINUE_PREVIOUS_PATH or loading_previous_path_failed:
                 if field_gps_coords is None:
                     msg = f"Exiting main as building path without field points is impossible"
-                    print(msg)
+                    MAIN_LOGGER.warning(msg)
                     logger_full.write_and_flush(msg)
                     notification.set_robot_state(RobotSynthesis.HS)
                     exit()
@@ -1694,7 +1612,7 @@ def main():
                         field_gps_coords, config.FIELD_REDUCE_SIZE, nav)
 
                     msg = "Reduced field: " + str(field_gps_coords)
-                    print(msg)
+                    MAIN_LOGGER.info(msg)
                     logger_full.write(msg + "\n")
 
                     # generate path points
@@ -1724,7 +1642,7 @@ def main():
                 else:
                     msg = "Expected 4 or 2 gps corner points, got " + str(len(field_gps_coords)) + "\nField:\n" + str(
                         field_gps_coords)
-                    print(msg)
+                    MAIN_LOGGER.warning(msg)
                     logger_full.write(msg + "\n")
                     notification.set_robot_state(RobotSynthesis.HS)
                     exit()
@@ -1739,17 +1657,17 @@ def main():
                 save_gps_coordinates(
                     path_points, log_cur_dir + "current_path_points.txt")
                 msg = "Current path points are successfully saved."
-                print(msg)
+                MAIN_LOGGER.info(msg)
                 logger_full.write(msg + "\n")
             else:
                 msg = "List of path points is empty, saving canceled."
-                print(msg)
+                MAIN_LOGGER.warning(msg)
                 logger_full.write(msg + "\n")
 
             if len(path_points) < 2:
                 msg = "Expected at least 2 points in path, got " + str(len(path_points)) + \
                       " instead (1st point is starting point)."
-                print(msg)
+                MAIN_LOGGER.warning(msg)
                 logger_full.write(msg + "\n")
                 notification.set_robot_state(RobotSynthesis.HS)
                 exit()
@@ -1758,12 +1676,12 @@ def main():
             response = smoothie.set_current_coordinates(A=0)
             if response != smoothie.RESPONSE_OK:
                 msg = "Failed to set A=0 on smoothie (turning wheels init position), response message:\n" + response
-                print(msg)
+                MAIN_LOGGER.warning(msg)
                 logger_full.write(msg + "\n")
 
             msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
                   'centroid factor|cruise factor'
-            print(msg)
+            MAIN_LOGGER.info(msg)
             logger_full.write(msg + "\n")
 
             # path points visiting loop
@@ -1799,7 +1717,7 @@ def main():
                         if res != smoothie.RESPONSE_OK:
                             msg = f"Couldn't set smoothie telnet connection to relative mode:\n{res}\n" \
                                   f"Telnet connection usage will be disabled."
-                            print(msg)
+                            MAIN_LOGGER.warning(msg)
                             logger_full.write(msg + "\n")
                             smoothie_tel_conn = None
                     except KeyboardInterrupt:
@@ -1808,7 +1726,7 @@ def main():
                         msg = f"Wheels additional turn preparations are failed:\n" \
                               f"{traceback.format_exc()}\n" \
                               f"Telnet connection usage will be disabled."
-                        print(msg)
+                        MAIN_LOGGER.warning(msg)
                         logger_full.write(msg + "\n")
                         smoothie_tel_conn = None
 
@@ -2055,7 +1973,7 @@ def main():
                             A_F=config.A_F_MAX, A=0)
                         if response != smoothie.RESPONSE_OK:
                             msg = "Smoothie response is not ok: " + response
-                            print(msg)
+                            MAIN_LOGGER.warning(msg)
                             logger_full.write(msg + "\n")
                         smoothie.wait_for_all_actions_done()
 
@@ -2121,7 +2039,7 @@ def main():
                             A_F=config.A_F_MAX, A=0)
                         if response != smoothie.RESPONSE_OK:  # TODO: what if response is not ok?
                             msg = "Couldn't turn wheels before other navigation test, smoothie response:\n" + response
-                            print(msg)
+                            MAIN_LOGGER.warning(msg)
                             logger_full.write(msg + "\n")
                         else:
                             with open(config.LAST_ANGLE_WHEELS_FILE, "w+") as wheels_angle_file:
@@ -2132,7 +2050,7 @@ def main():
                         # if test_continue != "":
                         #     notification.close()
                         #     break
-                        print("Retourne moi !")
+                        MAIN_LOGGER.warning("Retourne moi !")
                         time.sleep(10)
                         try:
                             start_position = utility.average_point(
@@ -2171,13 +2089,13 @@ def main():
 
 
             msg = "Path is successfully passed."
-            print(msg)
+            MAIN_LOGGER.info(msg)
             logger_full.write(msg + "\n")
             notification.close()
     except KeyboardInterrupt:
         msg = "Stopped by a keyboard interrupt (Ctrl + C)\n" + \
             traceback.format_exc()
-        print(msg)
+        MAIN_LOGGER.warning(msg)
         logger_full.write(msg + "\n")
         notification.close()
         if ui_msg_queue is not None:
@@ -2188,7 +2106,7 @@ def main():
         if "LEAVING_FIELD" not in e.args:
             notification.set_robot_state_and_wait_send(RobotSynthesis.HS)
             msg = "Exception occurred:\n" + traceback.format_exc()
-            print(msg)
+            MAIN_LOGGER.error(msg)
             logger_full.write(msg + "\n")
         if ui_msg_queue is not None:
             ui_msg_queue.close()
@@ -2232,7 +2150,7 @@ def main():
                 vesc_engine.stop_moving(vesc_engine.EXTRACTION_KEY)
                 if not res:
                     smoothie_safe_calibration = False
-                    print(
+                    MAIN_LOGGER.warning(
                         "Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received)\n",
                         "WHEELS POSITION WILL NOT BE SAVED PROPERLY!", sep="")
 
@@ -2254,7 +2172,7 @@ def main():
                         logger_full.write(msg + "\n")
                     except ValueError:
                         msg = f"Couldn't convert '{line}' into float position, leaving wheels position as it is"
-                        print(msg)
+                        MAIN_LOGGER.warning(msg)
                         logger_full.write(msg + "\n")
 
                     if angle is not None:
@@ -2264,7 +2182,7 @@ def main():
                                 A_F=config.A_F_MAX, A=0)
                             if response != smoothie.RESPONSE_OK:
                                 msg = "Couldn't turn wheels before shutdown, smoothie response:\n" + response
-                                print(msg)
+                                MAIN_LOGGER.warning(msg)
                                 logger_full.write(msg + "\n")
                             else:
                                 wheels_angle_file.seek(0)
@@ -2273,7 +2191,7 @@ def main():
             else:
                 msg = f"Couldn't find '{config.LAST_ANGLE_WHEELS_FILE}' wheels smoothie position file.\n" \
                       f"Creating new file with 0.0 position containing. Robot may navigate wrong of wheels are turned."
-                print(msg)
+                MAIN_LOGGER.warning(msg)
                 logger_full.write(msg + "\n")
                 with open(config.LAST_ANGLE_WHEELS_FILE, "w") as wheels_angle_file:
                     wheels_angle_file.write("0.0")
@@ -2288,7 +2206,7 @@ def main():
                                      log_cur_dir + "adapter_gps_history.txt")
             else:
                 msg = "adapter_gps_history list has 0 elements!"
-                print(msg)
+                MAIN_LOGGER.warning(msg)
                 logger_full.write(msg + "\n")
         except:
             pass
@@ -2296,7 +2214,7 @@ def main():
         # save session statistics TODO: its temporary
         msg = "Saving statistics..."
         logger_full.write(msg + "\n")
-        print(msg)
+        MAIN_LOGGER.info(msg)
         try:
             data_collector.save_all_data(
                 log_cur_dir + config.STATISTICS_OUTPUT_FILE)
@@ -2305,18 +2223,18 @@ def main():
         except:
             msg = "Failed to save txt statistics:\n" + traceback.format_exc()
             logger_full.write(msg + "\n")
-            print(msg)
+            MAIN_LOGGER.warning(msg)
         try:
             data_collector.close()
         except:
             msg = "Failed to close properly DB:\n" + traceback.format_exc()
             logger_full.write(msg + "\n")
-            print(msg)
+            MAIN_LOGGER.warning(msg)
 
         # close log and hardware connections
         msg = "Closing loggers..."
         logger_full.write_and_flush(msg + "\n")
-        print(msg)
+        MAIN_LOGGER.info(msg)
         logger_full.close()
 
         try:
@@ -2328,8 +2246,9 @@ def main():
             detection.YoloDarknetDetector.webStream.terminate()
             detection.YoloDarknetDetector.webStream.join()
 
-        print("Safe disable is done.")
+        MAIN_LOGGER.info("Safe disable is done.")
 
 if __name__ == '__main__':
+    utility.NewLogger.setLevel(config.LOG_LEVEL)
     main()
     exit(0)
