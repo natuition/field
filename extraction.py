@@ -24,6 +24,7 @@ class ExtractionManagerV3:
                  pdz_distances: list,
                  vesc_engine: adapters.VescAdapterV4):
 
+        self.__logger = utility.NewLogger.create(self.__class__.__name__)
         self.__smoothie = smoothie
         self.__client_mvi = client_mvi
         self.__logger_full = logger_full
@@ -33,7 +34,6 @@ class ExtractionManagerV3:
         self.__pdz_polygons = self.pdz_dist_to_poly(pdz_distances)
         self.__pdz_cv_rects = self.pdz_dist_to_rect_cv(pdz_distances)
         self.__extraction_map = ExtractionMap(config.EXTRACTION_MAP_CELL_SIZE_MM)
-        # self.__converter = PxToMMConverter()
         self.__homography,_,_ = load_homography(config.CALIBRATION_JSON_TARGET_FINDER)
         self.__vesc_engine = vesc_engine
 
@@ -86,77 +86,6 @@ class ExtractionManagerV3:
             ])
         return pdz_zones_cv
 
-    # def scan_sectors(self):
-    #     """Detects plants under robot's working zone, optimizes extractions order and returns list of plants as smoothie
-    #     absolute coordinates (coordinates out of working range are skipped).
-    #     """
-
-    #     pdz_start_t = time.time()
-
-    #     smoothie_plants_positions = []
-
-    #     # loop over camera positions (cam positions, pdz zones and pdz cv zones lists must have a same length)
-    #     for i in range(len(self.__camera_positions)):
-    #         cam_sm_x, cam_sm_y = self.__camera_positions[i]
-
-    #         # move cork to camera position
-    #         res = self.__smoothie.custom_separate_xy_move_to(X_F=config.X_F_MAX,
-    #                                                          Y_F=config.Y_F_MAX,
-    #                                                          X=cam_sm_x,
-    #                                                          Y=cam_sm_y)
-    #         self.__smoothie.wait_for_all_actions_done()
-    #         if res != self.__smoothie.RESPONSE_OK:
-    #             msg = f"Could not move cork to camera position (x={cam_sm_x}, y={cam_sm_y}) - \
-    #             smoothie error occurred:\n" + res
-    #             self.__logger_full.write(msg + "\n")
-    #             continue
-
-    #         # take a photo and look for a plants
-    #         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
-    #         # TODO MVI: add MVI client target finder camera
-    #         frame = self.__camera.get_image()
-    #         plants_boxes = self.__precise_det.detect(frame)
-    #         # get plants boxes and keep only that are in PDZ
-    #         cur_pos_plant_boxes_pdz = list(filter(
-    #             lambda box: self.is_point_in_poly(
-    #                 box.center_x,
-    #                 box.center_y,
-    #                 self.__pdz_polygons[i]),
-    #             plants_boxes
-    #         ))
-
-    #         # if config.SAVE_DEBUG_IMAGES:
-    #         #     frame = utility.ImageSaver.draw_data_in_frame(
-    #         #         frame,
-    #         #         pdz_cv_rect=self.__pdz_cv_rects[i],
-    #         #         plants_boxes=cur_pos_plant_boxes_pdz)
-    #         #     self.__image_saver.save_image(
-    #         #         frame,
-    #         #         config.DEBUG_IMAGES_PATH,
-    #         #         label=f"PR_PDZ_view_at_{round(cam_sm_x, 1)}_{round(cam_sm_y, 1)}",
-    #         #         plants_boxes=plants_boxes)
-
-    #         # convert plants boxes px coordinates into absolute smoothie coordinates
-    #         for plant_box in cur_pos_plant_boxes_pdz:
-    #             # calculate values to move camera over a plant from current position (coords are relative)
-    #             # rel_sm_x, rel_sm_y = self.__converter.convert_px_to_mm(plant_box.center_x, plant_box.center_y)
-    #             rel_sm_x, rel_sm_y, cp_idx = self.__converter.predict(plant_box.center_x, plant_box.center_y)
-
-    #             # convert smoothie relative coordinates to absolute
-    #             cur_sm_pos = self.__smoothie.get_adapter_current_coordinates()
-    #             abs_sm_x, abs_sm_y = cur_sm_pos["X"] + float(rel_sm_x), cur_sm_pos["Y"] + float(rel_sm_y)
-
-    #             # skip coordinates that are out of working range
-    #             if not (config.X_MIN < abs_sm_x < config.X_MAX and config.Y_MIN < abs_sm_y < config.Y_MAX):
-    #                 continue
-
-    #             # add absolute coordinates to the result list
-    #             smoothie_plants_positions.append((abs_sm_x, abs_sm_y))
-
-    #     sorted_smoothie_plants_positions = self.optimize_corkscrew_way(smoothie_plants_positions)
-    #     self.__data_collector.add_pdz_scan_t(time.time() - pdz_start_t)
-    #     return sorted_smoothie_plants_positions
-
     def extract_all_plants(self):
         """Find and extract all plants found in current robot's position
         """
@@ -177,27 +106,25 @@ class ExtractionManagerV3:
         smoothie_positions = []
         for u_o, v_o in plant_positions:
             x_mm_overhead, y_mm_overhead = raw_pixel_to_robot_mm_from_json(u_o, v_o, config.CALIBRATION_JSON_OVERHEAD)
-            print("Transforming plant position from overhead pixel to robot mm: ", (u_o, v_o), " -> ", (x_mm_overhead, y_mm_overhead))
+            self.__logger.info("Transforming plant position from overhead pixel to robot mm: ", (u_o, v_o), " -> ", (x_mm_overhead, y_mm_overhead))
             smoothie_positions.append((x_mm_overhead, y_mm_overhead))
         self.__client_mvi.switch_active_pipeline(self.__client_mvi.TARGET_FINDER_DETECTION)
         
         if config.VERBOSE_EXTRACT:
             msg = "[VERBOSE EXTRACT] Found " + str(len(smoothie_positions)) + " plants after PDZ scan"
             self.__logger_full.write_and_flush(msg + "\n")
-            if config.VERBOSE:
-                print(msg)
+            self.__logger.info(msg)
         # round coords before logging them
         if len(smoothie_positions) != 0:
             log_sm_positions = list(map(lambda item: (round(item[0], 2), round(item[1], 2)), smoothie_positions))
             msg = "PDZ plants smoothie coordinates:\n" + str(log_sm_positions)
             self.__logger_full.write(msg + "\n")
-            if config.VERBOSE:
-                print(msg)
+            self.__logger.info(msg)
 
         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
             msg = f"EXT. PAUSE: Found {str(len(smoothie_positions))} plants after PDZ scan; press enter:"
             self.__logger_full.write(msg + "\n")
-            print(msg)
+            self.__logger.info(msg)
         # demo pause
         if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
             self.__demo_server.wait_for_resume_cmd()
@@ -214,10 +141,10 @@ class ExtractionManagerV3:
             if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                 msg = f"EXT. PAUSE: Starting plant {str(plant_index)} of {str(len(smoothie_positions))} extraction."
                 self.__logger_full.write(msg + "\n")
-                print(msg)
+                self.__logger.info(msg)
                 msg = f"EXT. PAUSE: Target is X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
                 self.__logger_full.write(msg + "\n")
-                print(msg)
+                self.__logger.info(msg)
             # demo pause
             if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                 self.__demo_server.wait_for_resume_cmd()
@@ -233,7 +160,7 @@ class ExtractionManagerV3:
                         msg = f"EXT. PAUSE: Due to obscuring avoidance target has changed to " \
                               f"X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
                         self.__logger_full.write(msg + "\n")
-                        print(msg)
+                        self.__logger.info(msg)
                         self.__demo_server.wait_for_resume_cmd()
                 if config.Y_MIN < init_pos_sm_y + config.AVOID_CORK_VIEW_OBSCURING_DIST_Y < config.Y_MAX:
                     cur_pos_sm_y += config.AVOID_CORK_VIEW_OBSCURING_DIST_Y
@@ -241,7 +168,7 @@ class ExtractionManagerV3:
                         msg = f"EXT. PAUSE: Due to obscuring avoidance target has changed to " \
                               f"X={str(cur_pos_sm_x)}, Y={str(cur_pos_sm_y)}; press enter:"
                         self.__logger_full.write(msg + "\n")
-                        print(msg)
+                        self.__logger.info(msg)
                         self.__demo_server.wait_for_resume_cmd()
 
             # affects robot's behaviour if no plants were detected; responsible for delta scans and extractions checking
@@ -283,7 +210,7 @@ class ExtractionManagerV3:
                 if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
                     msg = f"EXT. PAUSE: Arrived to plant {str(plant_index)}, preparing to specify scan; press enter:"
                     self.__logger_full.write(msg + "\n")
-                    print(msg)
+                    self.__logger(msg)
                     self.__demo_server.wait_for_resume_cmd()
 
                 # make a scan, keep only plants that are in undistorted zone
@@ -319,12 +246,11 @@ class ExtractionManagerV3:
                 #             label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),no_weeds_in_undist",
                 #             plants_boxes=plants_boxes)
 
-                if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-                    msg = f"EXT. PAUSE: Found {str(len(cur_pos_plant_boxes_undist))} plants in undistorted zone " \
-                          f"during specify scan (saved in debug images if allowed, going to do delta scans if 0 and" \
-                          f" allowed); press enter:"
-                    self.__logger_full.write(msg + "\n")
-                    print(msg)
+                msg = f"Found {str(len(cur_pos_plant_boxes_undist))} plants in undistorted zone " \
+                        f"during specify scan (saved in debug images if allowed, going to do delta scans if 0 and" \
+                        f" allowed); press enter:"
+                self.__logger_full.write(msg + "\n")
+                self.__logger.info(msg)
                 # demo pause
                 if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                     self.__demo_server.wait_for_resume_cmd()
@@ -334,8 +260,7 @@ class ExtractionManagerV3:
                     if scan_is_first:
                         msg = "No plants detected (plant was in working zone before)"
                         self.__logger_full.write(msg + "\n")
-                        if config.VERBOSE:
-                            print(msg)
+                        self.__logger.info(msg)
 
                         if config.ALLOW_DELTA_SEEKING:
                             delta_start_t = time.time()
@@ -357,11 +282,10 @@ class ExtractionManagerV3:
                                 [dl_sm_init_x + config.SEEK_DELTA_DISTANCE, dl_sm_init_y]
                             ]
                             for delta_sm_x, delta_sm_y in delta_seeking_target_positions:
-                                if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-                                    msg = f"EXT. PAUSE: Starting delta X={str(delta_sm_x)} Y={str(delta_sm_y)} " \
-                                          f"scan (will be skipped if out of working range); press enter:"
-                                    self.__logger_full.write(msg + "\n")
-                                    print(msg)
+                                msg = f"Starting delta X={str(delta_sm_x)} Y={str(delta_sm_y)} " \
+                                        f"scan (will be skipped if out of working range); press enter:"
+                                self.__logger_full.write(msg + "\n")
+                                self.__logger.info(msg)
                                 # demo pause
                                 if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                                     self.__demo_server.wait_for_resume_cmd()
@@ -411,13 +335,12 @@ class ExtractionManagerV3:
                                     #         label=f"(PR_view_at_{round(cur_pos_sm_x, 1)}_{round(cur_pos_sm_y, 1)}),delta_weeds_in_undist",
                                     #         plants_boxes=cur_pos_plant_boxes_undist)
 
-                                    if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-                                        msg = f"EXT. PAUSE: Found {str(len(cur_pos_plant_boxes_undist))} plants " \
-                                              f"in undistorted zone during delta scan, going to extract, changed " \
-                                              f"plant {str(plant_index)} start position to X={str(cur_pos_sm_x)}, " \
-                                              f"Y={str(cur_pos_sm_y)}; press enter:"
-                                        self.__logger_full.write(msg + "\n")
-                                        print(msg)
+                                    msg = f"Found {str(len(cur_pos_plant_boxes_undist))} plants " \
+                                            f"in undistorted zone during delta scan, going to extract, changed " \
+                                            f"plant {str(plant_index)} start position to X={str(cur_pos_sm_x)}, " \
+                                            f"Y={str(cur_pos_sm_y)}; press enter:"
+                                    self.__logger_full.write(msg + "\n")
+                                    self.__logger.info(msg)
                                     # demo pause
                                     if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                                         self.__demo_server.wait_for_resume_cmd()
@@ -444,45 +367,8 @@ class ExtractionManagerV3:
                     else:
                         msg = "No plants detected - assuming last extraction was successful; coming to next PDZ item"
                         self.__logger_full.write(msg + "\n")
-                        if config.VERBOSE:
-                            print(msg)
+                        self.__logger.info(msg)
                         break
-
-                # try to filter extracted plants by comparison new plants list and initial plants list
-                # if plant in a new list is away from all plants in old - then it probably was extracted and shifted
-                # so skip it                
-                
-                # if config.FILTER_EXTRACTED_PLANTS:
-                #     if scan_is_first:
-                #         initial_plants = cur_pos_plant_boxes_undist[0]
-                #     else:
-                #         cur_pos_plant_boxes_undist_filtered = self.__filter_extracted_plants(
-                #             initial_plants,
-                #             cur_pos_plant_boxes_undist[0],
-                #             config.FILTER_EXT_PLANTS_TRIGGER_DIST,
-                #             self.__logger_full)
-                        
-                #         cur_pos_plant_boxes_undist_final = []
-                        
-                #         print("cur_pos_plant_boxes_undist", cur_pos_plant_boxes_undist)
-                #         print("cur_pos_plant_boxes_undist_filtered", cur_pos_plant_boxes_undist_filtered)
-                        
-                #         for plant_box, plant_position in zip(cur_pos_plant_boxes_undist[0], cur_pos_plant_boxes_undist[1]):
-                #             print("plant_box", plant_box)
-                #             print("recherche : ", plants_boxes in cur_pos_plant_boxes_undist_filtered)
-                #             if plants_boxes in cur_pos_plant_boxes_undist_filtered:
-                #                 cur_pos_plant_boxes_undist_final.append((plant_box, plants_positions))
-                                
-                #         print("cur_pos_plant_boxes_undist_final", cur_pos_plant_boxes_undist_final)
-                                
-                #         cur_pos_plant_boxes_undist = cur_pos_plant_boxes_undist_final
-                        
-                #         if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE and \
-                #                 len(initial_plants) != len(cur_pos_plant_boxes_undist):
-                #             msg = f"EXT. PAUSE: Plants list was filtered due to config.FILTER_EXTRACTED_PLANTS " \
-                #                   f"setting, check log file for details; press enter:"
-                #             self.__logger_full.write_and_flush(msg + "\n")
-                #             input(msg)
 
                 scan_is_first = False
 
@@ -495,7 +381,7 @@ class ExtractionManagerV3:
                     #                                       config.ONE_MM_IN_PX)
                     
                     rel_sm_x, rel_sm_y = raw_pixel_to_image_center_mm(plant_position[0], plant_position[1], self.__homography)
-                    print("Transforming plant position from target finder pixel to image center mm: ", plant_position, " -> ", rel_sm_x, rel_sm_y)
+                    self.__logger.info("Transforming plant position from target finder pixel to image center mm: ", plant_position, " -> ", rel_sm_x, rel_sm_y)
 
                     # swap camera and cork for extraction immediately (coords are relative)
                     rel_sm_x += config.CORK_TO_CAMERA_DISTANCE_X
@@ -507,7 +393,7 @@ class ExtractionManagerV3:
 
                     # skip coordinates that are out of working range
                     if not (config.X_MIN < abs_sm_x < config.X_MAX or config.Y_MIN < abs_sm_y < config.Y_MAX):
-                        print(f"Skipping plant {plant_box.get_name()} at X={abs_sm_x}, Y={abs_sm_y} as out of working range")
+                        self.__logger.info(f"Skipping plant {plant_box.get_name()} at X={abs_sm_x}, Y={abs_sm_y} as out of working range")
                         continue
 
                     # add absolute coordinates to the result list
@@ -517,10 +403,9 @@ class ExtractionManagerV3:
                 for ext_sm_x, ext_sm_y, type_name in smoothie_plants_positions:
                     extraction_pattern = self.__extraction_map.get_strategy(ext_sm_x, ext_sm_y)
 
-                    if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-                        msg = f"EXT. PAUSE: Going to plant AbsX={str(ext_sm_x)}, AbsY={str(ext_sm_y)}; press enter:"
-                        self.__logger_full.write(msg + "\n")
-                        print(msg)
+                    msg = f"Going to plant AbsX={str(ext_sm_x)}, AbsY={str(ext_sm_y)}; press enter:"
+                    self.__logger_full.write(msg + "\n")
+                    self.__logger.info(msg)
                     # demo pause
                     if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                         self.__demo_server.wait_for_resume_cmd()
@@ -562,11 +447,11 @@ class ExtractionManagerV3:
                         msg = "Did too many extraction tries at this position, no strategies to try left"
                         self.__logger_full.write(msg + "\n")
 
-                        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-                            msg = f"EXT. PAUSE: Skipped plant as extraction strategy was None (already tried all " \
-                                  f"strategies); press enter:"
-                            self.__logger_full.write(msg + "\n")
-                            print(msg)
+                        msg = f"Skipped plant as extraction strategy was None (already tried all " \
+                                f"strategies); press enter:"
+                        self.__logger_full.write(msg + "\n")
+                        self.__logger.info(msg)
+                        if config.ALLOW_DEMO_PAUSES:
                             self.__demo_server.wait_for_resume_cmd()
 
         # set camera back to the Y min, X_MIN
@@ -595,15 +480,13 @@ class ExtractionManagerV3:
         smoothie_positions = self.scan_sectors()
         msg = "Found " + str(len(smoothie_positions)) + " plants after PDZ scan"
         self.__logger_full.write(msg + "\n")
-        if config.VERBOSE:
-            print(msg)
+        self.__logger.info(msg)
         # round coords before logging them
         if len(smoothie_positions) != 0:
             log_sm_positions = list(map(lambda item: (round(item[0], 2), round(item[1], 2)), smoothie_positions))
             msg = "PDZ plants smoothie coordinates:\n" + str(log_sm_positions)
             self.__logger_full.write(msg + "\n")
-            if config.VERBOSE:
-                print(msg)
+            self.__logger.info(msg)
 
         # loop over plants that were detected during PDZ sectored scans and extract them (main ext loop)
         for init_pos_sm_x, init_pos_sm_y in smoothie_positions:
@@ -695,8 +578,7 @@ class ExtractionManagerV3:
                         msg = "No plants detected (plant was in working zone before)," \
                               "trying to do delta movement and find this plant"
                         self.__logger_full.write(msg + "\n")
-                        if config.VERBOSE:
-                            print(msg)
+                        self.__logger.info(msg)
 
                         if config.ALLOW_DELTA_SEEKING:
                             delta_start_t = time.time()
@@ -785,8 +667,7 @@ class ExtractionManagerV3:
                     else:
                         msg = "No plants detected - assuming last extraction was successful; coming to next PDZ item"
                         self.__logger_full.write(msg + "\n")
-                        if config.VERBOSE:
-                            print(msg)
+                        self.__logger.info(msg)
                         break
 
                 # try to filter extracted plants by comparison new plants list and initial plants list
@@ -797,8 +678,7 @@ class ExtractionManagerV3:
                 if config.FILTER_EXTRACTED_PLANTS and not scan_is_first:
                     cur_pos_plant_boxes_undist = self.__filter_extracted_plants(initial_plants,
                                                                                 cur_pos_plant_boxes_undist,
-                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST,
-                                                                                self.__logger_full)
+                                                                                config.FILTER_EXT_PLANTS_TRIGGER_DIST)
 
                 scan_is_first = False
 
@@ -934,7 +814,7 @@ class ExtractionManagerV3:
                     self.__vesc_engine.stop_moving(self.__vesc_engine.EXTRACTION_KEY)
                     if not res:
                         msg = "WARNING: Miller vesc engine was stopped by timeout, not by stopper!"
-                        print(msg)
+                        self.__logger.warning(msg)
                         self.__logger_full.write(msg + "\n")
 
         # set camera back to the Y min X max / 2
@@ -958,11 +838,10 @@ class ExtractionManagerV3:
         return sorted(smoothie_coordinates, key=lambda x: (x[0], x[1]), reverse=True)
         # return list(reversed(smoothie_coordinates))
 
-    @staticmethod
-    def __filter_extracted_plants(initial_scan_plants: list,
+    def __filter_extracted_plants(self,
+                                  initial_scan_plants: list,
                                   new_scan_plants: list,
-                                  trigger_distance: float,
-                                  logger_full: utility.Logger):
+                                  trigger_distance: float):
         """Removes each plant from new scan list if all plants in initial list are further than trigger distance.
         Does no changes to argument lists, returns result as a new list.
         """
@@ -979,9 +858,8 @@ class ExtractionManagerV3:
             else:
                 msg = f"Removed {str(new_plant_box)} box from undist plants list as this box is far away from his " \
                       f"initial position (likely was extracted)"
-                logger_full.write(msg + "\n")
-                if config.VERBOSE_EXTRACT:
-                    print(msg)
+                self.__logger_full.write(msg + "\n")
+                self.__logger.info(msg)
         return filtered_plants
 
     @staticmethod
@@ -1103,6 +981,9 @@ class ExtractionMap:
 class ExtractionMethods:
     """Contains methods for different plants extraction strategies. All methods should have similar signatures.
     """
+    
+    LOGGER = utility.NewLogger(__name__)
+    
 
     @staticmethod
     def single_center_drop(smoothie: adapters.SmoothieAdapter,
@@ -1112,9 +993,8 @@ class ExtractionMethods:
                            demo_server: utility.DemoPauseServer):
         """Extract a plant with a single corkscrew drop to the center"""
 
-        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-            msg = f"EXP. PAUSE: Ready to put cork down; press enter:"
-            print(msg)
+        msg = f"Ready to put cork down; press enter:"
+        ExtractionMethods.LOGGER.info(msg)
         # demo pause
         if config.ALLOW_DEMO_PAUSES and demo_server is not None:
             demo_server.wait_for_resume_cmd()
@@ -1143,9 +1023,8 @@ class ExtractionMethods:
                 msg = f"config.EXTRACTION_CONTROLLER={str(config.EXTRACTION_CONTROLLER)} is not implemented"
                 raise NotImplementedError(msg)
 
-            if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-                msg = f"EXT. PAUSE: Cork is down, going to pick it up; press enter:"
-                print(msg)
+            msg = f"Cork is down, going to pick it up; press enter:"
+            ExtractionMethods.LOGGER.info(msg)
             # demo pause
             if config.ALLOW_DEMO_PAUSES and demo_server is not None:
                 demo_server.wait_for_resume_cmd()
@@ -1222,7 +1101,7 @@ class ExtractionMethods:
                 smoothie.wait_for_all_actions_done()
                 if res != smoothie.RESPONSE_OK:
                     msg = "Couldn't do seeder X axis offset, smoothie response:\n" + res
-                    print(msg)
+                    ExtractionMethods.LOGGER.warning(msg)
                     do_x_offset = False
                     error_offset = True
 
@@ -1232,7 +1111,7 @@ class ExtractionMethods:
                 smoothie.wait_for_all_actions_done()
                 if res != smoothie.RESPONSE_OK:
                     msg = "Couldn't do seeder Y axis offset, smoothie response:\n" + res
-                    print(msg)
+                    ExtractionMethods.LOGGER.warning(msg)
                     do_y_offset = False
                     error_offset = True
 
@@ -1241,7 +1120,7 @@ class ExtractionMethods:
                 res = smoothie.seeder_open()
                 if res != smoothie.RESPONSE_OK:
                     msg = "Error during open seeder, smoothie's output:\n" + res
-                    print(msg)  # TODO probably need to return later both answers to let outer methods log this error
+                    ExtractionMethods.LOGGER.warning(msg)  # TODO probably need to return later both answers to let outer methods log this error
                 time.sleep(config.SEEDER_FILL_DELAY)
 
                 # seeder close
@@ -1257,9 +1136,9 @@ class ExtractionMethods:
                     smoothie.wait_for_all_actions_done()
                     if res != smoothie.RESPONSE_OK:
                         msg = "Couldn't do seeder shake, smoothie response:\n" + res
-                        print(msg)
+                        ExtractionMethods.LOGGER.warning(msg)
             else:
-                print("Error_offset")
+                ExtractionMethods.LOGGER.warning("Error_offset")
 
             # get back to init position if there was offset on X axis
             if do_x_offset:
@@ -1267,7 +1146,7 @@ class ExtractionMethods:
                 smoothie.wait_for_all_actions_done()
                 if res != smoothie.RESPONSE_OK:
                     msg = "Couldn't do seeder X axis offset (back), smoothie response:\n" + res
-                    print(msg)
+                    ExtractionMethods.LOGGER.warning(msg)
 
             # get back to init position if there was offset on Y axis
             if do_y_offset:
@@ -1275,7 +1154,7 @@ class ExtractionMethods:
                 smoothie.wait_for_all_actions_done()
                 if res != smoothie.RESPONSE_OK:
                     msg = "Couldn't do seeder Y axis offset (back), smoothie response:\n" + res
-                    print(msg)
+                    ExtractionMethods.LOGGER.warning(msg)
 
         # save current matrix state to a file
         if config.DEBUG_MATRIX_FILE:
@@ -1290,106 +1169,11 @@ class ExtractionMethods:
 
         raise NotImplementedError("this function need to be updated as it's using old extraction matrix")
 
-        """
-        # mms to move near plant's center
-        x = config.ADDITIONAL_EXTRACTIONS_DISTANCE_X
-        y = config.ADDITIONAL_EXTRACTIONS_DISTANCE_Y
-
-        # drop cork to the center
-        res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map)
-        if res != smoothie.RESPONSE_OK:
-            return res, cork_is_stuck
-
-        for x_shift, y_shift in [[0, y], [-x, -y], [x, -y], [x, y]]:
-            # move to the position
-            res = smoothie.custom_move_for(config.XY_F_MAX, X=x_shift, Y=y_shift)
-            smoothie.wait_for_all_actions_done()
-            if res != smoothie.RESPONSE_OK:
-                msg = "Aborting movement to the corner (couldn't reach): " + res
-                return msg, False
-
-            # extraction, cork down
-            res = smoothie.custom_move_for(F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
-            smoothie.wait_for_all_actions_done()
-            if res != smoothie.RESPONSE_OK:
-                msg = "Couldn't move the extractor down, smoothie error occurred: " + res
-                return msg, False
-
-            # extraction, cork up
-            res = smoothie.ext_cork_up()
-            smoothie.wait_for_all_actions_done()
-            if res != smoothie.RESPONSE_OK:
-                msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
-                      "\nemergency exit as I don't want break corkscrew."
-                return msg, True
-            else:
-                sm_x = smoothie.get_smoothie_current_coordinates()["X"]
-                sm_y = smoothie.get_smoothie_current_coordinates()["Y"]
-                x = math.floor(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-                y = math.floor(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-                extraction_map[y, x].setPatternExtraction("five_drops_near_center", parent=extraction_map[sm_y, sm_x])
-                if config.DEBUG_MATRIX_FILE:
-                    ExtractionManager.save_matrix("last_extraction_map.txt", extraction_map, header=True)
-
-        return res, False
-        """
-
     @staticmethod
     def Daisy(smoothie: adapters.SmoothieAdapter, extraction_map: ExtractionMap):
         """This method is used for a daisy extraction"""
 
         raise NotImplementedError("this function need to be updated as it's using old extraction matrix")
-
-        """
-        # drop cork to the center
-        res, cork_is_stuck = ExtractionMethods.single_center_drop(smoothie, extraction_map)
-        if res != smoothie.RESPONSE_OK:
-            return res, cork_is_stuck
-        else:
-            center_sm_x = math.floor(smoothie.get_smoothie_current_coordinates()["X"] /
-                                     config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-            center_sm_y = math.floor(smoothie.get_smoothie_current_coordinates()["Y"] /
-                                     config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-            extraction_map[center_sm_y, center_sm_x].setPatternExtraction("Daisy")
-
-        box_x_half, box_y_half = plant_box.get_sizes()
-        box_x_half, box_y_half = int(box_x_half / 2 / config.ONE_MM_IN_PX), \
-                                 int(box_y_half / 2 / config.ONE_MM_IN_PX)
-
-        for x_shift, y_shift in [[-box_x_half, box_y_half], [0, -box_y_half * 2], [box_x_half * 2, 0],
-                                 [0, box_y_half * 2]]:
-            # move to the corner
-            res = smoothie.custom_move_for(config.XY_F_MAX, X=x_shift, Y=y_shift)
-            smoothie.wait_for_all_actions_done()
-            if res != smoothie.RESPONSE_OK:
-                msg = "Aborting movement to the corner (couldn't reach): " + res
-                return msg, False
-
-            # extraction, cork down
-            res = smoothie.custom_move_for(F=config.Z_F_EXTRACTION_DOWN, Z=config.EXTRACTION_Z)
-            smoothie.wait_for_all_actions_done()
-            if res != smoothie.RESPONSE_OK:
-                msg = "Couldn't move the extractor down, smoothie error occurred: " + res
-                return msg, False
-
-            # extraction, cork up
-            res = smoothie.ext_cork_up()
-            smoothie.wait_for_all_actions_done()
-            if res != smoothie.RESPONSE_OK:
-                msg = "Couldn't move the extractor up, smoothie error occurred: " + res + \
-                      "\nemergency exit as I don't want break corkscrew."
-                return msg, True
-            else:
-                sm_x = smoothie.get_smoothie_current_coordinates()["X"]
-                sm_y = smoothie.get_smoothie_current_coordinates()["Y"]
-                x = math.floor(sm_x / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-                y = math.floor(sm_y / config.MATRIX_ONE_MATRICE_CELL_IN_MM) + config.OFFSET_FOR_MATRIX_BORDER_IN_CELL
-                extraction_map[y, x].setPatternExtraction("Daisy", parent=extraction_map[center_sm_y, center_sm_x])
-                if config.DEBUG_MATRIX_FILE:
-                    ExtractionManager.save_matrix("last_extraction_map.txt", extraction_map, header=True)
-
-        return res, False
-        """
 
     @staticmethod
     def Plantain(smoothie: adapters.SmoothieAdapter, extraction_map: ExtractionMap):
@@ -1409,8 +1193,7 @@ class ExtractionMethods:
                      extraction_map: ExtractionMap,
                      data_collector: datacollection.DataCollector,
                      demo_server: utility.DemoPauseServer):
-        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-            print("EXT. PAUSE: Starting pattern plus.")
+        ExtractionMethods.LOGGER.info("Starting pattern plus.")
 
         sm_cur = smoothie.get_adapter_current_coordinates()
         positions = [
@@ -1452,8 +1235,7 @@ class ExtractionMethods:
                   extraction_map: ExtractionMap,
                   data_collector: datacollection.DataCollector,
                   demo_server: utility.DemoPauseServer):
-        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-            print("EXT. PAUSE: Starting pattern X.")
+        ExtractionMethods.LOGGER.info("Starting pattern X.")
 
         sm_cur = smoothie.get_adapter_current_coordinates()
         positions = [
@@ -1502,8 +1284,7 @@ class ExtractionMethods:
         9--8--7
         """
 
-        if config.SET_EXTRACTIONS_ON_DEBUG_PAUSE:
-            print("EXT. PAUSE: Starting pattern 3x3.")
+        ExtractionMethods.LOGGER.info("Starting pattern 3x3.")
 
         sm_cur = smoothie.get_adapter_current_coordinates()
         positions = [

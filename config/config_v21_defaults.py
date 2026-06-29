@@ -181,9 +181,6 @@ MYOPIA_PATCH = True
 # set to True to disable weeds extractions during movement to first point when continuing previous path (continue mode)
 FIRST_POINT_NO_EXTRACTIONS = False
 
-# True: set on pause extractions and wait for manual continue permission; False: usual extraction
-SET_EXTRACTIONS_ON_DEBUG_PAUSE = False
-
 
 # ======================================================================================================================
 # VESC SETTINGS
