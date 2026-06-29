@@ -1781,7 +1781,7 @@ class VescAdapterV4:
     PROPULSION_KEY = 0
     EXTRACTION_KEY = 1
 
-    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq, logger_full: utility.Logger):
+    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
         self.__locker = threading.Lock()
         self.__reconnect_locker = threading.Lock()
 
@@ -1791,7 +1791,6 @@ class VescAdapterV4:
         self.__stopper_check_freq = stopper_check_freq
         self.__alive_freq = alive_freq
         self.__check_freq = check_freq
-        self.__logger_full = logger_full
         self.__next_alive_time = time.time()
 
         self.__can_ids = dict()
@@ -1808,7 +1807,7 @@ class VescAdapterV4:
         self.__last_stop_time = dict()
         self.__stopper_signals = dict()
 
-        self.__ser = serial.Serial(port=ser_port, baudrate=ser_baudrate)
+        self.__ser = serial.Serial(port=self.__ser_port, baudrate=ser_baudrate)
         self.__ser.flushInput()
         self.__ser.flushOutput()
         self.__ser.timeout = config.VESC_TIMEOUT_READ
