@@ -507,6 +507,7 @@ class ExtractionManagerV3:
 
                     # skip coordinates that are out of working range
                     if not (config.X_MIN < abs_sm_x < config.X_MAX or config.Y_MIN < abs_sm_y < config.Y_MAX):
+                        print(f"Skipping plant {plant_box.get_name()} at X={abs_sm_x}, Y={abs_sm_y} as out of working range")
                         continue
 
                     # add absolute coordinates to the result list
