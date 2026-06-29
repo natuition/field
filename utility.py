@@ -333,7 +333,7 @@ class DemoPauseServer:
     def __new_clients_conn_listener_tf(self):
         while self.__keep_clients_conn_listener_alive:
             try:
-                client, address = self.__clients_conn_listener.accept()
+                client, _ = self.__clients_conn_listener.accept()
                 with self.__current_clients_locker:
                     self.__current_clients.append(client)
             except KeyboardInterrupt:

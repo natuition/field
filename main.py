@@ -895,38 +895,43 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
                 break
 
         if vesc_data is not None:
-            if voltage_thread_alive():
-                if ui_msg_queue is not None:
-                    ui_msg_queue.send(json.dumps({"input_voltage": "Main"}))
-                vesc_voltage = vesc_data.get("input_voltage", None)
-                if vesc_voltage is not None:
-                    if vesc_voltage < 12.0:
-                        if isBumped == False:
-                            msg = f"[Send voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
-                            logger.write_and_flush(msg + "\n")
-                            MAIN_LOGGER.info(msg)
-                        isBumped = True
-                        if ui_msg_queue is not None:
-                            ui_msg_queue.send(json.dumps({"input_voltage": "Bumper"}))
+            try:
+                if voltage_thread_alive():
+                    if ui_msg_queue is not None:
+                        ui_msg_queue.send(json.dumps({"input_voltage": "Main"}))
+                    vesc_voltage = vesc_data.get("input_voltage", None)
+                    if vesc_voltage is not None:
+                        if vesc_voltage < 12.0:
+                            if isBumped == False:
+                                msg = f"[Send voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
+                                logger.write_and_flush(msg + "\n")
+                                MAIN_LOGGER.info(msg)
+                            isBumped = True
+                            if ui_msg_queue is not None:
+                                ui_msg_queue.send(json.dumps({"input_voltage": "Bumper"}))
 
-                    elif isBumped and vesc_voltage >= 12.0:
-                        msg = f"[Send voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
-                        logger.write_and_flush(msg + "\n")
-                        MAIN_LOGGER.info(msg)
-                        isBumped = False
-                        nowReset = True
-                        if ui_msg_queue is not None:
-                            ui_msg_queue.send(json.dumps({"input_voltage": "Reseting"}))
-                        utility.life_line_reset()
-                        time.sleep(5)  # Usefull to not send a get_sensors_data request to early
-                    else:
-                        if nowReset:
-                            msg = f"[Send voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected."
+                        elif isBumped and vesc_voltage >= 12.0:
+                            msg = f"[Send voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
                             logger.write_and_flush(msg + "\n")
                             MAIN_LOGGER.info(msg)
-                            nowReset = False
-                        if ui_msg_queue is not None:
-                            ui_msg_queue.send(json.dumps({"input_voltage": vesc_voltage}))
+                            isBumped = False
+                            nowReset = True
+                            if ui_msg_queue is not None:
+                                ui_msg_queue.send(json.dumps({"input_voltage": "Reseting"}))
+                            utility.life_line_reset()
+                            time.sleep(5)  # Usefull to not send a get_sensors_data request to early
+                        else:
+                            if nowReset:
+                                msg = f"[Send voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected."
+                                logger.write_and_flush(msg + "\n")
+                                MAIN_LOGGER.info(msg)
+                                nowReset = False
+                            if ui_msg_queue is not None:
+                                ui_msg_queue.send(json.dumps({"input_voltage": vesc_voltage}))
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except posix_ipc.ExistentialError as e:
+                MAIN_LOGGER.error(f"Exception while processing VESC data: {e}")
         time.sleep(0.3)
 
 
@@ -2102,6 +2107,7 @@ def main():
             ui_msg_queue.send(json.dumps({"stopping": True}))
         if ui_msg_queue is not None:
             ui_msg_queue.close()
+            ui_msg_queue = None
     except Exception as e:
         if "LEAVING_FIELD" not in e.args:
             notification.set_robot_state_and_wait_send(RobotSynthesis.HS)
@@ -2110,6 +2116,7 @@ def main():
             logger_full.write(msg + "\n")
         if ui_msg_queue is not None:
             ui_msg_queue.close()
+            ui_msg_queue = None
     finally:
         
         if "send_voltage_thread_alive" in globals():
