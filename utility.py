@@ -1,5 +1,5 @@
 import platform
-import datetime
+from datetime import datetime
 import os
 import serial.tools.list_ports
 import threading
@@ -593,7 +593,7 @@ class DemoPauseClient:
 def get_current_time():
     """Returns current time as formatted string"""
 
-    return datetime.datetime.now(timezone('Europe/Berlin')).strftime("%d-%m-%Y %H-%M-%S %f")
+    return datetime.now(timezone('Europe/Berlin')).strftime("%d-%m-%Y %H-%M-%S %f")
 
 
 def create_directories(*args):
