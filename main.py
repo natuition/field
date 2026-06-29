@@ -9,15 +9,12 @@ import os
 import sys
 import time
 import traceback
-import inspect
 from matplotlib.patches import Polygon
 import math
-import cv2 as cv
 import numpy as np
 import pickle
 import posix_ipc
 import json
-import glob
 import importlib
 
 from safe_import_of_config import config
@@ -31,19 +28,6 @@ from shared_class.robot_synthesis import RobotSynthesis
 from notification import NotificationClient
 import connectors
 from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
-
-"""
-import SensorProcessing
-import socketForRTK
-from socketForRTK.Client import Client
-"""
-"""
-if config.RECEIVE_FIELD_FROM_RTK:
-    # import robotEN_JET as rtk
-    import robotEN_JETSON as rtk
-"""
-# TODO: temp debug counter
-IMAGES_COUNTER = 0
 
 
 def save_gps_coordinates(points: list, file_name: str):
@@ -77,63 +61,6 @@ def save_gps_coordinates_raw(points: list, file_name: str):
             file.write(str(point) + "\n")
 
 
-def ask_for_ab_points(gps: adapters.GPSUbloxAdapter):
-    """Ask user for moving vector AB points"""
-
-    input("Press enter to save point B")
-    point_b = gps.get_fresh_position()
-    print("Point B saved.")
-    input("Press enter to save point A")
-    point_a = gps.get_fresh_position()
-    print("Point A saved.")
-    return [point_a, point_b]
-
-
-# def save_image(path_to_save, image, counter, session_label, date, sep="_"):
-#     """
-#     Assembles image file name and saves received image under this name to specified directory.
-#     Counter and session label may be passed if was set to None.
-#     """
-
-#     date = sep + date if date else ""
-#     session_label = sep + session_label if session_label else ""
-#     counter = sep + str(counter) if counter or counter == 0 else ""
-#     cv.imwrite(path_to_save + date + session_label + counter + ".jpg", image)
-
-
-# def debug_save_image(img_output_dir, label, frame, plants_boxes, undistorted_zone_radius, poly_zone_points_cv):
-#     # TODO: temp counter debug
-#     global IMAGES_COUNTER
-#     IMAGES_COUNTER += 1
-
-#     # TODO: data gathering temporary hardcoded
-#     if config.ALLOW_GATHERING:
-#         save_image(config.DATA_GATHERING_DIR, frame, IMAGES_COUNTER,
-#                    label, utility.get_current_time())
-
-#     # debug image saving
-#     if config.SAVE_DEBUG_IMAGES:
-#         # draw time on frame
-#         cur_time = utility.get_current_time()
-#         left, top = 30, 30
-#         label_size, base_line = cv.getTextSize(
-#             cur_time + " No: " + str(IMAGES_COUNTER), cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-#         top = max(top, label_size[1])
-#         frame = cv.rectangle(frame, (left, top - round(1.5 * label_size[1])),
-#                              (left + round(1.5 *
-#                               label_size[0]), top + base_line),
-#                              (0, 0, 255), cv.FILLED)
-#         frame = cv.putText(frame, cur_time + " No: " + str(IMAGES_COUNTER), (left, top), cv.FONT_HERSHEY_SIMPLEX, 0.75,
-#                            (0, 0, 0), 2)
-
-#         # draw data on frame
-#         frame = utility.ImageSaver.draw_zone_circle(
-#             frame, config.SCENE_CENTER_X, config.SCENE_CENTER_Y, undistorted_zone_radius)
-#         frame = utility.ImageSaver.draw_zone_poly(frame, poly_zone_points_cv)
-#         frame = detection.draw_boxes(frame, plants_boxes)
-#         save_image(img_output_dir, frame, IMAGES_COUNTER, label, cur_time)
-
-
 def move_to_point_and_extract(coords_from_to: list,
                               gps: adapters.GPSUbloxAdapter,
                               vesc_engine: adapters.VescAdapterV4,
@@ -146,7 +73,6 @@ def move_to_point_and_extract(coords_from_to: list,
                               working_zone_polygon,
                               nav: navigation.GPSComputing,
                               data_collector: datacollection.DataCollector,
-                              log_cur_dir,
                               notification: NotificationClient,
                               extraction_manager_v3: ExtractionManagerV3,
                               ui_msg_queue: posix_ipc.MessageQueue,
@@ -155,7 +81,6 @@ def move_to_point_and_extract(coords_from_to: list,
                               navigation_prediction: navigation.NavigationPrediction,
                               future_points: list,
                               allow_extractions: bool,
-                              x_scan_poly: list,
                               cur_field):
     """
     Moves to the given target point and extracts all weeds on the way.
@@ -165,15 +90,20 @@ def move_to_point_and_extract(coords_from_to: list,
     :param smoothie:
     :param client_mvi:
     :param logger_full:
+    :param myPenetrometryAnalyse:
     :param report_field_names:
     :param trajectory_saver:
     :param working_zone_polygon:
     :param nav:
     :param data_collector:
-    :param log_cur_dir:
     :param notification:
     :param extraction_manager_v3:
     :param cur_field: None or list of 4 ABCD points which are describing current field robot is working on.
+    :param ui_msg_queue:
+    :param SI_speed:
+    :param wheels_straight:
+    :param navigation_prediction:
+    :param future_points:
     :return:
     """
 
@@ -211,9 +141,7 @@ def move_to_point_and_extract(coords_from_to: list,
     start_Nav_while = True
     last_correct_raw_angle = 0
     point_status = "origin"
-    last_corridor_side = 0
     current_corridor_side = 1
-    almost_start = 0
 
     prev_maneuver_time = time.time()
     working_mode_slow = 1
@@ -255,49 +183,23 @@ def move_to_point_and_extract(coords_from_to: list,
         vesc_engine.set_target_rpm(vesc_speed, vesc_engine.PROPULSION_KEY)
         vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
 
-    try:
-        notificationQueue = posix_ipc.MessageQueue(
-            config.QUEUE_NAME_UI_NOTIFICATION)
-    except KeyboardInterrupt:
-        raise KeyboardInterrupt
-    except:
-        notificationQueue = None
-
     degraded_navigation_mode = False
-
-    number_navigation_cycle_without_gps = 0
 
     point_reading_t = last_send_gps_time = slow_mode_time = time.time()
 
     have_time_for_inference = True
     predictor_next_gps_expected_ts = float("inf")
-    last_violette_false_log_ts = 0.0
-    VIOLETTE_STOPPED_LOG_INTERVAL = 0.5  # seconds  
-
-    def log_client_mvi(msg: str):
-        return
-        logger_full.write(msg + "\n")
-        if config.VERBOSE:
-            caller = inspect.currentframe().f_back
-            line_no = caller.f_lineno if caller is not None else -1
-            print(f"[L{line_no}] {msg}")
     
-    log_client_mvi("[Main][client_mvi] -> switch_active_pipeline(OVERHEAD_DETECTION)")
     client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
-    log_client_mvi("[Main][client_mvi] <- switch_active_pipeline(OVERHEAD_DETECTION)")
     
     treated_plants = set()
     treated_plants.update(client_mvi.get_name_map(client_mvi.OVERHEAD_DETECTION))
     notification.set_treated_weed_types(treated_plants)
     
     if extract:
-        log_client_mvi("[Main][client_mvi] -> run_active_detection_on_MVI()")
         client_mvi.run_active_detection_on_MVI()
-        log_client_mvi("[Main][client_mvi] <- run_active_detection_on_MVI()")
     else:
-        log_client_mvi("[Main][client_mvi] -> run_passive_detection_on_MVI()")
         client_mvi.run_passive_detection_on_MVI()
-        log_client_mvi("[Main][client_mvi] <- run_passive_detection_on_MVI()")    
 
     # main navigation control loop
     while True:
@@ -310,20 +212,7 @@ def move_to_point_and_extract(coords_from_to: list,
             # EXTRACTION CONTROL
             start_t = time.time()
             # TODO MVI
-            now = time.monotonic()
-            if now - last_violette_false_log_ts >= VIOLETTE_STOPPED_LOG_INTERVAL:
-                log_client_mvi("[Main][client_mvi] -> violette_is_stopped()")
             violette_is_stopped = client_mvi.violette_is_stopped()
-            if violette_is_stopped:
-                now = time.monotonic()
-                if now - last_violette_false_log_ts >= VIOLETTE_STOPPED_LOG_INTERVAL:
-                    log_client_mvi("[Main][client_mvi] <- violette_is_stopped() = True")
-                    last_violette_false_log_ts = now
-            else:
-                now = time.monotonic()
-                if now - last_violette_false_log_ts >= VIOLETTE_STOPPED_LOG_INTERVAL:
-                    log_client_mvi("[Main][client_mvi] <- violette_is_stopped() = False")
-                    last_violette_false_log_ts = now
             per_det_end_t = time.time()
             detections_period.append(per_det_end_t - start_t)
                 
@@ -362,12 +251,8 @@ def move_to_point_and_extract(coords_from_to: list,
                     if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                         # TODO MVI
-                        log_client_mvi("[Main][client_mvi] -> get_last_detections()")
                         detection_result = client_mvi.get_last_detections()
-                        log_client_mvi("[Main][client_mvi] <- get_last_detections()")
-                        log_client_mvi("[Main][client_mvi] -> parse_plants_positions(detection_result)")
                         plants_positions = client_mvi.parse_plants_positions(detection_result)
-                        log_client_mvi("[Main][client_mvi] <- parse_plants_positions(detection_result)")
 
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone_position(plants_positions, working_zone_polygon): 
@@ -400,12 +285,8 @@ def move_to_point_and_extract(coords_from_to: list,
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
                     
-                    log_client_mvi("[Main][client_mvi] -> switch_active_pipeline(OVERHEAD_DETECTION)")
                     client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
-                    log_client_mvi("[Main][client_mvi] <- switch_active_pipeline(OVERHEAD_DETECTION)")
-                    log_client_mvi("[Main][client_mvi] -> run_active_detection_on_MVI()")
                     client_mvi.run_active_detection_on_MVI()
-                    log_client_mvi("[Main][client_mvi] <- run_active_detection_on_MVI()")
 
                 elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                     msg = "Switching from 'slow mode' to 'switching mode'"
@@ -837,8 +718,6 @@ def move_to_point_and_extract(coords_from_to: list,
             last_correct_raw_angle = raw_angle
             point_status = "correct"
 
-        almost_start = nav.get_distance(last_skipped_point, cur_pos)
-
         # sum(e)
         if len(raw_angles_history) >= config.WINDOW:
             raw_angles_history.pop(0)
@@ -964,7 +843,6 @@ def move_to_point_and_extract(coords_from_to: list,
         distance = round(distance, 2)
         ad_wheels_pos = round(ad_wheels_pos, 2)
         perpendicular = round(perpendicular, 2)
-        # sm_wheels_pos = round(sm_wheels_pos, 2)
         gps_quality = cur_pos[2]
         corridor = ""
         if current_corridor_side == -1:
@@ -1239,38 +1117,6 @@ def corner_finish_rounds(turning_radius: float):
     return int((get_rectangle_isosceles_side(turning_radius))/config.FIELD_REDUCE_SIZE)+1
 
 
-def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float, currently_path: list):
-    raise NotImplementedError(
-        "an obsolete code, use build_forward_backward_path() instead")
-
-    if not config.ADD_FORWARD_BACKWARD_TO_END_PATH and not config.FORWARD_BACKWARD_PATH:
-        return currently_path
-
-    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
-
-    fwd = SI_speed_fwd
-    rev = SI_speed_rev
-
-    while nav.get_distance(b, c) > config.SPIRAL_SIDES_INTERVAL:
-
-        if not add_points_to_path(currently_path, [b, fwd]):
-            return currently_path
-
-        if not add_points_to_path(currently_path, [a, rev]):
-            return currently_path
-
-        a = compute_x1_x2(a, d, config.SPIRAL_SIDES_INTERVAL, nav)[0]
-        b = compute_x1_x2(b, c, config.SPIRAL_SIDES_INTERVAL, nav)[0]
-
-    if not add_points_to_path(currently_path, [b, fwd]):
-        return currently_path
-
-    if not add_points_to_path(currently_path, [a, rev]):
-        return currently_path
-
-    return currently_path
-
-
 def build_forward_backward_path(abcd_points: list,
                                 nav: navigation.GPSComputing,
                                 logger: utility.Logger,
@@ -1330,250 +1176,6 @@ def build_forward_backward_path(abcd_points: list,
             ad_dist_ok = False
 
     return path
-
-
-def build_bezier_with_corner_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
-    raise NotImplementedError(
-        "an obsolete code, use build_bezier_path() instead")
-
-    path = []
-    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
-
-    fwd = SI_speed_fwd
-    rev = SI_speed_rev
-
-    _break = False
-
-    # get moving points A1 - ... - D2 spiral
-    a1, a2 = compute_x1_x2_points(a, b, nav, logger)
-    b1, b2 = compute_x1_x2_points(b, c, nav, logger)
-    c1, c2 = compute_x1_x2_points(c, d, nav, logger)
-    d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-    a1_spiral = nav.get_coordinate(a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
-    _, a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL, nav)
-
-    if not add_points_to_path(path, [a, fwd]):
-        raise RuntimeError("Failed to add original point A into generated path. "
-                           "This could happen if input field's point A is None.")
-
-    first_bezier_turn = compute_bezier_points(a2, b, b1)
-    second_bezier_turn = compute_bezier_points(b2, c, c1)
-    third_bezier_turn = compute_bezier_points(c2, d, d1)
-    fourth_bezier_turn = compute_bezier_points(d2, a_spiral, a1_spiral)
-
-    # minimum turning radius given in millimeter
-    turning_radius = config.MANEUVER_START_DISTANCE
-
-    if config.ADD_CORNER_TO_BEZIER_PATH:
-        rnd = 0
-        rnds = corner_finish_rounds(turning_radius)
-
-        # example a 3meter radius requires 4 corners finish
-        for rnd in range(rnds+1):
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            mxt = "corner rnd "+str(rnd)+"/"+str(rnds)
-
-            # the direction is given along with the point in meter per second, signed
-            # go to line forward, step back to the turning point "a1"
-
-            if not add_points_to_path(path, [b, fwd, "B "+mxt]):
-                return path
-            for index in range(0, len(first_bezier_turn)):
-                if index == 0:
-                    if not add_points_to_path(path, [first_bezier_turn[index], rev]):
-                        return path
-                else:
-                    if not add_points_to_path(path, [first_bezier_turn[index], fwd]):
-                        return path
-            if not add_points_to_path(path, [b, rev, mxt]):
-                return path
-
-            if not add_points_to_path(path, [c, fwd, "C "+mxt]):
-                return path
-            for index in range(0, len(second_bezier_turn)):
-                if index == 0:
-                    if not add_points_to_path(path, [second_bezier_turn[index], rev]):
-                        return path
-                else:
-                    if not add_points_to_path(path, [second_bezier_turn[index], fwd]):
-                        return path
-            if not add_points_to_path(path, [c, rev, mxt]):
-                return path
-
-            if not add_points_to_path(path, [d, fwd, "D "+mxt]):
-                return path
-            for index in range(0, len(third_bezier_turn)):
-                if index == 0:
-                    if not add_points_to_path(path, [third_bezier_turn[index], rev]):
-                        return path
-                else:
-                    if not add_points_to_path(path, [third_bezier_turn[index], fwd]):
-                        return path
-            if not add_points_to_path(path, [d, rev, mxt]):
-                return path
-
-            if not add_points_to_path(path, [a, fwd, "A "+mxt]):
-                return path
-            for index in range(0, len(fourth_bezier_turn)):
-                if index == 0:
-                    if not add_points_to_path(path, [fourth_bezier_turn[index], rev]):
-                        return path
-                else:
-                    if not add_points_to_path(path, [fourth_bezier_turn[index], fwd]):
-                        return path
-            # if not add_points_to_path(path, [a,rev,mxt] ):
-            if not add_points_to_path(path, [a_spiral, rev, mxt]):
-                return path
-
-            # get A'B'C'D' (prepare next ABCD points)
-            b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
-            d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
-
-            if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
-                return path
-
-            a_new, b_new = compute_x1_x2_int_points(
-                d2_int, b1_int, nav, logger)
-            c_new, d_new = compute_x1_x2_int_points(
-                b2_int, d1_int, nav, logger)
-
-            if not check_points_for_nones(a_new, b_new, c_new, d_new):
-                return path
-
-            a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
-
-            # get moving points A1 - ... - D2 spiral
-            a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
-            b1, b2 = compute_x1_x2_points(b, c, nav, logger)
-            c1, c2 = compute_x1_x2_points(c, d, nav, logger)
-            d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-
-            for point in [a, b, c, d, a1, b1, c1, d1, a2, b2, c2, d2]:
-                if point is None:
-                    return path
-
-            a1_spiral = nav.get_coordinate(
-                a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
-            _, a_spiral = compute_x1_x2(
-                d, a, config.SPIRAL_SIDES_INTERVAL, nav)
-
-            for point in [a1_spiral, a_spiral]:
-                if point is None:
-                    if not _break:
-                        _break = True
-                        break
-            if _break:
-                break
-
-            first_bezier_turn = compute_bezier_points(a2, b, b1)
-            second_bezier_turn = compute_bezier_points(b2, c, c1)
-            third_bezier_turn = compute_bezier_points(c2, d, d1)
-            fourth_bezier_turn = compute_bezier_points(d2, a_spiral, a1_spiral)
-
-    while True:
-        # get A'B'C'D' (prepare next ABCD points)
-        b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
-        d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
-
-        if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
-            raise RuntimeError("Some of intermediate points [B1 B2 D1 D2] for next spiral generation are None. "
-                               "This may happen if current distance between points is too small for robot maneuvers.")
-
-        d2_int_prev = d2_int
-
-        a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
-        c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
-
-        if not check_points_for_nones(a_new, b_new, c_new, d_new):
-            raise RuntimeError("Some of next iteration field points [A_new B_new C_new D_new] are None. "
-                               "This may happen if current distance between points is too small for robot maneuvers.")
-
-        # get moving points A1 - ... - D2 spiral
-        a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
-        b1, b2 = compute_x1_x2_points(b, c, nav, logger)
-        c1, c2 = compute_x1_x2_points(c, d, nav, logger)
-        d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-
-        if None in [a, b, c, d, a1, b1, c1, d1, a2, b2, c2, d2]:
-            if nav.get_distance(a, b) >= nav.get_distance(b, c):
-                a = compute_x1_x2(a, d, config.SPIRAL_SIDES_INTERVAL, nav)[0]
-                b = compute_x1_x2(b, c, config.SPIRAL_SIDES_INTERVAL, nav)[0]
-                return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-            else:
-                raise RuntimeError("Some of [A A1 A2 B B1 B2 C C1 C2 D D1 D2] points are None AND AB < BC. "
-                                   "Old code, not sure why author raises an exception for such condition.")
-
-        a1_spiral = nav.get_coordinate(a1, a, 90, config.SPIRAL_SIDES_INTERVAL)
-        _, a_spiral = compute_x1_x2(d, a, config.SPIRAL_SIDES_INTERVAL, nav)
-
-        if None in [a1_spiral, a_spiral]:
-            raise RuntimeError(
-                "One of [A_spiral A1_spiral] points are None. This case actually should never happen.")
-
-        first_bezier_turn = compute_bezier_points(a2, b, b1)
-        second_bezier_turn = compute_bezier_points(b2, c, c1)
-        third_bezier_turn = compute_bezier_points(c2, d, d1)
-        fourth_bezier_turn = compute_bezier_points(d2, a_spiral, a1_spiral)
-
-        if nav.get_distance(a, b) >= nav.get_distance(b, c):
-
-            if None in first_bezier_turn+second_bezier_turn:
-                return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-
-            first_bezier_turn_with_speed = [[point, fwd]
-                                            for point in first_bezier_turn]
-            second_bezier_turn_with_speed = [
-                [point, fwd] for point in second_bezier_turn]
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            if not add_points_to_path(path, *(first_bezier_turn_with_speed+second_bezier_turn_with_speed)):
-                raise Exception(
-                    "Error during generate path (build_bezier_with_corner_path:01) !")
-
-            if None in third_bezier_turn+fourth_bezier_turn:
-                return add_forward_backward_path([c, d, a, b], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-
-            third_bezier_turn_with_speed = [[point, fwd]
-                                            for point in third_bezier_turn]
-            fourth_bezier_turn_with_speed = [
-                [point, fwd] for point in fourth_bezier_turn]
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            if not add_points_to_path(path, *(third_bezier_turn_with_speed+fourth_bezier_turn_with_speed)):
-                raise Exception(
-                    "Error during generate path (build_bezier_with_corner_path:02) !")
-
-        else:
-
-            first_bezier_turn_with_speed = [[point, fwd]
-                                            for point in first_bezier_turn]
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            if not add_points_to_path(path, *(first_bezier_turn_with_speed)):
-                raise Exception(
-                    "Error during generate path (build_bezier_with_corner_path:03) !")
-
-            if None in second_bezier_turn+third_bezier_turn:
-                return add_forward_backward_path([b, c, d, a], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-            second_bezier_turn_with_speed = [
-                [point, fwd] for point in second_bezier_turn]
-            third_bezier_turn_with_speed = [[point, fwd]
-                                            for point in third_bezier_turn]
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            if not add_points_to_path(path, *(second_bezier_turn_with_speed+third_bezier_turn_with_speed)):
-                raise Exception(
-                    "Error during generate path (build_bezier_with_corner_path:04) !")
-
-            _, next_a2 = compute_x1_x2_points(d2_int, b_new, nav, logger)
-            next_b1, _ = compute_x1_x2_points(b_new, c_new, nav, logger)
-
-            if None in fourth_bezier_turn or None in [next_a2, b_new, next_b1]:
-                return add_forward_backward_path([d, a, b, c], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-            # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-            fourth_bezier_turn_with_speed = [
-                [point, fwd] for point in fourth_bezier_turn]
-            if not add_points_to_path(path, *(fourth_bezier_turn_with_speed)):
-                raise Exception(
-                    "Error during generate path (build_bezier_with_corner_path:05 !")
-
-        a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
 
 
 def build_bezier_path(abcd_points: list,
@@ -1708,73 +1310,6 @@ def build_bezier_path(abcd_points: list,
             raise NotImplementedError(msg)
 
     return path
-
-
-def build_path(abcd_points: list, nav: navigation.GPSComputing, logger: utility.Logger, SI_speed_fwd: float, SI_speed_rev: float):
-    raise NotImplementedError(
-        "an obsolete code, use more advanced path builders like bezier or zigzag")
-
-    path = []
-    a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
-
-    # get moving points A1 - ... - D2 spiral
-    a1, a2 = compute_x1_x2_points(a, b, nav, logger)
-    b1, b2 = compute_x1_x2_points(b, c, nav, logger)
-    c1, c2 = compute_x1_x2_points(c, d, nav, logger)
-    d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-    d2_spiral = compute_x2_spiral(d, a, nav, logger)
-
-    # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-    if not add_points_to_path(path, [a, SI_speed_fwd], [a1, SI_speed_fwd], [a2, SI_speed_fwd], [b1, SI_speed_fwd], [b2, SI_speed_fwd], [c1, SI_speed_fwd], [c2, SI_speed_fwd], [d1, SI_speed_fwd], [d2_spiral, SI_speed_fwd]):
-        return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-
-    # get A'B'C'D' (prepare next ABCD points)
-    b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
-    d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
-
-    if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
-        return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-
-    a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
-    c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
-
-    if not check_points_for_nones(a_new, b_new, c_new, d_new):
-        return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-
-    a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
-
-    # keep reducing sides for spiral
-    while True:
-        # get A'B'C'D' (prepare next ABCD points)
-        b1_int, b2_int = compute_x1_x2_int_points(b, c, nav, logger)
-        d1_int, d2_int = compute_x1_x2_int_points(d, a, nav, logger)
-
-        if not check_points_for_nones(b1_int, b2_int, d1_int, d2_int):
-            break
-
-        a_new, b_new = compute_x1_x2_int_points(d2_int, b1_int, nav, logger)
-        c_new, d_new = compute_x1_x2_int_points(b2_int, d1_int, nav, logger)
-
-        if not check_points_for_nones(a_new, b_new, c_new, d_new):
-            break
-
-        # get moving points A1 - ... - D2 spiral
-        a1, a2 = compute_x1_x2_points(d2_int_prev, b, nav, logger)
-        b1, b2 = compute_x1_x2_points(b, c, nav, logger)
-        c1, c2 = compute_x1_x2_points(c, d, nav, logger)
-        d1, d2 = compute_x1_x2_points(d, a, nav, logger)
-        d2_spiral = compute_x2_spiral(d, a, nav, logger)
-
-        # check if there's a point(s) which shouldn't be used as there's no place for robot maneuvers
-        if not add_points_to_path(path, [a1, SI_speed_fwd], [a2, SI_speed_fwd], [b1, SI_speed_fwd], [b2, SI_speed_fwd], [c1, SI_speed_fwd], [c2, SI_speed_fwd], [d1, SI_speed_fwd], [d2_spiral, SI_speed_fwd]):
-            break
-
-        a, b, c, d, d2_int_prev = a_new, b_new, c_new, d_new, d2_int
-
-    if nav.get_distance(a, b) >= nav.get_distance(b, c):
-        return add_forward_backward_path([a, b, c, d], nav, logger, SI_speed_fwd, SI_speed_rev, path)
-    else:
-        return add_forward_backward_path([c, b, a, d], nav, logger, SI_speed_rev, SI_speed_fwd, path)
 
 
 def compute_x1_x2(point_a, point_b, distance, nav: navigation.GPSComputing):
@@ -1931,11 +1466,6 @@ def main():
     except:
         ui_msg_queue = None
 
-    # image_saver = utility.ImageSaver()
-    # if config.ALLOW_GATHERING:
-    #     image_saver.set_counter(
-    #         len(glob.glob(config.DATA_GATHERING_DIR + "*.jpg")), "gathering")
-
     notification = NotificationClient(time_start)
     notification.set_robot_state(RobotSynthesis.WORKING)
     data_collector = datacollection.DataCollector(
@@ -1959,11 +1489,6 @@ def main():
             logger_full.write(msg + "\n")
             print(msg)
             config.ALLOW_X_MOVEMENT_DURING_SCANS = False
-    if config.ALLOW_X_MOVEMENT_DURING_SCANS:
-        x_scan_poly = ExtractionManagerV3.pdz_dist_to_poly(
-            config.X_MOVEMENT_IMAGE_ZONES)
-    else:
-        x_scan_poly = []
 
     # get smoothie and vesc addresses
     smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
@@ -1986,82 +1511,6 @@ def main():
             logger_full.write(msg + "\n")
             notification.set_robot_state(RobotSynthesis.HS)
             exit()
-
-    # load yolo networks
-    # if config.NN_MODELS_COUNT < 1:
-    #     msg = f"Key 'config.NN_MODELS_COUNT' has 0 or negative value which is wrong as need at least 1 model for work"
-    #     print(msg)
-    #     logger_full.write(msg + "\n")
-    #     exit()
-
-    # # load periphery NN
-    # msg = "Loading periphery detector..."
-    # print(msg)
-    # logger_full.write(msg + "\n")
-    # if config.PERIPHERY_WRAPPER == 1:
-    #     periphery_detector = detection.YoloTRTDetector(
-    #         config.PERIPHERY_MODEL_PATH,
-    #         config.PERIPHERY_CLASSES_FILE,
-    #         config.PERIPHERY_CONFIDENCE_THRESHOLD,
-    #         config.PERIPHERY_NMS_THRESHOLD,
-    #         config.PERIPHERY_INPUT_SIZE)
-    # elif config.PERIPHERY_WRAPPER == 2:
-    #     periphery_detector = detection.YoloOpenCVDetection(
-    #         config.PERIPHERY_CLASSES_FILE,
-    #         config.PERIPHERY_CONFIG_FILE,
-    #         config.PERIPHERY_WEIGHTS_FILE,
-    #         config.PERIPHERY_INPUT_SIZE,
-    #         config.PERIPHERY_CONFIDENCE_THRESHOLD,
-    #         config.PERIPHERY_NMS_THRESHOLD,
-    #         config.PERIPHERY_DNN_BACKEND,
-    #         config.PERIPHERY_DNN_TARGET)
-    # else:
-    #     msg = "Wrong config.PERIPHERY_WRAPPER = " + \
-    #         str(config.PERIPHERY_WRAPPER) + " code. Exiting."
-    #     logger_full.write(msg + "\n")
-    #     notification.set_robot_state(RobotSynthesis.HS)
-    #     exit()
-
-    # # load precise NN
-    # if config.NN_MODELS_COUNT > 1:
-    #     msg = "Loading precise detector..."
-    #     print(msg)
-    #     logger_full.write(msg + "\n")
-    #     if config.PRECISE_WRAPPER == 1:
-    #         precise_detector = detection.YoloTRTDetector(
-    #             config.PRECISE_MODEL_PATH,
-    #             config.PRECISE_CLASSES_FILE,
-    #             config.PRECISE_CONFIDENCE_THRESHOLD,
-    #             config.PRECISE_NMS_THRESHOLD,
-    #             config.PRECISE_INPUT_SIZE)
-    #     elif config.PRECISE_WRAPPER == 2:
-    #         precise_detector = detection.YoloOpenCVDetection(
-    #             config.PRECISE_CLASSES_FILE,
-    #             config.PRECISE_CONFIG_FILE,
-    #             config.PRECISE_WEIGHTS_FILE,
-    #             config.PRECISE_INPUT_SIZE,
-    #             config.PRECISE_CONFIDENCE_THRESHOLD,
-    #             config.PRECISE_NMS_THRESHOLD,
-    #             config.PRECISE_DNN_BACKEND,
-    #             config.PRECISE_DNN_TARGET)
-    #     else:
-    #         msg = "Wrong config.PRECISE_WRAPPER = " + \
-    #             str(config.PRECISE_WRAPPER) + " code. Exiting."
-    #         logger_full.write(msg + "\n")
-    #         notification.set_robot_state(RobotSynthesis.HS)
-    #         exit()
-    # else:
-    #     msg = "Using periphery detector as precise."
-    #     print(msg)
-    #     logger_full.write(msg + "\n")
-    #     precise_detector = periphery_detector
-
-    #TODO MVI: get classes names from MVI
-    # if config.CONTINUOUS_INFORMATION_SENDING:
-        # treated_plants = set()
-        # treated_plants.update(periphery_detector.get_classes_names())
-        # treated_plants.update(precise_detector.get_classes_names())
-        # notification.set_treated_weed_types(treated_plants)
 
     # load and send trajectory to the UI if continuing work
     if config.CONTINUE_PREVIOUS_PATH:
@@ -2251,12 +1700,7 @@ def main():
                     # generate path points
                     path_start_index = 1
                     if config.TRADITIONAL_PATH:
-                        path_points = build_path(
-                            field_gps_coords,
-                            nav,
-                            logger_full,
-                            config.SI_SPEED_FWD,
-                            config.SI_SPEED_REV)
+                        raise NotImplementedError("Traditional path building is not implemented in new path builder yet")
                     elif config.BEZIER_PATH:
                         path_points = build_bezier_path(
                             field_gps_coords,
@@ -2316,13 +1760,6 @@ def main():
                 msg = "Failed to set A=0 on smoothie (turning wheels init position), response message:\n" + response
                 print(msg)
                 logger_full.write(msg + "\n")
-
-            """
-            # ask permission to start moving
-            msg = "Initializing done. Press enter to start moving."
-            input(msg)
-            logger_full.write(msg + "\n")
-            """
 
             msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
                   'centroid factor|cruise factor'
@@ -2519,7 +1956,6 @@ def main():
                                 working_zone_polygon,
                                 nav,
                                 data_collector,
-                                log_cur_dir,
                                 notification,
                                 extraction_manager_v3,
                                 ui_msg_queue,
@@ -2528,7 +1964,6 @@ def main():
                                 navigation_prediction,
                                 path_points[i_inf:i_sup],
                                 not config.FIRST_POINT_NO_EXTRACTIONS,
-                                x_scan_poly,
                                 field_gps_coords
                             )
                             if traj_path_start_index >= path_start_index:
@@ -2552,7 +1987,6 @@ def main():
                                         working_zone_polygon,
                                         nav,
                                         data_collector,
-                                        log_cur_dir,
                                         notification,
                                         extraction_manager_v3,
                                         ui_msg_queue,
@@ -2561,7 +1995,6 @@ def main():
                                         navigation_prediction,
                                         path_points[i_inf:i_sup],
                                         not config.FIRST_POINT_NO_EXTRACTIONS,
-                                        x_scan_poly,
                                         field_gps_coords
                                     )
                     elif config.FORWARD_BACKWARD_PATH:
@@ -2643,7 +2076,6 @@ def main():
                         working_zone_polygon,
                         nav,
                         data_collector,
-                        log_cur_dir,
                         notification,
                         extraction_manager_v3,
                         ui_msg_queue,
@@ -2654,7 +2086,6 @@ def main():
                         not i == path_start_index
                         if config.FIRST_POINT_NO_EXTRACTIONS and config.CONTINUE_PREVIOUS_PATH and
                         not config.USE_SMOOTH_APPROACHING_TO_FIELD else True,
-                        x_scan_poly,
                         field_gps_coords
                     )
 
@@ -2723,16 +2154,6 @@ def main():
                     path_index_file.seek(0)
                     path_index_file.write(str(i + 1))
                     path_index_file.flush()
-
-                    """
-                    msg = "Starting memory cleaning"
-                    logger_full.write(msg + "\n")
-                    cleaning_start_t = time.time()
-                    memory_manager.start_clean_manual_blocking()
-                    cleaning_end_t = time.time()
-                    msg = "Cleaning elapsed time: " + str(cleaning_end_t - cleaning_start_t)
-                    logger_full.write(msg + "\n")
-                    """
 
                     # calibration
                     if time.time() > next_calibration_time:
