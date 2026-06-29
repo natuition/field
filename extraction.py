@@ -106,7 +106,7 @@ class ExtractionManagerV3:
         smoothie_positions = []
         for u_o, v_o in plant_positions:
             x_mm_overhead, y_mm_overhead = raw_pixel_to_robot_mm_from_json(u_o, v_o, config.CALIBRATION_JSON_OVERHEAD)
-            self.__logger.info("Transforming plant position from overhead pixel to robot mm: ", (u_o, v_o), " -> ", (x_mm_overhead, y_mm_overhead))
+            self.__logger.info(f"Transforming plant position from overhead pixel to robot mm: {(u_o, v_o)} -> {(x_mm_overhead, y_mm_overhead)}.")
             smoothie_positions.append((x_mm_overhead, y_mm_overhead))
         self.__client_mvi.switch_active_pipeline(self.__client_mvi.TARGET_FINDER_DETECTION)
         
@@ -377,7 +377,7 @@ class ExtractionManagerV3:
                     #                                       config.ONE_MM_IN_PX)
                     
                     rel_sm_x, rel_sm_y = raw_pixel_to_image_center_mm(plant_position[0], plant_position[1], self.__homography)
-                    self.__logger.info("Transforming plant position from target finder pixel to image center mm: ", plant_position, " -> ", rel_sm_x, rel_sm_y)
+                    self.__logger.info(f"Transforming plant position from target finder pixel to image center mm: {plant_position} -> {(rel_sm_x, rel_sm_y)}.")
 
                     # swap camera and cork for extraction immediately (coords are relative)
                     rel_sm_x += config.CORK_TO_CAMERA_DISTANCE_X
