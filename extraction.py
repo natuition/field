@@ -203,7 +203,7 @@ class ExtractionManagerV3:
 
                 msg = f"Arrived to plant {str(plant_index)}, preparing to specify scan"
                 self.__logger_full.write(msg + "\n")
-                self.__logger(msg)
+                self.__logger.info(msg)
                 if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
                     self.__demo_server.wait_for_resume_cmd()
 

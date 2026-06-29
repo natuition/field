@@ -411,7 +411,7 @@ class DemoPauseServer:
 
     def wait_for_resume_cmd(self):
         self.__logger.info("Waiting for demo server resume command...")
-        print("Waiting for demo server resume command...")
+        #print("Waiting for demo server resume command...")
         with self.__is_paused_locker:
             self.__is_paused = True
 
