@@ -2163,6 +2163,7 @@ class VescAdapterV4:
             self.__is_moving[engine_key] = True
 
     def stop_moving(self, engine_key, smooth_deceleration: bool = False):        
+        print("Stopping engine", engine_key, "with smooth deceleration:", smooth_deceleration)
         with self.__locker:
             self.__use_smooth_decel[engine_key] = smooth_deceleration
 

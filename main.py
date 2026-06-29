@@ -270,15 +270,23 @@ def move_to_point_and_extract(coords_from_to: list,
 
     have_time_for_inference = True
     predictor_next_gps_expected_ts = float("inf")
+
+    def log_client_mvi(msg: str):
+        logger_full.write(msg + "\n")
+        if config.VERBOSE:
+            print(msg)
     
-    print("[Main] Switching to overhead detection pipeline")
+    log_client_mvi("[Main][client_mvi] -> switch_active_pipeline(OVERHEAD_DETECTION)")
     client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
+    log_client_mvi("[Main][client_mvi] <- switch_active_pipeline(OVERHEAD_DETECTION)")
     if extract:
-        print("[Main] Running active detection on MVI")
+        log_client_mvi("[Main][client_mvi] -> run_active_detection_on_MVI()")
         client_mvi.run_active_detection_on_MVI()
+        log_client_mvi("[Main][client_mvi] <- run_active_detection_on_MVI()")
     else:
-        print("[Main] Running passive detection on MVI")
+        log_client_mvi("[Main][client_mvi] -> run_passive_detection_on_MVI()")
         client_mvi.run_passive_detection_on_MVI()
+        log_client_mvi("[Main][client_mvi] <- run_passive_detection_on_MVI()")
 
     # main navigation control loop
     while True:
@@ -291,7 +299,9 @@ def move_to_point_and_extract(coords_from_to: list,
             # EXTRACTION CONTROL
             start_t = time.time()
             # TODO MVI
+            log_client_mvi("[Main][client_mvi] -> violette_is_stopped()")
             violette_is_stopped = client_mvi.violette_is_stopped()
+            log_client_mvi(f"[Main][client_mvi] <- violette_is_stopped() = {violette_is_stopped}")
             per_det_end_t = time.time()
             detections_period.append(per_det_end_t - start_t)
                 
@@ -313,6 +323,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         msg = "[VERBOSE EXTRACT] Violette is stopped because we have detected plant(s)."
                         logger_full.write_and_flush(msg+"\n")
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
+                    print("2. Violette is stopped because we have detected plant(s).")
                     if config.VERBOSE_EXTRACT:
                         msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
                         logger_full.write_and_flush(msg+"\n")
@@ -329,8 +340,12 @@ def move_to_point_and_extract(coords_from_to: list,
                     if config.ALLOW_PRECISE_SINGLE_SCAN_BEFORE_PDZ and not config.ALLOW_X_MOVEMENT_DURING_SCANS:
                         time.sleep(config.DELAY_BEFORE_2ND_SCAN)
                         # TODO MVI
+                        log_client_mvi("[Main][client_mvi] -> get_last_detections()")
                         detection_result = client_mvi.get_last_detections()
+                        log_client_mvi("[Main][client_mvi] <- get_last_detections()")
+                        log_client_mvi("[Main][client_mvi] -> parse_plants_positions(detection_result)")
                         plants_positions = client_mvi.parse_plants_positions(detection_result)
+                        log_client_mvi("[Main][client_mvi] <- parse_plants_positions(detection_result)")
 
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone_position(plants_positions, working_zone_polygon): 
@@ -363,10 +378,12 @@ def move_to_point_and_extract(coords_from_to: list,
                     vesc_engine.start_moving(vesc_engine.PROPULSION_KEY)
                     vesc_engine.wait_for_stop(vesc_engine.PROPULSION_KEY)
                     
-                    print("[Main] Switching to overhead detection pipeline")
+                    log_client_mvi("[Main][client_mvi] -> switch_active_pipeline(OVERHEAD_DETECTION)")
                     client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
-                    print("[Main] Running active detection on MVI")
+                    log_client_mvi("[Main][client_mvi] <- switch_active_pipeline(OVERHEAD_DETECTION)")
+                    log_client_mvi("[Main][client_mvi] -> run_active_detection_on_MVI()")
                     client_mvi.run_active_detection_on_MVI()
+                    log_client_mvi("[Main][client_mvi] <- run_active_detection_on_MVI()")
 
                 elif config.SLOW_FAST_MODE and time.time() - slow_mode_time > config.SLOW_MODE_MIN_TIME:
                     msg = "Switching from 'slow mode' to 'switching mode'"
