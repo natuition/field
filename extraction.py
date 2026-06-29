@@ -200,6 +200,7 @@ class ExtractionManagerV3:
             input(msg)
         # demo pause
         if config.ALLOW_DEMO_PAUSES and self.__demo_server is not None:
+            print("Recupération des plantes par la caméra du haut")
             self.__demo_server.wait_for_resume_cmd()
 
         plant_index = 0
