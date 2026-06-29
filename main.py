@@ -230,12 +230,12 @@ def move_to_point_and_extract(coords_from_to: list,
                     MAIN_LOGGER.info(msg)
 
                 if violette_is_stopped:
-                    msg = "[VERBOSE EXTRACT] Violette is stopped because we have detected plant(s)."
+                    msg = "Violette is stopped because we have detected plant(s)."
                     logger_full.write_and_flush(msg+"\n")
                     MAIN_LOGGER.debug(msg)
                     
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
-                    msg = "[VERBOSE EXTRACT] Stopping the robot because we have detected plant(s)."
+                    msg = "Stopping the robot because we have detected plant(s)."
                     logger_full.write_and_flush(msg+"\n")
                     MAIN_LOGGER.debug(msg)
                     
@@ -269,7 +269,7 @@ def move_to_point_and_extract(coords_from_to: list,
                             extraction_manager_v3.mill_all_plants()
                         slow_mode_time = time.time()
 
-                    msg = "[VERBOSE EXTRACT] Extract cycle are finish."
+                    msg = "Extract cycle are finish."
                     logger_full.write_and_flush(msg+"\n")
 
                     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)

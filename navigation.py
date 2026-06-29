@@ -7,6 +7,8 @@ import time
 from config import config
 import os
 
+from logger import Logger as NewLogger
+
 
 class GPSComputing:
     """
@@ -451,6 +453,8 @@ class AntiTheftZone:
 class NavigationV3:
     __ntrip_restart_ts = 0
 
+    LOGGER = NewLogger.create(__name__)
+
     @classmethod
     def restart_ntrip_service(cls, logger_full: utility.Logger):
         """Will restart Ntrip service if time passed after last Ntrip restart is bigger than allowed in config
@@ -460,15 +464,14 @@ class NavigationV3:
 
         if not config.NTRIP:
             msg = f"[{cls.__name__}] -> Ntrip restart is aborted as Ntrip usage is disabled in config.NTRIP={config.NTRIP} key."
-            print(msg)
+            NavigationV3.LOGGER.warning(msg)
             logger_full.write(msg + "\n")
             return False
 
         if time.time() - NavigationV3.__ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT:
             msg = f"[{cls.__name__}] -> Restarting Ntrip service."
             logger_full.write(msg + "\n")
-            if config.VERBOSE:
-                print(msg)
+            NavigationV3.LOGGER.info(msg)
             os.system("sudo systemctl restart ntripClient.service")
             NavigationV3.__ntrip_restart_ts = time.time()
             return True

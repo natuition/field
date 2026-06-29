@@ -12,7 +12,9 @@ import time
 from pytz import timezone
 import socket
 import subprocess
-import logging
+from logger import Logger as NewLogger
+
+UTILITY_LOGGER = NewLogger.create("Utility")
 
 
 # class ImageSaver:
@@ -337,11 +339,11 @@ class DemoPauseServer:
                 with self.__current_clients_locker:
                     self.__current_clients.append(client)
             except KeyboardInterrupt:
-                print("__new_clients_conn_listener_th for some reason got KeyboardInterrupt!")
+                UTILITY_LOGGER.warning("__new_clients_conn_listener_th for some reason got KeyboardInterrupt!")
                 raise KeyboardInterrupt
             except Exception as ex:
                 if self.__keep_clients_conn_listener_alive:
-                    print("__new_clients_conn_listener_th error when accepting new client:", ex)
+                    UTILITY_LOGGER.warning("__new_clients_conn_listener_th error when accepting new client:", ex)
 
     def __clients_cmd_reader_tf(self):
         connections_to_close = []
@@ -372,11 +374,11 @@ class DemoPauseServer:
                         if idx not in connections_to_close:
                             connections_to_close.append(idx)
                     except KeyboardInterrupt:
-                        print("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        UTILITY_LOGGER.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
                         raise KeyboardInterrupt
                     except Exception as ex:
                         if self.__keep_clients_cmd_reader_alive:
-                            # print("__clients_cmd_reader_th error when reading from client:", ex)
+                            UTILITY_LOGGER.warning("__clients_cmd_reader_th error when reading from client:", ex)
                             pass
 
                 # try to close, and remove client objects which likely loss a connection
@@ -387,21 +389,21 @@ class DemoPauseServer:
                     try:
                         self.__current_clients[idx].shutdown(socket.SHUT_RDWR)
                     except KeyboardInterrupt:
-                        print("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        UTILITY_LOGGER.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
                         raise KeyboardInterrupt
                     except Exception as ex:
                         if self.__keep_clients_cmd_reader_alive:
-                            # print("__clients_cmd_reader_th error when shutting down connection:", ex)
+                            UTILITY_LOGGER.warning("__clients_cmd_reader_th error when shutting down connection:", ex)
                             pass
 
                     try:
                         self.__current_clients[idx].close()
                     except KeyboardInterrupt:
-                        print("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
+                        UTILITY_LOGGER.warning("__clients_cmd_reader_th for some reason got KeyboardInterrupt!")
                         raise KeyboardInterrupt
                     except Exception as ex:
                         if self.__keep_clients_cmd_reader_alive:
-                            # print("__clients_cmd_reader_th error when closing connection:", ex)
+                            UTILITY_LOGGER.warning("__clients_cmd_reader_th error when closing connection:", ex)
                             pass
 
                     del self.__current_clients[idx]
@@ -410,7 +412,7 @@ class DemoPauseServer:
                     connections_to_close.clear()
 
     def wait_for_resume_cmd(self):
-        print("Waiting for demo server resume command...")
+        UTILITY_LOGGER.info("Waiting for demo server resume command...")
         with self.__is_paused_locker:
             self.__is_paused = True
 
@@ -508,14 +510,14 @@ class DemoPauseClient:
                     self.__server_conn.send(b"resume")
                     break
                 except KeyboardInterrupt:
-                    print("__sender_tf for some reason got KeyboardInterrupt!")
+                    UTILITY_LOGGER.warning("__sender_tf for some reason got KeyboardInterrupt!")
                     raise KeyboardInterrupt
                 except (socket.error, socket.herror, socket.gaierror):
                     need_to_reconnect = True
                     continue
                 except Exception as ex:
                     if self.__keep_sender_alive:
-                        # print("__sender_tf error when sending resume cmd:", ex)
+                        UTILITY_LOGGER.warning("__sender_tf error when sending resume cmd:", ex)
                         pass
 
 
@@ -533,11 +535,11 @@ def create_directories(*args):
             try:
                 os.mkdir(path)
             except OSError:
-                print("Creation of the directory %s failed" % path)
+                UTILITY_LOGGER.error("Creation of the directory %s failed" % path)
             else:
-                print("Successfully created the directory %s " % path)
+                UTILITY_LOGGER.info("Successfully created the directory %s " % path)
         else:
-            print("Directory %s is already exists" % path)
+            UTILITY_LOGGER.info("Directory %s is already exists" % path)
 
 
 def get_path_slash():
@@ -583,86 +585,42 @@ def mu_sigma(samples: list):
     sigma/=len(samples)
     sigma = math.sqrt(sigma)
     
-    #print ( "mu =%2.13f"%mu, " sigma =%E"%sigma)
-
     stat= [mu, sigma]
     return stat
 
 
-
-def distribution_of_values(samples: list, mu, sigma):
-    leg=[10,9,8,7,6,5,4,3,2,1,1,2,3,4,5,6,7,8,9,10]  # legend
-    stat=[0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    junk=0
-
-    for x in samples:
-            if int(math.fabs((x-mu)/sigma))<10:
-                if x>=mu:
-                    n_sigma=int(((x-mu)/sigma))+10       #n_sigma[10] contient le nombre de valeur entre mu et mu-sigma
-                                                                #n_sigma[11] contient le nombre de valeur entre mu et mu-2sigma
-                else:
-                    n_sigma=-int(((mu-x)/sigma))+9      #n_sigma[9] contient le nombre de valeur entre mu et mu-1sigma
-                stat[n_sigma]+=1                         #n_sigma[8] contient le nombre de valeur entre mu et mu-2sigma
-                #print("nsigma %2d"%n_sigma,"x %2.4f"%x) 
-            else: 
-                junk+=1                                 # stupid value exceeding +10 -9 sigma are only counted
-                #print("junk sample %2.2f"%x)
-    print(leg)
-    print(stat)
-    print("junk total", junk)
-   
-    distrib= [stat, junk]
-    return distrib
-
-
-
-def average_point(gps,trajectory_saver: TrajectorySaver,nav, logger: Logger=None):
+def average_point(gps,trajectory_saver: TrajectorySaver,nav, logger_full: Logger=None):
 
     #ORIGIN POINT SAVING
     lat = []     #latitude history
     long = []    #longitude history
     distances = []
-    
 
     for i in range(0,config.ORIGIN_AVERAGE_SAMPLES):
         prev_maneuver_time = time.time()
         try:
             prev_pos = gps.get_fresh_position()
             msg = f"Get {i+1}/{config.ORIGIN_AVERAGE_SAMPLES} point in {time.time()-prev_maneuver_time} for average_point."
-            if logger is not None:
-                logger.write_and_flush(msg+"\n")
-            #if config.VERBOSE:
-            #    print(msg)
+            if logger_full is not None:
+                logger_full.write_and_flush(msg+"\n")
         except TimeoutError:
             msg = f"Erro waiting time too long for the {i+1} point in average_point !"
-            if logger is not None:
-                logger.write_and_flush(msg+"\n")
-            if config.VERBOSE:
-                print(msg)
+            if logger_full is not None:
+                logger_full.write_and_flush(msg+"\n")
+            UTILITY_LOGGER.error(msg)
             raise TimeoutError
         lat.append(prev_pos[0])
         long.append(prev_pos[1])
-        mu_lat, sigma_lat = mu_sigma(lat)
-        mu_long, sigma_long = mu_sigma(long)
+        mu_lat, _ = mu_sigma(lat)
+        mu_long, _ = mu_sigma(long)
         distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
-        #print("| ",get_current_time()," | %2.2f"%distance, " | ", prev_pos, "|")
         distances.append(distance)
     
-    mu_distance, sigma_distance = mu_sigma(distances)
-    #print("stat lattitude : \n")
-    mu_lat, sigma_lat = mu_sigma(lat)
-    #distribution_of_values(lat, mu_lat, sigma_lat)
-    #print("stat longitude : \n")
-    mu_long, sigma_long = mu_sigma(long)
-    #distribution_of_values(long, mu_long, sigma_long)
-    #print("stat distance : \n")
-    mu_distance, sigma_distance =  mu_sigma(distances)
-    #distribution_of_values(distances, mu_distance, sigma_distance)
-    #print("Average origin point:  %2.13f"%mu_lat," ","%2.13f"%mu_long, "standard deviation (mm) %2.2f"%sigma_distance)    
+    mu_lat, _ = mu_sigma(lat)
+    mu_long, _ = mu_sigma(long)
     prev_pos[0]=mu_lat      #replace the instantaneous value by the average latitude
     prev_pos[1]=mu_long     #replace the instantaneous value by the average longitude
     prev_pos.append("Origin_with_" + str(config.ORIGIN_AVERAGE_SAMPLES) + "_samples")
-    #print("prev_pos syntax : ",prev_pos)   #debug
     if trajectory_saver is not None:
         trajectory_saver.save_point(prev_pos)
     
@@ -694,17 +652,17 @@ def get_last_dir_name(parent_dir_path: str):
 def life_line_reset():
     dir_gpio = f"/sys/class/gpio/gpio{config.LIFE_LINE_PIN}"
     if os.path.isdir(dir_gpio):
-        print(f"The directory '{dir_gpio}' exist.")
+        UTILITY_LOGGER.info(f"The directory '{dir_gpio}' exist.")
     else:
-        print(f"The directory '{dir_gpio}' not exist, creating...")
+        UTILITY_LOGGER.info(f"The directory '{dir_gpio}' not exist, creating...")
         subprocess.run(f'echo {config.LIFE_LINE_PIN} > /sys/class/gpio/export',shell=True)
 
     check_direction = subprocess.run(f'grep -q "out" "/sys/class/gpio/gpio{config.LIFE_LINE_PIN}/direction"',shell=True).returncode
 
     if check_direction==0:
-        print(f"Gpio {config.LIFE_LINE_PIN} is already out.")
+        UTILITY_LOGGER.info(f"Gpio {config.LIFE_LINE_PIN} is already out.")
     else:
-        print(f"Gpio {config.LIFE_LINE_PIN} is not output, output adjustment in progress...")
+        UTILITY_LOGGER.info(f"Gpio {config.LIFE_LINE_PIN} is not output, output adjustment in progress...")
         subprocess.run(f'echo out > /sys/class/gpio/gpio{config.LIFE_LINE_PIN}/direction',shell=True)
 
     subprocess.run(f'echo 1 > /sys/class/gpio/gpio{config.LIFE_LINE_PIN}/value',shell=True)
@@ -715,7 +673,7 @@ def life_line_reset():
         if "vesc" in get_smoothie_vesc_addresses():
             break
         else:
-            print(f"Not find vesc sleeping {time_int+1}/10 secs.")
+            UTILITY_LOGGER.info(f"Not find vesc sleeping {time_int+1}/10 secs.")
         sleep(1)
 
 

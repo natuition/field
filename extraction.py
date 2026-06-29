@@ -95,9 +95,8 @@ class ExtractionManagerV3:
 
         self.__extraction_map.clear()
 
-        if config.VERBOSE_EXTRACT:
-            msg = "[VERBOSE EXTRACT] Run PDZ scan..."
-            self.__logger_full.write_and_flush(msg+"\n")
+        msg = "Run PDZ scan..."
+        self.__logger_full.write_and_flush(msg+"\n")
         # do sectored scans
         
         # TODO MVI
