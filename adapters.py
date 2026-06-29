@@ -1006,7 +1006,7 @@ class VescAdapterV4:
                 self.__stopper_signals[self.EXTRACTION_KEY] = config.VESC_EXTRACTION_STOP_SIGNAL
             else:
                 # TODO what robot should do if initialization was failed?
-                print(f"Extraction vesc initialization fail: couldn't determine extraction vesc ID.")
+                self.__logger.error(f"Extraction vesc initialization fail: couldn't determine extraction vesc ID.")
         # init any new vescs (add vesc init code here)
         # ...
 
@@ -1024,7 +1024,7 @@ class VescAdapterV4:
             self.stop_moving(self.PROPULSION_KEY)
             if not res:
                 # TODO what robot should do if calibration was failed (there was no stopper hit)?
-                print("Stopped vesc PROPULSION engine calibration due timeout (stopper signal wasn't received!)")
+                self.__logger.error("Stopped vesc PROPULSION engine calibration due timeout (stopper signal wasn't received!)")
 
         # extraction vesc calibration
         if config.VESC_EXTRACTION_CALIBRATE_AT_INIT:
@@ -1042,7 +1042,7 @@ class VescAdapterV4:
             self.stop_moving(self.EXTRACTION_KEY)
             if not res:
                 # TODO what robot should do if calibration was failed (there was no stopper hit)?
-                print(f"Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!).")
+                self.__logger.error(f"Stopped vesc EXTRACTION engine calibration due timeout (stopper signal wasn't received!).")
         # do any new calibrations (add vesc calibration code here)
         # ...
         self.__last_reconnect_time = time.time() - 60
@@ -1073,20 +1073,20 @@ class VescAdapterV4:
             if time.time() - self.__last_reconnect_time < 60 :
                 return
 
-            print(self)
+            self.__logger.debug(self)
             self.__last_reconnect_time = time.time()
             self.__ser.close()
 
             smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
             while not "vesc" in smoothie_vesc_addr:
                 msg = f"Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
-                print(msg)
+                self.__logger.info(msg)
                 time.sleep(1)
                 smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
                 
             vesc_address = smoothie_vesc_addr["vesc"]
             msg = f"Finding vesc's USB address at '{vesc_address}'."
-            print(msg)
+            self.__logger.info(msg)
             
             could_open_port = False
             while not could_open_port :
@@ -1096,11 +1096,11 @@ class VescAdapterV4:
                     self.__ser.flushInput()
                     self.__ser.flushOutput()
                     self.__ser.timeout = 5
-                    print(f"It is reconnected!")
+                    self.__logger.info(f"It is reconnected!")
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except Exception as e:
-                    print(f"Could not open port ({e}).")
+                    self.__logger.error(f"Could not open port ({e}).")
                     time.sleep(1)
 
     def get_unregistered_can_id(self):
@@ -1290,9 +1290,9 @@ class VescAdapterV4:
                 time.sleep(1 / self.__check_freq)
 
         except serial.SerialException as ex:
-            print(f"{ex}")
+            self.__logger.error(f"{ex}")
         finally:
-            print(f"Movement control thread stopped")
+            self.__logger.error(f"Movement control thread stopped")
 
     def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
@@ -1557,6 +1557,8 @@ class GPSUbloxAdapter:
             raise TypeError(f"last_pos_count must be int, got {type(last_pos_count).__name__} instead")
         if last_pos_count < 1:
             raise ValueError(f"last_pos_count shouldn't be less than 1, got {last_pos_count} instead")
+        
+        self.__logger = NewLogger.create(self.__class__.__name__)
 
         self._position_is_fresh = False
         self._last_pos_count = last_pos_count
@@ -1715,7 +1717,7 @@ class GPSUbloxAdapter:
                     self._last_pos_container.append(position)
                     self._position_is_fresh = True
         except serial.SerialException as ex:
-            print(f"Ublox reading error:", ex)
+            self.__logger.error(f"Ublox reading error:", ex)
 
     def _read_from_gps(self):
         """Returns GPS coordinates of the current position"""
@@ -1725,11 +1727,8 @@ class GPSUbloxAdapter:
                 read_line = self._serial.readline()
                 if isinstance(read_line, bytes):
                     data = str(read_line)
-                    # if len(data) == 3:
-                    #    print("None GNGGA or RTCM threads")
                     if "GNGGA" in data and ",,," not in data:
-                        # bad string with no position data
-                        # print(data)  # debug
+                        self.__logger.debug(f"GPS data: {data}")
                         data = data.split(",")
                         lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
                         point_quality = data[6]
@@ -1772,8 +1771,6 @@ class GPSUbloxAdapter:
         if old_conn is not None and old_conn.is_open:
             old_conn.close()
         new_conn = serial.Serial(port=self._ser_port, baudrate=self._ser_baudrate)
-        # self._hot_reset()
-        # self._USBNMEA_OUT()
         return new_conn
 
 
@@ -1782,8 +1779,7 @@ class GPSUbloxAdapterWithoutThread:
 
     def __init__(self, ser_port: str, ser_baudrate: int, last_pos_count: int):
         self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate)
-        # self._hot_reset()
-        # self._USBNMEA_OUT()
+        self.__logger = NewLogger.create(self.__class__.__name__)
 
     def __enter__(self):
         return self
@@ -1830,11 +1826,8 @@ class GPSUbloxAdapterWithoutThread:
                 read_line = self._serial.readline()
                 if isinstance(read_line, bytes):
                     data = str(read_line)
-                    # if len(data) == 3:
-                    #    print("None GNGGA or RTCM threads")
                     if "GNGGA" in data and ",,," not in data:
-                        # bad string with no position data
-                        # print(data)  # debug
+                        self.__logger.debug(f"GPS data: {data}")
                         data = data.split(",")
                         lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
                         point_quality = data[6]
@@ -1891,14 +1884,17 @@ class ClientMVI:
             host: str - The hostname or IP address of the MVI server.
             port: int - The port number of the MVI server.
         """
+        self.__logger = NewLogger.create(self.__class__.__name__)
         self.__current_MVI_pipeline_desciptor = None
         self.__id_name_map: dict[MVIPipelineDescriptor,list[str]] = dict()
         
         self.__client = Client(transport=config.MVI_TRANSPORT_PROTOCOL)
         self.__client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult)
         # self.__client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
+        self.__logger.info(f"Connecting to MVI server at {host}:{port}.")
         self.__client.connect(host, port)
         
+        self.__logger.info(f"Switching to overhead detection pipeline.")
         self.switch_active_pipeline(self.OVERHEAD_DETECTION)
         
     def __enter__(self):
@@ -1921,7 +1917,9 @@ class ClientMVI:
             RuntimeError: If the MVI operation was not successful, with details about the error code and message.
         """
         if res.message["code"] is not 0:
-            raise RuntimeError(f"MVI error code: {res.message['code']}, message: {res.message['message']}")
+            msg = f"MVI error code: {res.message['code']}, message: {res.message['message']}"
+            self.__logger.error(msg)
+            raise RuntimeError(msg)
         
     def get_name_map(self, pipeline: MVIPipelineDescriptor) -> List[str]:
         """Retrieves the mapping of active pipeline IDs to their corresponding names for the specified pipeline descriptor.
