@@ -1369,7 +1369,7 @@ def get_bezier_indexes(path_points: list):
 
 def main():
     
-    MAIN_LOGGER.debug("Starting main()")
+    MAIN_LOGGER.info("Starting main()")
     
     time_start = utility.get_current_time()
     utility.create_directories(config.LOG_ROOT_DIR)
