@@ -475,6 +475,6 @@ if __name__ == "__main__":
     except Exception as e:
         Logger.setLevel(config.LOG_LEVEL_UI)
         logger = Logger.create("Runtime")
-        logger.error(f"Error : {e}", stack_info=True)
+        logger.error(f"Error : {e}", exc_info=True)
         traceback.print_stack()
         print(f"Error : {e}")
