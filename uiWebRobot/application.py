@@ -22,7 +22,7 @@ from uiWebRobot.state_machine.states import *
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from logger import Logger as NewLogger
+from logger import Logger as Logger
 
 __author__ = 'Vincent LAMBERT'
 
@@ -43,7 +43,7 @@ class IgnoreSocketIODisconnected:
 class UIWebRobot:
 
     def __init__(self):
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = Logger.create(self.__class__.__name__)
         self.__app = Flask(__name__)
         self.__setting_flask()
         self.__init_flask_route()  # ROUTE FLASK
@@ -451,8 +451,8 @@ class UIWebRobot:
 
 
 def main():
-    NewLogger.setLevel(config.LOG_LEVEL_UI)
-    logger = NewLogger.create("Runtime")
+    Logger.setLevel(config.LOG_LEVEL_UI)
+    logger = Logger.create("Runtime")
     uiWebRobot = UIWebRobot()
     try:
         host="0.0.0.0"
@@ -473,8 +473,8 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        NewLogger.setLevel(config.LOG_LEVEL_UI)
-        logger = NewLogger.create("Runtime")
+        Logger.setLevel(config.LOG_LEVEL_UI)
+        logger = Logger.create("Runtime")
         logger.error(f"Error : {e}", stack_info=True)
-        traceback.print_exc()
+        traceback.print_stack()
         print(f"Error : {e}")
