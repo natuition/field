@@ -21,7 +21,7 @@ import utility
 from logger import Logger
 
 
-def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdapterV4, socketio: SocketIO, input_voltage: Dict[str, str], logger: utility.Logger) -> None:
+def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdapterV4, socketio: SocketIO, input_voltage: Dict[str, str], file_logger: utility.Logger) -> None:
     """
     Thread function to monitor VESC input voltage and handle bumping events.
     This function continuously checks the VESC input voltage and emits updates to the socketio server.
@@ -33,7 +33,7 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
         vesc_engine (adapters.VescAdapterV4): The VESC adapter instance to get sensor data from.
         socketio: The socketio instance to emit updates to the UI.
         input_voltage (dict): Dictionary to store the latest input voltage.
-        logger (utility.Logger): Logger instance for logging messages.
+        file_logger (utility.Logger): Logger instance for logging messages.
         recreate_vesc_callback (function): Callback function to recreate the VESC connection after a bump event.
     """
     logger = Logger.create("voltage_thread_tf")
@@ -58,14 +58,14 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
                     if vesc_voltage < 12.0:
                         if isBumped == False:
                             msg = f"Bumped, vesc voltage is {vesc_voltage}V."
-                            logger.write_and_flush(msg + "\n")
+                            file_logger.write_and_flush(msg + "\n")
                             logger.warning(msg)
                         isBumped = True
                         sendBumperInfo(socketio, "Bumper")
 
                     elif isBumped and vesc_voltage >= 12.0:
                         msg = f"Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
-                        logger.write_and_flush(msg + "\n")
+                        file_logger.write_and_flush(msg + "\n")
                         logger.warning(msg)
                         isBumped = False
                         nowReset = True
@@ -75,7 +75,7 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
                     else:
                         if nowReset:
                             msg = f"VESC voltage is {vesc_voltage}V, no bump detected."
-                            logger.write_and_flush(msg + "\n")
+                            file_logger.write_and_flush(msg + "\n")
                             logger.warning(msg)
                             nowReset = False
                         sendInputVoltage(socketio, vesc_data["input_voltage"])
@@ -104,30 +104,30 @@ def sendInputVoltage(socketio: SocketIO, input_voltage: Dict[str, str]) -> None:
 
 
 
-def send_last_pos_thread_tf(send_last_pos_thread_alive: bool, socketio: SocketIO, logger: utility.Logger) -> None:
+def send_last_pos_thread_tf(send_last_pos_thread_alive: bool, socketio: SocketIO, file_logger: utility.Logger) -> None:
     """
         Function for sending the last position to ui for the map.
         
         Args:
             - send_last_pos_thread_alive
             - socketio : socket connected with ui
-            - logger
+            - file_logger
     """
     with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
         while send_last_pos_thread_alive():
             lastPos = gps.get_fresh_position()
             if config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART and lastPos[2]!='4':
-                NavigationV3.restart_ntrip_service(logger)
+                NavigationV3.restart_ntrip_service(file_logger)
             socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
             socketio.emit('updateGPSQuality', lastPos[2], namespace='/gps', broadcast=True)
 
 
-def initVesc(logger: utility.Logger) -> adapters.VescAdapterV4 :
+def initVesc(file_logger: utility.Logger) -> adapters.VescAdapterV4 :
     """
         Function for initializing a VESC.\n
         
         Args:
-            logger
+            file_logger
 
         Returns:
             VescAdapterV4: the initialized VESC.
@@ -136,18 +136,18 @@ def initVesc(logger: utility.Logger) -> adapters.VescAdapterV4 :
     for i in range(3):
         if i==2:
             msg = "Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
-            logger.write_and_flush(msg + "\n")
+            file_logger.write_and_flush(msg + "\n")
             raise Exception(msg)
         smoothie_vesc_addr = utility.get_smoothie_vesc_addresses()
         if "vesc" in smoothie_vesc_addr:
             vesc_address = smoothie_vesc_addr["vesc"]
             msg = f"Finding vesc's USB address at '{vesc_address}'."
-            logger.write_and_flush(msg + "\n")
+            file_logger.write_and_flush(msg + "\n")
             logger.info(msg)
             break
         else:
             msg = "Couldn't get vesc's USB address, attempt to unlock with lifeline"
-            logger.write_and_flush(msg + "\n")
+            file_logger.write_and_flush(msg + "\n")
             logger.error(msg)
             utility.life_line_reset()
     
@@ -164,20 +164,20 @@ def initVesc(logger: utility.Logger) -> adapters.VescAdapterV4 :
     return vesc_engine
 
 
-def timeout_sm_th(event: Events, logger: utility.Logger) -> None:
+def timeout_sm_th(event: Events, file_logger: utility.Logger) -> None:
     time.sleep(10)
     if not event.is_set():
         msg = "[Timeout sm] Couldn't get SmoothieAdapter!"
-        logger.write_and_flush(msg + "\n")
+        file_logger.write_and_flush(msg + "\n")
         raise Exception(msg)
 
 
-def initSmoothie(logger: utility.Logger) -> adapters.SmoothieAdapter:
+def initSmoothie(file_logger: utility.Logger) -> adapters.SmoothieAdapter:
     """
         Function for initializing a Smoothie.
         
         Args:
-            logger
+            file_logger
 
         Returns:
             SmoothieAdapter: the initialized Smoothie.
@@ -190,12 +190,12 @@ def initSmoothie(logger: utility.Logger) -> adapters.SmoothieAdapter:
             smoothie_address = smoothie_vesc_addr["smoothie"]
         else:
             msg = "Couldn't get smoothie's USB address!"
-            logger.write_and_flush(msg + "\n")
+            file_logger.write_and_flush(msg + "\n")
             raise Exception(msg)
 
     event = threading.Event()
     smoothie_creation_thread = threading.Thread(
-        target=timeout_sm_th, args=(event, logger))
+        target=timeout_sm_th, args=(event, file_logger))
     smoothie_creation_thread.start()
     smoothie = adapters.SmoothieAdapter(smoothie_address)
     event.set()
