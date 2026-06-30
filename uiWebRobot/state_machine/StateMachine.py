@@ -24,16 +24,16 @@ class StateMachine:
         self.change_current_state(CheckState(socketio,self.__file_logger))
 
     def on_event(self, event: Events):
-        msg = f"[{self.__class__.__name__}] -> {self.currentState} received event : {event}."
+        msg = f"{self.currentState} received event : {event}."
         self.__file_logger.write_and_flush(msg+"\n")
-        print(msg)
+        self.__logger.info(msg)
 
         try:
             newState = self.currentState.on_event(event)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
-            self.__file_logger.write_and_flush(f"[{self.__class__.__name__}] -> [Error on_event] <{e.__class__.__name__}> : "+str(e)+"\n")
+            self.__file_logger.write_and_flush(f"[Error on_event] <{e.__class__.__name__}> : "+str(e)+"\n")
             newState = ErrorState(self.socketio,self.__file_logger,str(e))
 
         if newState is None:
@@ -52,13 +52,13 @@ class StateMachine:
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
-            self.__file_logger.write_and_flush(f"[{self.__class__.__name__}] -> [Error on_socket_data] <{e.__class__.__name__}> : "+str(e)+"\n")
+            self.__file_logger.write_and_flush(f"[Error on_socket_data] <{e.__class__.__name__}> : "+str(e)+"\n")
             self.change_current_state(ErrorState(self.socketio,self.__file_logger,str(e)))
     
     def change_current_state(self, newState):
         self.currentState = newState
         self.__robot_state_client.set_robot_state(self.currentState.robot_synthesis_value)
-        msg = f"[{self.__class__.__name__}] -> New state : {self.currentState}."
+        msg = f"New state : {self.currentState}."
         self.__file_logger.write_and_flush(msg+"\n")
         self.__logger.info(msg)
 
