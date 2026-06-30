@@ -462,7 +462,7 @@ def main():
         uiWebRobot.run(host=host, port=port,
                        debug=True, use_reloader=False)
     except Exception:
-        runtime_logger.error(f"Error : {traceback.format_exc()}", stack_info=True)
+        runtime_logger.error(traceback.format_exc(), stack_info=True)
     finally:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
             runtime_logger.info("Closing app...")
