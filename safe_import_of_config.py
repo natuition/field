@@ -6,6 +6,9 @@ import pytz
 import pwd
 import grp
 import importlib
+from logger import Logger
+
+LOGGER = Logger.create("SafeImportConfig")
 
 def is_config_empty(config_full_path: str):
     with open(config_full_path, "r") as config_file:
@@ -27,7 +30,7 @@ def make_import(config_directory_path: str = "config",
         # import dynamique
         config_module = importlib.import_module("config.config")
 
-        print("Config.py file works good !")
+        LOGGER.info("Config.py file works good !")
 
         return config_module
 
@@ -35,7 +38,7 @@ def make_import(config_directory_path: str = "config",
         raise
 
     except Exception as exc:
-        print(f"Failed to load current config.py ! ({str(exc)})")
+        LOGGER.error(f"Failed to load current config.py ! ({str(exc)})")
 
         config_backups = [
             path for path in glob.glob(f"{config_backup_path}/*.py")
@@ -98,7 +101,7 @@ def make_import(config_directory_path: str = "config",
                 # force reload
                 config_module = importlib.reload(config_module)
 
-                print("Successfully loaded config:", config_backup[0])
+                LOGGER.info("Successfully loaded config:", config_backup[0])
 
                 return config_module
 
@@ -106,9 +109,9 @@ def make_import(config_directory_path: str = "config",
                 raise
 
             except Exception as e:
-                print(e)
+                LOGGER.error(e)
 
-        print(
+        LOGGER.critical(
             f"Couldn't find proper "
             f"'{config_directory_path}/config.py' "
             f"file and '{config_backup_path}' directories!"

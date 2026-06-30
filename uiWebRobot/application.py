@@ -458,7 +458,6 @@ def main():
         host="0.0.0.0"
         port="80"
         runtime_logger.info(f"Starting UIWebRobot on host: {host} port: {port}.")
-        print(f"Starting UIWebRobot on host: {host} port: {port}.")
         uiWebRobot.run(host=host, port=port,
                        debug=True, use_reloader=False)
     except Exception:
