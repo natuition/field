@@ -96,7 +96,7 @@ class UIWebRobot:
         self.__app.register_error_handler(Exception, self.handle_exception)
         self.__app.config['DEBUG'] = False
         self.__app.logger.disabled = True
-        self.__log = logging.getNewLogger('werkzeug')
+        self.__log = logging.getLogger('werkzeug')
         self.__log.disabled = True
         Payload.max_decode_packets = 500
 
