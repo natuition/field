@@ -12,6 +12,7 @@ from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
+from logger import Logger
 
 # This state corresponds when the robot screening his actuator.
 class ActuatorScreeningState(State.State):
@@ -20,12 +21,13 @@ class ActuatorScreeningState(State.State):
 
     def __init__(self,
                  socketio: SocketIO,
-                 logger: utility.Logger,
+                 file_logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
+        self.__logger = Logger.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_ACTUATOR_SCREENING_STATE
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
         self.__screening_shotting_thread_alive = False
@@ -44,15 +46,15 @@ class ActuatorScreeningState(State.State):
         try:
             if self.smoothie is None:
                 if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> initSmoothie"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                self.smoothie = utilsFunction.initSmoothie(self.logger)
+                    msg = f"initSmoothie"
+                    self.__file_logger.write_and_flush(msg + "\n")
+                    self.__logger.info(msg)
+                self.smoothie = utilsFunction.initSmoothie(self.__file_logger)
             else:
                 if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
+                    msg = f"no need to initSmoothie"
+                    self.__file_logger.write_and_flush(msg + "\n")
+                    self.__logger.info(msg)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
@@ -62,7 +64,7 @@ class ActuatorScreeningState(State.State):
 
         res = self.smoothie.ext_calibrate_cork()
         if res != self.smoothie.RESPONSE_OK:
-            return ErrorState(self.socketio, self.logger, res)
+            return ErrorState(self.socketio, self.__file_logger, res)
 
         self.__z_motor_stats_thread =  threading.Thread(target=self.__z_motor_stats_tf, daemon=True)
         self.__z_motor_stats_thread.start()
@@ -93,7 +95,7 @@ class ActuatorScreeningState(State.State):
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
-            print(e)
+            self.__logger.error(e, stack_info=True)
 
     def __screening_shotting_tf(self):
         while(self.__screening_shotting_thread_alive):
@@ -142,7 +144,7 @@ class ActuatorScreeningState(State.State):
             self.__screening_shotting_thread = None
             res = self.smoothie.ext_cork_up()
             if res != self.smoothie.RESPONSE_OK:
-                return ErrorState(self.socketio, self.logger, res)
+                return ErrorState(self.socketio, self.__file_logger, res)
             self.socketio.emit('screening_status', "paused", namespace='/server', broadcast=True)
             self.statusOfUIObject["hasStarted"]= False
             return self
@@ -151,9 +153,9 @@ class ActuatorScreeningState(State.State):
             from state_machine.states.WaitWorkingState import WaitWorkingState
             res = self.smoothie.ext_calibrate_cork()
             if res != self.smoothie.RESPONSE_OK:
-                return ErrorState(self.socketio, self.logger, res)
+                return ErrorState(self.socketio, self.__file_logger, res)
             self.socketio.emit('href_to', {"href": "/", "delay": 1000}, namespace='/server', broadcast=True)
-            return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
+            return WaitWorkingState(self.socketio, self.__file_logger, False, self.smoothie, self.vesc_engine)
         else:
             try:
                 if self.smoothie is not None:
@@ -165,8 +167,8 @@ class ActuatorScreeningState(State.State):
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                self.logger.write_and_flush(e + "\n")
-            return ErrorState(self.socketio, self.logger)
+                self.__file_logger.write_and_flush(e + "\n")
+            return ErrorState(self.socketio, self.__file_logger)
 
     def on_socket_data(self, data):
         return self

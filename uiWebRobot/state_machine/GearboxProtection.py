@@ -1,6 +1,7 @@
 from navigation import GPSComputing
 from typing import Dict
 from config import config
+from logger import Logger
 
 
 class GearboxProtection:
@@ -14,6 +15,7 @@ class GearboxProtection:
 			Create an empy list of cooridinates. \n
             Inits some parameters.
 		"""
+        self.__logger = Logger.create(self.__class__.__name__)
         
         self.__min_nb_valid_distances: int = config.MIN_NB_VALID_DISTANCES
         self.__max_nb_coords_stored: int = config.MAX_NB_COORDS_STORED
@@ -43,7 +45,7 @@ class GearboxProtection:
 			Function for storing the number of extractions performed by the robot.\n
 			:param extracts: dictionary of the extractions performed by the robot.
 		"""
-        print(extracts)
+        self.__logger.info(extracts)
         self.__nb_extracts = self.__compute_number_of_extracts(extracts)
 
     def __compute_number_of_extracts(self, extracts: Dict[str, int]) -> int:
@@ -89,12 +91,12 @@ class GearboxProtection:
         list_valid_distances.sort()
         median_index = len(list_valid_distances) // 2
         median_value = list_valid_distances[median_index]
-        print("Median distance = ", median_value)
+        self.__logger.info("Median distance = ", median_value)
         
         # Calculate the percentage of the minimum speed
         if self.__percentage_of_min_speed < 100 :
             self.__percentage_of_min_speed += self.__step_percentage_of_min_speed
-        print("Minimum distance = ", self.__min_speed * (self.__percentage_of_min_speed / 100))
+        self.__logger.info("Minimum distance = ", self.__min_speed * (self.__percentage_of_min_speed / 100))
         
         return median_value < self.__min_speed * (self.__percentage_of_min_speed / 100)
     

@@ -1,16 +1,18 @@
 import utility
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from shared_class.robot_synthesis import RobotSynthesis
+from logger import Logger
 
 class State(object):
 
-    def __init__(self, socketio, logger: utility.Logger):
+    def __init__(self, socketio, file_logger: utility.Logger):
+        self.__logger = Logger.create(self.__class__.__name__)
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
         self.robot_synthesis_value: RobotSynthesis = None
         msg = 'Processing current state :', str(self)
-        self.logger.write_and_flush(msg)
-        print(msg)
+        self.__file_logger.write_and_flush(msg)
+        self.__logger.info(msg)
         self.statusOfUIObject: FrontEndObjects = FrontEndObjects(   fieldButton=ButtonState.ENABLE,
                                                                     startButton=ButtonState.ENABLE,
                                                                     continueButton=ButtonState.ENABLE,

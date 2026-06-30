@@ -9,21 +9,22 @@ from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonStat
 from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
+from logger import Logger
 
 # This state corresponds when the robot configures it to start from zero the work.
 class StartingState(State.State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit=False):
+    def __init__(self, socketio: SocketIO, file_logger: utility.Logger, isAudit=False):
+        self.__logger = Logger.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_STARTING_STATE
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
         self.isAudit = isAudit
 
         self.socketio.emit('start_main', {"status": "pushed"}, namespace='/button', broadcast=True)
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Edit config file (CONTINUE_PREVIOUS_PATH:{False})"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+        msg = f"Edit config file (CONTINUE_PREVIOUS_PATH:{False})"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.info(msg)
         utilsFunction.changeConfigValue("CONTINUE_PREVIOUS_PATH", False)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
@@ -46,14 +47,14 @@ class StartingState(State.State):
         if event == Events.CONFIG_IS_SET:
             self.statusOfUIObject.startButton = ButtonState.NOT_HERE
             self.statusOfUIObject.stopButton = True
-            return WorkingState.WorkingState(self.socketio, self.logger, self.isAudit, False)
+            return WorkingState.WorkingState(self.socketio, self.__file_logger, self.isAudit, False)
         else:
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.__file_logger)
 
     def on_socket_data(self, data):
         if data["type"] == 'getInputVoltage':
             return self
-        return ErrorState.ErrorState(self.socketio, self.logger)
+        return ErrorState.ErrorState(self.socketio, self.__file_logger)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject

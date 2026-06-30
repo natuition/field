@@ -22,6 +22,7 @@ from uiWebRobot.state_machine.states import *
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
+from logger import Logger
 
 __author__ = 'Vincent LAMBERT'
 
@@ -42,6 +43,8 @@ class IgnoreSocketIODisconnected:
 class UIWebRobot:
 
     def __init__(self):
+        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.__app = Flask(__name__)
         self.__setting_flask()
         self.__init_flask_route()  # ROUTE FLASK
@@ -55,17 +58,13 @@ class UIWebRobot:
         self.demo_pause_client = utility.DemoPauseClient(
             config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
 
-
     def exit(self):
-        print(f"[{self.__class__.__name__}] -> Send RobotSynthesis...")
+        self.__logger.info("Send RobotSynthesis...")
         self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
-        print(f"[{self.__class__.__name__}] -> Sent ✅")
+        self.__logger.info("Sent ✅")
 
     def on_connect(self):
-        print("A client is connected.")
-
-    def on_connect(self):
-        print("A client is connected.")
+        self.__logger.debug("A client is connected.")
 
     def __init_socketio(self):
         self.__socketio.on_event(
@@ -103,7 +102,7 @@ class UIWebRobot:
         Payload.max_decode_packets = 500
 
     def __reload_config(self):
-        print(f"[{self.__class__.__name__}] -> Reload config in application.py...")
+        self.__logger.info("Reload config in application.py...")
         spec = importlib.util.spec_from_file_location(
             "config.name", "./config/config.py")
         self.__config = importlib.util.module_from_spec(spec)
@@ -133,7 +132,7 @@ class UIWebRobot:
         except OSError as e:
             return None
         if len(positions_list) == 0:
-            print(f"[{self.__class__.__name__}] -> Erreur : Le fichier {file_path} est vide.")
+            self.__logger.error(f"Erreur : Le fichier {file_path} est vide.")
             return None
         return positions_list
 
@@ -295,7 +294,7 @@ class UIWebRobot:
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
-            print(f"[{self.__class__.__name__}] -> Error : {e}")
+            self.__logger.error(f"Error : {e}")
             traceback.print_exc()
             return redirect('/')
 
@@ -434,7 +433,7 @@ class UIWebRobot:
         # pass through HTTP errors
 
         if isinstance(e, HTTPException):
-            print(f"[{self.__class__.__name__}] -> Error handled : {e}.")
+            self.__logger.error(f"Error handled : {e}.")
             return e
 
         # now you're handling non-HTTP exceptions only
@@ -444,7 +443,7 @@ class UIWebRobot:
         if ui_language not in self.__ui_languages["Supported Language"]:
             ui_language = "en"
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        print(f"[{self.__class__.__name__}] -> Error handled : {exc_type} : {exc_value}.")
+        self.__logger.error(f"Error handled : {exc_type} : {exc_value}.")
         traceback.print_exception(exc_type, exc_value, exc_traceback)
         return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][ui_language], reason=f"{str(exc_type)} : {exc_value}"), 500
 
@@ -453,13 +452,19 @@ class UIWebRobot:
 
 
 def main():
+    logger = Logger.create("Runtime")
     uiWebRobot = UIWebRobot()
     try:
-        uiWebRobot.run(host="0.0.0.0", port="80",
+        host="0.0.0.0"
+        port="80"
+        logger.info(f"Starting UIWebRobot on host: {host} port: {port}")
+        uiWebRobot.run(host=host, port=port,
                        debug=True, use_reloader=False)
+    except Exception as e:
+        logger.error(f"Error : {e}", stack_info=True)
     finally:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
-            print("[UIWebRobot] -> Closing app...")
+            logger.info("Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
 

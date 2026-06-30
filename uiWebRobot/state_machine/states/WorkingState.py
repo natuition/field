@@ -19,17 +19,20 @@ from uiWebRobot.state_machine import GearboxProtection, utilsFunction
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
+from logger import Logger
+
 
 # This state corresponds when the robot is working.
 class WorkingState(State.State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger, isAudit: bool, isResume: bool, wasPhysicallyBlocked: bool = False):
+    def __init__(self, socketio: SocketIO, file_logger: utility.Logger, isAudit: bool, isResume: bool, wasPhysicallyBlocked: bool = False):
         if isResume:
             self.robot_synthesis_value = RobotSynthesis.UI_CONTINUE_STATE
         else:
             self.robot_synthesis_value = RobotSynthesis.UI_STARTING_STATE
+        self.__logger = Logger.create(self.__class__.__name__)
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
         self.isAudit = isAudit
         self.__wasPhysicallyBlocked = wasPhysicallyBlocked
         self.allPath = []
@@ -66,49 +69,72 @@ class WorkingState(State.State):
         self.field = None
         self.lastGpsQuality = "1"
         
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Creating the message queue between main and ui."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+        msg = f"Creating the message queue between main and ui."
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.info(msg)
         
         try:
             posix_ipc.unlink_message_queue(config.QUEUE_NAME_UI_MAIN)
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Message queue exist : unlink..."
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+            msg = f"Message queue exist : unlink..."
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except posix_ipc.ExistentialError:
             pass
         except Exception as e:
-            msg = f"[{self.__class__.__name__}] -> <{e.__class__.__name__}> : {str(e)}."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            msg = f"<{e.__class__.__name__}> : {str(e)}."
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.error(msg)
         try:
             self.msgQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_MAIN, posix_ipc.O_CREX)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
-            msg = f"[{self.__class__.__name__}] -> <{e.__class__.__name__}> : {str(e)}."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            msg = f"<{e.__class__.__name__}> : {str(e)}."
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.error(msg)
         
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Creating thread to read messages sent by main."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+        msg = f"Creating thread to read messages sent by main."
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
         self._main_msg_thread_alive = True
         self._main_msg_thread = threading.Thread(target=self._main_msg_thread_tf, daemon=True)
         self._main_msg_thread.start()
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Launching main."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+        msg = f"Launching main."
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
         self.main = utilsFunction.startMain()
         self.timeStartMain = datetime.now(timezone.utc)
         self.__main_not_received_stop = True
+        
+    def __kill_main_and_wait(self):
+        msg = f"Send KeyboardInterrupt to main"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.info(msg)
+        os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+        time.sleep(3)
+        
+        msg = f"Wait main"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
+        self.main.wait()
+        
+        msg = f"Try to stop main thread if alive"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
+        self._main_msg_thread_alive = False
+        
+        msg = f"Wait main thread"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
+        
+        self._main_msg_thread.join()
+        
+        msg = f"Send validate stop"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
 
     def on_event(self, event):
         
@@ -116,50 +142,12 @@ class WorkingState(State.State):
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
             
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Kill main"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+            msg = f"Kill main"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
             
             while self.__main_not_received_stop:
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Send KeyboardInterrupt to main"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
-                time.sleep(3)
-            
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Wait main"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-            
-            self.main.wait()
-            
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Restart camera"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-            
-            os.system("sudo systemctl restart nvargus-daemon")
-            
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Try to stop main thread if alive"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-            self._main_msg_thread_alive = False
-            
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Wait main thread"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-            
-            self._main_msg_thread.join()
-            
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Send validate stop"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                self.__kill_main_and_wait()
             
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
@@ -167,7 +155,7 @@ class WorkingState(State.State):
             else:
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
-            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False)
+            return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, False)
         
         elif event == Events.PHYSICAL_BLOCAGE:
             self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
@@ -182,64 +170,25 @@ class WorkingState(State.State):
                                                 )
             self.socketio.emit('stop', {"status": "physical_blocage"}, namespace='/button', broadcast=True)
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Kill main"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+            msg = f"Kill main"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
 
             while self.__main_not_received_stop:
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Send KeyboardInterrupt to main"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
-                time.sleep(3)
-
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Wait main"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-                  
-            self.main.wait()
-
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Restart camera"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-
-            os.system("sudo systemctl restart nvargus-daemon")
-
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Try to stop main thread if alive"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-
-            self._main_msg_thread_alive = False
-
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Wait main thread"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-
-            self._main_msg_thread.join()
-
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Send validate stop"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                self.__kill_main_and_wait()
 
             self.socketio.emit('physical_blocage', namespace='/server', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
             else:
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
-            return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.logger, False)
+            return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.__file_logger, False)
         
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
             self.msgQueue.close()
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.__file_logger)
 
     def on_socket_data(self, data):
         if data["type"] == "getStats":
@@ -260,13 +209,13 @@ class WorkingState(State.State):
                 queue_params.send(json.dumps(data), timeout=0.01)
                 queue_params.close()
             except Exception as e:
-                print("PENETROMETRY, sending params in queue:", e)
+                self.__logger.error("PENETROMETRY, sending params in queue:", e)
             return self
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
 
-            return ErrorState.ErrorState(self.socketio, self.logger)
+            return ErrorState.ErrorState(self.socketio, self.__file_logger)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject
@@ -302,7 +251,7 @@ class WorkingState(State.State):
                 except posix_ipc.BusyError:
                     pass # If queue is empty continue loop, it will refill
                 if msg is not None:
-                    print(f"Envoie des données de l'extraction au client WEB")
+                    self.__logger.info(f"Envoie des données de l'extraction au client WEB")
                     self.socketio.emit('penetrometry_datas', json.loads(msg[0]), namespace="/server", broadcast=True)
 
 
@@ -315,17 +264,17 @@ class WorkingState(State.State):
                         self._main_msg_thread_alive = False
                         self.__main_not_received_stop = False
                         if config.UI_VERBOSE_LOGGING: 
-                            msg = f"[{self.__class__.__name__}] -> Receved main stopping !"
-                            self.logger.write_and_flush(msg + "\n")
-                            print(msg)
+                            msg = f"Receved main stopping !"
+                            self.__file_logger.write_and_flush(msg + "\n")
+                            self.__logger.info(msg)
                         continue
 
                 elif "start" in data:
                     if data["start"]:
                         if config.UI_VERBOSE_LOGGING:
-                            msg = f"[{self.__class__.__name__}] -> Main started !"
-                            self.logger.write_and_flush(msg + "\n")
-                            print(msg)
+                            msg = f"Main started !"
+                            self.__file_logger.write_and_flush(msg + "\n")
+                            self.__logger.info(msg)
                         self.socketio.emit('start_main', {"status": "finish", "audit": self.isAudit,
                                                         "first_point_no_extractions": config.FIRST_POINT_NO_EXTRACTIONS},
                                         namespace='/button', broadcast=True)
@@ -388,19 +337,17 @@ class WorkingState(State.State):
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                print(f"[{self.__class__.__name__}] -> Error during queue receive : {e}.")
+                self.__logger.error(f"Error during queue receive : {e}.", stack_info=True)
                 continue
         
-        if config.UI_VERBOSE_LOGGING:        
-            msg = f"[{self.__class__.__name__}] -> Close msgQueue..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+        msg = f"Close msgQueue..."
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
         self.msgQueue.close()
         
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Unlink msgQueue..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+        msg = f"Unlink msgQueue..."
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
         
         try:
             self.msgQueue.unlink()
@@ -409,13 +356,13 @@ class WorkingState(State.State):
         
         # Closing file descriptor and removing queue if it exist
         if self.queue_penetrometry_data is not None:
-            msg = f"[{self.__class__.__name__}] -> Close queue_penetrometry_data..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            msg = f"Close queue_penetrometry_data..."
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
             self.queue_penetrometry_data.close()
-            msg = f"[{self.__class__.__name__}] -> Unlink queue_penetrometry_data..."
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+            msg = f"Unlink queue_penetrometry_data..."
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
             try:
                 self.queue_penetrometry_data.unlink()
             except posix_ipc.ExistentialError:

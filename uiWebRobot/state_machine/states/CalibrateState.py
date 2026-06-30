@@ -13,6 +13,7 @@ from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 from deployement.cameraCalibration import CameraCalibration
 import utility
+from logger import Logger
 
 
 # This state corresponds when the robot is calibrate of plant targeting precision.
@@ -20,12 +21,13 @@ class CalibrateState(State.State):
 
     def __init__(self,
                  socketio: SocketIO,
-                 logger: utility.Logger,
+                 file_logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
+        self.__logger = Logger.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_CALIBRATE_STATE
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
         self.__cork_to_camera_distance = {
@@ -36,15 +38,15 @@ class CalibrateState(State.State):
         try:
             if self.smoothie is None:
                 if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> initSmoothie"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                self.smoothie = utilsFunction.initSmoothie(self.logger)
+                    msg = f"initSmoothie"
+                    self.__file_logger.write_and_flush(msg + "\n")
+                    self.__logger.info(msg)
+                self.smoothie = utilsFunction.initSmoothie(self.__file_logger)
 
             if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> initCameraCalibration"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                msg = f"initCameraCalibration"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.info(msg)
             self.cameraCalibration = CameraCalibration()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
@@ -55,7 +57,7 @@ class CalibrateState(State.State):
 
         res = self.smoothie.ext_calibrate_cork()
         if res != self.smoothie.RESPONSE_OK:
-            return ErrorState(self.socketio, self.logger, res)
+            return ErrorState(self.socketio, self.__file_logger, res)
 
     def on_event(self, event):
         if event == Events.CALIBRATION_DETECT:
@@ -63,7 +65,7 @@ class CalibrateState(State.State):
             output, error = ps.communicate()
             lines = output.decode('utf-8').splitlines()
             if not lines :
-                print(error)
+                self.__logger.error(error)
             for line in lines:
                 if '"result":' in line:
                     tmp_res = json.loads(line)
@@ -92,7 +94,7 @@ class CalibrateState(State.State):
                 "CORK_TO_CAMERA_DISTANCE_Y", self.__cork_to_camera_distance["Y"])
             res = self.smoothie.ext_calibrate_cork()
             if res != self.smoothie.RESPONSE_OK:
-                return ErrorState(self.socketio, self.logger, res)
+                return ErrorState(self.socketio, self.__file_logger, res)
             self.socketio.emit(
                 'save_applied', namespace='/server', broadcast=True)
             return self
@@ -100,10 +102,10 @@ class CalibrateState(State.State):
             from state_machine.states.WaitWorkingState import WaitWorkingState
             res = self.smoothie.ext_calibrate_cork()
             if res != self.smoothie.RESPONSE_OK:
-                return ErrorState(self.socketio, self.logger, res)
+                return ErrorState(self.socketio, self.__file_logger, res)
             self.socketio.emit(
                 'href_to', {"href": "/", "delay": 1000}, namespace='/server', broadcast=True)
-            return WaitWorkingState(self.socketio, self.logger, False, self.smoothie, self.vesc_engine)
+            return WaitWorkingState(self.socketio, self.__file_logger, False, self.smoothie, self.vesc_engine)
         else:
             try:
                 if self.smoothie is not None:
@@ -115,8 +117,8 @@ class CalibrateState(State.State):
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                self.logger.write_and_flush(e + "\n")
-            return ErrorState(self.socketio, self.logger)
+                self.__file_logger.write_and_flush(e + "\n")
+            return ErrorState(self.socketio, self.__file_logger)
 
     def on_socket_data(self, data):
         if data["type"] == "run_move_to_target":

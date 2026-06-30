@@ -10,33 +10,34 @@ from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 import utility
+from logger import Logger
+
 
 # This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
-
 class CheckState(State.State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger):
-
+    def __init__(self, socketio: SocketIO, file_logger: utility.Logger):
+        self.__logger = Logger.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_CHECK_STATE
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
 
         self.statusOfUIObject = {}
 
         self.field = None
 
         if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> initVesc"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-        self.vesc_engine = utilsFunction.initVesc(self.logger)
+            msg = f"initVesc"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.info(msg)
+        self.vesc_engine = utilsFunction.initVesc(self.__file_logger)
         self.vesc_engine.close()
         del self.vesc_engine
         if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Close and recreate vesc"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
-        self.vesc_engine = utilsFunction.initVesc(self.logger)
+            msg = f"Close and recreate vesc"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.info(msg)
+        self.vesc_engine = utilsFunction.initVesc(self.__file_logger)
 
         self.__voltage_thread_alive = True
         self.input_voltage = {"input_voltage": "?"}
@@ -45,7 +46,7 @@ class CheckState(State.State):
                                                        self.vesc_engine, 
                                                        self.socketio,
                                                        self.input_voltage,
-                                                       self.logger),
+                                                       self.__file_logger),
                                                  daemon=True)
         self.__voltage_thread.start()
 
@@ -61,12 +62,11 @@ class CheckState(State.State):
             EnvironnementConfig.NATUITION_CHECKLIST(True)
             self.__stop_thread()
             if config.NTRIP:
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> Restarting ntripClient.service..."
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
+                msg = f"Restarting ntripClient.service..."
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.info(msg)
                 os.system("sudo systemctl restart ntripClient.service")
-            return WaitWorkingState.WaitWorkingState(self.socketio, self.logger, False, vesc_engine=self.vesc_engine)
+            return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, False, vesc_engine=self.vesc_engine)
         
         else:
             self.socketio.emit(

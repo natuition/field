@@ -20,84 +20,78 @@ from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 from shared_class.robot_synthesis import RobotSynthesis
 import adapters
 import utility
+from logger import Logger
 
 
 # This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
-
 class WaitWorkingState(State.State):
 
     def __init__(self,
                  socketio: SocketIO,
-                 logger: utility.Logger,
+                 file_logger: utility.Logger,
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
                  vesc_engine: adapters.VescAdapterV4 = None):
+        self.__logger = Logger.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_WAIT_WORKING_STATE
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Self initialization"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+        msg = f"Self initialization"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.info(msg)
 
         try:
             if self.vesc_engine is None:
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> initVesc"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
-                self.vesc_engine = utilsFunction.initVesc(self.logger)
-            elif config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> no need to initVesc"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                msg = f"Init vesc"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.debug(msg)
+                self.vesc_engine = utilsFunction.initVesc(self.__file_logger)
+            else:
+                msg = f"No need to init vesc"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.debug(msg)
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
-                self.logger.write_and_flush(msg + "\n")
+            msg = f"Vesc engine : set target rpm"
+            self.__file_logger.write_and_flush(msg + "\n")
 
             self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
-                self.logger.write_and_flush(msg + "\n")
+            msg = f"Vesc engine : set current rpm"
+            self.__file_logger.write_and_flush(msg + "\n")
 
             self.vesc_engine.set_current_rpm(0, self.vesc_engine.PROPULSION_KEY)
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
-                self.logger.write_and_flush(msg + "\n")
+            msg = f"Vesc engine : set start moving"
+            self.__file_logger.write_and_flush(msg + "\n")
 
             self.vesc_engine.start_moving(
                 self.vesc_engine.PROPULSION_KEY,
                 smooth_acceleration=True,
                 smooth_deceleration=True)
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
-                self.logger.write_and_flush(msg + "\n")
+            msg = f"Vesc engine : started"
+            self.__file_logger.write_and_flush(msg + "\n")
 
             if self.smoothie is None:
-                if config.UI_VERBOSE_LOGGING:
-                    msg = f"[{self.__class__.__name__}] -> initSmoothie"
-                    self.logger.write_and_flush(msg + "\n")
-                    print(msg)
+                msg = f"Init smoothie"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.debug(msg)
                 try:
-                    self.smoothie = utilsFunction.initSmoothie(self.logger)
+                    self.smoothie = utilsFunction.initSmoothie(self.__file_logger)
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
                 except Exception as e:
                     if "[Timeout sm]" in str(e):
-                        self.smoothie = utilsFunction.initSmoothie(self.logger)
+                        self.smoothie = utilsFunction.initSmoothie(self.__file_logger)
                     else:
                         raise e
-            elif config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+            else:
+                msg = f"no need to initSmoothie"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.debug(msg)
 
         except KeyboardInterrupt:
             raise KeyboardInterrupt
@@ -105,9 +99,9 @@ class WaitWorkingState(State.State):
         self.lastValueX = 0
         self.lastValueY = 0
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Setting FrontEndObjects..."
-            self.logger.write_and_flush(msg + "\n")
+        msg = f"Setting FrontEndObjects..."
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.ENABLE,
                                                 startButton=ButtonState.ENABLE,
@@ -129,7 +123,7 @@ class WaitWorkingState(State.State):
                 with open(f"./{config.LEARN_GO_STRAIGHT_FILE}", "r") as learn_go_straight_file:
                     self.learn_go_straight_angle = float(
                         learn_go_straight_file.read())
-                    self.logger.write_and_flush(
+                    self.__file_logger.write_and_flush(
                         f"LEARN_GO_STRAIGHT:{self.learn_go_straight_angle}\n")
                     self.smoothie.custom_move_to(
                         A_F=config.A_F_UI, A=self.learn_go_straight_angle)
@@ -143,7 +137,7 @@ class WaitWorkingState(State.State):
 
         self.send_last_pos_thread_alive = True
         self._send_last_pos_thread = threading.Thread(target=utilsFunction.send_last_pos_thread_tf, args=(
-            lambda: self.send_last_pos_thread_alive, self.socketio, self.logger), daemon=True)
+            lambda: self.send_last_pos_thread_alive, self.socketio, self.__file_logger), daemon=True)
         self._send_last_pos_thread.start()
 
         self.__voltage_thread_alive = True
@@ -153,7 +147,7 @@ class WaitWorkingState(State.State):
                                                        self.vesc_engine,
                                                        self.socketio,
                                                        self.input_voltage,
-                                                       self.logger),
+                                                       self.__file_logger),
                                                  daemon=True)
         self.__voltage_thread.start()
 
@@ -167,10 +161,9 @@ class WaitWorkingState(State.State):
 
         EnvironnementConfig.NATUITION_CHECKLIST(False)
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Self initialization DONE"
-            self.logger.write_and_flush(msg + "\n")
-            print(msg)
+        msg = f"Self initialization DONE"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.debug(msg)
 
     def __check_joystick_info_tf(self):
         while self.__check_joystick_info_alive:
@@ -209,15 +202,15 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
-            return CreateFieldState.CreateFieldState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+            return CreateFieldState.CreateFieldState(self.socketio, self.__file_logger, self.smoothie, self.vesc_engine)
         
         elif event == Events.CALIBRATION:
             self.__stop_thread()
-            return CalibrateState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+            return CalibrateState(self.socketio, self.__file_logger, self.smoothie, self.vesc_engine)
         
         elif event == Events.ACTUATOR_SCREENING:
             self.__stop_thread()
-            return ActuatorScreeningState(self.socketio, self.logger, self.smoothie, self.vesc_engine)
+            return ActuatorScreeningState(self.socketio, self.__file_logger, self.smoothie, self.vesc_engine)
         
         elif event in [Events.START_MAIN, Events.START_AUDIT]:
             self.__stop_thread()
@@ -235,7 +228,7 @@ class WaitWorkingState(State.State):
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            return StartingState.StartingState(self.socketio, self.logger, (event == Events.START_AUDIT))
+            return StartingState.StartingState(self.socketio, self.__file_logger, (event == Events.START_AUDIT))
         
         elif event in [Events.CONTINUE_MAIN, Events.CONTINUE_AUDIT]:
             self.__stop_thread()
@@ -253,7 +246,7 @@ class WaitWorkingState(State.State):
             if self.vesc_engine is not None:
                 self.vesc_engine.close()
                 self.vesc_engine = None
-            return ResumeState.ResumeState(self.socketio, self.logger, (event == Events.CONTINUE_AUDIT))
+            return ResumeState.ResumeState(self.socketio, self.__file_logger, (event == Events.CONTINUE_AUDIT))
         
         elif event == Events.AUDIT_ENABLE:
             self.statusOfUIObject.audit = AuditButtonState.EXTRACTION_DISABLE
@@ -279,8 +272,9 @@ class WaitWorkingState(State.State):
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                self.logger.write_and_flush(e + "\n")
-            return ErrorState.ErrorState(self.socketio, self.logger)
+                self.__file_logger.write_and_flush(e + "\n")
+                self.__logger.error(e, stack_info=True)
+            return ErrorState.ErrorState(self.socketio, self.__file_logger)
 
     def on_socket_data(self, data):
         if data["type"] == 'joystick':

@@ -12,28 +12,30 @@ from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.state_machine.FrontEndObjects import ButtonState, FrontEndObjects, PhysicalBlocageFEO
 import utility
 import adapters
+from logger import Logger
 
 # This state corresponds when the robot is physically blocking.
 class PhysicalBlocageState(State) :
     def __init__(
             self, 
             socketio: SocketIO, 
-            logger: utility.Logger,
+            file_logger: utility.Logger,
             isAudit: bool = False,
             smoothie: adapters.SmoothieAdapter = None,
             vesc_engine : adapters.VescAdapterV4 = None
             ) :
+        self.__logger = Logger.create(self.__class__.__name__)
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
         self.isAudit = isAudit
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
 
         self.robot_synthesis_value = RobotSynthesis.UI_PHYSICAL_BLOCAGE
 
-        msg = f"[{self.__class__.__name__}] -> Physically blocked"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)    
+        msg = f"Physically blocked"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.info(msg)    
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
@@ -62,9 +64,9 @@ class PhysicalBlocageState(State) :
         self.__init_vesc_smoothie_thread = threading.Thread(target=self.__init_vesc_smoothie_thread_tf, daemon=True)
         self.__init_vesc_smoothie_thread.start()
         
-        msg = f"[{self.__class__.__name__}] -> initialized"
-        self.logger.write_and_flush(msg + "\n")
-        print(msg)
+        msg = f"Initialized"
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.info(msg)
 
         # Ask ui to change popup message and loading buttons
         self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
@@ -96,8 +98,8 @@ class PhysicalBlocageState(State) :
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                self.logger.write_and_flush(e + "\n")
-            return ResumeState(self.socketio, self.logger, wasPhysicallyBlocked=True, isAudit=self.isAudit)
+                self.__file_logger.write_and_flush(e + "\n")
+            return ResumeState(self.socketio, self.__file_logger, wasPhysicallyBlocked=True, isAudit=self.isAudit)
         # If the robot is still blocked
         else:  
             self.__stop_thread()
@@ -114,7 +116,7 @@ class PhysicalBlocageState(State) :
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                self.logger.write_and_flush(e + "\n")
+                self.__file_logger.write_and_flush(e + "\n")
 
             self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                             startButton=ButtonState.DISABLE,
@@ -140,57 +142,57 @@ class PhysicalBlocageState(State) :
         try:
             # Init Vesc
             if self.vesc_engine is None:
-                msg = f"[{self.__class__.__name__}] -> initVesc"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
-                self.vesc_engine = utilsFunction.initVesc(self.logger)
+                msg = f"Init vesc"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.info(msg)
+                self.vesc_engine = utilsFunction.initVesc(self.__file_logger)
             else:
-                msg = f"[{self.__class__.__name__}] -> no need to initVesc"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                msg = f"No need to init vesc"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.info(msg)
 
             if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Vesc engine : set target rpm"
-                self.logger.write_and_flush(msg + "\n")
+                msg = f"Vesc engine : set target rpm"
+                self.__file_logger.write_and_flush(msg + "\n")
 
             self.vesc_engine.set_target_rpm(0, self.vesc_engine.PROPULSION_KEY)
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Vesc engine : set current rpm"
-                self.logger.write_and_flush(msg + "\n")
+            msg = f"Vesc engine : set current rpm"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
 
             self.vesc_engine.set_current_rpm(
                 0, self.vesc_engine.PROPULSION_KEY)
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Vesc engine : set start moving"
-                self.logger.write_and_flush(msg + "\n")
+            msg = f"Vesc engine : set start moving"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
 
             self.vesc_engine.start_moving(
                 self.vesc_engine.PROPULSION_KEY,
                 smooth_acceleration=True,
                 smooth_deceleration=True)
 
-            if config.UI_VERBOSE_LOGGING:
-                msg = f"[{self.__class__.__name__}] -> Vesc engine : started"
-                self.logger.write_and_flush(msg + "\n")
+            msg = f"Vesc engine : started"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
 
             # Init smoothie
             if self.smoothie is None:
-                msg = f"[{self.__class__.__name__}] -> initSmoothie"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                msg = f"Init smoothie"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.info(msg)
                 try:
-                    self.smoothie = utilsFunction.initSmoothie(self.logger)
+                    self.smoothie = utilsFunction.initSmoothie(self.__file_logger)
                 except Exception as e:
                     if "[Timeout sm]" in str(e):
-                        self.smoothie = utilsFunction.initSmoothie(self.logger)
+                        self.smoothie = utilsFunction.initSmoothie(self.__file_logger)
                     else:
                         raise e
             else:
-                msg = f"[{self.__class__.__name__}] -> no need to initSmoothie"
-                self.logger.write_and_flush(msg + "\n")
-                print(msg)
+                msg = f"No need to init smoothie"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.info(msg)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         
@@ -206,9 +208,9 @@ class PhysicalBlocageState(State) :
         self.vesc_engine.start_moving(self.vesc_engine.PROPULSION_KEY)
         while self.__backward_thread_alive :
             current_position = self.__gps.get_last_position()
-            msg = f"[{self.__class__.__name__}] -> Current position : {current_position[0]}, {current_position[1]}"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
+            msg = f"Current position : {current_position[0]}, {current_position[1]}"
+            self.__file_logger.write_and_flush(msg+"\n")
+            self.__logger.info(msg)
             self.__allPath.append(current_position)
             self.__gb.store_coord(current_position[0], current_position[1], current_position[2])
             if self.__gb.is_physically_blocked() :                

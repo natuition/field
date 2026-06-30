@@ -18,7 +18,7 @@ from navigation import GPSComputing
 from uiWebRobot.state_machine import Events
 from uiWebRobot.state_machine.Events import Events
 import utility
-
+from logger import Logger
 
 
 def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdapterV4, socketio: SocketIO, input_voltage: Dict[str, str], logger: utility.Logger) -> None:
@@ -36,7 +36,7 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
         logger (utility.Logger): Logger instance for logging messages.
         recreate_vesc_callback (function): Callback function to recreate the VESC connection after a bump event.
     """
-
+    logger = Logger.create("voltage_thread_tf")
     vesc_data = None
     isBumped = False
     nowReset = True
@@ -47,7 +47,7 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
-                print(f"[Voltage thread] -> Exception while getting VESC data: {e}")
+                logger.error(f"Exception while getting VESC data: {e}")
                 break
 
         if vesc_data is not None:
@@ -57,16 +57,16 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
                 if vesc_voltage is not None:
                     if vesc_voltage < 12.0:
                         if isBumped == False:
-                            msg = f"[Voltage thread] -> Bumped, vesc voltage is {vesc_voltage}V."
+                            msg = f"Bumped, vesc voltage is {vesc_voltage}V."
                             logger.write_and_flush(msg + "\n")
-                            print(msg)
+                            logger.warning(msg)
                         isBumped = True
                         sendBumperInfo(socketio, "Bumper")
 
                     elif isBumped and vesc_voltage >= 12.0:
-                        msg = f"[Voltage thread] -> Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
+                        msg = f"Unbumped, vesc voltage is {vesc_voltage}V, resetting VESC with lifeline."
                         logger.write_and_flush(msg + "\n")
-                        print(msg)
+                        logger.warning(msg)
                         isBumped = False
                         nowReset = True
                         sendBumperInfo(socketio, "Reseting")
@@ -74,9 +74,9 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
                         time.sleep(5)  # Usefull to not send a get_sensors_data request to early
                     else:
                         if nowReset:
-                            msg = f"[Voltage thread] -> VESC voltage is {vesc_voltage}V, no bump detected."
+                            msg = f"VESC voltage is {vesc_voltage}V, no bump detected."
                             logger.write_and_flush(msg + "\n")
-                            print(msg)
+                            logger.warning(msg)
                             nowReset = False
                         sendInputVoltage(socketio, vesc_data["input_voltage"])
                         input_voltage["input_voltage"] = vesc_data["input_voltage"]
@@ -132,6 +132,7 @@ def initVesc(logger: utility.Logger) -> adapters.VescAdapterV4 :
         Returns:
             VescAdapterV4: the initialized VESC.
     """
+    logger = Logger.create("initVesc")
     for i in range(3):
         if i==2:
             msg = "Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
@@ -142,12 +143,12 @@ def initVesc(logger: utility.Logger) -> adapters.VescAdapterV4 :
             vesc_address = smoothie_vesc_addr["vesc"]
             msg = f"Finding vesc's USB address at '{vesc_address}'."
             logger.write_and_flush(msg + "\n")
-            print(msg)
+            logger.info(msg)
             break
         else:
             msg = "Couldn't get vesc's USB address, attempt to unlock with lifeline"
             logger.write_and_flush(msg + "\n")
-            print(msg)
+            logger.error(msg)
             utility.life_line_reset()
     
     time.sleep(5)
@@ -334,7 +335,7 @@ def change_state(event : Events) -> None :
     io.emit(event="data", data={"type": str(event)}, namespace="/server")
 
 
-def is_valid_field_file(file_path : str, logger: utility.Logger) -> bool:
+def is_valid_field_file(file_path : str, file_logger: utility.Logger) -> bool:
     """
     Check if a field file is valid.
 
@@ -345,18 +346,19 @@ def is_valid_field_file(file_path : str, logger: utility.Logger) -> bool:
         bool: True if the file is valid, False otherwise.
     """
     # Check if the file exists
+    logger = Logger.create("Field file validator")
     if not os.path.exists(file_path):
-        msg = f"[Field file validator] -> Field validation, the file does not exist ({file_path})."
-        logger.write(msg + "\n")
-        print(msg)
+        msg = f"Field validation, the file does not exist ({file_path})."
+        file_logger.write(msg + "\n")
+        logger.error(msg)
         return False
     try:
         # Check if the file contains the right number of points
         coords_list = utility.load_coordinates(file_path)
         if (len(coords_list) not in [4,2]):
-            msg = f"[Field file validator] -> Field validation, the file does not have the right number of line ({len(coords_list)})."
-            logger.write(msg + "\n")
-            print(msg)
+            msg = f"Field validation, the file does not have the right number of line ({len(coords_list)})."
+            file_logger.write(msg + "\n")
+            logger.error(msg)
             return False
         
         # Check distance between two consecutive points
@@ -364,15 +366,15 @@ def is_valid_field_file(file_path : str, logger: utility.Logger) -> bool:
             nav = GPSComputing()
             for i in range(len(coords_list) - 1):
                 if nav.get_distance(coords_list[i], coords_list[i+1]) <  (config.MINIMUM_SIZE_FIELD * 1000):
-                    msg = f"[Field file validator] -> Field validation, the file have a field to small, not saving it."
-                    logger.write(msg + "\n")
-                    print(msg)
+                    msg = f"Field validation, the file have a field to small, not saving it."
+                    file_logger.write(msg + "\n")
+                    logger.error(msg)
                     return False
 
     except ValueError as e:
-        msg = f"[Field file validator] -> Failed to load field {file_path} due to ValueError (file is likely corrupted)."
-        logger.write(msg + "\n")
-        print(msg)
+        msg = f"Failed to load field {file_path} due to ValueError (file is likely corrupted)."
+        file_logger.write(msg + "\n")
+        logger.error(msg)
         return False
     
     return True

@@ -5,18 +5,19 @@ import utility
 from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
+from logger import Logger
 
 class ErrorState(State.State):
 
-    def __init__(self, socketio: SocketIO, logger: utility.Logger, reason: str = None):
+    def __init__(self, socketio: SocketIO, file_logger: utility.Logger, reason: str = None):
+        self.__logger = Logger.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.HS
         self.socketio = socketio
-        self.logger = logger
+        self.__file_logger = file_logger
         self.reason = reason
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Error"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
+        msg = f"Error"
+        self.__file_logger.write_and_flush(msg+"\n")
+        self.__logger.error(msg)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
@@ -31,10 +32,9 @@ class ErrorState(State.State):
 
         self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
 
-        if config.UI_VERBOSE_LOGGING:
-            msg = f"[{self.__class__.__name__}] -> Reload web page !"
-            self.logger.write_and_flush(msg+"\n")
-            print(msg)
+        msg = f"Reload web page !"
+        self.__file_logger.write_and_flush(msg+"\n")
+        self.__logger.info(msg)
 
     def getStatusOfControls(self):
         return self.statusOfUIObject
