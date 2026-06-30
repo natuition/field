@@ -452,29 +452,22 @@ class UIWebRobot:
 
 def main():
     Logger.setLevel(config.LOG_LEVEL_UI)
-    logger = Logger.create("Runtime")
-    uiWebRobot = UIWebRobot()
+    runtime_logger = Logger.create("Runtime")
     try:
+        uiWebRobot = UIWebRobot()
         host="0.0.0.0"
         port="80"
-        logger.info(f"Starting UIWebRobot on host: {host} port: {port}.")
+        runtime_logger.info(f"Starting UIWebRobot on host: {host} port: {port}.")
         print(f"Starting UIWebRobot on host: {host} port: {port}.")
         uiWebRobot.run(host=host, port=port,
                        debug=True, use_reloader=False)
-    except Exception as e:
-        logger.error(f"Error : {e}", stack_info=True)
+    except Exception:
+        runtime_logger.error(f"Error : {traceback.format_exc()}", stack_info=True)
     finally:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
-            logger.info("Closing app...")
+            runtime_logger.info("Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        Logger.setLevel(config.LOG_LEVEL_UI)
-        logger = Logger.create("Runtime")
-        logger.error(f"Error : {e}", exc_info=True)
-        logger.error(traceback.format_exc())
-        print(f"Error : {e}")
+    main()
