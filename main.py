@@ -192,6 +192,7 @@ def move_to_point_and_extract(coords_from_to: list,
     have_time_for_inference = True
     predictor_next_gps_expected_ts = float("inf")
     
+    MAIN_LOGGER.debug("Switching to OVERHEAD DETECTION pipeline")
     client_mvi.switch_active_pipeline(client_mvi.OVERHEAD_DETECTION)
     
     treated_plants = set()
@@ -258,6 +259,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         # do PDZ scan and extract all plants if single precise scan got plants in working area
                         if ExtractionManagerV3.any_plant_in_zone_position(plants_positions, working_zone_polygon): 
                             if config.EXTRACTION_MODE == 1:
+                                MAIN_LOGGER.debug("Extracting all plants after single precise scan before PDZ scan")
                                 extraction_manager_v3.extract_all_plants()
                             elif config.EXTRACTION_MODE == 2:
                                 extraction_manager_v3.mill_all_plants()
@@ -1366,6 +1368,9 @@ def get_bezier_indexes(path_points: list):
 
 
 def main():
+    
+    MAIN_LOGGER.debug("Starting main()")
+    
     time_start = utility.get_current_time()
     utility.create_directories(config.LOG_ROOT_DIR)
 
@@ -1455,7 +1460,7 @@ def main():
 
     try:
         msg = "Initializing..."
-        MAIN_LOGGER.warning(msg)
+        MAIN_LOGGER.info(msg)
         logger_full.write(msg + "\n")
 
         vesc_speed = config.SI_SPEED_FWD*config.MULTIPLIER_SI_SPEED_TO_RPM
@@ -1477,6 +1482,8 @@ def main():
                 logger_full=logger_full,
                 nav=nav,
                 log_cur_dir=log_cur_dir) as navigation_prediction:
+                
+            MAIN_LOGGER.debug("All adapters are initialized successfully")
 
             send_voltage_thread_alive = {"value": True}
             send_voltage_thread = threading.Thread(
@@ -1931,6 +1938,8 @@ def main():
 
                 # move through path points
                 for i in range(path_start_index, path_end_index):
+                    
+                    MAIN_LOGGER.debug(f"Moving to point {i} of {path_end_index-1} (path_start_index={path_start_index})")
 
                     if config.NAVIGATION_TEST_MODE:
                         dist_here_point_a = nav.get_distance(
