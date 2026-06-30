@@ -1891,7 +1891,7 @@ class ClientMVI:
         self.__current_MVI_pipeline_desciptor = None
         self.__id_name_map: dict[MVIPipelineDescriptor,list[str]] = dict()
         
-        self.__client = Client(transport=config.MVI_TRANSPORT_PROTOCOL)
+        self.__client = Client(transport=config.MVI_TRANSPORT_PROTOCOL, logger_level="WARNING")
         self.__client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult)
         # self.__client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
         self.__logger.info(f"Connecting to MVI server at {host}:{port}.")
