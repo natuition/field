@@ -44,7 +44,6 @@ class UIWebRobot:
 
     def __init__(self):
         self.__logger = Logger.create(self.__class__.__name__)
-        self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.__app = Flask(__name__)
         self.__setting_flask()
         self.__init_flask_route()  # ROUTE FLASK
@@ -452,12 +451,13 @@ class UIWebRobot:
 
 
 def main():
+    Logger.setLevel(config.LOG_LEVEL_UI)
     logger = Logger.create("Runtime")
     uiWebRobot = UIWebRobot()
     try:
         host="0.0.0.0"
         port="80"
-        logger.info(f"Starting UIWebRobot on host: {host} port: {port}")
+        logger.info(f"Starting UIWebRobot on host: {host} port: {port}.")
         uiWebRobot.run(host=host, port=port,
                        debug=True, use_reloader=False)
     except Exception as e:
