@@ -77,8 +77,9 @@ class StateMachine:
 
 class ErrorLogger:
 
-    def __init__(self, logger: utility.Logger):
-        self.__file_logger = logger
+    def __init__(self, file_logger: utility.Logger):
+        self.__logger = Logger.create(self.__class__.__name__)
+        self.__file_logger = file_logger
 
     def write(self, s):
         self.__logger.error(s, stack_info=True)
