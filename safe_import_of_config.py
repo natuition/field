@@ -9,6 +9,7 @@ import importlib
 from logger import Logger
 
 LOGGER = Logger.create("SafeImportConfig")
+LOGGER.setLevel("INFO")
 
 def is_config_empty(config_full_path: str):
     with open(config_full_path, "r") as config_file:
