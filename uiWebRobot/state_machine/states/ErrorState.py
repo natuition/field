@@ -8,6 +8,7 @@ from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonStat
 from logger import Logger
 
 class ErrorState(State.State):
+    """This state corresponds when the robot is in error. """
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger, reason: str = None):
         self.__logger = Logger.create(self.__class__.__name__)

@@ -14,8 +14,9 @@ import utility
 import adapters
 from logger import Logger
 
-# This state corresponds when the robot is physically blocking.
 class PhysicalBlocageState(State) :
+    """This state corresponds when the robot is physically blocking. """
+    
     def __init__(
             self, 
             socketio: SocketIO, 

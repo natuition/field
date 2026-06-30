@@ -14,8 +14,8 @@ from shared_class.robot_synthesis import RobotSynthesis
 import utility
 from logger import Logger
 
-# This state corresponds when the robot screening his actuator.
 class ActuatorScreeningState(State.State):
+    """This state corresponds when the robot screening his actuator. """
 
     DATA_IN_CSV = False
 

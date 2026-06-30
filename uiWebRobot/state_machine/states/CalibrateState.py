@@ -16,8 +16,8 @@ import utility
 from logger import Logger
 
 
-# This state corresponds when the robot is calibrate of plant targeting precision.
 class CalibrateState(State.State):
+    """This state corresponds when the robot is calibrate of plant targeting precision. """
 
     def __init__(self,
                  socketio: SocketIO,

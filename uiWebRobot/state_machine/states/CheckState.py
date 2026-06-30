@@ -13,8 +13,8 @@ import utility
 from logger import Logger
 
 
-# This state were robot is start, this state corresponds when the ui reminds the points to check before launching the robot.
 class CheckState(State.State):
+    """This state corresponds when the robot is start, this state corresponds when the ui reminds the points to check before launching the robot. """
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger):
         self.__logger = Logger.create(self.__class__.__name__)

@@ -22,8 +22,8 @@ import utility
 from logger import Logger
 
 
-# This state corresponds when the robot is working.
 class WorkingState(State.State):
+    """This state corresponds when the robot is working. """
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger, isAudit: bool, isResume: bool, wasPhysicallyBlocked: bool = False):
         if isResume:

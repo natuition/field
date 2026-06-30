@@ -11,8 +11,8 @@ from shared_class.robot_synthesis import RobotSynthesis
 import utility
 from logger import Logger
 
-# This state corresponds when the robot configures it to start from zero the work.
 class StartingState(State.State):
+    """This state corresponds when the robot configures it to start from zero the work. """
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger, isAudit=False):
         self.__logger = Logger.create(self.__class__.__name__)

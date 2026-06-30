@@ -23,8 +23,8 @@ import utility
 from logger import Logger
 
 
-# This state corresponds when the robot is waiting to work, during this state we can control it with the joystick.
 class WaitWorkingState(State.State):
+    """This state corresponds when the robot is waiting to work, during this state we can control it with the joystick. """
 
     def __init__(self,
                  socketio: SocketIO,

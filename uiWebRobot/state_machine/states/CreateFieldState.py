@@ -19,8 +19,8 @@ import navigation
 from logger import Logger
 
 
-# This state corresponds when the robot is generating the work area.
 class CreateFieldState(State.State):
+    """This state corresponds when the robot is generating the work area. """
 
     def __init__(self,
                  socketio: SocketIO,
