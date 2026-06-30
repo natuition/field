@@ -49,8 +49,8 @@
   "image_height": 1024,
   "camera_height_mm": 473.0,
   "origin_offset_mm": [
-    -26.287542816892337,
-    -78.58886307050622
+    -41.542207901246506,
+    -81.20410535015367
   ],
   "frame": {
     "origin": "grid_bottom_left",
