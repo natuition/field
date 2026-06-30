@@ -1731,7 +1731,6 @@ class GPSUbloxAdapter:
                 if isinstance(read_line, bytes):
                     data = str(read_line)
                     if "GNGGA" in data and ",,," not in data:
-                        self.__logger.debug(f"GPS data: {data}")
                         data = data.split(",")
                         lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
                         point_quality = data[6]
@@ -1830,7 +1829,6 @@ class GPSUbloxAdapterWithoutThread:
                 if isinstance(read_line, bytes):
                     data = str(read_line)
                     if "GNGGA" in data and ",,," not in data:
-                        self.__logger.debug(f"GPS data: {data}")
                         data = data.split(",")
                         lati, longi = self._D2M2(data[2], data[3], data[4], data[5])
                         point_quality = data[6]
