@@ -31,6 +31,7 @@ from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
 from logger import Logger as NewLogger
 
 MAIN_LOGGER = NewLogger.create("Main")
+MAIN_LOGGER.setLevel(config.LOG_LEVEL)
 
 def save_gps_coordinates(points: list, file_name: str):
     """
@@ -1369,7 +1370,7 @@ def get_bezier_indexes(path_points: list):
 
 def main():
     
-    MAIN_LOGGER.error("Starting main()")
+    MAIN_LOGGER.debug("Starting main()")
     
     time_start = utility.get_current_time()
     utility.create_directories(config.LOG_ROOT_DIR)
