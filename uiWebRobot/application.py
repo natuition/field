@@ -476,4 +476,5 @@ if __name__ == "__main__":
         Logger.setLevel(config.LOG_LEVEL_UI)
         logger = Logger.create("Runtime")
         logger.error(f"Error : {e}", stack_info=True)
+        traceback.print_exc()
         print(f"Error : {e}")
