@@ -61,7 +61,7 @@ class UIWebRobot:
         self.demo_pause_client = utility.DemoPauseClient(
             config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
         
-        self.__logger.info(f"UIWebRobot started  ✅")
+        self.__logger.info(f"UIWebRobot started ✅")
         
     @property
     def app(self):
@@ -115,32 +115,32 @@ class UIWebRobot:
         Payload.max_decode_packets = 500
 
     def __reload_config(self):
-        self.__logger.info("Reload config in application.py... 1")
+        self.__logger.info("Reload config in application.py...")
         config_path = os.path.abspath("./config/config.py")
-        self.__logger.info(f"Config path: {config_path}")
+        self.__logger.debug(f"Config path: {config_path}")
         spec = importlib.util.spec_from_file_location("config.name", config_path)
-        self.__logger.info("Reload config... 2 spec OK")
+        self.__logger.debug("Reload config... 2 spec OK")
         self.__config = importlib.util.module_from_spec(spec)
-        self.__logger.info("Reload config... 3 module OK")
+        self.__logger.debug("Reload config... 3 module OK")
         sys.modules["config.name"] = self.__config
-        self.__logger.info("Reload config... 4 before exec_module")
+        self.__logger.debug("Reload config... 4 before exec_module")
         spec.loader.exec_module(self.__config)
-        self.__logger.info("Reload config... 5 after exec_module OK")
+        self.__logger.debug("Reload config... 5 after exec_module OK")
 
     def init_params(self):
         self.__logger.info("Init params...")
         self.__filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
         with open("./uiWebRobot/ui_language.json", "r", encoding='utf-8') as read_file:
             self.__ui_languages = json.load(read_file)
-        self.__logger.info("Init params done.")
+        self.__logger.debug("Init params done.")
         thread_notification = Thread(target=self.catch_send_notification)
         thread_notification.daemon = True
-        self.__logger.info("Starting thread for catch_send_notification...")
+        self.__logger.debug("Starting thread for catch_send_notification...")
         thread_notification.start()
-        self.__logger.info("Thread for catch_send_notification started.")
-        self.__logger.info("Starting state machine...")
+        self.__logger.debug("Thread for catch_send_notification started.")
+        self.__logger.debug("Starting state machine...")
         self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
-        self.__logger.info("State machine started.")
+        self.__logger.debug("State machine started.")
 
     def get_state_machine(self) -> StateMachine:
         return self.__stateMachine
@@ -179,10 +179,10 @@ class UIWebRobot:
     def catch_send_notification(self):
         self.__logger.info("Starting catch_send_notification...")
         try:
-            self.__logger.info("Unlinking message queue...")
+            self.__logger.debug("Unlinking message queue...")
             posix_ipc.unlink_message_queue(
                 self.__config.QUEUE_NAME_UI_NOTIFICATION)
-            self.__logger.info("Unlinked message queue.")
+            self.__logger.debug("Unlinked message queue.")
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
@@ -190,10 +190,10 @@ class UIWebRobot:
             self.__logger.error(traceback.format_exc())
             pass
 
-        self.__logger.info("Creating message queue...")
+        self.__logger.debug("Creating message queue...")
         notificationQueue = posix_ipc.MessageQueue(
             self.__config.QUEUE_NAME_UI_NOTIFICATION, posix_ipc.O_CREX)
-        self.__logger.info("Created message queue.")
+        self.__logger.debug("Created message queue.")
         ui_language = self.__config.UI_LANGUAGE
 
         while True:
