@@ -122,13 +122,19 @@ class UIWebRobot:
         self.__logger.info("Reload config... 5 after exec_module OK")
 
     def init_params(self):
+        self.__logger.info("Init params...")
         self.__filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
         with open("./uiWebRobot/ui_language.json", "r", encoding='utf-8') as read_file:
             self.__ui_languages = json.load(read_file)
+        self.__logger.info("Init params done.")
         thread_notification = Thread(target=self.catch_send_notification)
-        thread_notification.setDaemon(True)
+        thread_notification.daemon = True
+        self.__logger.info("Starting thread for catch_send_notification...")
         thread_notification.start()
+        self.__logger.info("Thread for catch_send_notification started.")
+        self.__logger.info("Starting state machine...")
         self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
+        self.__logger.info("State machine started.")
 
     def get_state_machine(self) -> StateMachine:
         return self.__stateMachine
