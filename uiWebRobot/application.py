@@ -109,12 +109,17 @@ class UIWebRobot:
         Payload.max_decode_packets = 500
 
     def __reload_config(self):
-        self.__logger.info("Reload config in application.py...")
-        spec = importlib.util.spec_from_file_location(
-            "config.name", "./config/config.py")
+        self.__logger.info("Reload config in application.py... 1")
+        config_path = os.path.abspath("./config/config.py")
+        self.__logger.info(f"Config path: {config_path}")
+        spec = importlib.util.spec_from_file_location("config.name", config_path)
+        self.__logger.info("Reload config... 2 spec OK")
         self.__config = importlib.util.module_from_spec(spec)
+        self.__logger.info("Reload config... 3 module OK")
         sys.modules["config.name"] = self.__config
+        self.__logger.info("Reload config... 4 before exec_module")
         spec.loader.exec_module(self.__config)
+        self.__logger.info("Reload config... 5 after exec_module OK")
 
     def init_params(self):
         self.__filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
