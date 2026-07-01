@@ -5,6 +5,8 @@ HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-80}"
 WORKERS="${WORKERS:-1}"
 APP_MODULE="${APP_MODULE:-uiWebRobot.application:app}"
+DIRECT_MODULE="${DIRECT_MODULE:-uiWebRobot.application}"
+LAUNCH_MODE="${LAUNCH_MODE:-python}"
 WORKDIR="${WORKDIR:-/home/violette/field}"
 
 if [[ ! -d "${WORKDIR}" ]]; then
@@ -20,8 +22,16 @@ else
 	SUDO_CMD=()
 fi
 
-echo "Starting Gunicorn: ${APP_MODULE} on ${HOST}:${PORT} with ${WORKERS} worker(s)"
-exec "${SUDO_CMD[@]}" python3 -m gunicorn \
-	--workers "${WORKERS}" \
-	--bind "${HOST}:${PORT}" \
-	"${APP_MODULE}"
+if [[ "${LAUNCH_MODE}" == "python" ]]; then
+	echo "Starting Python module: ${DIRECT_MODULE}"
+	exec "${SUDO_CMD[@]}" python3 -m "${DIRECT_MODULE}"
+elif [[ "${LAUNCH_MODE}" == "gunicorn" ]]; then
+	echo "Starting Gunicorn: ${APP_MODULE} on ${HOST}:${PORT} with ${WORKERS} worker(s)"
+	exec "${SUDO_CMD[@]}" python3 -m gunicorn \
+		--workers "${WORKERS}" \
+		--bind "${HOST}:${PORT}" \
+		"${APP_MODULE}"
+else
+	echo "Error: unsupported LAUNCH_MODE '${LAUNCH_MODE}'. Use 'gunicorn' or 'python'." >&2
+	exit 1
+fi
