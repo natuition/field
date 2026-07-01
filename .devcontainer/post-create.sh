@@ -12,7 +12,17 @@ apt-get install -y \
   gfortran \
   libopenblas-dev \
   liblapack-dev \
-  pkg-config
+  pkg-config \
+  curl \
+  unzip \
+  ca-certificates
+
+echo "=== Installing Oh My Posh ==="
+curl -s https://ohmyposh.dev/install.sh | bash -s -- -d /usr/local/bin
+
+echo "=== Configuring Oh My Posh for bash ==="
+sed -i '/oh-my-posh init bash/d' /root/.bashrc
+echo 'eval "$(oh-my-posh init bash --config /workspaces/field/.devcontainer/mytheme.omp.json)"' >> /root/.bashrc
 
 echo "=== Checking Python version ==="
 python --version
