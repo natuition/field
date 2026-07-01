@@ -76,7 +76,7 @@ class UIWebRobot:
     def exit(self):
         self.__logger.info("Send RobotSynthesis...")
         try:
-            self.__robot_state_client.send_robot_state(RobotSynthesis.OP)
+            self.__robot_state_client.set_robot_state(RobotSynthesis.OP)
         except Exception as e:
             self.__logger.error(f"Error while sending RobotSynthesis.OP: {e}")
             self.__logger.error(traceback.format_exc())
@@ -89,7 +89,6 @@ class UIWebRobot:
         except Exception as e:
             self.__logger.error(f"Error while stopping catch_send_notification thread: {e}")
             self.__logger.error(traceback.format_exc())
-        exit(0)
 
     def on_connect(self):
         self.__logger.debug("A client is connected.")
