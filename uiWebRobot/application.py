@@ -56,6 +56,14 @@ class UIWebRobot:
         self.init_params()
         self.demo_pause_client = utility.DemoPauseClient(
             config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
+        
+    @property
+    def app(self):
+        return self.__app
+
+    @property
+    def socketio(self):
+        return self.__socketio
 
     def exit(self):
         self.__logger.info("Send RobotSynthesis...")
@@ -467,6 +475,12 @@ def main():
             runtime_logger.info("Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
+        
+# For Gunicorn
+Logger.setLevel(config.LOG_LEVEL_UI)
+uiWebRobot = UIWebRobot()
+app = uiWebRobot.app
+socketio = uiWebRobot.socketio
 
 if __name__ == "__main__":
     main()
