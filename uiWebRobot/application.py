@@ -515,6 +515,8 @@ if __name__ == "__main__":
 
 # For Gunicorn
 Logger.setLevel(config.LOG_LEVEL_UI)
+runtime_logger = Logger.create("Runtime")
+runtime_logger.info(f"Starting UIWebRobot...")
 uiWebRobot = UIWebRobot()
 app = uiWebRobot.app
 socketio = uiWebRobot.socketio
@@ -529,6 +531,9 @@ def shutdown_ui(*args):
     _shutdown_done = True
 
     try:
+        if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
+            runtime_logger.info("Closing app...")
+            uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
     except Exception:
         traceback.print_exc()
