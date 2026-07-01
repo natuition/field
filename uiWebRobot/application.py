@@ -211,9 +211,8 @@ class UIWebRobot:
             except posix_ipc.BusyError:
                 continue
             except Exception as e:
-                self.__logger.error(f"Error while unlinking message queue: {e}")
+                self.__logger.error(f"Error while receiving notification: {e}")
                 self.__logger.error(traceback.format_exc())
-                continue
 
     # SOCKET IO
     def on_socket_data(self, data):
