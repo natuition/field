@@ -96,7 +96,7 @@ class UIWebRobot:
         except Exception:
             self.__logger.error(traceback.format_exc())
 
-        self.__logger.info("Exit done.")
+        self.__logger.info("Exit done ✅")
 
     def on_connect(self):
         self.__logger.debug("A client is connected.")
