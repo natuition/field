@@ -540,10 +540,10 @@ def shutdown_ui(*args):
 
     try:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
-            runtime_logger.info("Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
-    except BaseException:
+
+    except Exception:
         try:
             runtime_logger.error("Error during shutdown_ui: " + traceback.format_exc())
         except Exception:
