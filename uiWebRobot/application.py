@@ -1,4 +1,6 @@
+import atexit
 import importlib.util
+import signal
 from flask_socketio import SocketIO, emit
 from engineio.payload import Payload
 from werkzeug.exceptions import HTTPException
@@ -507,12 +509,30 @@ def main():
             runtime_logger.info("Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
-        
+
+if __name__ == "__main__":
+    main()
+
 # For Gunicorn
 Logger.setLevel(config.LOG_LEVEL_UI)
 uiWebRobot = UIWebRobot()
 app = uiWebRobot.app
 socketio = uiWebRobot.socketio
 
-if __name__ == "__main__":
-    main()
+_shutdown_done = False
+
+def shutdown_ui(*args):
+
+    global _shutdown_done
+    if _shutdown_done:
+        return
+    _shutdown_done = True
+
+    try:
+        uiWebRobot.exit()
+    except Exception:
+        traceback.print_exc()
+
+signal.signal(signal.SIGTERM, shutdown_ui)
+signal.signal(signal.SIGINT, shutdown_ui)
+atexit.register(shutdown_ui)
