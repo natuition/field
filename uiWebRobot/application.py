@@ -75,20 +75,28 @@ class UIWebRobot:
 
     def exit(self):
         self.__logger.info("Send RobotSynthesis...")
+
         try:
             self.__robot_state_client.set_robot_state(RobotSynthesis.OP)
-        except Exception as e:
-            self.__logger.error(f"Error while sending RobotSynthesis.OP: {e}")
+        except Exception:
             self.__logger.error(traceback.format_exc())
+
+        self.__logger.info("Stopping catch_send_notification thread...")
+
         try:
-            self.__thread_notification_alive = False
-            self.__logger.info("Waiting for catch_send_notification thread to finish...")
-            self.__thread_notification.join()
-            self.__logger.info("catch_send_notification thread finished.")
-            self.__logger.info("Sent ✅")
-        except Exception as e:
-            self.__logger.error(f"Error while stopping catch_send_notification thread: {e}")
+            self.__notification_thread_alive = False
+
+            if self.__notification_thread is not None and self.__notification_thread.is_alive():
+                self.__notification_thread.join(timeout=1.0)
+
+                if self.__notification_thread.is_alive():
+                    self.__logger.warning("catch_send_notification thread did not stop cleanly.")
+                else:
+                    self.__logger.info("catch_send_notification thread stopped.")
+        except Exception:
             self.__logger.error(traceback.format_exc())
+
+        self.__logger.info("Exit done.")
 
     def on_connect(self):
         self.__logger.debug("A client is connected.")
@@ -146,16 +154,18 @@ class UIWebRobot:
         self.__filename_for_send_from_directory = not "path" in send_from_directory.__code__.co_varnames
         with open("./uiWebRobot/ui_language.json", "r", encoding='utf-8') as read_file:
             self.__ui_languages = json.load(read_file)
-        self.__logger.debug("Init params done.")
-        self.__thread_notification_alive = True
-        self.__thread_notification = Thread(target=self.catch_send_notification)
-        self.__thread_notification.daemon = True
+        
+        self.__logger.info("Starting thread for catch_send_notification...")
+        self.__notification_thread_alive = True
+        self.__notification_thread = Thread(target=self.catch_send_notification)
+        self.__notification_thread.daemon = True
+        self.__notification_thread.start()
+        
         self.__logger.debug("Starting thread for catch_send_notification...")
         self.__thread_notification.start()
-        self.__logger.debug("Thread for catch_send_notification started.")
+
         self.__logger.debug("Starting state machine...")
         self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
-        self.__logger.debug("State machine started.")
 
     def get_state_machine(self) -> StateMachine:
         return self.__stateMachine
@@ -211,7 +221,7 @@ class UIWebRobot:
         self.__logger.debug("Created message queue.")
         ui_language = self.__config.UI_LANGUAGE
 
-        while self.__thread_notification_alive:
+        while self.__notification_thread_alive:
             try:
                 self.__logger.debug("Waiting for notification...")
                 notification = notificationQueue.receive(timeout=1)
@@ -525,16 +535,22 @@ def main():
         
 def shutdown_ui(*args):
     global _shutdown_done
+
     if _shutdown_done:
         return
+
     _shutdown_done = True
+
     try:
         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
             runtime_logger.info("Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
-    except Exception:
-        runtime_logger.error("Error during shutdown_ui: " + traceback.format_exc())
+    except BaseException:
+        try:
+            runtime_logger.error("Error during shutdown_ui: " + traceback.format_exc())
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     main()
