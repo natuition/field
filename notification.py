@@ -131,6 +131,7 @@ class RobotStateServer:
 class RobotStateClient:
     def __init__(self):
         self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger.info("Starting robot state client.")
         self.__state_update_freq = 1  # how often to check if state was changed
 
         self.__host = config.ROBOT_SYNTHESIS_HOST
@@ -143,12 +144,14 @@ class RobotStateClient:
 
         self.__need_to_reconnect = True
 
+        self.__logger.info("Prepare robot state client sender thread.")
         self.__keep_robot_state_sender_alive = True
         self.__robot_state_sender_th = threading.Thread(
             target=self.__robot_state_sender_tf,
             name="__robot_state_sender_th",
             daemon=True)
 
+        self.__logger.info("Starting robot state client sender thread.")
         self.__robot_state_sender_th.start()
 
     def __enter__(self):
