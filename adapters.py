@@ -2135,7 +2135,7 @@ class ClientMVI:
         """
         self.__call_mvi(CallType.SET,{
             "property": MVIProperty.ACTIVE_PIPELINE.value,
-            "value": new_pipeline.value+"!",
+            "value": new_pipeline.value+"",
         })
         self.__current_MVI_pipeline_desciptor = new_pipeline
         
