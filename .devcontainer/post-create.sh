@@ -43,4 +43,7 @@ pip install \
   --no-build-isolation \
   "git+ssh://git@github.com/natuition/multiple-view-intelligence.git@v0.1.6#egg=multiple-view-intelligence"
 
+echo "=== Installing PyVESC-FW3.33 from GitHub ==="
+pip install git+https://github.com/MXMP/PyVESC-FW3.33
+
 echo "=== Done ==="
