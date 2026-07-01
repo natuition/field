@@ -208,6 +208,8 @@ class UIWebRobot:
                 self.__logger.debug("Notification sent.")
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
+            except posix_ipc.BusyError:
+                continue
             except Exception as e:
                 self.__logger.error(f"Error while unlinking message queue: {e}")
                 self.__logger.error(traceback.format_exc())
