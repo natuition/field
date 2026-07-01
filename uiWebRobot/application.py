@@ -161,9 +161,6 @@ class UIWebRobot:
         self.__notification_thread.daemon = True
         self.__notification_thread.start()
         
-        self.__logger.debug("Starting thread for catch_send_notification...")
-        self.__thread_notification.start()
-
         self.__logger.debug("Starting state machine...")
         self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
 
