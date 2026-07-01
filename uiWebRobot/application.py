@@ -171,25 +171,35 @@ class UIWebRobot:
         return coords
 
     def catch_send_notification(self):
+        self.__logger.info("Starting catch_send_notification...")
         try:
+            self.__logger.info("Unlinking message queue...")
             posix_ipc.unlink_message_queue(
                 self.__config.QUEUE_NAME_UI_NOTIFICATION)
+            self.__logger.info("Unlinked message queue.")
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except:
             pass
 
+        self.__logger.info("Creating message queue...")
         notificationQueue = posix_ipc.MessageQueue(
             self.__config.QUEUE_NAME_UI_NOTIFICATION, posix_ipc.O_CREX)
+        self.__logger.info("Created message queue.")
         ui_language = self.__config.UI_LANGUAGE
 
         while True:
             try:
+                self.__logger.debug("Waiting for notification...")
                 notification = notificationQueue.receive(timeout=1)
+                self.__logger.debug(f"Received notification: {notification}")
                 message_name = json.loads(notification[0])["message_name"]
+                self.__logger.debug(f"Message name: {message_name}")
                 message = self.__ui_languages[message_name][ui_language]
+                self.__logger.debug(f"Message: {message}")
                 self.__socketio.emit('notification', {
                                      "message_name": message_name, "message": message}, namespace='/broadcast', broadcast=True)
+                self.__logger.debug("Notification sent.")
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:
