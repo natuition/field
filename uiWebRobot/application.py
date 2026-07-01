@@ -509,6 +509,19 @@ def main():
             runtime_logger.info("Closing app...")
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
+        
+def shutdown_ui(*args):
+    global _shutdown_done
+    if _shutdown_done:
+        return
+    _shutdown_done = True
+    try:
+        if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
+            runtime_logger.info("Closing app...")
+            uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
+        uiWebRobot.exit()
+    except Exception:
+        runtime_logger.error("Error during shutdown_ui: " + traceback.format_exc())
 
 if __name__ == "__main__":
     main()
@@ -520,23 +533,7 @@ runtime_logger.info(f"Starting UIWebRobot...")
 uiWebRobot = UIWebRobot()
 app = uiWebRobot.app
 socketio = uiWebRobot.socketio
-
 _shutdown_done = False
-
-def shutdown_ui(*args):
-
-    global _shutdown_done
-    if _shutdown_done:
-        return
-    _shutdown_done = True
-
-    try:
-        if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
-            runtime_logger.info("Closing app...")
-            uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
-        uiWebRobot.exit()
-    except Exception:
-        runtime_logger.error("Error during shutdown_ui: " + traceback.format_exc())
 
 signal.signal(signal.SIGTERM, shutdown_ui)
 signal.signal(signal.SIGINT, shutdown_ui)
