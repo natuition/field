@@ -188,10 +188,18 @@ class WaitWorkingState(State.State):
         self.__voltage_thread_alive = False
         self.__check_joystick_info_alive = False
         self.__check_ui_refresh_thread_alive = False
+        self.__logger.debug("Waiting for threads to finish...")
         self.__voltage_thread.join()
+        self.__logger.debug("Voltage thread finished.")
+        self.__logger.debug("Waiting for send_last_pos_thread to finish...")
         self._send_last_pos_thread.join()
+        self.__logger.debug("send_last_pos_thread finished.")
+        self.__logger.debug("Waiting for joystick_info_thread to finish...")
         self.__joystick_info_thread.join()
+        self.__logger.debug("joystick_info_thread finished.")
+        self.__logger.debug("Waiting for check_ui_refresh_thread to finish...")
         self.__check_ui_refresh_thread.join()
+        self.__logger.debug("check_ui_refresh_thread finished.")
 
     def on_event(self, event):
 
