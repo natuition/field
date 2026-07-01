@@ -5,7 +5,11 @@
         "--platform=linux/amd64"
     ],
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-    "postCreateCommand": "pip install --upgrade pip setuptools wheel && pip install -r .devcontainer/requirements.txt""customizations": {
+    "postCreateCommand": ".devcontainer/post-create.sh",
+    "mounts": [
+        "source=${localWorkspaceFolder}/.devcontainer/.ssh,target=/root/.ssh,type=bind"
+    ],
+    "customizations": {
         "vscode": {
             "extensions": [
                 "ms-python.python",

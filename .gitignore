@@ -167,3 +167,5 @@ darknet2trt/*.weights
 darknet2trt/*.cfg
 darknet2trt/*.jpg
 darknet2trt/*.onnx
+
+.devcontainer/.ssh
