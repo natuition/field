@@ -48,7 +48,11 @@ class UIWebRobot:
         self.__setting_flask()
         self.__init_flask_route()  # ROUTE FLASK
         self.__socketio = SocketIO(
-            self.__app, async_mode=None, logger=False, engineio_logger=False)
+            self.__app,
+            async_mode="threading",
+            logger=False,
+            engineio_logger=False
+        )
         self.__app.wsgi_app = IgnoreSocketIODisconnected(self.__app.wsgi_app)
         self.__init_socketio()  # SOCKET IO
         self.__reload_config()
