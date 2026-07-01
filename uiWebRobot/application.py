@@ -536,7 +536,7 @@ def shutdown_ui(*args):
             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
         uiWebRobot.exit()
     except Exception:
-        traceback.print_exc()
+        runtime_logger.error("Error during shutdown_ui: " + traceback.format_exc())
 
 signal.signal(signal.SIGTERM, shutdown_ui)
 signal.signal(signal.SIGINT, shutdown_ui)
