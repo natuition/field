@@ -75,12 +75,20 @@ class UIWebRobot:
 
     def exit(self):
         self.__logger.info("Send RobotSynthesis...")
-        self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
-        self.__thread_notification_alive = False
-        self.__logger.info("Waiting for catch_send_notification thread to finish...")
-        self.__thread_notification.join()
-        self.__logger.info("catch_send_notification thread finished.")
-        self.__logger.info("Sent ✅")
+        try:
+            self.__robot_state_client.send_robot_state(RobotSynthesis.OP)
+        except Exception as e:
+            self.__logger.error(f"Error while sending RobotSynthesis.OP: {e}")
+            self.__logger.error(traceback.format_exc())
+        try:
+            self.__thread_notification_alive = False
+            self.__logger.info("Waiting for catch_send_notification thread to finish...")
+            self.__thread_notification.join()
+            self.__logger.info("catch_send_notification thread finished.")
+            self.__logger.info("Sent ✅")
+        except Exception as e:
+            self.__logger.error(f"Error while stopping catch_send_notification thread: {e}")
+            self.__logger.error(traceback.format_exc())
 
     def on_connect(self):
         self.__logger.debug("A client is connected.")
