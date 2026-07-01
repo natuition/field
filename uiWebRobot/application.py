@@ -61,6 +61,8 @@ class UIWebRobot:
         self.demo_pause_client = utility.DemoPauseClient(
             config.DEMO_PAUSES_HOST, config.DEMO_PAUSES_PORT)
         
+        self.__logger.info(f"UIWebRobot started.")
+        
     @property
     def app(self):
         return self.__app
