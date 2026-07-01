@@ -89,6 +89,7 @@ class UIWebRobot:
         except Exception as e:
             self.__logger.error(f"Error while stopping catch_send_notification thread: {e}")
             self.__logger.error(traceback.format_exc())
+        exit(0)
 
     def on_connect(self):
         self.__logger.debug("A client is connected.")
