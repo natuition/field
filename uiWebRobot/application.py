@@ -76,6 +76,10 @@ class UIWebRobot:
     def exit(self):
         self.__logger.info("Send RobotSynthesis...")
         self.__robot_state_client.set_robot_state_and_wait_send(RobotSynthesis.OP)
+        self.__thread_notification_alive = False
+        self.__logger.info("Waiting for catch_send_notification thread to finish...")
+        self.__thread_notification.join()
+        self.__logger.info("catch_send_notification thread finished.")
         self.__logger.info("Sent ✅")
 
     def on_connect(self):
@@ -135,10 +139,11 @@ class UIWebRobot:
         with open("./uiWebRobot/ui_language.json", "r", encoding='utf-8') as read_file:
             self.__ui_languages = json.load(read_file)
         self.__logger.debug("Init params done.")
-        thread_notification = Thread(target=self.catch_send_notification)
-        thread_notification.daemon = True
+        self.__thread_notification_alive = True
+        self.__thread_notification = Thread(target=self.catch_send_notification)
+        self.__thread_notification.daemon = True
         self.__logger.debug("Starting thread for catch_send_notification...")
-        thread_notification.start()
+        self.__thread_notification.start()
         self.__logger.debug("Thread for catch_send_notification started.")
         self.__logger.debug("Starting state machine...")
         self.__stateMachine = StateMachine(self.__socketio, self.__robot_state_client)
@@ -198,7 +203,7 @@ class UIWebRobot:
         self.__logger.debug("Created message queue.")
         ui_language = self.__config.UI_LANGUAGE
 
-        while True:
+        while self.__thread_notification_alive:
             try:
                 self.__logger.debug("Waiting for notification...")
                 notification = notificationQueue.receive(timeout=1)
