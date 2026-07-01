@@ -179,7 +179,9 @@ class UIWebRobot:
             self.__logger.info("Unlinked message queue.")
         except KeyboardInterrupt:
             raise KeyboardInterrupt
-        except:
+        except Exception as e:
+            self.__logger.error(f"Error while unlinking message queue: {e}")
+            self.__logger.error(traceback.format_exc())
             pass
 
         self.__logger.info("Creating message queue...")
@@ -202,7 +204,9 @@ class UIWebRobot:
                 self.__logger.debug("Notification sent.")
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
-            except:
+            except Exception as e:
+                self.__logger.error(f"Error while unlinking message queue: {e}")
+                self.__logger.error(traceback.format_exc())
                 continue
 
     # SOCKET IO
