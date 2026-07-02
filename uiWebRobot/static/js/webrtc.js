@@ -345,28 +345,6 @@ class Session {
         else if (msg.ice) this.onIncomingICE(msg.ice);
         else this.handleIncomingError(`Unknown incoming JSON: ${msg}`);
         break;
-      case "peerStatusChanged":
-        logStep(
-          `Session:${this.peer_id}`,
-          "Changement de statut producer recu dans la session",
-          msg
-        );
-
-        if (
-          msg.peerId === this.peer_id &&
-          (!msg.roles.includes("producer") ||
-            (msg.meta && msg.meta["gst-state"] !== "playing"))
-        ) {
-          logWarn(
-            `Session:${this.peer_id}`,
-            "Producer courant plus en PLAYING, fermeture session pour switch",
-            msg
-          );
-
-          this.resetState();
-          this.closed_callback(this.peer_id);
-        }
-        break;
       default:
         logWarn(`Session:${this.peer_id}`, "Message de signalisation non supporte", msg);
     }
@@ -602,125 +580,27 @@ class Session {
 }
 
 // Global functions
-const producers = {};
-let activeProducerId = null;
-
-const getProducerGstState = producer =>
-  producer?.meta?.["gst-state"] || producer?.meta?.gst_state || "unknown";
-
-const isProducerPlaying = producer =>
-  getProducerGstState(producer) === "playing";
-
-const showNoCamPlaceholder = () => {
-  const noCam = document.getElementById("no_cam");
-  if (noCam) noCam.style.display = "block";
-
-  const stream = document.getElementById("stream");
-  if (stream) stream.removeAttribute("controls");
-};
-
-const closeActiveSession = () => {
-  if (!activeProducerId) return;
-
-  const activeSession = sessions[activeProducerId];
-  if (activeSession && typeof activeSession.resetState === "function") {
-    logStep("Global", "Fermeture session producer actif avant switch", {
-      activeProducerId,
-    });
-    activeSession.resetState();
-  }
-
-  sessions[activeProducerId] = null;
-  activeProducerId = null;
-};
-
-const choosePlayingProducer = () =>
-  Object.values(producers).find(isProducerPlaying) || null;
-
-const switchToProducer = peer_id => {
-  if (!peer_id) return;
-
-  if (activeProducerId === peer_id && sessions[peer_id]) {
-    logStep("Global", "Producer deja actif, pas de switch", { peer_id });
-    return;
-  }
-
-  closeActiveSession();
-
-  logStep("Global", "Switch vers producer PLAYING", { peer_id });
-  activeProducerId = peer_id;
-  sessions[peer_id] = new Session(getOurId(), peer_id, session_closed);
-};
-
-const selectBestProducer = () => {
-  const playingProducer = choosePlayingProducer();
-
-  if (!playingProducer) {
-    logWarn("Global", "Aucun producer en PLAYING disponible");
-    closeActiveSession();
-    showNoCamPlaceholder();
-    return;
-  }
-
-  switchToProducer(playingProducer.id);
-};
-
 const startSession = () => {
   const peer_id = document.getElementById("camera-id").value;
   if (!peer_id) return;
-
   logStep("Global", "startSession manuel declenche", { peer_id });
-
-  producers[peer_id] = {
-    id: peer_id,
-    meta: { "gst-state": "playing", "display-name": peer_id },
-  };
-
-  switchToProducer(peer_id);
+  sessions[peer_id] = new Session(peer_id);
 };
 
 const session_closed = peer_id => {
   logStep("Global", "Session fermee et retiree du registre local", { peer_id });
-
-  if (sessions[peer_id]) {
-    sessions[peer_id] = null;
-  }
-
-  if (activeProducerId === peer_id) {
-    activeProducerId = null;
-    showNoCamPlaceholder();
-    selectBestProducer();
-  } else {
-    showNoCamPlaceholder();
-  }
+  sessions[peer_id] = null;
+  document.getElementById("no_cam").style.display = "block";
+  document.getElementById("stream").removeAttribute("controls");
 };
 
 const addPeer = (peer_id, meta = { "display-name": peer_id }) => {
-  logStep("Global", "Ajout / mise a jour producer detecte", { peer_id, meta });
-
-  producers[peer_id] = {
-    id: peer_id,
-    meta: meta || {},
-  };
-
-  selectBestProducer();
-};
-
-const removePeer = peer_id => {
-  logStep("Global", "Suppression producer detecte", { peer_id });
-
-  delete producers[peer_id];
-
-  if (activeProducerId === peer_id) {
-    closeActiveSession();
-    showNoCamPlaceholder();
-    selectBestProducer();
-  }
+  logStep("Global", "Ajout d'un peer producer detecte", { peer_id, meta });
+  sessions[peer_id] = new Session(getOurId(), peer_id, session_closed);
 };
 
 const clearPeers = () => {
   logStep("Global", "Nettoyage liste peers locale");
-
   Object.keys(sessions).forEach(peer_id => {
     const session = sessions[peer_id];
     if (session && typeof session.resetState === "function") {
@@ -728,13 +608,6 @@ const clearPeers = () => {
     }
     sessions[peer_id] = null;
   });
-
-  Object.keys(producers).forEach(peer_id => {
-    delete producers[peer_id];
-  });
-
-  activeProducerId = null;
-  showNoCamPlaceholder();
 };
 
 const onServerMessage = event => {
@@ -760,47 +633,13 @@ const onServerMessage = event => {
       });
       clearPeers();
       msg.producers.forEach(p => addPeer(p.id, p.meta));
-      selectBestProducer();
       break;
-    case "peerStatusChanged": {
+    case "peerStatusChanged":
       logStep("Global", "Notification de changement de statut peer", msg);
-
-      const isProducer = msg.roles.includes("producer");
-
-      if (!isProducer) {
-        removePeer(msg.peerId);
-        break;
-      }
-
-      producers[msg.peerId] = {
-        id: msg.peerId,
-        meta: msg.meta || {},
-      };
-
-      const gstState = getProducerGstState(producers[msg.peerId]);
-
-      logStep("Global", "Etat GStreamer producer mis a jour", {
-        peerId: msg.peerId,
-        gstState,
-        activeProducerId,
-      });
-
-      if (gstState === "playing") {
-        switchToProducer(msg.peerId);
-      } else if (activeProducerId === msg.peerId) {
-        logWarn(
-          "Global",
-          "Producer actif plus en PLAYING, recherche d'un autre producer",
-          { peerId: msg.peerId, gstState }
-        );
-
-        closeActiveSession();
-        showNoCamPlaceholder();
-        selectBestProducer();
-      }
-
+      const li = document.getElementById(`peer-${msg.peerId}`);
+      if (msg.roles.includes("producer") && !li) addPeer(msg.peerId, msg.meta);
+      else if (li) li.remove();
       break;
-    }
     default:
       logWarn("Global", "Message global non supporte", msg);
   }
