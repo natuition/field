@@ -2134,8 +2134,8 @@ class ClientMVI:
             RuntimeError: If the MVI operation to switch the active pipeline was not successful.
         """
         self.__call_mvi(CallType.SET,{
-            "property": MVIProperty.ACTIVE_PIPELINE.value,
-            "value": new_pipeline.value+"",
+            "property": MVIProperty.ACTIVE_PIPELINE,
+            "value": new_pipeline.without_destroying_value,
         })
         self.__current_MVI_pipeline_desciptor = new_pipeline
         

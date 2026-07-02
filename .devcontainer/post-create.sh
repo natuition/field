@@ -36,12 +36,18 @@ python -m pip install --upgrade \
 echo "=== Installing Python requirements ==="
 pip install -r .devcontainer/requirements.txt
 
-echo "=== Installing multiple-view-intelligence from GitHub ==="
+LATEST_TAG=$(git ls-remote --tags --sort="v:refname" git@github.com:natuition/multiple-view-intelligence.git \
+  | grep -v '\^{}' \
+  | tail -n 1 \
+  | sed 's|.*/||')
+echo "Latest tag: $LATEST_TAG"
+
+echo "=== Installing multiple-view-intelligence from GitHub tag $LATEST_TAG ==="
 pip install \
   --no-deps \
   --ignore-requires-python \
   --no-build-isolation \
-  "git+ssh://git@github.com/natuition/multiple-view-intelligence.git@v0.1.6#egg=multiple-view-intelligence"
+  "git+ssh://git@github.com/natuition/multiple-view-intelligence.git@${LATEST_TAG}#egg=multiple-view-intelligence"
 
 echo "=== Installing PyVESC-FW3.33 from GitHub ==="
 pip install git+https://github.com/MXMP/PyVESC-FW3.33
