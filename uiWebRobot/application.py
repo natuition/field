@@ -208,8 +208,6 @@ class UIWebRobot:
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
-            self.__logger.error(f"Error while unlinking message queue: {e}")
-            self.__logger.error(traceback.format_exc())
             pass
 
         self.__logger.debug("Creating message queue...")
