@@ -1869,6 +1869,8 @@ class ClientMVI:
     Attributes:
         OVERHEAD_DETECTION: MVIPipelineDescriptor
         TARGET_FINDER_DETECTION: MVIPipelineDescriptor
+        RECONNECT_ATTEMPTS: int
+        RECONNECT_DELAY_SEC: float
     """
     OVERHEAD_DETECTION = MVIPipelineDescriptor.OVERHEAD_DETECTION
     TARGET_FINDER_DETECTION = MVIPipelineDescriptor.TARGET_FINDER_DETECTION
@@ -1915,37 +1917,58 @@ class ClientMVI:
             self.__disconnect_client_silently()
 
     def __create_client(self):
+        """Creates and configures a new Client instance for MVI communication."""
         client = Client(transport=config.MVI_TRANSPORT_PROTOCOL, logger_level="WARNING")
         client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult)
         # client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
         return client
 
     def __connect_client(self):
+        """Connects the Client instance to the MVI server using the specified host and port."""
         self.__logger.info(f"Connecting to MVI server at {self.__host}:{self.__port}.")
         self.__client.connect(self.__host, self.__port)
 
     def __disconnect_client_silently(self):
+        """Disconnects the Client instance from the MVI server, handling any exceptions that may occur during disconnection."""
         try:
             self.__client.disconnect()
         except Exception as ex:
             self.__logger.warning(f"Error while disconnecting MVI client: {ex}")
 
     def __ensure_open(self):
+        """Ensures that the ClientMVI instance is open and not released.
+        Raises:
+            RuntimeError: If the ClientMVI instance has already been released.
+        """
         if self.__released:
             raise RuntimeError("MVI client is already released")
 
     def __ensure_response(self, res):
+        """Ensures that the response from the MVI server is valid.
+        Arguments:
+            res: The response object from the MVI server.
+        Raises:
+            ConnectionError: If the response is None or does not have a 'message' attribute.
+        """
         if res is None or not hasattr(res, "message"):
             raise ConnectionError("MVI did not return a valid response")
         return res
 
     def __restore_session_state(self):
+        """Restores the session state of the MVI client after a reconnection. If there was a previously active pipeline descriptor or state, it switches back to that pipeline and sets the state accordingly.
+        Raises:
+            RuntimeError: If the MVI operation to switch pipelines or set state fails.
+        """
         if self.__current_MVI_pipeline_desciptor is not None:
-            self.__set_active_pipeline_on_mvi(self.__current_MVI_pipeline_desciptor)
+            self.switch_active_pipeline(self.__current_MVI_pipeline_desciptor)
         if self.__current_MVI_state is not None:
             self.__set_state_on_mvi(self.__current_MVI_state)
 
     def __reconnect(self):
+        """Reconnects the MVI client to the server, attempting to restore the previous session state.
+        Raises:
+            RuntimeError: If the MVI client fails to reconnect after the specified number of attempts.
+        """
         self.__logger.warning("MVI connection lost, trying to reconnect.")
         self.__disconnect_client_silently()
         self.__client = self.__create_client()
@@ -1993,23 +2016,6 @@ class ClientMVI:
             msg = f"MVI call failed after reconnect attempts: {last_error}"
             self.__logger.error(msg)
             raise RuntimeError(msg) from last_error
-
-    def __set_active_pipeline_on_mvi(self, new_pipeline: MVIPipelineDescriptor) -> None:
-        add_switch_without_remove = "!" if new_pipeline == MVIPipelineDescriptor.OVERHEAD_DETECTION else ""
-        res = self.__client.call(CallType.SET,{
-            "property": MVIProperty.ACTIVE_PIPELINE.value,
-            "value": new_pipeline.value+add_switch_without_remove,
-        })
-        self.__ensure_response(res)
-        self.__check_result(res)
-
-    def __set_state_on_mvi(self, new_state: MVIState) -> None:
-        res = self.__client.call(CallType.SET,{
-            "property": MVIProperty.STATE.value,
-            "value": new_state.name
-        })
-        self.__ensure_response(res)
-        self.__check_result(res)
         
     def __check_result(self, res):
         """Checks the result of an MVI operation and raises a RuntimeError if the operation was not successful.
@@ -2022,15 +2028,21 @@ class ClientMVI:
             msg = f"MVI error code: {res.message['code']}, message: {res.message['message']}"
             self.__logger.error(msg)
             raise RuntimeError(msg)
-        
-    def get_name_map(self, pipeline: MVIPipelineDescriptor) -> List[str]:
-        """Retrieves the mapping of active pipeline IDs to their corresponding names for the specified pipeline descriptor.
+
+    def __set_state_on_mvi(self, new_state: MVIState) -> None:
+        """Sets the state of the MVI server to the specified new state.
         Arguments:
-            pipeline: MVIPipelineDescriptor - The pipeline descriptor for which to retrieve the ID-name map.
+            new_state: MVIState - The new state to set on the MVI server.
+        Raises:
+            RuntimeError: If the MVI operation to set the state was not successful.
         """
-        if pipeline not in self.__id_name_map:
-            self.__id_name_map[pipeline] = self.__get_id_name_map()
-        return self.__id_name_map[pipeline]
+        res = self.__call_mvi(CallType.SET,{
+            "property": MVIProperty.STATE.value,
+            "value": new_state.name
+        })
+        result: ResultDTO = res.message
+        self.__logger.info(f"Set MVI state to result: {result}")
+        self.__current_MVI_state = new_state
         
     def __get_id_name_map(self) -> List[str]:
         """Retrieves the mapping of active pipeline IDs to their corresponding names from the MVI server.
@@ -2044,6 +2056,15 @@ class ClientMVI:
         })
         result: ResultDTO = res.message
         return json.loads(result["payload"])
+        
+    def get_name_map(self, pipeline: MVIPipelineDescriptor) -> List[str]:
+        """Retrieves the mapping of active pipeline IDs to their corresponding names for the specified pipeline descriptor.
+        Arguments:
+            pipeline: MVIPipelineDescriptor - The pipeline descriptor for which to retrieve the ID-name map.
+        """
+        if pipeline not in self.__id_name_map:
+            self.__id_name_map[pipeline] = self.__get_id_name_map()
+        return self.__id_name_map[pipeline]
         
     def get_last_detections(self) -> DetectionResultDTO:
         """Retrieves the latest detection results from the MVI server.
@@ -2109,22 +2130,14 @@ class ClientMVI:
         Raises:
             RuntimeError: If the MVI operation to set the state was not successful.
         """
-        self.__call_mvi(CallType.SET,{
-            "property": MVIProperty.STATE.value,
-            "value": MVIState.ACTIVE_DETECTION.name
-        })
-        self.__current_MVI_state = MVIState.ACTIVE_DETECTION
+        self.__set_state_on_mvi(MVIState.ACTIVE_DETECTION)
         
     def run_passive_detection_on_MVI(self) -> None:
         """Sets the MVI to passive detection mode, indicating that it is stopped and not actively detecting objects.
         Raises:
             RuntimeError: If the MVI operation to set the state was not successful.
         """
-        self.__call_mvi(CallType.SET,{
-            "property": MVIProperty.STATE.value,
-            "value": MVIState.PASSIVE_DETECTION.name
-        })
-        self.__current_MVI_state = MVIState.PASSIVE_DETECTION
+        self.__set_state_on_mvi(MVIState.PASSIVE_DETECTION)
         
     def switch_active_pipeline(self, new_pipeline: MVIPipelineDescriptor) -> None:
         """Switches the active MVI pipeline to the specified new pipeline descriptor.
