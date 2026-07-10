@@ -30,8 +30,9 @@ import connectors
 from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
 from logger import LoggerFactory
 
-LoggerFactory.set_level(config.LOG_LEVEL)
+#LoggerFactory.set_level(config.LOG_LEVEL)
 MAIN_LOGGER = LoggerFactory.create("Main")
+MAIN_LOGGER.setLevel(config.LOG_LEVEL)
 
 def save_gps_coordinates(points: list, file_name: str):
     """
