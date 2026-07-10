@@ -184,7 +184,7 @@ class SmoothieAdapter:
             self.__smc.write("M999")
             return self.__smc.read_some()
 
-    def checkendstop(self, axe):
+    def checkendstop(self, axe: str):
         with self.__sync_locker:
             self.__smc.write("M119")
             response = self.__smc.read_some()
