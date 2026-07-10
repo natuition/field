@@ -599,11 +599,11 @@ class GPSPoint:
         self.__longitude = value
 
     @property
-    def quality(self) -> Optional[int]:
+    def quality(self) -> Optional[str]:
         return self.__quality
 
     @quality.setter
-    def quality(self, value: Optional[int]):
+    def quality(self, value: Optional[str]):
         # no validation as currently it is unknown what flags will be used
         self.__quality = value
 
@@ -617,7 +617,7 @@ class GPSPoint:
 
     @property
     def as_old_list(self):
-        point = [self.__latitude, self.__longitude]
+        point: List[Union[Number,str]] = [self.__latitude, self.__longitude]
         if self.__quality is not None:
             point.append(self.__quality)
         return point
