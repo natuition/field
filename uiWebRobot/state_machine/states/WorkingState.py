@@ -184,6 +184,11 @@ class WorkingState(State.State):
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             return PhysicalBlocageState.PhysicalBlocageState(self.socketio, self.__file_logger, False)
         
+        elif event == Events.CLOSE_APP:
+            msg = f"Kill main abruptly (SIGKILL)"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.debug(msg)
+            os.killpg(os.getpgid(self.main.pid), signal.SIGKILL)
         else:
             self._main_msg_thread_alive = False
             self._main_msg_thread.join()
