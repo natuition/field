@@ -12,6 +12,7 @@ import time
 from pytz import timezone
 import socket
 import subprocess
+from typing import List, Dict, Optional, Any
 from logger import Logger as NewLogger
 
 # class ImageSaver:
@@ -109,23 +110,23 @@ from logger import Logger as NewLogger
 class TrajectorySaver:
     """Provides safe gps points saving (robot's trajectory)"""
 
-    def __init__(self, full_path, append_file=False):
-        self.__full_path = full_path
-        self.__last_received_point = None
+    def __init__(self, full_path: str, append_file: bool = False) -> None:
+        self.__full_path: str = full_path
+        self.__last_received_point: Optional[str] = None
         self.__output_file = open(full_path, "a" if append_file else "w")
         if append_file:
             self.__output_file.write("\n")
 
-    def __enter__(self):
+    def __enter__(self) -> 'TrajectorySaver':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         self.__output_file.close()
 
-    def save_point(self, point: list, save_raw=False, flush_immediately=True):
+    def save_point(self, point: List[Any], save_raw: bool = False, flush_immediately: bool = True) -> None:
         """
         Saves given point if it is different from previous received gps point.
         """
@@ -155,67 +156,67 @@ class MemoryManager:
     """
 
     def __init__(self, path: str, files_to_keep_count: int = 600, check_frequency_seconds: int = 60,
-                 memory_threshold: int = 95368):
-        self.__files_to_keep_count = files_to_keep_count
-        self.__path = path
-        self.__check_frequency_seconds = check_frequency_seconds
-        self.__memory_threshold = memory_threshold
+                 memory_threshold: int = 95368) -> None:
+        self.__files_to_keep_count: int = files_to_keep_count
+        self.__path: str = path
+        self.__check_frequency_seconds: int = check_frequency_seconds
+        self.__memory_threshold: int = memory_threshold
 
-        self.__auto_cleaner_thread = threading.Thread(target=self.__auto_cleaner_tf, daemon=True)
-        self.__keep_auto_cleaner_thread_alive = False
+        self.__auto_cleaner_thread: threading.Thread = threading.Thread(target=self.__auto_cleaner_tf, daemon=True)
+        self.__keep_auto_cleaner_thread_alive: bool = False
 
-        self.__manual_cleaner_thread = threading.Thread(target=self.__manual_cleaner_tf, daemon=True)
-        self.__keep_manual_cleaner_thread_alive = False
+        self.__manual_cleaner_thread: threading.Thread = threading.Thread(target=self.__manual_cleaner_tf, daemon=True)
+        self.__keep_manual_cleaner_thread_alive: bool = False
 
-    def __enter__(self):
+    def __enter__(self) -> 'MemoryManager':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.stop_auto_cleaning()
         self.stop_clean_manual_non_blocking()
 
-    def start_auto_cleaning(self):
+    def start_auto_cleaning(self) -> None:
         self.__keep_auto_cleaner_thread_alive = True
         self.__auto_cleaner_thread.start()
 
-    def stop_auto_cleaning(self):
+    def stop_auto_cleaning(self) -> None:
         self.__keep_auto_cleaner_thread_alive = False
 
-    def start_clean_manual_non_blocking(self):
+    def start_clean_manual_non_blocking(self) -> None:
         self.__keep_manual_cleaner_thread_alive = True
         self.__manual_cleaner_thread.run()
 
-    def stop_clean_manual_non_blocking(self):
+    def stop_clean_manual_non_blocking(self) -> None:
         self.__keep_manual_cleaner_thread_alive = False
 
-    def start_clean_manual_blocking(self):
+    def start_clean_manual_blocking(self) -> None:
         """This function does disk cleaning, blocking until executed"""
 
-        files_to_delete = self.__get_files_to_delete_list()
+        files_to_delete: List[str] = self.__get_files_to_delete_list()
         for file in files_to_delete:
             os.remove(file)
 
-    def __get_files_to_delete_list(self):
+    def __get_files_to_delete_list(self) -> List[str]:
         # TODO: can be optimized (seems like getmtime is called multiple times during sorting)
-        full_files_list = sorted(glob.glob(self.__path + "*"), key=os.path.getmtime, reverse=True)
+        full_files_list: List[str] = sorted(glob.glob(self.__path + "*"), key=os.path.getmtime, reverse=True)
         return full_files_list[self.__files_to_keep_count:]
 
-    def __manual_cleaner_tf(self):
+    def __manual_cleaner_tf(self) -> None:
         """Manual cleaner thread target function"""
 
-        files_to_delete = self.__get_files_to_delete_list()
+        files_to_delete: List[str] = self.__get_files_to_delete_list()
         for file in files_to_delete:
             if self.__keep_manual_cleaner_thread_alive:
                 os.remove(file)
             else:
                 break
 
-    def __auto_cleaner_tf(self):
+    def __auto_cleaner_tf(self) -> None:
         """Auto cleaner thread target function"""
 
         while self.__keep_auto_cleaner_thread_alive:
             if (round((psutil.disk_usage("/").used / (2 ** 20)), 2)) > self.__memory_threshold:
-                files_to_delete = self.__get_files_to_delete_list()
+                files_to_delete: List[str] = self.__get_files_to_delete_list()
                 for file in files_to_delete:
                     if self.__keep_auto_cleaner_thread_alive:
                         os.remove(file)
@@ -229,29 +230,29 @@ class Logger:
     Writes into the file with specified name str data, flushing data on each receiving
     """
 
-    def __init__(self, file_name, add_time=True, time_sep=" ", append_file=False):
+    def __init__(self, file_name: str, add_time: bool = True, time_sep: str = " ", append_file: bool = False) -> None:
         self._file = open(file_name, "a" if append_file else "w")
-        self.__add_time = add_time
-        self.__time_sep = time_sep
+        self.__add_time: bool = add_time
+        self.__time_sep: str = time_sep
 
-    def __enter__(self):
+    def __enter__(self) -> 'Logger':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self._file.__exit__(exc_type, exc_val, exc_tb)
 
-    def write_and_flush(self, s):
+    def write_and_flush(self, s: str) -> None:
         if self.__add_time:
             s = get_current_time() + self.__time_sep + s
         self._file.write(s)
         self._file.flush()
 
-    def write(self, s):
+    def write(self, s: str) -> None:
         if self.__add_time:
             s = get_current_time() + self.__time_sep + s
         self._file.write(s)
 
-    def close(self):
+    def close(self) -> None:
         self._file.close()
 
 
@@ -263,47 +264,47 @@ class DemoPauseServer:
     Implementation and purpose of this class may be changed in the future.
     """
 
-    def __init__(self, host, port, tick_delay=0.005, buffer_size=1024):
+    def __init__(self, host: str, port: int, tick_delay: float = 0.005, buffer_size: int = 1024) -> None:
         self.__logger = NewLogger.create(self.__class__.__name__)
-        self.__clients_conn_listener = socket.socket()
+        self.__clients_conn_listener: socket.socket = socket.socket()
         self.__clients_conn_listener.bind((host, port))
         self.__clients_conn_listener.listen(5)
-        self.__keep_clients_conn_listener_alive = True
-        self.__current_clients = []
-        self.__current_clients_locker = threading.Lock()
+        self.__keep_clients_conn_listener_alive: bool = True
+        self.__current_clients: List[socket.socket] = []
+        self.__current_clients_locker: threading.Lock = threading.Lock()
         # new clients connections accept thread
-        self.__new_clients_conn_listener_th = threading.Thread(
+        self.__new_clients_conn_listener_th: threading.Thread = threading.Thread(
             target=self.__new_clients_conn_listener_tf,
             name="__new_clients_conn_listener_th",
             daemon=True
         )
 
         # clients commands reader
-        self.__keep_clients_cmd_reader_alive = True
-        self.__clients_cmd_reader_th = threading.Thread(
+        self.__keep_clients_cmd_reader_alive: bool = True
+        self.__clients_cmd_reader_th: threading.Thread = threading.Thread(
             target=self.__clients_cmd_reader_tf,
             name="__clients_cmd_reader_tf",
             daemon=True
         )
 
-        self.__is_paused = False
-        self.__is_paused_locker = threading.Lock()
-        self.__tick_delay = tick_delay
-        self.__buffer_size = buffer_size
+        self.__is_paused: bool = False
+        self.__is_paused_locker: threading.Lock = threading.Lock()
+        self.__tick_delay: float = tick_delay
+        self.__buffer_size: int = buffer_size
 
         self.__new_clients_conn_listener_th.start()
         self.__clients_cmd_reader_th.start()
 
-    def __enter__(self):
+    def __enter__(self) -> 'DemoPauseServer':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         self.__keep_clients_conn_listener_alive = False
         self.__keep_clients_cmd_reader_alive = False
 
@@ -330,7 +331,7 @@ class DemoPauseServer:
                 except:
                     pass
 
-    def __new_clients_conn_listener_tf(self):
+    def __new_clients_conn_listener_tf(self) -> None:
         while self.__keep_clients_conn_listener_alive:
             try:
                 client, _ = self.__clients_conn_listener.accept()
@@ -343,8 +344,8 @@ class DemoPauseServer:
                 if self.__keep_clients_conn_listener_alive:
                     self.__logger.warning("__new_clients_conn_listener_th error when accepting new client:", ex)
 
-    def __clients_cmd_reader_tf(self):
-        connections_to_close = []
+    def __clients_cmd_reader_tf(self) -> None:
+        connections_to_close: List[int] = []
 
         while self.__keep_clients_cmd_reader_alive:
             time.sleep(self.__tick_delay)
@@ -358,7 +359,7 @@ class DemoPauseServer:
                         break
 
                     try:
-                        data = current_client.recv(self.__buffer_size, socket.MSG_DONTWAIT)
+                        data: bytes = current_client.recv(self.__buffer_size, socket.MSG_DONTWAIT)
                         if len(data) != 0:
                             if data == b"resume":
                                 with self.__is_paused_locker:
@@ -409,7 +410,7 @@ class DemoPauseServer:
                 if len(connections_to_close) > 0:
                     connections_to_close.clear()
 
-    def wait_for_resume_cmd(self):
+    def wait_for_resume_cmd(self) -> None:
         self.__logger.info("Waiting for demo server resume command...")
         #print("Waiting for demo server resume command...")
         with self.__is_paused_locker:
@@ -425,50 +426,51 @@ class DemoPauseServer:
 class DemoPauseClient:
     """Sends resume requests to DemoPauseServer"""
 
-    def __init__(self, host, port, tick_delay=0.005):
+    def __init__(self, host: str, port: int, tick_delay: float = 0.005) -> None:
         self.__logger = NewLogger.create(self.__class__.__name__)
-        self.__tick_delay = tick_delay
+        self.__tick_delay: float = tick_delay
 
-        self.__host = host
-        self.__port = port
-        self.__server_conn = None
+        self.__host: str = host
+        self.__port: int = port
+        self.__server_conn: Optional[socket.socket] = None
 
-        self.__keep_sender_alive = True
-        self.__sender_th = threading.Thread(
+        self.__keep_sender_alive: bool = True
+        self.__sender_th: threading.Thread = threading.Thread(
             target=self.__sender_tf,
             name="__sender_th",
             daemon=True
         )
 
-        self.__resume_request = False
-        self.__resume_request_locker = threading.Lock()
+        self.__resume_request: bool = False
+        self.__resume_request_locker: threading.Lock = threading.Lock()
 
         self.__sender_th.start()
 
-    def __enter__(self):
+    def __enter__(self) -> 'DemoPauseClient':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         self.__keep_sender_alive = False
 
         try:
-            self.__server_conn.close()
+            if self.__server_conn is not None:
+                self.__server_conn.close()
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except:
             pass
 
-    def send_resume_cmd(self):
+    def send_resume_cmd(self) -> None:
         with self.__resume_request_locker:
             self.__resume_request = True
 
-    def __reconnect(self):
+    def __reconnect(self) -> None:
         if self.__server_conn is not None:
             try:
                 self.__server_conn.close()
@@ -480,7 +482,7 @@ class DemoPauseClient:
         while self.__keep_sender_alive:
             try:
                 self.__server_conn = socket.socket()
-                error_indicator = self.__server_conn.connect_ex((self.__host, self.__port))
+                error_indicator: int = self.__server_conn.connect_ex((self.__host, self.__port))
                 if error_indicator == 0:
                     break
             except KeyboardInterrupt:
@@ -488,9 +490,9 @@ class DemoPauseClient:
             except:
                 pass
 
-    def __sender_tf(self):
+    def __sender_tf(self) -> None:
         self.__reconnect()
-        need_to_reconnect = False
+        need_to_reconnect: bool = False
 
         while self.__keep_sender_alive:
             time.sleep(self.__tick_delay)
@@ -507,8 +509,9 @@ class DemoPauseClient:
                     need_to_reconnect = False
 
                 try:
-                    self.__server_conn.send(b"resume")
-                    break
+                    if self.__server_conn is not None:
+                        self.__server_conn.send(b"resume")
+                        break
                 except KeyboardInterrupt:
                     self.__logger.warning("__sender_tf for some reason got KeyboardInterrupt!")
                     raise KeyboardInterrupt
@@ -521,13 +524,13 @@ class DemoPauseClient:
                         pass
 
 
-def get_current_time():
+def get_current_time() -> str:
     """Returns current time as formatted string"""
 
     return datetime.now(timezone('Europe/Berlin')).strftime("%d-%m-%Y %H-%M-%S %f")
 
 
-def create_directories(*args):
+def create_directories(*args: str) -> None:
     """Creates directories, receives any args count, each arg is separate dir"""
     UTILITY_LOGGER = NewLogger.create("Utility")
     for path in args:
@@ -542,30 +545,30 @@ def create_directories(*args):
             UTILITY_LOGGER.info("Directory %s is already exists" % path)
 
 
-def get_path_slash():
+def get_path_slash() -> str:
     return "\\" if platform.system() == "Windows" else "/"
 
 
-def get_smoothie_vesc_addresses():
-    equipment_by_port = dict()
-    for port, desc, other in sorted(serial.tools.list_ports.comports()):
+def get_smoothie_vesc_addresses() -> Dict[str, str]:
+    equipment_by_port: Dict[str, str] = dict()
+    for port, desc, _ in sorted(serial.tools.list_ports.comports()):
         if "Smoothie" in desc:
             equipment_by_port["smoothie"] = port
         if "ChibiOS/RT" in desc:
             equipment_by_port["vesc"] = port
     return equipment_by_port
 
-def get_ublox_address():
-    for port, desc, other in sorted(serial.tools.list_ports.comports()):
+def get_ublox_address() -> Optional[str]:
+    for port, desc, _ in sorted(serial.tools.list_ports.comports()):
         if "u-blox" in desc:
             return port
     return None
 
-def mu_sigma(samples: list):
+def mu_sigma(samples: List[float]) -> List[float]:
     
-    mu =0
-    sigma =0
-    sign =1
+    mu: float = 0
+    sigma: float = 0
+    sign: int = 1
 
     #moyenne arithmétique
     
@@ -585,26 +588,27 @@ def mu_sigma(samples: list):
     sigma/=len(samples)
     sigma = math.sqrt(sigma)
     
-    stat= [mu, sigma]
+    stat: List[float] = [mu, sigma]
     return stat
 
 
-def average_point(gps,trajectory_saver: TrajectorySaver,nav, logger_full: Logger=None):
+def average_point(gps: Any, trajectory_saver: Optional[TrajectorySaver], nav: Any, logger_full: Optional[Logger] = None) -> List[Any]:
     UTILITY_LOGGER = NewLogger.create("Utility")
     #ORIGIN POINT SAVING
-    lat = []     #latitude history
-    long = []    #longitude history
-    distances = []
+    lat: List[float] = []     #latitude history
+    long: List[float] = []    #longitude history
+    distances: List[float] = []
+    prev_pos: List[Any] = []
 
     for i in range(0,config.ORIGIN_AVERAGE_SAMPLES):
-        prev_maneuver_time = time.time()
+        prev_maneuver_time: float = time.time()
         try:
-            prev_pos = gps.get_fresh_position()
-            msg = f"Get {i+1}/{config.ORIGIN_AVERAGE_SAMPLES} point in {time.time()-prev_maneuver_time} for average_point."
+            prev_pos: List[Any] = gps.get_fresh_position()
+            msg: str = f"Get {i+1}/{config.ORIGIN_AVERAGE_SAMPLES} point in {time.time()-prev_maneuver_time} for average_point."
             if logger_full is not None:
                 logger_full.write_and_flush(msg+"\n")
         except TimeoutError:
-            msg = f"Erro waiting time too long for the {i+1} point in average_point !"
+            msg: str = f"Erro waiting time too long for the {i+1} point in average_point !"
             if logger_full is not None:
                 logger_full.write_and_flush(msg+"\n")
             UTILITY_LOGGER.error(msg)
@@ -613,7 +617,7 @@ def average_point(gps,trajectory_saver: TrajectorySaver,nav, logger_full: Logger
         long.append(prev_pos[1])
         mu_lat, _ = mu_sigma(lat)
         mu_long, _ = mu_sigma(long)
-        distance = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
+        distance: float = nav.get_distance([mu_lat,mu_long,'1'], prev_pos)
         distances.append(distance)
     
     mu_lat, _ = mu_sigma(lat)
@@ -627,20 +631,20 @@ def average_point(gps,trajectory_saver: TrajectorySaver,nav, logger_full: Logger
     return prev_pos
 
 
-def get_last_dir_name(parent_dir_path: str):
+def get_last_dir_name(parent_dir_path: str) -> Optional[str]:
     """Looks for directories in a given parent directory, returns the last created dir (Windows) or last changed dir
     (Linux), or None if no directories were found at given path.
     """
 
-    all_parent_dir_objects = os.listdir(parent_dir_path)
-    last_dir = None
-    last_dir_creation_time = None
+    all_parent_dir_objects: List[str] = os.listdir(parent_dir_path)
+    last_dir: Optional[str] = None
+    last_dir_creation_time: Optional[float] = None
 
     for cur_obj_name in all_parent_dir_objects:
-        cur_obj_full_path = parent_dir_path + cur_obj_name
+        cur_obj_full_path: str = parent_dir_path + cur_obj_name
         if os.path.isdir(cur_obj_full_path):
-            cur_dir_creation_time = os.path.getctime(cur_obj_full_path)
-            if last_dir:
+            cur_dir_creation_time: float = os.path.getctime(cur_obj_full_path)
+            if last_dir and last_dir_creation_time:
                 if cur_dir_creation_time > last_dir_creation_time:
                     last_dir = cur_obj_name
                     last_dir_creation_time = cur_dir_creation_time
@@ -649,16 +653,16 @@ def get_last_dir_name(parent_dir_path: str):
                 last_dir_creation_time = cur_dir_creation_time
     return last_dir
 
-def life_line_reset():
+def life_line_reset() -> None:
     UTILITY_LOGGER = NewLogger.create("Utility")
-    dir_gpio = f"/sys/class/gpio/gpio{config.LIFE_LINE_PIN}"
+    dir_gpio: str = f"/sys/class/gpio/gpio{config.LIFE_LINE_PIN}"
     if os.path.isdir(dir_gpio):
         UTILITY_LOGGER.info(f"The directory '{dir_gpio}' exist.")
     else:
         UTILITY_LOGGER.info(f"The directory '{dir_gpio}' not exist, creating...")
         subprocess.run(f'echo {config.LIFE_LINE_PIN} > /sys/class/gpio/export',shell=True)
 
-    check_direction = subprocess.run(f'grep -q "out" "/sys/class/gpio/gpio{config.LIFE_LINE_PIN}/direction"',shell=True).returncode
+    check_direction: int = subprocess.run(f'grep -q "out" "/sys/class/gpio/gpio{config.LIFE_LINE_PIN}/direction"',shell=True).returncode
 
     if check_direction==0:
         UTILITY_LOGGER.info(f"Gpio {config.LIFE_LINE_PIN} is already out.")
@@ -678,8 +682,8 @@ def life_line_reset():
         sleep(1)
 
 
-def load_coordinates(file_path):
-    positions_list = []
+def load_coordinates(file_path: str) -> List[List[float]]:
+    positions_list: List[List[float]] = []
     with open(file_path) as file:
         for line in file:
             if line != "":
