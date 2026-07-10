@@ -2005,7 +2005,8 @@ class ClientMVI:
             raise RuntimeError(msg)
         
     def __check_result_dto_with_payload(self, result: ResultDTO) -> str:
-        if "payload" not in result: 
+        self.__logger.debug(f"Result : {result}, type: {type(result)}")
+        if result.get("payload") is None: 
             raise RuntimeError(f"Expected 'payload' in result, got {result}")
         if not isinstance(result["payload"], str):
             raise RuntimeError(f"Expected 'payload' to be a string, got {type(result['payload'])}")
