@@ -10,7 +10,10 @@ import pyvesc
 import re
 import json
 from serial import SerialException
-from typing import List, Tuple
+
+from typing import Any, Dict, List, Tuple, Type, Optional, Union
+Number = Union[int, float]
+OptionalNumber = Optional[Number]
 
 from config import config
 from detection import DetectedPlantBox
@@ -27,17 +30,18 @@ class SmoothieAdapter:
     RESPONSE_IGNORED = "ok - ignored\n"
     RESPONSE_HOMING_FAILED = "ERROR: Homing cycle failed - check the max_travel settings"
     RESPONSE_AFTER_M999 = "WARNING: After HALT you should HOME as position is currently unknown"
+    AXIS_LABELS: List[str] = ["X", "Y", "Z", "A", "B", "C"]
 
-    def __init__(self, smoothie_host, calibration_at_init=True):
+    def __init__(self, smoothie_host: str, calibration_at_init: bool=True):
         
         self.__logger = NewLogger.create(self.__class__.__name__)
         
         if type(smoothie_host) is not str:
             raise TypeError(f"invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
 
-        if config.SMOOTHIE_BACKEND == 1:
+        if config.SMOOTHIE_BACKEND == 1: # type: ignore
             self.__smc = connectors.SmoothieV11TelnetConnector(smoothie_host)
-        elif config.SMOOTHIE_BACKEND == 2:
+        elif config.SMOOTHIE_BACKEND == 2: # type: ignore
             self.__smc = connectors.SmoothieV11SerialConnector(smoothie_host, config.SMOOTHIE_BAUDRATE)
         else:
             raise ValueError(f"wrong config.SMOOTHIE_BACKEND value: " + str(smoothie_host))
@@ -114,19 +118,19 @@ class SmoothieAdapter:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         self.__smc.disconnect()
 
     def disconnect(self):
         self.__smc.disconnect()
         
     @staticmethod
-    def check_res_smoothie(res):
+    def check_res_smoothie(res: str) -> bool:
         return (("!" in res) or ("error" in res) or ("ERROR" in res) or ("WARNING" in res) or ("ignored" in res))
 
     @property
-    def is_disconnect(self):
-        return self._smc.is_open
+    def is_disconnect(self) -> bool:
+        return self.__smc.is_open
 
     def get_connector(self):
         """Only for debug!"""
@@ -149,7 +153,7 @@ class SmoothieAdapter:
         with self.__sync_locker:
             self.__smc.write("M112")
             # "ok Emergency Stop Requested - reset or M999 required to exit HALT state\r\n"
-            return self.__smc.read_some() + self.__smc.read_some() if self.__smc is connectors.SmoothieV11TelnetConnector else self.__smc.read_some()
+            return self.__smc.read_some() + self.__smc.read_some() if self.__smc is connectors.SmoothieV11TelnetConnector else self.__smc.read_some() # type: ignore
 
     def reset(self):
         with self.__sync_locker:
@@ -198,7 +202,7 @@ class SmoothieAdapter:
             # "ok\r\n"
             return self.__smc.read_some()
 
-    def set_current_coordinates(self, X=None, Y=None, Z=None, A=None, B=None, C=None):
+    def set_current_coordinates(self, X: OptionalNumber=None, Y:OptionalNumber=None, Z: OptionalNumber=None, A: OptionalNumber=None, B:OptionalNumber=None, C:OptionalNumber=None)-> str:
         with self.__sync_locker:
             if self.__check_arg_types([type(None)], X, Y, Z, A, B, C):
                 raise TypeError(f"at least one axis shouldn't be None")
@@ -249,7 +253,7 @@ class SmoothieAdapter:
                 # "C": self._c_cur.value
             }
 
-    def get_smoothie_current_coordinates(self, convert_to_mms=True):
+    def get_smoothie_current_coordinates(self, convert_to_mms: bool=True)-> Dict[str, float]:
         """
 
         :param convert_to_mms: 
@@ -269,6 +273,7 @@ class SmoothieAdapter:
             response, coordinates = (self.__smc.read_some() + self.__smc.read_some()
                                      if type(self.__smc) is connectors.SmoothieV11TelnetConnector
                                      else self.__smc.read_some())[:-2].split(" ")[2:], {}
+            coordinates: Dict[str, float] = {}
             for coord in response:
                 coordinates[coord[0]] = float(coord[2:])
                 if convert_to_mms:
@@ -276,7 +281,7 @@ class SmoothieAdapter:
             return coordinates
 
     @classmethod
-    def compare_coordinates(cls, coordinates_a, coordinates_b, precision=1e-10):
+    def compare_coordinates(cls, coordinates_a: Dict[str, Number], coordinates_b: Dict[str, Number], precision:float=1e-10)-> bool:
         if type(coordinates_a) != dict or type(coordinates_b) != dict:
             raise AttributeError(f"[{cls.__name__}] -> coordinates should be stored in dict")
         if len(coordinates_a) != len(coordinates_b):
@@ -288,18 +293,18 @@ class SmoothieAdapter:
         return True
 
     def custom_move_for(self, *,
-                        X_F=None,
-                        Y_F=None,
-                        Z_F=None,
-                        A_F=None,
-                        B_F=None,
-                        C_F=None,
-                        X=None,
-                        Y=None,
-                        Z=None,
-                        A=None,
-                        B=None,
-                        C=None):
+                        X_F: OptionalNumber=None,
+                        Y_F: OptionalNumber=None,
+                        Z_F: OptionalNumber=None,
+                        A_F: OptionalNumber=None,
+                        B_F: OptionalNumber=None,
+                        C_F: OptionalNumber=None,
+                        X : OptionalNumber=None,
+                        Y : OptionalNumber=None,
+                        Z : OptionalNumber=None,
+                        A : OptionalNumber=None,
+                        B : OptionalNumber=None,
+                        C : OptionalNumber=None):
         """Movement by some value(s)
 
         Minimal force is applied if multiple values are given
@@ -446,18 +451,18 @@ class SmoothieAdapter:
             return response
 
     def custom_move_to(self, *,
-                       X_F=None,
-                       Y_F=None,
-                       Z_F=None,
-                       A_F=None,
-                       B_F=None,
-                       C_F=None,
-                       X=None,
-                       Y=None,
-                       Z=None,
-                       A=None,
-                       B=None,
-                       C=None):
+                       X_F: OptionalNumber=None,
+                       Y_F: OptionalNumber=None,
+                       Z_F: OptionalNumber=None,
+                       A_F: OptionalNumber=None,
+                       B_F: OptionalNumber=None,
+                       C_F: OptionalNumber=None,
+                       X: OptionalNumber=None,
+                       Y: OptionalNumber=None,
+                       Z: OptionalNumber=None,
+                       A: OptionalNumber=None,
+                       B: OptionalNumber=None,
+                       C: OptionalNumber=None)-> str:
         """Movement to the specified position"""
 
         with self.__sync_locker:
@@ -477,6 +482,8 @@ class SmoothieAdapter:
             min_f_msg = "(min force value applied)"
             min_f = min([item for item in [X_F, Y_F, Z_F, A_F, B_F, C_F] if item is not None])
             g_code = "G0"
+            
+            sm_x_mm, sm_y_mm, sm_z_mm, sm_a_mm, sm_b_mm, sm_c_mm = 0.0,  0.0,  0.0,  0.0,  0.0,  0.0
 
             if X is not None:
                 # validate force
@@ -605,10 +612,10 @@ class SmoothieAdapter:
             return response
 
     def custom_separate_xy_move_for(self, *,
-                                    X_F=None,
-                                    Y_F=None,
-                                    X=None,
-                                    Y=None):
+                                    X_F: OptionalNumber=None,
+                                    Y_F: OptionalNumber=None,
+                                    X: OptionalNumber=None,
+                                    Y: OptionalNumber=None)-> str:
         """Temporary wrapper for custom_move_for function, separates X and Y axes movement if X:Y ratio exceeds given
         threshold
 
@@ -634,10 +641,10 @@ class SmoothieAdapter:
             return self.custom_move_for(X_F=X_F, Y_F=Y_F, X=X, Y=Y)
 
     def custom_separate_xy_move_to(self, *,
-                                   X_F=None,
-                                   Y_F=None,
-                                   X=None,
-                                   Y=None):
+                                   X_F:OptionalNumber=None,
+                                   Y_F:OptionalNumber=None,
+                                   X: OptionalNumber=None,
+                                   Y: OptionalNumber=None)-> str:
         """Temporary wrapper for custom_move_to function, separates X and Y axes movement if X:Y ratio exceeds given
         threshold
 
@@ -697,7 +704,7 @@ class SmoothieAdapter:
 
             return self.set_current_coordinates(A=config.A_MIN)
 
-    def ext_calibrate_cork(self):
+    def ext_calibrate_cork(self) -> str:
 
         if not set(config.CALIBRATION_ORDER).issubset(set(["X", "Y", "Z", "A", "B", "C"])):
             raise ValueError(f"unsupported axis label or wrong type")
@@ -717,7 +724,7 @@ class SmoothieAdapter:
 
         return self.RESPONSE_OK
 
-    def ext_cork_up(self):
+    def ext_cork_up(self) -> str:
         # cork up is done by Z axis calibration
         if config.USE_Z_AXIS_CALIBRATION:
             # TODO: stub (G28 isn't reading F value from smoothie config, it uses last received F)
@@ -750,10 +757,9 @@ class SmoothieAdapter:
                                          config.Z_MIN,
                                          config.Z_MAX,
                                          config.Z_AXIS_CALIBRATION_TO_MAX)
-                    if self.RESPONSE_HOMING_FAILED in response:
-                        continue
-                    else:
-                        break
+                    if self.RESPONSE_HOMING_FAILED not in response:
+                        return response
+                return response
             else:
                 return response
 
@@ -763,82 +769,47 @@ class SmoothieAdapter:
             )
 
     @classmethod
-    def mm_to_smoothie(cls, mm_axis_val, axis_label: str):
+    def mm_to_smoothie(cls, mm_axis_val: Number, axis_label: str)-> float:
         """Converts given mms value to smoothie value applying (multiplying) coefficient corresponding to given axis
         label
 
         Example: config coefficient = 0.5, given mms value = 100, returned smoothie value = 50
         """
 
-        if axis_label not in ["X", "Y", "Z", "A", "B", "C"]:
+        if axis_label not in cls.AXIS_LABELS:
             raise ValueError(f"[{cls.__name__}] -> unsupported axis label or wrong type")
         if not SmoothieAdapter.__check_arg_types([int, float], mm_axis_val):
             raise TypeError(f"[{cls.__name__}] -> axis_value should be float or int")
 
-        if mm_axis_val == 0:
-            return mm_axis_val
+        coefficient = getattr(
+            config,
+            "{}_COEFFICIENT_TO_MM".format(axis_label)
+        )
 
-        if axis_label == "X":
-            return mm_axis_val * config.X_COEFFICIENT_TO_MM
-        if axis_label == "Y":
-            return mm_axis_val * config.Y_COEFFICIENT_TO_MM
-        if axis_label == "Z":
-            return mm_axis_val * config.Z_COEFFICIENT_TO_MM
-        if axis_label == "A":
-            return mm_axis_val * config.A_COEFFICIENT_TO_MM
-        if axis_label == "B":
-            return mm_axis_val * config.B_COEFFICIENT_TO_MM
-        if axis_label == "C":
-            return mm_axis_val * config.C_COEFFICIENT_TO_MM
+        return float(mm_axis_val) * float(coefficient)
 
     @classmethod
-    def smoothie_to_mm(cls, sm_axis_val, axis_label: str):
+    def smoothie_to_mm(cls, sm_axis_val:Number, axis_label: str)-> float:
         """Converts given smoothie value to mms value applying (dividing) coefficient corresponding to given axis
         label
 
         Example: coefficient = 0.5, given smoothie value = 50, returned mms value = 100
         """
 
-        if axis_label not in ["X", "Y", "Z", "A", "B", "C"]:
+        if axis_label not in cls.AXIS_LABELS:
             raise ValueError(f"[{cls.__name__}] -> unsupported axis label or wrong type")
         if not SmoothieAdapter.__check_arg_types([int, float], sm_axis_val):
             raise TypeError(f"[{cls.__name__}] -> axis_value should be float or int")
+        
+        coefficient = getattr(
+            config,
+            "{}_COEFFICIENT_TO_MM".format(axis_label)
+        )
 
-        if sm_axis_val == 0:
-            return sm_axis_val
-
-        if axis_label == "X":
-            if config.X_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{cls.__name__}] -> config.X_COEFFICIENT_TO_MM can't be a zero")
-            return sm_axis_val / config.X_COEFFICIENT_TO_MM
-
-        if axis_label == "Y":
-            if config.Y_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{cls.__name__}] -> config.Y_COEFFICIENT_TO_MM can't be a zero")
-            return sm_axis_val / config.Y_COEFFICIENT_TO_MM
-
-        if axis_label == "Z":
-            if config.Z_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{cls.__name__}] -> config.Z_COEFFICIENT_TO_MM can't be a zero")
-            return sm_axis_val / config.Z_COEFFICIENT_TO_MM
-
-        if axis_label == "A":
-            if config.A_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{cls.__name__}] -> config.A_COEFFICIENT_TO_MM can't be a zero")
-            return sm_axis_val / config.A_COEFFICIENT_TO_MM
-
-        if axis_label == "B":
-            if config.B_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{cls.__name__}] -> config.B_COEFFICIENT_TO_MM can't be a zero")
-            return sm_axis_val / config.B_COEFFICIENT_TO_MM
-
-        if axis_label == "C":
-            if config.C_COEFFICIENT_TO_MM == 0:
-                raise ValueError(f"[{cls.__name__}] -> config.C_COEFFICIENT_TO_MM can't be a zero")
-            return sm_axis_val / config.C_COEFFICIENT_TO_MM
+        return float(sm_axis_val) / float(coefficient)
 
     @classmethod
-    def __check_arg_types(cls, types: list, *args):
+    def __check_arg_types(cls, types: List[Type[Any]], *args: Any) -> bool:
         """Returns True if all given variables (*args) types are in given types list, False otherwise
         """
         if len(args) < 1:
@@ -854,7 +825,14 @@ class SmoothieAdapter:
         return True
 
     @classmethod
-    def __validate_axis(cls, cur_axis_val, mov_axis_val, key_label, key_min, key_max, key_min_label, key_max_label):
+    def __validate_axis(cls, 
+                        cur_axis_val: Number, 
+                        mov_axis_val: Number, 
+                        key_label: str, 
+                        key_min: Number, 
+                        key_max: Number, 
+                        key_min_label: str, 
+                        key_max_label: str) -> Optional[str]:
         """Checks if given axis movement can be done. Returns None if value is ok, info/error message otherwise.
 
         Receives smoothie values (may be not in mms).
@@ -869,7 +847,7 @@ class SmoothieAdapter:
         return None
 
     @classmethod
-    def __validate_force(cls, value, key_label, key_min, key_max, key_min_label, key_max_label):
+    def __validate_force(cls, value:Number, key_label:str, key_min:Number, key_max:Number, key_min_label:str, key_max_label:str)-> Optional[str]:
         """Checks if given force can be applied. Returns None if value is ok, info/error message otherwise.
         """
 
@@ -880,11 +858,11 @@ class SmoothieAdapter:
         return None
 
     def __calibrate_axis(self,
-                         axis_cur: multiprocessing.Value,
-                         axis_label,
-                         sm_axis_min,
-                         sm_axis_max,
-                         axis_calibration_to_max):
+                        axis_cur: Any,
+                        axis_label: str,
+                        sm_axis_min: Number,
+                        sm_axis_max: Number,
+                        axis_calibration_to_max: bool):
         # TODO: need to implement outer axix_cur var if removing multiprocessing.Value in future
 
         with self.__sync_locker:
@@ -928,7 +906,7 @@ class VescAdapterV4:
     PROPULSION_KEY = 0
     EXTRACTION_KEY = 1
 
-    def __init__(self, ser_port, ser_baudrate, alive_freq, check_freq, stopper_check_freq):
+    def __init__(self, ser_port: str, ser_baudrate: int, alive_freq: float, check_freq: float, stopper_check_freq: float):
         self.__logger = NewLogger.create(self.__class__.__name__)
         self.__locker = threading.Lock()
         self.__reconnect_locker = threading.Lock()
@@ -941,23 +919,23 @@ class VescAdapterV4:
         self.__check_freq = check_freq
         self.__next_alive_time = time.time()
 
-        self.__can_ids = dict()
-        self.__current_rpm = dict()
-        self.__target_rpm = dict()
-        self.__use_smooth_accel = dict()
-        self.__smooth_accel_next_t = dict()
-        self.__use_smooth_decel = dict()
-        self.__smooth_decel_next_t = dict()
-        self.__time_to_move = dict()
-        self.__start_time = dict()
-        self.__is_moving = dict()
-        self.__stop_request = dict()
-        self.__last_stop_time = dict()
-        self.__stopper_signals = dict()
+        self.__can_ids: Dict[int, Optional[int]] = dict()
+        self.__current_rpm: Dict[int, Number] = dict()
+        self.__target_rpm: Dict[int, Number] = dict()
+        self.__use_smooth_accel: Dict[int, bool] = dict()
+        self.__smooth_accel_next_t: Dict[int, float] = dict()
+        self.__use_smooth_decel: Dict[int, bool] = dict()
+        self.__smooth_decel_next_t: Dict[int, float] = dict()
+        self.__time_to_move: Dict[int, float] = dict()
+        self.__start_time: Dict[int, float] = dict()
+        self.__is_moving: Dict[int, float] = dict()
+        self.__stop_request: Dict[int, bool] = dict()
+        self.__last_stop_time: Dict[int, float] = dict()
+        self.__stopper_signals: Dict[int, int] = dict()
 
         self.__ser = serial.Serial(port=self.__ser_port, baudrate=ser_baudrate)
-        self.__ser.flushInput()
-        self.__ser.flushOutput()
+        self.__ser.reset_input_buffer()
+        self.__ser.reset_output_buffer()
         self.__ser.timeout = config.VESC_TIMEOUT_READ
 
         # INIT ALL ALLOWED VESCS HERE
@@ -988,7 +966,7 @@ class VescAdapterV4:
                 # ext_can_id = self.get_unregistered_can_id()
             else:
                 ext_can_id = config.VESC_EXTRACTION_CAN_ID
-            if ext_can_id is not None:
+            if ext_can_id is not None: # type: ignore
                 self.__can_ids[self.EXTRACTION_KEY] = ext_can_id
                 self.__current_rpm[self.EXTRACTION_KEY] = 0
                 self.__target_rpm[self.EXTRACTION_KEY] = 0
@@ -1048,7 +1026,7 @@ class VescAdapterV4:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         self.close()
 
     def __del__(self):
@@ -1091,8 +1069,8 @@ class VescAdapterV4:
                 try : 
                     self.__ser = serial.Serial(port=vesc_address, baudrate=self.__ser_baudrate)
                     could_open_port = True
-                    self.__ser.flushInput()
-                    self.__ser.flushOutput()
+                    self.__ser.reset_input_buffer()
+                    self.__ser.reset_output_buffer()
                     self.__ser.timeout = 5
                     self.__logger.info(f"It is reconnected!")
                 except KeyboardInterrupt:
@@ -1103,16 +1081,20 @@ class VescAdapterV4:
 
     def get_unregistered_can_id(self):
         for can_id in range(0, 253):
-            data = self.__get_firmware_version(['version_major', 'version_minor'], can_id)
+            data = self.__get_firmware_version(['version_major', 'version_minor'], can_id) # type: ignore
             if data is not None and can_id not in self.__can_ids.values():
                 return can_id
         return None
 
-    def __get_firmware_version(self, report_field_names, can_id):
+    def __get_firmware_version(self, report_field_names: List[str], can_id: int) -> Optional[Dict[str, Any]]:
+        in_buf = b''
         with self.__locker:
             try :
-                self.__ser.write(pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id)))
-                in_buf = b''
+                encoded_msg = pyvesc.encode_request(pyvesc.GetFirmwareVersion(can_id=can_id))# type: ignore
+                if isinstance(encoded_msg, bytes):
+                    self.__ser.write(encoded_msg)
+                else:  
+                    raise ValueError(f"Failed to encode GetFirmwareVersion message for can_id={can_id}.")
                 while self.__ser.in_waiting > 0:
                     in_buf += self.__ser.read(self.__ser.in_waiting)
             except SerialException :
@@ -1121,12 +1103,12 @@ class VescAdapterV4:
 
         if len(in_buf) == 0:
             return None
-        response, consumed = pyvesc.decode(in_buf)
+        response, consumed = pyvesc.decode(in_buf) # type: ignore
         if consumed == 0:
             return None
 
         if isinstance(response, pyvesc.GetFirmwareVersion):
-            report_row = {}
+            report_row: Dict[str, Any] = {}
             for field_name in report_field_names:
                 report_row[field_name] = getattr(response, field_name)
             return report_row
@@ -1160,11 +1142,13 @@ class VescAdapterV4:
                             # Immediate engine stop
                             if not self.__use_smooth_decel[engine_key]:
                                 try:
-                                    self.__ser.write(
-                                        pyvesc.encode(
-                                            pyvesc.SetRPM(0, can_id=can_id)
+                                    encoded_msg = pyvesc.encode(pyvesc.SetRPM(0, can_id=can_id))# type: ignore
+                                    if isinstance(encoded_msg, bytes):
+                                        self.__ser.write(
+                                            encoded_msg
                                         )
-                                    )
+                                    else:
+                                        raise ValueError(f"Failed to encode SetRPM message for can_id={can_id}.")
                                 except SerialException:
                                     self.reconnect_vesc()
 
@@ -1181,8 +1165,6 @@ class VescAdapterV4:
 
                                 # Reduce speed
                                 if abs(self.__current_rpm[engine_key]) > config.VESC_SMOOTH_DECEL_RPM_STEP:
-                                    old_rpm = self.__current_rpm[engine_key]
-
                                     self.__current_rpm[engine_key] += (
                                         -config.VESC_SMOOTH_DECEL_RPM_STEP
                                         if self.__current_rpm[engine_key] > 0
@@ -1190,25 +1172,26 @@ class VescAdapterV4:
                                     )
 
                                     try:
-                                        self.__ser.write(
-                                            pyvesc.encode(
-                                                pyvesc.SetRPM(
-                                                    self.__current_rpm[engine_key],
-                                                    can_id=can_id
-                                                )
+                                        encoded_msg = pyvesc.encode(pyvesc.SetRPM(self.__current_rpm[engine_key],can_id=can_id)) # type: ignore
+                                        if isinstance(encoded_msg, bytes):
+                                            self.__ser.write(
+                                                encoded_msg
                                             )
-                                        )
+                                        else:
+                                            raise ValueError(f"Failed to encode SetRPM message for can_id={can_id}.")
                                     except SerialException:
                                         self.reconnect_vesc()
 
                                 # Stop engine
                                 else:
                                     try:
-                                        self.__ser.write(
-                                            pyvesc.encode(
-                                                pyvesc.SetRPM(0, can_id=can_id)
+                                        encoded_msg = pyvesc.encode(pyvesc.SetRPM(0, can_id=can_id)) # type: ignore
+                                        if isinstance(encoded_msg, bytes):
+                                            self.__ser.write(
+                                                encoded_msg
                                             )
-                                        )
+                                        else:
+                                            raise ValueError(f"Failed to encode SetRPM message for can_id={can_id}.")
                                     except SerialException:
                                         self.reconnect_vesc()
 
@@ -1230,14 +1213,13 @@ class VescAdapterV4:
                             if abs(self.__target_rpm[engine_key] - self.__current_rpm[engine_key]) <= config.VESC_SMOOTH_ACCEL_RPM_STEP:
                                 if self.__current_rpm[engine_key] != self.__target_rpm[engine_key]:
                                     try:
-                                        self.__ser.write(
-                                            pyvesc.encode(
-                                                pyvesc.SetRPM(
-                                                    self.__target_rpm[engine_key],
-                                                    can_id=can_id
-                                                )
+                                        encoded_msg = pyvesc.encode(pyvesc.SetRPM(self.__target_rpm[engine_key], can_id=can_id)) # type: ignore
+                                        if isinstance(encoded_msg, bytes):
+                                            self.__ser.write(
+                                                encoded_msg
                                             )
-                                        )
+                                        else:
+                                            raise ValueError(f"Failed to encode SetRPM message for can_id={can_id}.")
                                     except SerialException:
                                         self.reconnect_vesc()
 
@@ -1245,8 +1227,6 @@ class VescAdapterV4:
 
                             # Increase current RPM by RPM step
                             else:
-                                old_rpm = self.__current_rpm[engine_key]
-
                                 self.__current_rpm[engine_key] += (
                                     config.VESC_SMOOTH_ACCEL_RPM_STEP
                                     if self.__target_rpm[engine_key] > self.__current_rpm[engine_key]
@@ -1254,14 +1234,13 @@ class VescAdapterV4:
                                 )
 
                                 try:
-                                    self.__ser.write(
-                                        pyvesc.encode(
-                                            pyvesc.SetRPM(
-                                                self.__current_rpm[engine_key],
-                                                can_id=can_id
-                                            )
+                                    encoded_msg = pyvesc.encode(pyvesc.SetRPM(self.__current_rpm[engine_key], can_id=can_id)) # type: ignore
+                                    if isinstance(encoded_msg, bytes):
+                                        self.__ser.write(
+                                            encoded_msg
                                         )
-                                    )
+                                    else:
+                                        raise ValueError(f"Failed to encode SetRPM message for can_id={can_id}.")
                                 except SerialException:
                                     self.reconnect_vesc()
 
@@ -1274,12 +1253,13 @@ class VescAdapterV4:
 
                             try:
                                 if self.__is_moving[engine_key]:
-                                    self.__ser.write(
-                                        pyvesc.encode(
-                                            pyvesc.SetAlive(can_id=can_id)
+                                    encoded_msg = pyvesc.encode(pyvesc.SetAlive(can_id=can_id)) # type: ignore
+                                    if isinstance(encoded_msg, bytes):
+                                        self.__ser.write(
+                                            encoded_msg
                                         )
-                                    )
-
+                                    else:
+                                        raise ValueError(f"Failed to encode SetAlive message for can_id={can_id}.")
                             except (SerialException, OSError) as e:
                                 if getattr(e, "errno", None) == 5 or isinstance(e, SerialException):
                                     self.reconnect_vesc()
@@ -1295,7 +1275,7 @@ class VescAdapterV4:
             self.__logger.error(f"Movement control thread stopped")
             
 
-    def start_moving(self, engine_key, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
+    def start_moving(self, engine_key: int, smooth_acceleration: bool = False, smooth_deceleration: bool = False):
         with self.__locker:
             self.__use_smooth_accel[engine_key] = smooth_acceleration
             self.__use_smooth_decel[engine_key] = smooth_deceleration
@@ -1307,15 +1287,17 @@ class VescAdapterV4:
                 self.__smooth_accel_next_t[engine_key] = 0
             else:
                 try :
-                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(
-                        self.__target_rpm[engine_key],
-                        can_id=self.__can_ids[engine_key])))
+                    encoded_msg = pyvesc.encode(pyvesc.SetRPM(self.__target_rpm[engine_key],can_id=self.__can_ids[engine_key])) # type: ignore
+                    if isinstance(encoded_msg, bytes):
+                        self.__ser.write(encoded_msg)
+                    else:
+                        raise TypeError(f"pyvesc.encode returned unexpected type: {type(encoded_msg)}") # type: ignore
                 except SerialException :
                     self.reconnect_vesc()
                 self.__current_rpm[engine_key] = self.__target_rpm[engine_key]
             self.__is_moving[engine_key] = True
 
-    def stop_moving(self, engine_key, smooth_deceleration: bool = False):        
+    def stop_moving(self, engine_key: int, smooth_deceleration: bool = False):        
         self.__logger.debug(f"Stopping engine {engine_key} with smooth deceleration: {smooth_deceleration}.")
         with self.__locker:
             self.__use_smooth_decel[engine_key] = smooth_deceleration
@@ -1325,14 +1307,18 @@ class VescAdapterV4:
                 self.__stop_request[engine_key] = True
             else:
                 try :
-                    self.__ser.write(pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])))
+                    encoded_msg = pyvesc.encode(pyvesc.SetRPM(0, can_id=self.__can_ids[engine_key])) # type: ignore
+                    if isinstance(encoded_msg, bytes):
+                        self.__ser.write(encoded_msg)
+                    else:
+                        raise TypeError(f"pyvesc.encode returned unexpected type: {type(encoded_msg)}") # type: ignore
                 except SerialException :
                     self.reconnect_vesc()
                 self.__current_rpm[engine_key] = 0
                 self.__last_stop_time[engine_key] = time.time()
                 self.__is_moving[engine_key] = False
 
-    def wait_for_stop(self, engine_key, timeout=None):
+    def wait_for_stop(self, engine_key: int, timeout: Optional[float]=None):
         """Blocks caller thread until specified engine is end his work or timeout time is out (if timeout was set).
 
         Returns True if engine has ended his work, returns False if timeout waiting time is out.
@@ -1348,14 +1334,14 @@ class VescAdapterV4:
                 return False
             time.sleep(1 / self.__check_freq)
 
-    def wait_for_stop_any(self, timeout=None):
+    def wait_for_stop_any(self, timeout: Optional[float]=None) -> None:
         raise NotImplementedError(f"This feature is not implemented yet")
 
     def wait_for_stopper_hit(self,
-                             engine_key,
-                             timeout=None,
-                             stop_engine_if_timeout=True,
-                             stop_engine_if_stopper_hit=True):
+                             engine_key: int,
+                             timeout: Optional[float]=None,
+                             stop_engine_if_timeout: bool=True,
+                             stop_engine_if_stopper_hit: bool=True):
         """Blocks caller thread until specified engine stopper hit or timeout time is out (if timeout was set).
 
         Returns True if stopper was hit, returns False if timeout waiting time is out
@@ -1374,46 +1360,38 @@ class VescAdapterV4:
                 return False
             time.sleep(1 / self.__stopper_check_freq)
 
-    def wait_for_stopper_hit_any(self):
+    def wait_for_stopper_hit_any(self) -> None:
         raise NotImplementedError(f"This feature is not implemented yet")
 
-    def set_current_rpm(self, rpm, engine_key):
+    def set_current_rpm(self, rpm: Number, engine_key: int):
         """Set as current and apply given RPM on specified by engine_key vesc engine.
 
         NOTICE: engine will smoothly back to its target RPM if smooth acceleration is enabled for engine_key engine.
         To apply RPM immediately, set RPM you want to apply as target RPM first by using set_target_rpm method before
         calling this.
         """
-
-        if not isinstance(rpm, (int, float)):
-            msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
-            raise TypeError(msg)
-
         with self.__locker:
             try :
-                self.__ser.write(pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])))
+                encoded_msg = pyvesc.encode(pyvesc.SetRPM(rpm, can_id=self.__can_ids[engine_key])) # type: ignore
+                if isinstance(encoded_msg, bytes):
+                    self.__ser.write(encoded_msg)
+                else:
+                    raise TypeError(f"pyvesc.encode returned unexpected type: {type(encoded_msg)}") # type: ignore
             except SerialException :
                 self.reconnect_vesc()
             self.__current_rpm[engine_key] = rpm
 
-    def set_target_rpm(self, rpm, engine_key):
+    def set_target_rpm(self, rpm: Number, engine_key: int):
         """Set given RPM as target RPM for specified engine_key vesc engine.
 
         NOTICE: engine will speed up to this RPM smoothly if smooth acceleration is enabled for engine_key vesc engine,
         otherwise this RPM will be applied immediately during engine start. In this case high RPM values may lead to
         strong jerk during the start.
         """
-        if not isinstance(rpm, (int, float)):
-            msg = f"rpm must be int or float, got {type(rpm).__name__} instead"
-            raise TypeError(msg)
-
         with self.__locker:
             self.__target_rpm[engine_key] = rpm
 
-    def set_time_to_move(self, time_to_move, engine_key):
-        if not isinstance(time_to_move, (int, float)):
-            msg = f"time_to_move must be int or float, got {type(time_to_move).__name__} instead"
-            raise TypeError(msg)
+    def set_time_to_move(self, time_to_move: Number, engine_key: int):
         if time_to_move < 0:
             msg = f"time_to_move must be >= 0, got {str(time_to_move)} instead"
             raise ValueError(msg)
@@ -1421,10 +1399,7 @@ class VescAdapterV4:
         with self.__locker:
             self.__time_to_move[engine_key] = time_to_move
 
-    def set_alive_freq(self, alive_freq):
-        if not isinstance(alive_freq, (int, float)):
-            msg = f"alive_freq must be int or float, got {type(alive_freq).__name__} instead"
-            raise TypeError(msg)
+    def set_alive_freq(self, alive_freq: Number):
         if alive_freq < 0:
             msg = f"alive_freq must be >= 0, got {str(alive_freq)} instead"
             raise ValueError(msg)
@@ -1432,10 +1407,7 @@ class VescAdapterV4:
         with self.__locker:
             self.__alive_freq = alive_freq
 
-    def set_check_freq(self, check_freq):
-        if not isinstance(check_freq, (int, float)):
-            msg = f"check_freq must be int or float, got {type(check_freq).__name__} instead"
-            raise TypeError(msg)
+    def set_check_freq(self, check_freq: Number):
         if check_freq < 0:
             msg = f"check_freq must be >= 0, got {str(check_freq)} instead"
             raise ValueError(msg)
@@ -1443,39 +1415,31 @@ class VescAdapterV4:
         with self.__locker:
             self.__check_freq = check_freq
 
-    def set_smooth_acceleration(self, smooth_acceleration: bool, engine_key):
-        if not isinstance(smooth_acceleration, bool):
-            msg = f"smooth_acceleration must be bool, got {type(smooth_acceleration).__name__} instead"
-            raise TypeError(msg)
-
+    def set_smooth_acceleration(self, smooth_acceleration: bool, engine_key: int):
         with self.__locker:
             self.__use_smooth_accel[engine_key] = smooth_acceleration
 
-    def set_smooth_deceleration(self, smooth_deceleration: bool, engine_key):
-        if not isinstance(smooth_deceleration, bool):
-            msg = f"smooth_deceleration must be bool, got {type(smooth_deceleration).__name__} instead"
-            raise TypeError(msg)
-
+    def set_smooth_deceleration(self, smooth_deceleration: bool, engine_key: int):
         with self.__locker:
             self.__use_smooth_decel[engine_key] = smooth_deceleration
 
-    def get_smooth_acceleration(self, engine_key):
+    def get_smooth_acceleration(self, engine_key: int):
         with self.__locker:
             return self.__use_smooth_accel[engine_key]
 
-    def get_smooth_deceleration(self, engine_key):
+    def get_smooth_deceleration(self, engine_key: int):
         with self.__locker:
             return self.__use_smooth_decel[engine_key]
 
-    def get_last_stop_time(self, engine_key):
+    def get_last_stop_time(self, engine_key: int):
         with self.__locker:
             return self.__last_stop_time[engine_key]
 
-    def get_last_start_time(self, engine_key):
+    def get_last_start_time(self, engine_key: int):
         with self.__locker:
             return self.__start_time[engine_key]
 
-    def get_last_movement_time(self, engine_key):
+    def get_last_movement_time(self, engine_key: int):
         """Returns last movement time if VESCs are not working at the moment;
         returns current working time if VESCs are working at the moment.
         """
@@ -1488,21 +1452,25 @@ class VescAdapterV4:
             else:
                 return self.__last_stop_time[engine_key] - self.__start_time[engine_key]
 
-    def get_current_rpm(self, engine_key):
+    def get_current_rpm(self, engine_key: int):
         """Returns specified vesc engine current RPM"""
 
         return self.__current_rpm[engine_key]
 
-    def get_target_rpm(self, engine_key):
+    def get_target_rpm(self, engine_key: int):
         """Returns specified vesc engine target RPM"""
 
         return self.__target_rpm[engine_key]
 
-    def get_sensors_data_of_can_id(self, report_field_names, can_id):
+    def get_sensors_data_of_can_id(self, report_field_names: List[str], can_id: int)-> Optional[Dict[str, Any]]:
         in_buf = b''
         with self.__locker:
             try :
-                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=can_id)))
+                encoded_msg = pyvesc.encode_request(pyvesc.GetValues(can_id=can_id))# type: ignore
+                if isinstance(encoded_msg, bytes):
+                    self.__ser.write(encoded_msg)
+                else:
+                    raise ValueError(f"Failed to encode GetValues message for can_id={can_id}.")
                 while self.__ser.in_waiting > 0:
                     in_buf += self.__ser.read(self.__ser.in_waiting)
             except SerialException :
@@ -1510,22 +1478,26 @@ class VescAdapterV4:
 
         if len(in_buf) == 0:
             return None
-        response, consumed = pyvesc.decode(in_buf)
+        response, consumed = pyvesc.decode(in_buf)# type: ignore
         if consumed == 0:
             return None
 
         if isinstance(response, pyvesc.GetValues):
-            report_row = {}
+            report_row: Dict[str, Any] = {}
             for field_name in report_field_names:
                 report_row[field_name] = getattr(response, field_name)
             return report_row
         return None
 
-    def get_sensors_data(self, report_field_names, engine_key):
+    def get_sensors_data(self, report_field_names: List[str], engine_key: int)-> Optional[Dict[str, Any]]:
         in_buf = b''
         with self.__locker:
             try : 
-                self.__ser.write(pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key])))
+                encoded_msg = pyvesc.encode_request(pyvesc.GetValues(can_id=self.__can_ids[engine_key]))# type: ignore
+                if isinstance(encoded_msg, bytes):
+                    self.__ser.write(encoded_msg)
+                else:
+                    raise ValueError(f"Failed to encode GetValues message for can_id={self.__can_ids[engine_key]}.")
                 while self.__ser.in_waiting > 0:
                     in_buf += self.__ser.read(self.__ser.in_waiting)
             except SerialException :
@@ -1533,18 +1505,18 @@ class VescAdapterV4:
 
         if len(in_buf) == 0:
             return None
-        response, consumed = pyvesc.decode(in_buf)
+        response, consumed = pyvesc.decode(in_buf)# type: ignore
         if consumed == 0:
             return None
 
         if isinstance(response, pyvesc.GetValues):
-            report_row = {}
+            report_row: Dict[str, Any] = {}
             for field_name in report_field_names:
                 report_row[field_name] = getattr(response, field_name)
             return report_row
         return None
 
-    def is_moving(self, engine_key):
+    def is_moving(self, engine_key: int):
         with self.__locker:
             return self.__is_moving[engine_key]
 
@@ -1554,8 +1526,6 @@ class GPSUbloxAdapter:
     """Provides access to the robot's on-board GPS navigator (UBLOX card)"""
 
     def __init__(self, ser_port: str, ser_baudrate: int, last_pos_count: int):
-        if not isinstance(last_pos_count, int):
-            raise TypeError(f"last_pos_count must be int, got {type(last_pos_count).__name__} instead")
         if last_pos_count < 1:
             raise ValueError(f"last_pos_count shouldn't be less than 1, got {last_pos_count} instead")
         
@@ -1565,7 +1535,7 @@ class GPSUbloxAdapter:
         self._last_pos_count = last_pos_count
         self._ser_port = ser_port
         self._ser_baudrate = ser_baudrate
-        self._last_pos_container = []
+        self._last_pos_container: List[navigation.GPSPoint] = []
         self._sync_locker = multiprocessing.RLock()
 
         self._serial = self._get_new_connection()
@@ -1577,7 +1547,7 @@ class GPSUbloxAdapter:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         self.close()
 
     def __del__(self):
@@ -1597,7 +1567,7 @@ class GPSUbloxAdapter:
     def reconnect(self):
         self._serial = self._get_new_connection(self._serial)
 
-    def get_fresh_position(self) -> list:
+    def get_fresh_position(self) -> List[Any]:
         """Waits for new fresh position from gps and returns it, blocking until new position received.
         Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
         features)"""
@@ -1643,7 +1613,7 @@ class GPSUbloxAdapter:
                     continue
             return self.get_last_position_v2()
 
-    def get_last_position(self) -> list:
+    def get_last_position(self) -> List[Any]:
         """Waits until at least one position is stored, returns last saved position copy at the moment of call
         (reference type safe)
 
@@ -1655,7 +1625,7 @@ class GPSUbloxAdapter:
         with self._sync_locker:
             return self._last_pos_container[-1].as_old_list
 
-    def get_last_position_non_blocking(self) -> list:
+    def get_last_position_non_blocking(self) -> List[Any]:
         """Returns None if no positions are stored, returns last saved position copy at the moment of call
         (reference type safe)
 
@@ -1740,7 +1710,7 @@ class GPSUbloxAdapter:
             except:
                 continue
 
-    def _D2M2(self, Lat, NS, Lon, EW):
+    def _D2M2(self, Lat:str, NS:str, Lon:str, EW:str):
         """Traduce NMEA format ddmmss to ddmmmm"""
 
         Latdd = float(Lat[:2])
@@ -1767,7 +1737,7 @@ class GPSUbloxAdapter:
         Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
         self._serial.write(bytearray.fromhex(Mythread))
 
-    def _get_new_connection(self, old_conn: serial.Serial = None):
+    def _get_new_connection(self, old_conn: Optional[serial.Serial] = None):
         if old_conn is not None and old_conn.is_open:
             old_conn.close()
         new_conn = serial.Serial(port=self._ser_port, baudrate=self._ser_baudrate)
@@ -1784,7 +1754,7 @@ class GPSUbloxAdapterWithoutThread:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         self.close()
 
     def __del__(self):
@@ -1906,9 +1876,9 @@ class ClientMVI:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exits the context manager for the ClientMVI instance, ensuring proper cleanup."""
-        self.release()
+        self.__release()
 
-    def release(self):
+    def __release(self):
         """Releases resources associated with the ClientMVI instance, including disconnecting from the MVI server."""
         with self.__sync_locker:
             if self.__released:
