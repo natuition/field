@@ -1625,7 +1625,7 @@ class GPSUbloxAdapter:
         with self._sync_locker:
             return self._last_pos_container[-1].as_old_list
 
-    def get_last_position_non_blocking(self) -> List[Any]:
+    def get_last_position_non_blocking(self) -> Optional[List[Number]]:
         """Returns None if no positions are stored, returns last saved position copy at the moment of call
         (reference type safe)
 
@@ -1648,7 +1648,7 @@ class GPSUbloxAdapter:
             # TODO currently it's not a deep copy
             return self._last_pos_container[-1]
 
-    def get_last_position_v2_non_blocking(self) -> navigation.GPSPoint:
+    def get_last_position_v2_non_blocking(self) -> Optional[navigation.GPSPoint]:
         """Returns None if no positions are stored, returns last saved position copy at the moment of call
         (reference type safe)
 
@@ -1659,12 +1659,12 @@ class GPSUbloxAdapter:
             # TODO currently it's not a deep copy
             return self._last_pos_container[-1] if len(self._last_pos_container) > 0 else None
 
-    def get_last_positions_list(self):
+    def get_last_positions_list(self) -> List[List[Number]]:
         """Waits until at least one position is stored, returns list of last saved positions copies at the moment of
         call (reference type safe)"""
 
         get_last_positions_list_time = time.time()
-        positions = []
+        positions: List[List[Number]] = []
 
         while len(self._last_pos_container) < 1:
             if time.time() - get_last_positions_list_time > config.NO_GPS_TIMEOUT:
