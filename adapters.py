@@ -11,17 +11,18 @@ import re
 import json
 from serial import SerialException
 
-from typing import Any, Dict, List, Tuple, Type, Optional, Union
+from typing import Any, Dict, List, Tuple, Type, Optional, TypeVar, Union, cast
 Number = Union[int, float]
 OptionalNumber = Optional[Number]
+ResultType = TypeVar("ResultType")
 
 from config import config
 from detection import DetectedPlantBox
 from client import Client
 from common import MVICustomResultType, MVIPipelineDescriptor, MVIProperty, MVIState
-from message import CallType
-from protos import DetectionResultDTO, ResultDTO, DetectionResult
-from logger import Logger as NewLogger
+from message import CallType, ResultMessage
+from protos import DetectionResultDTO, ResultDTO, DetectionResult, KeypointDTO
+from logger import LoggerFactory
 
 class SmoothieAdapter:
     RESPONSE_OK = "ok\r\n"
@@ -34,7 +35,7 @@ class SmoothieAdapter:
 
     def __init__(self, smoothie_host: str, calibration_at_init: bool=True):
         
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         
         if type(smoothie_host) is not str:
             raise TypeError(f"invalid smoothie_host type: should be str, received " + type(smoothie_host).__name__)
@@ -907,7 +908,7 @@ class VescAdapterV4:
     EXTRACTION_KEY = 1
 
     def __init__(self, ser_port: str, ser_baudrate: int, alive_freq: float, check_freq: float, stopper_check_freq: float):
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__locker = threading.Lock()
         self.__reconnect_locker = threading.Lock()
 
@@ -1529,7 +1530,7 @@ class GPSUbloxAdapter:
         if last_pos_count < 1:
             raise ValueError(f"last_pos_count shouldn't be less than 1, got {last_pos_count} instead")
         
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
 
         self._position_is_fresh = False
         self._last_pos_count = last_pos_count
@@ -1749,7 +1750,7 @@ class GPSUbloxAdapterWithoutThread:
 
     def __init__(self, ser_port: str, ser_baudrate: int, last_pos_count: int):
         self._serial = serial.Serial(port=ser_port, baudrate=ser_baudrate)
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
 
     def __enter__(self):
         return self
@@ -1782,13 +1783,13 @@ class GPSUbloxAdapterWithoutThread:
 
         return self._read_from_gps()
 
-    def get_last_positions_list(self):
+    def get_last_positions_list(self): # type: ignore
         """Waits until at least one position is stored, returns list of last saved positions copies at the moment of
         call (reference type safe)"""
 
         raise NotImplementedError(f"Test without list")
 
-    def _read_from_gps(self):
+    def _read_from_gps(self) -> List[Union[float, str]]:
         """Returns GPS coordinates of the current position"""
 
         while True:
@@ -1806,7 +1807,7 @@ class GPSUbloxAdapterWithoutThread:
             except:
                 continue
 
-    def _D2M2(self, Lat, NS, Lon, EW):
+    def _D2M2(self, Lat: str, NS: str, Lon: str, EW: str):
         """Traduce NMEA format ddmmss to ddmmmm"""
 
         Latdd = float(Lat[:2])
@@ -1855,7 +1856,7 @@ class ClientMVI:
             host: str - The hostname or IP address of the MVI server.
             port: int - The port number of the MVI server.
         """
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__host = host
         self.__port = port
         self.__sync_locker = threading.RLock()
@@ -1874,7 +1875,7 @@ class ClientMVI:
         """Enters the context manager for the ClientMVI instance, allowing it to be used with a 'with' statement."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         """Exits the context manager for the ClientMVI instance, ensuring proper cleanup."""
         self.__release()
 
@@ -1889,14 +1890,14 @@ class ClientMVI:
     def __create_client(self):
         """Creates and configures a new Client instance for MVI communication."""
         client = Client(transport=config.MVI_TRANSPORT_PROTOCOL, logger_level="WARNING")
-        client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult)
+        client.register_message_type(MVICustomResultType.DETECTION_RESULT, DetectionResult) # type: ignore
         # client.register_message_type(MVICustomResultType.NAMES_RESULT, DetectionResult)
         return client
 
     def __connect_client(self):
         """Connects the Client instance to the MVI server using the specified host and port."""
         self.__logger.info(f"Connecting to MVI server at {self.__host}:{self.__port}.")
-        self.__client.connect(self.__host, self.__port)
+        self.__client.connect(self.__host, self.__port) # type: ignore
 
     def __disconnect_client_silently(self):
         """Disconnects the Client instance from the MVI server, handling any exceptions that may occur during disconnection."""
@@ -1913,14 +1914,14 @@ class ClientMVI:
         if self.__released:
             raise RuntimeError("MVI client is already released")
 
-    def __ensure_response(self, res):
+    def __ensure_response(self, res: Optional[ResultMessage]):
         """Ensures that the response from the MVI server is valid.
         Arguments:
             res: The response object from the MVI server.
         Raises:
             ConnectionError: If the response is None or does not have a 'message' attribute.
         """
-        if res is None or not hasattr(res, "message"):
+        if not hasattr(res, "message"):
             raise ConnectionError("MVI did not return a valid response")
         return res
 
@@ -1946,7 +1947,7 @@ class ClientMVI:
         self.__restore_session_state()
         self.__logger.info("MVI client reconnected.")
 
-    def __call_mvi(self, call_type: CallType, payload: dict) -> ResultDTO:
+    def __call_mvi(self, call_type: CallType, payload: Dict[str, Any], result_type: Type[ResultType]) -> ResultType:
         """Calls the MVI server with the specified call type and payload, handling reconnection attempts if necessary.
         Arguments:
             call_type: CallType - The type of MVI call (e.g., GET, SET).
@@ -1956,18 +1957,20 @@ class ClientMVI:
         Raises:
             RuntimeError: If the MVI call fails after the specified number of reconnection attempts.
         """
+        
+        _ = result_type # to avoid unused variable warning, as result_type is not used in this method but is part of the signature for type checking
+        
         with self.__sync_locker:
             self.__ensure_open()
             last_error = None
             for attempt in range(self.RECONNECT_ATTEMPTS + 1):
                 try:
-                    res = self.__client.call(call_type, payload)
-                    self.__ensure_response(res)
+                    res = self.__client.call(call_type, payload) # type: ignore
+                    self.__check_result(res)
+                    return cast(ResultType, res)
                 except Exception as ex:
                     last_error = ex
-                else:
-                    self.__check_result(res)
-                    return res
+                    
 
                 if attempt >= self.RECONNECT_ATTEMPTS:
                     break
@@ -1987,17 +1990,26 @@ class ClientMVI:
             self.__logger.error(msg)
             raise RuntimeError(msg) from last_error
         
-    def __check_result(self, res):
+    def __check_result(self, res: Optional[ResultMessage]):
         """Checks the result of an MVI operation and raises a RuntimeError if the operation was not successful.
         Arguments:
             res: ResultDTO - The result of an MVI operation.
         Raises:
             RuntimeError: If the MVI operation was not successful, with details about the error code and message.
         """
-        if res.message["code"] != 0:
-            msg = f"MVI error code: {res.message['code']}, message: {res.message['message']}"
+        self.__ensure_response(res)        
+        message: Dict[str, Any] = res.message # type: ignore
+        if message["code"] != 0:
+            msg = f"MVI error code: {message['code']}, message: {message['message']}"
             self.__logger.error(msg)
             raise RuntimeError(msg)
+        
+    def __check_result_dto_with_payload(self, result: ResultDTO) -> str:
+        if "payload" not in result: 
+            raise RuntimeError(f"Expected 'payload' in result, got {result}")
+        if not isinstance(result["payload"], str):
+            raise RuntimeError(f"Expected 'payload' to be a string, got {type(result['payload'])}")
+        return result["payload"]
 
     def __set_state_on_mvi(self, new_state: MVIState) -> None:
         """Sets the state of the MVI server to the specified new state.
@@ -2006,11 +2018,14 @@ class ClientMVI:
         Raises:
             RuntimeError: If the MVI operation to set the state was not successful.
         """
-        res = self.__call_mvi(CallType.SET,{
-            "property": MVIProperty.STATE.value,
-            "value": new_state.name
-        })
-        result: ResultDTO = res.message
+        result = self.__call_mvi(
+            CallType.SET,
+            {
+                "property": MVIProperty.STATE.value,
+                "value": new_state.name
+            },
+            ResultDTO
+        )
         self.__logger.info(f"Set MVI state to result: {result}")
         self.__current_MVI_state = new_state
         
@@ -2021,11 +2036,17 @@ class ClientMVI:
         Raises:
             RuntimeError: If the MVI operation to retrieve the ID-name map was not successful.
         """
-        res = self.__call_mvi(CallType.GET,{
-            "property": MVIProperty.ID_NAME_MAP_OF_ACTIVE_PIPELINE.value
-        })
-        result: ResultDTO = res.message
-        return json.loads(result["payload"])
+        result = self.__call_mvi(
+            CallType.GET,
+            {
+                "property": MVIProperty.ID_NAME_MAP_OF_ACTIVE_PIPELINE.value
+            },
+            ResultDTO
+        )
+        
+        result_dto_payload = self.__check_result_dto_with_payload(result)
+        
+        return json.loads(result_dto_payload)
         
     def get_name_map(self, pipeline: MVIPipelineDescriptor) -> List[str]:
         """Retrieves the mapping of active pipeline IDs to their corresponding names for the specified pipeline descriptor.
@@ -2043,43 +2064,63 @@ class ClientMVI:
         Raises:
             RuntimeError: If the MVI operation to retrieve the latest detections was not successful.
         """
-        res = self.__call_mvi(CallType.GET,{
-            "property": MVIProperty.LATEST_DETECTIONS.value,
-            "result_type": MVICustomResultType.DETECTION_RESULT.value,
-        })
-        return res.message
+        result = self.__call_mvi(
+            CallType.GET,
+            {
+                "property": MVIProperty.LATEST_DETECTIONS.value,
+                "result_type": MVICustomResultType.DETECTION_RESULT.value,
+            },
+            DetectionResultDTO
+        )
+        return result
 
-    def parse_detected_boxes(self, detection_result: DetectionResultDTO) -> List[DetectedPlantBox]:   
-        """Parses the detection results and returns a list of DetectedPlantBox instances.
-        Arguments:
-            detection_result: DetectionResultDTO - The detection results to parse.
-        Returns:
-            List[DetectedPlantBox]: A list of DetectedPlantBox instances representing the detected objects.
-        Raises:
-            RuntimeError: If the MVI operation to parse the detected boxes was not successful.
-        """     
-        plants_boxes: list[DetectedPlantBox] = list()
-        
+    def parse_detected_boxes(self, detection_result: DetectionResultDTO) -> List[DetectedPlantBox]:
+        """Parse detection results into DetectedPlantBox instances."""
+
+        pipeline_descriptor = self.__current_MVI_pipeline_desciptor
+
+        if pipeline_descriptor is None:
+            raise RuntimeError(
+                "Cannot parse detected boxes: no current MVI pipeline descriptor is set."
+            )
+
+        id_name_map = self.__id_name_map[pipeline_descriptor]
+
+        plants_boxes: List[DetectedPlantBox] = []
+
         for detection in detection_result["detections"]:
-            plants_boxes.append(DetectedPlantBox.from_mvi_result(detection, self.__id_name_map[self.__current_MVI_pipeline_desciptor]))
-        
+            plants_boxes.append(
+                DetectedPlantBox.from_mvi_result(
+                    detection,
+                    id_name_map,
+                )
+            )
+
         return plants_boxes
     
-    def parse_plants_positions(self, detection_result: DetectionResultDTO) -> List[Tuple[float]]:
-        """Parses the detection results and returns a list of tuples representing the positions of detected plants.
-        Arguments:
-            detection_result: DetectionResultDTO - The detection results to parse.
-        Returns:
-            List[Tuple[float]]: A list of tuples representing the positions of detected plants.
-        Raises:
-            RuntimeError: If the MVI operation to parse the plant positions was not successful.
-        """
-        smoothie_positions = list()
-        
+
+    def parse_plants_positions(self, detection_result: DetectionResultDTO) -> List[Tuple[float, float]]:
+        """Return the detected plant positions as (x, y) tuples."""
+
+        smoothie_positions: List[Tuple[float, float]] = []
+
         for detection in detection_result["detections"]:
-            if "keypoint" in detection:
-                smoothie_positions.append((float(detection.get("keypoint",{}).get("x",0)), float(detection.get("keypoint",{}).get("y",0))))
-        
+            if "keypoint" not in detection:
+                raise RuntimeError(
+                    "Expected 'keypoint' in detection, got {}".format(
+                        detection
+                    )
+                )
+                
+            keypoint = cast(KeypointDTO, detection["keypoint"])
+
+            smoothie_positions.append(
+                (
+                    float(keypoint["x"]),
+                    float(keypoint["y"]),
+                )
+            )
+
         return smoothie_positions
     
     def violette_is_stopped(self) -> bool:
@@ -2089,11 +2130,17 @@ class ClientMVI:
         Raises:
             RuntimeError: If the MVI operation to check the state was not successful.
         """
-        res = self.__call_mvi(CallType.GET,{
-            "property": MVIProperty.STATE.value,
-        })
-        result: ResultDTO = res.message
-        return MVIState(json.loads(result["payload"])) == MVIState.PASSIVE_DETECTION
+        result = self.__call_mvi(
+            CallType.GET,
+            {
+                "property": MVIProperty.STATE.value,
+            },
+            ResultDTO
+        )
+        
+        result_dto_payload = self.__check_result_dto_with_payload(result)
+        
+        return MVIState(json.loads(result_dto_payload)) == MVIState.PASSIVE_DETECTION
     
     def run_active_detection_on_MVI(self) -> None:
         """Sets the MVI to active detection mode, allowing it to actively detect objects and stop the robot.
@@ -2116,10 +2163,14 @@ class ClientMVI:
         Raises:
             RuntimeError: If the MVI operation to switch the active pipeline was not successful.
         """
-        self.__call_mvi(CallType.SET,{
-            "property": MVIProperty.ACTIVE_PIPELINE,
-            "value": new_pipeline.without_destroying_value,
-        })
+        self.__call_mvi(
+            CallType.SET,
+            {
+                "property": MVIProperty.ACTIVE_PIPELINE,
+                "value": new_pipeline.without_destroying_value,
+            },
+            ResultDTO
+        )
         self.__current_MVI_pipeline_desciptor = new_pipeline
         
         if new_pipeline not in self.__id_name_map:
