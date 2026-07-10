@@ -1967,10 +1967,11 @@ class ClientMVI:
                 try:
                     res = self.__client.call(call_type, payload) # type: ignore
                     self.__check_result(res)
-                    return cast(ResultType, res)
+                    if res is None:
+                        raise Exception("MVI did not return a valid response")
+                    return cast(ResultType, res.message)
                 except Exception as ex:
                     last_error = ex
-                    
 
                 if attempt >= self.RECONNECT_ATTEMPTS:
                     break
