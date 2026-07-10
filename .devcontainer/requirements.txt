@@ -29,3 +29,4 @@ requests==2.18.4
 websocket-client==0.59.0
 PyYAML==3.12
 tomli==1.2.3
+haversine==2.6.0
