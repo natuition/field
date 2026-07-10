@@ -936,6 +936,7 @@ def send_voltage_thread_tf(voltage_thread_alive, vesc_engine: adapters.VescAdapt
                 raise KeyboardInterrupt
             except posix_ipc.ExistentialError as e:
                 MAIN_LOGGER.error(f"Exception while processing VESC data: {e}")
+                break
         time.sleep(0.3)
 
 
