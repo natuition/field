@@ -1,11 +1,14 @@
 import math
-from haversine import haversine
+from haversine import haversine # type: ignore
 import numpy as np
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull # type: ignore
 import utility
 import time
 from config import config
 import os
+
+from typing import Any, List, Optional, Tuple, Union
+Number = Union[int, float]
 
 from logger import Logger as NewLogger
 
@@ -15,7 +18,7 @@ class GPSComputing:
     Class containing methods for handling GPS-coordinates
     """
 
-    def get_coordinate(self, point_1, point_2, angle, distance):
+    def get_coordinate(self, point_1: List[Number], point_2: List[Number], angle: float, distance: float) -> List[Number]:
         """
         Returns the coordinates of a point that is in 'angle' degrees and at 'distance' distance from a given vector
         :param point_1: start point of a known vector [lat, long]
@@ -51,7 +54,7 @@ class GPSComputing:
         coord = [lat, long]
         return coord
 
-    def _get_azimuth(self, point_1, point_2):
+    def _get_azimuth(self, point_1: List[Number], point_2: List[Number]) -> float:
         """
         Method for determining the azimuth - the angle between the north direction and the direction from the start point
         to the endpoint
@@ -92,7 +95,7 @@ class GPSComputing:
         angledeg = math.degrees(anglerad2)
         return angledeg
 
-    def get_angle(self, point_1, point_2, point_3, point_4):
+    def get_angle(self, point_1: List[Number], point_2: List[Number], point_3: List[Number], point_4: List[Number]) -> float:
         """
         Method for finding the angle between two vectors represented by points (GPS coordinates)
         :param point_1: starting point of the first vector
@@ -119,7 +122,7 @@ class GPSComputing:
         angle *= -1
         return angle
 
-    def get_distance(self, point_1, point_2):
+    def get_distance(self, point_1: List[Number], point_2: List[Number]) -> float:
         """
         Function for finding the distance between two GPS-points
         :param point_1: coordinates of the first point (latitude, longitude)
@@ -127,11 +130,11 @@ class GPSComputing:
         :return: distance between point_1 and point_2 in millimeters
         """
 
-        distance = haversine(point_1[:2], point_2[:2])
+        distance: float = haversine(point_1[:2], point_2[:2])
         distance *= 1000000
         return distance
 
-    def get_point_on_vector(self, start_point, stop_point, distance):
+    def get_point_on_vector(self, start_point: List[Number], stop_point: List[Number], distance: float) -> List[Number]:
         """
         Function for finding the GPS coordinates of a point located at a given distance from the beginning of the motion
         vector
@@ -150,7 +153,7 @@ class GPSComputing:
         point = [lat_point, long_point]
         return point
 
-    def get_deviation(self, start_point, stop_point, deviation_point):
+    def get_deviation(self, start_point: List[Number], stop_point: List[Number], deviation_point: List[Number]) -> Tuple[float, int]:
         """
         Function for finding deviations from a given motion vector
         :param start_point: coordinates of the starting point (latitude, longitude)
@@ -182,7 +185,7 @@ class GPSComputing:
 
         return perpendicular, flag
 
-    def get_vector(self, start_point, stop_point, interval):
+    def get_vector(self, start_point: List[Number], stop_point: List[Number], interval: float) -> List[List[Number]]:
         """
         Function for constructing a motion vector from the start point to the end point, by generating GPS points
         between the start and stop at a given interval
@@ -262,14 +265,14 @@ class GPSComputing:
         list_point = [[list_lat[i], list_long[i]] for i in range(0, len(list_long))]
         return list_point
 
-    def corner_points_old(self, gps_points):
+    def corner_points_old(self, gps_points: List[List[Number]]) -> List[List[Number]]:
         """
         Function for finding corner points of a quadrangle in a given list of GPS points
         :param gps_points: list of GPS-points
         :return: list of sorted corner GPS-points
         """
 
-        corner_points = []
+        corner_points: List[List[Number]] = []
         points = [gps_points[len(gps_points) - 2]] + [gps_points[len(gps_points) - 1]] + gps_points
         low_level = 180
         high_level = 180
@@ -300,7 +303,7 @@ class GPSComputing:
                         corner_points.append([b[1], b[0]])
         return self._corner_sort(corner_points)
 
-    def corner_points(self, gps_points, filter_max_dist, filter_min_dist):
+    def corner_points(self, gps_points: List[List[Number]], filter_max_dist: float, filter_min_dist: float) -> List[List[Number]]:
         """
         Function for filtering and finding corner points of a quadrangle in a given list of GPS points
         :param gps_points: list of GPS-points
@@ -318,9 +321,9 @@ class GPSComputing:
             else:
                 i += 1
 
-        temp_points = np.array(gps_points, dtype=np.float)
-        hull = ConvexHull(temp_points)
-        hull_indices = np.unique(hull.simplices.flat)
+        temp_points = np.array(gps_points, dtype=np.float) # type: ignore
+        hull = ConvexHull(temp_points) # type: ignore
+        hull_indices = np.unique(hull.simplices.flat) # type: ignore
         hull_pts = temp_points[hull_indices, :]
         filter_points = hull_pts.tolist()
 
@@ -339,14 +342,14 @@ class GPSComputing:
                 break
         return corners
 
-    def _test_corner(self, gps_points):
+    def _test_corner(self, gps_points: List[List[Number]]) -> List[List[Number]]:
         """
         Function for finding corner points of a quadrangle in a given list of GPS points
         :param gps_points: list of GPS-points
         :return: list of sorted corner GPS-points
         """
 
-        corner_points = []
+        corner_points: List[List[Number]] = []
         points = [gps_points[len(gps_points) - 2]] + [gps_points[len(gps_points) - 1]] + gps_points
         level = 150
         while True:
@@ -374,7 +377,7 @@ class GPSComputing:
                         corner_points.append([b[1], b[0]])
         return self._corner_sort(corner_points)
 
-    def _get_angle(self, vector_1, vector_2):
+    def _get_angle(self, vector_1: List[Number], vector_2: List[Number]) -> float:
         """
         Function for finding the angle between two vectors
         :param vector_1: coordinates of the first vector (latitude, longitude)
@@ -389,7 +392,7 @@ class GPSComputing:
         angle = math.degrees(angle)
         return angle
 
-    def _corner_sort(self, corner_list):
+    def _corner_sort(self, corner_list: List[List[Number]]) -> List[List[Number]]:
         """
         Function for determining the position of a quadrangle in space and arranges the corners clockwise
         :param corner_list: list of corner GPS-points of a quadrangle
@@ -420,7 +423,7 @@ class GPSComputing:
                        [third_point[1], third_point[0]], [fourth_point[1], fourth_point[0]]]
         return sort_points
 
-    def get_square_corners(self, center_point, corner_point):
+    def get_square_corners(self, center_point: List[Number], corner_point: List[Number]) -> List[List[Number]]:
         distance = self.get_distance(center_point, corner_point)
         corner_1 = self.get_coordinate(center_point, corner_point, 90, distance)
         corner_2 = self.get_coordinate(center_point, corner_point, -90, distance)
@@ -430,7 +433,7 @@ class GPSComputing:
 
 class AntiTheftZone:
 
-    def __init__(self, field: list):
+    def __init__(self, field: List[List[Number]]):
         field = field
         self.nav = GPSComputing()
         d1 = self.nav.get_distance(field[0],field[1])
@@ -443,10 +446,10 @@ class AntiTheftZone:
     def get_center(self):
         return self.center
 
-    def hypotenuse(self,a,b):
+    def hypotenuse(self,a:float,b:float)-> float:
         return math.sqrt(a**2+b**2)
 
-    def coordianate_are_in_zone(self, coords: list):
+    def coordianate_are_in_zone(self, coords: List[Number]) -> bool:
         return self.nav.get_distance(self.center,coords) <= self.circumcircle_radius + config.ANTI_THEFT_ZONE_RADIUS
 
 
@@ -500,17 +503,17 @@ class NavigationPrediction:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         self.trajectorySaver.__exit__(exc_type, exc_val, exc_tb)
 
     def set_SI_speed(self, SI_speed: float):
         self.speed = SI_speed #meter per second
 
-    def set_current_lat_long(self, cur_pos: list):
+    def set_current_lat_long(self, cur_pos: List[Number]):
         self.lat_current=cur_pos[0]
         self.long_current=cur_pos[1]
 
-    def run_prediction(self, coords_from_to: list, cur_pos: list):
+    def run_prediction(self, coords_from_to: List[List[Number]], cur_pos: List[Number]):
 
         if self.angle>self.max_angle :
             self.angle=self.max_angle
@@ -548,9 +551,11 @@ class NavigationPrediction:
 
         msg = f"[PREDICTOR] Angle : {angle}."
         self.logger_full.write(msg + "\n")
-        new_foreseen_point = [latnew, longnew, f"quality_cur_pos:{cur_pos[2]}", self.index_angle]
+        new_foreseen_point: List[Number] = [latnew, longnew]
+        
+        new_foreseen_point_with_text: List[Union[Number,str]] = [*new_foreseen_point, f"quality_cur_pos:{cur_pos[2]}", self.index_angle]
 
-        self.trajectorySaver.save_point(new_foreseen_point)
+        self.trajectorySaver.save_point(new_foreseen_point_with_text)
         self.index_angle+=1
 
         msg = f"[PREDICTOR] Error : {self.nav.get_distance(new_foreseen_point, cur_pos)}."
@@ -559,11 +564,11 @@ class NavigationPrediction:
 
 class GPSPoint:
     def __init__(self,
-                 latitude,
-                 longitude,
-                 quality=None,
-                 creation_ts=None,
-                 receiving_ts=None):
+                 latitude: float,
+                 longitude : float,
+                 quality: Optional[str]=None,
+                 creation_ts: Optional[float]=None,
+                 receiving_ts: Optional[float]=None):
 
         self.__latitude = latitude
         self.__longitude = longitude
@@ -576,10 +581,7 @@ class GPSPoint:
         return self.__latitude
 
     @latitude.setter
-    def latitude(self, value):
-        if not isinstance(value, (int, float)):
-            raise TypeError(f"latitude must be int or float type, got '{type(value).__name__}' instead")
-
+    def latitude(self, value: Number):
         if not (-90 <= value <= 90):
             raise ValueError(f"latitude must be in range [-90 - 90], got {value} instead")
 
@@ -590,30 +592,27 @@ class GPSPoint:
         return self.__longitude
 
     @longitude.setter
-    def longitude(self, value):
-        if not isinstance(value, (int, float)):
-            raise TypeError(f"longitude must be int or float type, got '{type(value).__name__}' instead")
-
+    def longitude(self, value: Number):
         if not (-180 <= value <= 180):
             raise ValueError(f"longitude must be in range [-180 - 180], got {value} instead")
 
         self.__longitude = value
 
     @property
-    def quality(self):
+    def quality(self) -> Optional[int]:
         return self.__quality
 
     @quality.setter
-    def quality(self, value):
+    def quality(self, value: Optional[int]):
         # no validation as currently it is unknown what flags will be used
         self.__quality = value
 
     @property
-    def creation_ts(self):
+    def creation_ts(self) -> Optional[float]:
         return self.__creation_ts
 
     @property
-    def receiving_ts(self):
+    def receiving_ts(self) -> Optional[float]:
         return self.__receiving_ts
 
     @property
@@ -622,11 +621,3 @@ class GPSPoint:
         if self.__quality is not None:
             point.append(self.__quality)
         return point
-
-    @property
-    def as_json(self):
-        raise NotImplementedError("this method is not implemented yet")
-
-    @staticmethod
-    def from_json(point: dict):
-        raise NotImplementedError("this method is not implemented yet")

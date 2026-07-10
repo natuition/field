@@ -1,6 +1,7 @@
 import telnetlib
 import serial
 
+from typing import Any, Optional
 
 class SmoothieV11TelnetConnector:
 
@@ -12,7 +13,7 @@ class SmoothieV11TelnetConnector:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         self.close()
 
     def close(self):
@@ -29,6 +30,10 @@ class SmoothieV11TelnetConnector:
         """Only for debug!"""
 
         return self._tn
+    
+    @property
+    def is_open(self) -> bool:
+        return self._tn.sock is not None
 
     def write(self, command: str):
         if type(command) != str:
@@ -38,16 +43,15 @@ class SmoothieV11TelnetConnector:
 
         self._tn.write(command.encode("ascii") + b"\n")
 
-    def read_until(self, value: str, timeout=None):
+    def read_until(self, value: str, timeout: Optional[float]=None):
         return self._tn.read_until(value.encode("ascii"), timeout).decode()
 
-    def read_until_not(self, value: str):
-        value = value.encode("ascii")
+    def read_until_not(self, value: str) -> str:
         while True:
             res = self.read_some()
             if res != value:
-                return res.decode()
-
+                return res
+            
     def read_some(self):
         return self._tn.read_some().decode()
 
@@ -59,20 +63,20 @@ class SmoothieV11SerialConnector:
     def __init__(self, port: str, baudrate: int):
         self._port = port
         self._ser = serial.Serial(port, baudrate)
-        self._ser.flushInput()
-        self._ser.flushOutput()
+        self._ser.reset_input_buffer()
+        self._ser.reset_output_buffer()
 
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         self.disconnect()
 
     def disconnect(self):
         self._ser.close()
 
     @property
-    def is_open(self):
+    def is_open(self) -> bool:
         return self._ser.is_open
 
     def get_serial(self):
