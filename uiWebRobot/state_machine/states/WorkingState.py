@@ -139,22 +139,27 @@ class WorkingState(State.State):
     def on_event(self, event):
         
         if event == Events.STOP:
+            self.__logger.info(f"Stop event received, update stop button.")
             self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.stopButton = ButtonState.CHARGING
             
-            msg = f"Kill main"
+            msg = f"Killing main..."
             self.__file_logger.write_and_flush(msg + "\n")
-            self.__logger.debug(msg)
+            self.__logger.info(msg)
             
+            self.__logger.info(f"Waiting for main to stop...")
             while self.__main_not_received_stop:
                 self.__kill_main_and_wait()
-            
+                
+            self.__logger.info(f"Main stopped, update stop button.")
             self.socketio.emit('stop', {"status": "finish"}, namespace='/button', broadcast=True)
             if self.isResume:
                 self.statusOfUIObject.continueButton = ButtonState.ENABLE
             else:
                 self.statusOfUIObject.startButton = ButtonState.ENABLE
             self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
+            
+            self.__logger.info(f"Main stopped, change state to WaitWorkingState.")
             return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, False)
         
         elif event == Events.PHYSICAL_BLOCAGE:
