@@ -8,7 +8,7 @@ from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import State
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects
 from notification import RobotStateClient
-from logger import Logger
+from logger import LoggerFactory
 
 
 class StateMachine:
@@ -16,7 +16,7 @@ class StateMachine:
     def __init__(self, socketio, robot_state_client: RobotStateClient):
         utility.create_directories("logs/")
         self.__file_logger = utility.Logger("logs/"+utility.get_current_time())
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         sys.stderr = ErrorLogger(self.__file_logger)
         self.socketio: SocketIO = socketio
         self.currentState: State.State = None

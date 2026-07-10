@@ -6,10 +6,9 @@ import pytz
 import pwd
 import grp
 import importlib
-from logger import Logger
+from logger import LoggerFactory
 
-LOGGER = Logger.create("SafeImportConfig")
-LOGGER.setLevel("INFO")
+LOGGER = LoggerFactory.create("SafeImportConfig")
 
 def is_config_empty(config_full_path: str):
     with open(config_full_path, "r") as config_file:

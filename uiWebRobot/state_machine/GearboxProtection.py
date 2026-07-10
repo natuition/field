@@ -1,7 +1,7 @@
 from navigation import GPSComputing
 from typing import Dict
 from config import config
-from logger import Logger
+from logger import LoggerFactory
 
 
 class GearboxProtection:
@@ -15,7 +15,7 @@ class GearboxProtection:
 			Create an empy list of cooridinates. \n
             Inits some parameters.
 		"""
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         
         self.__min_nb_valid_distances: int = config.MIN_NB_VALID_DISTANCES
         self.__max_nb_coords_stored: int = config.MAX_NB_COORDS_STORED

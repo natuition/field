@@ -18,7 +18,7 @@ from navigation import GPSComputing
 from uiWebRobot.state_machine import Events
 from uiWebRobot.state_machine.Events import Events
 import utility
-from logger import Logger
+from logger import LoggerFactory
 
 
 def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdapterV4, socketio: SocketIO, input_voltage: Dict[str, str], file_logger: utility.Logger) -> None:
@@ -36,7 +36,7 @@ def voltage_thread_tf(voltage_thread_alive: bool, vesc_engine: adapters.VescAdap
         file_logger (utility.Logger): Logger instance for logging messages.
         recreate_vesc_callback (function): Callback function to recreate the VESC connection after a bump event.
     """
-    logger = Logger.create("voltage_thread_tf")
+    logger = LoggerFactory.create("voltage_thread_tf")
     vesc_data = None
     isBumped = False
     nowReset = True
@@ -132,7 +132,7 @@ def initVesc(file_logger: utility.Logger) -> adapters.VescAdapterV4 :
         Returns:
             VescAdapterV4: the initialized VESC.
     """
-    logger = Logger.create("initVesc")
+    logger = LoggerFactory.create("initVesc")
     for i in range(3):
         if i==2:
             msg = "Couldn't get vesc's USB address, stopping attempt to unlock with lifeline."
@@ -346,7 +346,7 @@ def is_valid_field_file(file_path : str, file_logger: utility.Logger) -> bool:
         bool: True if the file is valid, False otherwise.
     """
     # Check if the file exists
-    logger = Logger.create("Field file validator")
+    logger = LoggerFactory.create("Field file validator")
     if not os.path.exists(file_path):
         msg = f"Field validation, the file does not exist ({file_path})."
         file_logger.write(msg + "\n")

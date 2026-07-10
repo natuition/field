@@ -10,14 +10,14 @@ from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 import utility
-from logger import Logger
+from logger import LoggerFactory
 
 
 class CheckState(State.State):
     """This state corresponds when the robot is start, this state corresponds when the ui reminds the points to check before launching the robot. """
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger):
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_CHECK_STATE
         self.socketio = socketio
         self.__file_logger = file_logger

@@ -12,7 +12,7 @@ from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.state_machine.FrontEndObjects import ButtonState, FrontEndObjects, PhysicalBlocageFEO
 import utility
 import adapters
-from logger import Logger
+from logger import LoggerFactory
 
 class PhysicalBlocageState(State) :
     """This state corresponds when the robot is physically blocking. """
@@ -25,7 +25,7 @@ class PhysicalBlocageState(State) :
             smoothie: adapters.SmoothieAdapter = None,
             vesc_engine : adapters.VescAdapterV4 = None
             ) :
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.socketio = socketio
         self.__file_logger = file_logger
         self.isAudit = isAudit

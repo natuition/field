@@ -13,7 +13,7 @@ from pytz import timezone
 import socket
 import subprocess
 from typing import List, Dict, Optional, Any
-from logger import Logger as NewLogger
+from logger import LoggerFactory
 
 # class ImageSaver:
 #     """Implements flexible ways to save images and detected objects on them
@@ -265,7 +265,7 @@ class DemoPauseServer:
     """
 
     def __init__(self, host: str, port: int, tick_delay: float = 0.005, buffer_size: int = 1024) -> None:
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__clients_conn_listener: socket.socket = socket.socket()
         self.__clients_conn_listener.bind((host, port))
         self.__clients_conn_listener.listen(5)
@@ -427,7 +427,7 @@ class DemoPauseClient:
     """Sends resume requests to DemoPauseServer"""
 
     def __init__(self, host: str, port: int, tick_delay: float = 0.005) -> None:
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__tick_delay: float = tick_delay
 
         self.__host: str = host
@@ -532,7 +532,7 @@ def get_current_time() -> str:
 
 def create_directories(*args: str) -> None:
     """Creates directories, receives any args count, each arg is separate dir"""
-    UTILITY_LOGGER = NewLogger.create("Utility")
+    UTILITY_LOGGER = LoggerFactory.create("Utility")
     for path in args:
         if not os.path.exists(path):
             try:
@@ -593,7 +593,7 @@ def mu_sigma(samples: List[float]) -> List[float]:
 
 
 def average_point(gps: Any, trajectory_saver: Optional[TrajectorySaver], nav: Any, logger_full: Optional[Logger] = None) -> List[Any]:
-    UTILITY_LOGGER = NewLogger.create("Utility")
+    UTILITY_LOGGER = LoggerFactory.create("Utility")
     #ORIGIN POINT SAVING
     lat: List[float] = []     #latitude history
     long: List[float] = []    #longitude history
@@ -654,7 +654,7 @@ def get_last_dir_name(parent_dir_path: str) -> Optional[str]:
     return last_dir
 
 def life_line_reset() -> None:
-    UTILITY_LOGGER = NewLogger.create("Utility")
+    UTILITY_LOGGER = LoggerFactory.create("Utility")
     dir_gpio: str = f"/sys/class/gpio/gpio{config.LIFE_LINE_PIN}"
     if os.path.isdir(dir_gpio):
         UTILITY_LOGGER.info(f"The directory '{dir_gpio}' exist.")

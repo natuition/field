@@ -8,7 +8,7 @@ import adapters
 import detection
 import utility
 from calibration_utils import load_homography, raw_pixel_to_image_center_mm, raw_pixel_to_robot_mm_from_json
-from logger import Logger as NewLogger
+from logger import LoggerFactory
 
 class ExtractionManagerV3:
     """Implements extraction logic and control"""
@@ -23,7 +23,7 @@ class ExtractionManagerV3:
                  pdz_distances: list,
                  vesc_engine: adapters.VescAdapterV4):
 
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__smoothie = smoothie
         self.__client_mvi = client_mvi
         self.__logger_full = logger_full
@@ -976,7 +976,7 @@ class ExtractionMethods:
     """Contains methods for different plants extraction strategies. All methods should have similar signatures.
     """
     
-    LOGGER = NewLogger.create(__name__)
+    LOGGER = LoggerFactory.create(__name__)
     
 
     @staticmethod

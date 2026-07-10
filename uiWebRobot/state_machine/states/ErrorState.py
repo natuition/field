@@ -5,13 +5,13 @@ import utility
 from uiWebRobot.state_machine import State
 from shared_class.robot_synthesis import RobotSynthesis
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
-from logger import Logger
+from logger import LoggerFactory
 
 class ErrorState(State.State):
     """This state corresponds when the robot is in error. """
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger, reason: str = None):
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.HS
         self.socketio = socketio
         self.__file_logger = file_logger

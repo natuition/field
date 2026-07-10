@@ -10,7 +10,7 @@ import os
 from typing import Any, List, Optional, Tuple, Union
 Number = Union[int, float]
 
-from logger import Logger as NewLogger
+from logger import LoggerFactory
 
 
 class GPSComputing:
@@ -456,7 +456,7 @@ class AntiTheftZone:
 class NavigationV3:
     __ntrip_restart_ts = 0
 
-    LOGGER = NewLogger.create(__name__)
+    LOGGER = LoggerFactory.create(__name__)
 
     @classmethod
     def restart_ntrip_service(cls, logger_full: utility.Logger):

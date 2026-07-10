@@ -24,7 +24,7 @@ from uiWebRobot.state_machine.states import *
 from notification import RobotStateClient
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from logger import Logger as Logger
+from logger import LoggerFactory
 
 __author__ = 'Vincent LAMBERT'
 
@@ -45,7 +45,7 @@ class IgnoreSocketIODisconnected:
 class UIWebRobot:
 
     def __init__(self):
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__app = Flask(__name__)
         self.__setting_flask()
         self.__init_flask_route()  # ROUTE FLASK
@@ -511,8 +511,8 @@ class UIWebRobot:
 
 
 def main():
-    Logger.setLevel(config.LOG_LEVEL_UI)
-    runtime_logger = Logger.create("Runtime")
+    LoggerFactory.set_level(config.LOG_LEVEL_UI)
+    runtime_logger = LoggerFactory.create("Runtime")
     try:
         uiWebRobot = UIWebRobot()
         host="0.0.0.0"
@@ -551,8 +551,8 @@ if __name__ == "__main__":
     main()
 
 # # For Gunicorn
-# Logger.setLevel(config.LOG_LEVEL_UI)
-# runtime_logger = Logger.create("Runtime")
+# LoggerFactory.set_level(config.LOG_LEVEL_UI)
+# runtime_logger = LoggerFactory.create("Runtime")
 # runtime_logger.info(f"Starting UIWebRobot...")
 # uiWebRobot = UIWebRobot()
 # app = uiWebRobot.app

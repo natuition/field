@@ -1,12 +1,12 @@
 import utility
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from shared_class.robot_synthesis import RobotSynthesis
-from logger import Logger
+from logger import LoggerFactory
 
 class State(object):
 
     def __init__(self, socketio, file_logger: utility.Logger):
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.socketio = socketio
         self.__file_logger = file_logger
         self.robot_synthesis_value: RobotSynthesis = None

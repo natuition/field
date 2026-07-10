@@ -9,13 +9,13 @@ from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonStat
 from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from logger import Logger
+from logger import LoggerFactory
 
 class ResumeState(State.State):
     """This state corresponds when the robot configures it to continue the last job. """
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger, isAudit=False, wasPhysicallyBlocked=False):
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_CONTINUE_STATE
         self.socketio = socketio
         self.__file_logger = file_logger

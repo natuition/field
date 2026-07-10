@@ -19,7 +19,7 @@ from uiWebRobot.state_machine import GearboxProtection, utilsFunction
 from uiWebRobot.state_machine.GearboxProtection import GearboxProtection
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from logger import Logger
+from logger import LoggerFactory
 
 
 class WorkingState(State.State):
@@ -30,7 +30,7 @@ class WorkingState(State.State):
             self.robot_synthesis_value = RobotSynthesis.UI_CONTINUE_STATE
         else:
             self.robot_synthesis_value = RobotSynthesis.UI_STARTING_STATE
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.socketio = socketio
         self.__file_logger = file_logger
         self.isAudit = isAudit

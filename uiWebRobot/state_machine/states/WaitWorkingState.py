@@ -20,7 +20,7 @@ from uiWebRobot.EnvironnementConfig import EnvironnementConfig
 from shared_class.robot_synthesis import RobotSynthesis
 import adapters
 import utility
-from logger import Logger
+from logger import LoggerFactory
 
 
 class WaitWorkingState(State.State):
@@ -32,7 +32,7 @@ class WaitWorkingState(State.State):
                  createField: bool,
                  smoothie: adapters.SmoothieAdapter = None,
                  vesc_engine: adapters.VescAdapterV4 = None):
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.robot_synthesis_value = RobotSynthesis.UI_WAIT_WORKING_STATE
         self.socketio = socketio

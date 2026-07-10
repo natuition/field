@@ -11,11 +11,11 @@ import _thread as thread
 import pytz
 import traceback
 from shared_class.robot_synthesis import RobotSynthesis
-from logger import Logger as NewLogger
+from logger import LoggerFactory
 
 class RobotStateServer:
     def __init__(self, fleet_tick_delay=60):
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__sync_locker = threading.Lock()
 
         self.__fleet_tick_delay = fleet_tick_delay
@@ -130,7 +130,7 @@ class RobotStateServer:
 
 class RobotStateClient:
     def __init__(self):
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__logger.info("Starting robot state client.")
         self.__state_update_freq = 1  # how often to check if state was changed
 
@@ -246,7 +246,7 @@ class NotificationClient:
     __RES_CODE_CREATED = 201
 
     def __init__(self, time_start):
-        self.__logger = NewLogger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.__port = config.DATAGATHERING_PORT
         self.__ip = config.DATAGATHERING_HOST
         self.__time_start = datetime.datetime.strptime(

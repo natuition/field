@@ -12,7 +12,7 @@ from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
-from logger import Logger
+from logger import LoggerFactory
 
 class ActuatorScreeningState(State.State):
     """This state corresponds when the robot screening his actuator. """
@@ -24,7 +24,7 @@ class ActuatorScreeningState(State.State):
                  file_logger: utility.Logger,
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_ACTUATOR_SCREENING_STATE
         self.socketio = socketio
         self.__file_logger = file_logger
