@@ -17,8 +17,8 @@ class ErrorState(State.State):
         self.__file_logger = file_logger
         self.reason = reason
         msg = f"Error"
-        self.__file_logger.write_and_flush(msg+"\n")
-        self.__logger.error(msg)
+        self.__file_logger.write_and_flush(f"Error : {reason}\n")
+        self.__logger.error(reason)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
