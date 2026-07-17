@@ -217,7 +217,7 @@ class FieldCreator:
                  vesc_engine: adapters.VescAdapterV4,
                  smoothie: adapters.SmoothieAdapter,
                  socketio: SocketIO):
-        self.__logger = Logger.create(self.__class__.__name__)
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.A = [0, 0]
         self.B = [0, 0]
         self.C = [0, 0]
