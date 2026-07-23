@@ -1,13 +1,16 @@
+import time
+
 from flask_socketio import SocketIO
 import posix_ipc
 from urllib.parse import quote, unquote
 import logging
 import sys
+import os
+import json
 
 from config import config
-from uiWebRobot.state_machine import State
-from uiWebRobot.state_machine.states import WaitWorkingState
-from uiWebRobot.state_machine.states import ErrorState
+from uiWebRobot.state_machine import State, utilsFunction
+from uiWebRobot.state_machine.states import WaitWorkingState, ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
 from shared_class.robot_synthesis import RobotSynthesis
@@ -17,7 +20,7 @@ from logger import LoggerFactory
 
 
 class CreateFieldStateWithNavX(State.State):
-    """This state corresponds when the robot is generating the work area. """
+    """This state corresponds when the robot process a geojson file from NavX with Linestring for create the field. """
 
     def __init__(self,
                  socketio: SocketIO,
@@ -40,50 +43,12 @@ class CreateFieldStateWithNavX(State.State):
                                                 removeFieldButton=ButtonState.DISABLE,
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
-
         self.field = None
-        self.manoeuvre = False
-
-        try:
-            self.notificationQueue = posix_ipc.MessageQueue(config.QUEUE_NAME_UI_NOTIFICATION)
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except:
-            self.notificationQueue = None
-    
         # self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
 
 
     def on_event(self, event):
-        if event == Events.STOP:
-            self.socketio.emit('stop', {"status": "pushed"}, namespace='/button', broadcast=True)
-            self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
-            self.statusOfUIObject.stopButton = ButtonState.CHARGING
-
-            # try:
-            #     self.fieldCreator.setSecondPoint()
-            # except TimeoutError:
-            #     if self.notificationQueue is not None:
-            #         self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-            #     return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, False, self.smoothie, self.vesc_engine)
-
-            # self.field = self.fieldCreator.calculateField()
-            # if not config.TWO_POINTS_FOR_CREATE_FIELD and not config.FORWARD_BACKWARD_PATH:
-            #     self.manoeuvre = True
-            #     if config.MAKE_MANEUVER_AFTER_FIELD_CREATE:
-            #         self.fieldCreator.manoeuvre()
-            #     self.manoeuvre = False
-
-            self.statusOfUIObject.stopButton = ButtonState.NOT_HERE
-            self.statusOfUIObject.fieldButton = ButtonState.VALIDATE
-            self.socketio.emit('field', {"status": "finish"}, namespace='/button', broadcast=True)
-            return self
-        elif event == Events.VALIDATE_FIELD:
-            return self
-        elif event == Events.VALIDATE_FIELD_NAME:
-            self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
-            return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, True, self.smoothie, self.vesc_engine)
-        elif event == Events.WHEEL:
+        if event == Events.WHEEL:
             self.smoothie.freewheels()
             return self
         else:
@@ -99,13 +64,58 @@ class CreateFieldStateWithNavX(State.State):
             except Exception as e:
                 self.__file_logger.write_and_flush(e + "\n")
             return ErrorState.ErrorState(self.socketio, self.__file_logger)
+        
+    def saveField(self, fieldPath: str, fieldName: str):
+        cpt = 1
+        fieldName = quote(fieldName, safe="", encoding='utf-8')
+        if (os.path.exists(fieldPath + fieldName)):
+            while os.path.exists(f"{fieldPath + fieldName[:-4]}_{cpt}.txt"):
+                cpt += 1
+            fieldName = f"{fieldName[:-4]}_{cpt}.txt"
+        path = fieldPath + fieldName
+        msg = f"Save field in {path}..."
+        self.__file_logger.write_and_flush(msg + "\n")
+        self.__logger.info(msg)
+        utilsFunction.save_gps_coordinates(self.field, path)
+        return (path, unquote(fieldName[:-4], encoding='utf-8'))
 
     def on_socket_data(self, data):
         if data["type"] == "create_field":
             msg = f"File value : {data['value']}."
             self.__file_logger.write_and_flush(msg + "\n")
-            self.__logger.debug(msg)
-            # self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
+            self.__logger.debug(msg)    
+            
+            result = utilsFunction.largest_inscribed_rectangle(
+                data['value'],
+                max_iterations=500,
+                population_size=20
+            )
+            
+            #coords = [[46.157483450000015, -1.1343000875002318], [46.15725290315734, -1.1349318497242264], [46.15744277717082, -1.1350762634362235], [46.157673325000005, -1.1344445]]  # Example coordinates
+            self.field = result.corners
+            field_name = "Example field"
+            
+            field_path, field_name = self.saveField("./fields/", field_name + ".txt")
+            
+            if utilsFunction.is_valid_field_file(field_path, self.__file_logger):
+                fields_list = utilsFunction.load_field_list("./fields")
+
+                if len(fields_list) > 0:
+                    coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
+                else:
+                    coords, other_fields, current_field_name = list(), list(), ""
+
+                self.socketio.emit('newField', json.dumps(
+                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
+                    "fields_list": fields_list}), namespace='/map')
+                self.socketio.emit('field', {"status": "validate"}, namespace='/button', broadcast=True)
+                return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, True, self.smoothie, self.vesc_engine)
+            else:
+                if os.path.exists(field_path):
+                    os.remove(field_path)
+                message = self.__ui_languages["working_zone_too_small"][self.__current_ui_language]
+                self.socketio.emit('notification', {"message_name": "not_a_good_zone", "message": message}, namespace='/broadcast', broadcast=True)
+            
 
         return self
 
