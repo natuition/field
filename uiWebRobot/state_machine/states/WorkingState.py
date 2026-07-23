@@ -31,7 +31,6 @@ class WorkingState(State.State):
         else:
             self.robot_synthesis_value = RobotSynthesis.UI_STARTING_STATE
         self.__logger = LoggerFactory.create(self.__class__.__name__)
-        # self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.socketio = socketio
         self.__file_logger = file_logger
         self.isAudit = isAudit
