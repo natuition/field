@@ -24,6 +24,7 @@ class ExtractionManagerV3:
                  vesc_engine: adapters.VescAdapterV4):
 
         self.__logger = LoggerFactory.create(self.__class__.__name__)
+        self.__logger.setLevel("INFO")
         self.__smoothie = smoothie
         self.__client_mvi = client_mvi
         self.__logger_full = logger_full
@@ -95,13 +96,21 @@ class ExtractionManagerV3:
 
         msg = "Run PDZ scan..."
         self.__logger_full.write_and_flush(msg+"\n")
+        self.__logger.info(msg)
         # do sectored scans
+        
+        self.__logger.info("Waiting 1 second before PDZ scan to let the robot stabilize after movement and for camera latency.")
+        time.sleep(1)
         
         # TODO MVI
         #smoothie_positions = self.scan_sectors()
         detection_result = self.__client_mvi.get_last_detections()
         plants_positions = self.__client_mvi.parse_plants_positions(detection_result)
         plants_boxes = self.__client_mvi.parse_detected_boxes(detection_result)
+        
+        
+        self.__logger.info(f"Found : {detection_result}.")
+        self.__logger.info(f"Found : {len(plants_positions)} plants after PDZ scan")
         # smoothie_positions = []
         # for u_o, v_o in plants_positions:
         #     x_mm_overhead, y_mm_overhead = raw_pixel_to_robot_mm_from_json(u_o, v_o, config.CALIBRATION_JSON_OVERHEAD)

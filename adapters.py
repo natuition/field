@@ -1877,6 +1877,8 @@ class ClientMVI:
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         """Exits the context manager for the ClientMVI instance, ensuring proper cleanup."""
+        self.run_passive_detection_on_MVI()
+        self.run_configuration_on_MVI()
         self.__release()
 
     def __release(self):
@@ -2100,6 +2102,12 @@ class ClientMVI:
 
         return plants_boxes
     
+    # 'bbox': [167.34375, 947.0, 249.52148, 75.0]
+    #          x          y      w           h
+    def compute_bbox_center(self, bbox):
+        x, y, w, h = bbox
+        return (x + w / 2, y + h / 2)
+
 
     def parse_plants_positions(self, detection_result: DetectionResultDTO) -> List[Tuple[float, float]]:
         """Return the detected plant positions as (x, y) tuples."""
@@ -2108,20 +2116,18 @@ class ClientMVI:
 
         for detection in detection_result["detections"]:
             if "keypoint" not in detection:
-                raise RuntimeError(
+                self.__logger.warning(
                     "Expected 'keypoint' in detection, got {}".format(
                         detection
                     )
                 )
-                
-            keypoint = cast(KeypointDTO, detection["keypoint"])
+                position = self.compute_bbox_center(detection["bbox"])
+            
+            else:
+                keypoint = cast(KeypointDTO, detection["keypoint"])
+                position = (float(keypoint["x"]), float(keypoint["y"]))
 
-            smoothie_positions.append(
-                (
-                    float(keypoint["x"]),
-                    float(keypoint["y"]),
-                )
-            )
+            smoothie_positions.append(position)
 
         return smoothie_positions
     
@@ -2157,6 +2163,13 @@ class ClientMVI:
             RuntimeError: If the MVI operation to set the state was not successful.
         """
         self.__set_state_on_mvi(MVIState.PASSIVE_DETECTION)
+        
+    def run_configuration_on_MVI(self) -> None:
+        """Sets the MVI to passive detection mode, indicating that it is stopped and not actively detecting objects.
+        Raises:
+            RuntimeError: If the MVI operation to set the state was not successful.
+        """
+        self.__set_state_on_mvi(MVIState.CONFIGURATION)
         
     def switch_active_pipeline(self, new_pipeline: MVIPipelineDescriptor) -> None:
         """Switches the active MVI pipeline to the specified new pipeline descriptor.
