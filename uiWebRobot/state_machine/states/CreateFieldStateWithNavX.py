@@ -122,6 +122,8 @@ class CreateFieldStateWithNavX(State.State):
             msg = f"File value : {data['value']}."
             self.__file_logger.write_and_flush(msg + "\n")
             self.__logger.info(msg)
+            self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
+            self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
 
         return self
 
