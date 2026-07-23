@@ -115,6 +115,8 @@ ALLOW_FIELD_LEAVING_PROTECTION = True
 # than this value (all ABCDA field lines are checked) and it's on left side of the line
 LEAVING_PROTECTION_DISTANCE_MAX = 5000
 
+# For sedum extra bv, maneuver
+PATH_WITH_MANEUVER= True
 
 # ======================================================================================================================
 # ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS
