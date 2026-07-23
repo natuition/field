@@ -18,14 +18,14 @@ class StateMachine:
         self.__file_logger = utility.Logger(
             "logs/" + utility.get_current_time()
         )
-
-        self.__logger = LoggerFactory.create(self.__class__.__name__)
-
+        
         self.__original_stderr = sys.stderr
         sys.stderr = ErrorLogger(
             self.__file_logger,
             self.__original_stderr,
         )
+        
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
 
         self.socketio: SocketIO = socketio
         self.currentState: State.State = None

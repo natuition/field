@@ -26,7 +26,7 @@ class PhysicalBlocageState(State) :
             vesc_engine : adapters.VescAdapterV4 = None
             ) :
         self.__logger = LoggerFactory.create(self.__class__.__name__)
-        self.__logger.setLevel(config.LOG_LEVEL_UI)
+        # self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.socketio = socketio
         self.__file_logger = file_logger
         self.isAudit = isAudit

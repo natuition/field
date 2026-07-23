@@ -28,7 +28,7 @@ class WaitWorkingState(State.State):
                  smoothie: adapters.SmoothieAdapter = None,
                  vesc_engine: adapters.VescAdapterV4 = None):
         self.__logger = LoggerFactory.create(self.__class__.__name__)
-        self.__logger.setLevel(config.LOG_LEVEL_UI)
+        # self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.robot_synthesis_value = RobotSynthesis.UI_WAIT_WORKING_STATE
         self.socketio = socketio
         self.__file_logger = file_logger

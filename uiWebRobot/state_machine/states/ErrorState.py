@@ -12,7 +12,7 @@ class ErrorState(State.State):
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger, reason: str = None):
         self.__logger = LoggerFactory.create(self.__class__.__name__)
-        self.__logger.setLevel(config.LOG_LEVEL_UI)
+        # self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.robot_synthesis_value = RobotSynthesis.HS
         self.socketio = socketio
         self.__file_logger = file_logger

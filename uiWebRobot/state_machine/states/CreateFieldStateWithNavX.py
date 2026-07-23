@@ -25,8 +25,7 @@ class CreateFieldStateWithNavX(State.State):
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
         self.__logger = LoggerFactory.create(self.__class__.__name__)
-        print(config.LOG_LEVEL_UI)
-        self.__logger.setLevel(config.LOG_LEVEL_UI)
+        # self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.robot_synthesis_value = RobotSynthesis.UI_CREATE_FIELD_STATE
         self.socketio = socketio
         self.__file_logger = file_logger
@@ -55,32 +54,6 @@ class CreateFieldStateWithNavX(State.State):
             self.notificationQueue = None
     
         # self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
-        
-        print("logger.name:", self.__logger.name)
-        print("logger.level:", self.__logger.level)
-        print("logger.effective level:", self.__logger.getEffectiveLevel())
-        print("logger.disabled:", self.__logger.disabled)
-        print("logging global disable:", logging.root.manager.disable)
-        print("handlers:", self.__logger.handlers)
-        for handler in self.__logger.handlers:
-            print(
-                "handler:",
-                type(handler).__name__,
-                "level:",
-                handler.level,
-                "formatter:",
-                handler.formatter,
-            )
-        print("INFO enabled:", self.__logger.isEnabledFor(logging.INFO))
-        
-        handler = self.__logger.handlers[0]
-        print("handler.stream:", handler.stream)
-        print("sys.stderr:", sys.stderr)
-        print("same stream:", handler.stream is sys.stderr)
-        print("stream closed:", getattr(handler.stream, "closed", None))
-        
-        self.__logger.info("Initialized")
-        print("CreateFieldStateWithNavX initialized")
 
 
     def on_event(self, event):
