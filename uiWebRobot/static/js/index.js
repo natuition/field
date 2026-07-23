@@ -54,13 +54,37 @@ var audit = false;
 
 var reloader = 0;
 
+function selectGeoJSONFile() {
+    return new Promise((resolve, reject) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".geojson,application/geo+json,application/json";
+
+        input.onchange = () => {
+            if (input.files.length > 0) {
+                resolve(input.files[0]);
+            } else {
+                reject(new Error("Aucun fichier sélectionné"));
+            }
+        };
+
+        input.click();
+    });
+}
+
 function clickHandler() {
     if (this.id == "Newfield") {
-        if (gpsQuality == "no_gps") {
-            sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
+        if (path_with_maneuver) {
+            const file = await selectGeoJSONFile();
+            console.log(file.name);
+            //TODO: send file to server and create field
         } else {
-            sliderValue = document.getElementById("r1").value
-            socketio.emit('data', { type: "create_field", value: sliderValue });
+            if (gpsQuality == "no_gps") {
+                sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
+            } else {
+                sliderValue = document.getElementById("r1").value
+                socketio.emit('data', { type: "create_field", value: sliderValue });
+            }
         }
     } else if (this.id == "DemoResume") {
         socketio.emit('data', { type: "demo_resume_cmd" });
