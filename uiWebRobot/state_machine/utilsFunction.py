@@ -434,7 +434,7 @@ class InscribedRectangleResult:
     optimizer_message: str
     debug_directory: Path
 
-    corners: List[List[float, float]]
+    corners: List[List[float]]
 
     def to_geojson_feature(self) -> Dict[str, Any]:
         return {
