@@ -272,7 +272,7 @@ class UIWebRobot:
             if data["type"] in msg_socket_data_after_event:
                 self.get_state_machine().on_socket_data(data)
 
-            if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldStateWithNavX, CreateFieldState)):
+            if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
                 self.get_state_machine().on_socket_data(data)
 
             elif data["type"] == "demo_resume_cmd":

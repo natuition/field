@@ -88,10 +88,14 @@ function clickHandler() {
                     const content = await file.text();
                     const geojson = JSON.parse(content);
 
+                    console.log(geojson);
+
                     socketio.emit("data", {
                         type: "create_field",
                         value: geojson,
                     });
+
+                    console.log("geojson sent");
                 })
                 .catch((error) => {
                     console.error(error);

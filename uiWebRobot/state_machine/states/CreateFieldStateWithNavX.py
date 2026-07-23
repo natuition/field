@@ -33,8 +33,8 @@ class CreateFieldStateWithNavX(State.State):
         self.__file_logger = file_logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
-
-        self.socketio.emit('field', {"status": "pushed"}, namespace='/button', broadcast=True)
+        
+        self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.CHARGING,
                                                 startButton=ButtonState.DISABLE,
@@ -105,11 +105,11 @@ class CreateFieldStateWithNavX(State.State):
             return ErrorState.ErrorState(self.socketio, self.__file_logger)
 
     def on_socket_data(self, data):
+        self.__logger.info(data)
         if data["type"] == "create_field":
             msg = f"File value : {data['value']}."
             self.__file_logger.write_and_flush(msg + "\n")
             self.__logger.info(msg)
-            self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
             self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
 
         return self
