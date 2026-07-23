@@ -113,7 +113,7 @@ class CreateFieldStateWithNavX(State.State):
                 self.socketio.emit('newField', json.dumps(
                     {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
                     "fields_list": fields_list}), namespace='/map')
-                
+                time.sleep(0.5)
                 self.socketio.emit('field', {"status": "validate_geojson"}, namespace='/button', broadcast=True)
                 return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, True, self.smoothie, self.vesc_engine)
             else:
