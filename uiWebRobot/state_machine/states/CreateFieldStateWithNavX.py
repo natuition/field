@@ -44,7 +44,7 @@ class CreateFieldStateWithNavX(State.State):
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
         self.field = None
-        # self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
+        self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
 
 
     def on_event(self, event):
@@ -86,6 +86,7 @@ class CreateFieldStateWithNavX(State.State):
             self.__logger.debug(msg)    
             
             self.__logger.info("Calculating the largest inscribed rectangle...")
+            
             result = utilsFunction.largest_inscribed_rectangle(
                 data['value'],
                 max_iterations=500,
@@ -96,7 +97,6 @@ class CreateFieldStateWithNavX(State.State):
             self.__logger.info(f"\t- Dimensions : {result.width:.3f} × {result.height:.3f} m")
             self.__logger.info(f"\t- CRS métrique : {result.metric_crs}")
             
-            #coords = [[46.157483450000015, -1.1343000875002318], [46.15725290315734, -1.1349318497242264], [46.15744277717082, -1.1350762634362235], [46.157673325000005, -1.1344445]]  # Example coordinates
             self.field = result.corners
             field_name = "Example field"
             
