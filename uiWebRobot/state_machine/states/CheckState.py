@@ -18,7 +18,7 @@ class CheckState(State.State):
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger):
         self.__logger = LoggerFactory.create(self.__class__.__name__)
-                self.robot_synthesis_value = RobotSynthesis.UI_CHECK_STATE
+        self.robot_synthesis_value = RobotSynthesis.UI_CHECK_STATE
         self.socketio = socketio
         self.__file_logger = file_logger
 
