@@ -206,7 +206,7 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
-            if config.CREATE_FIELD_WITH_NAVX:
+            if not config.CREATE_FIELD_WITH_NAVX:
                 return CreateFieldState.CreateFieldState(self.socketio, self.__file_logger, self.smoothie, self.vesc_engine)
             else:
                 return CreateFieldStateWithNavX.CreateFieldStateWithNavX(self.socketio, self.__file_logger, self.smoothie, self.vesc_engine)
