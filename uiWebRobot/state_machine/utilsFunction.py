@@ -434,7 +434,7 @@ class InscribedRectangleResult:
     optimizer_message: str
     debug_directory: Path
 
-    corners: List[Tuple[float, float]]
+    corners: List[List[float, float]]
 
     def to_geojson_feature(self) -> Dict[str, Any]:
         return {
@@ -1400,6 +1400,6 @@ def largest_inscribed_rectangle(
         optimizer_success=optimization_result.success,
         optimizer_message=str(optimization_result.message),
         debug_directory=Path(debug_directory),
-        corners=list(output_rectangle.exterior.coords)[:4],
+        corners=[[lat,lon] for lon, lat in list(output_rectangle.exterior.coords)[:4]],
     )
 ########## end largest_inscribed_rectangle ##########
