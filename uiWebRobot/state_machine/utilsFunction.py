@@ -452,18 +452,18 @@ class InscribedRectangleResult:
 
 
 def parse_geojson_linestring(
-    raw_geojson: Union[str, Dict[str, Any]],
+    raw_geojson_linestring: Union[str, Dict[str, Any]],
 ) -> LineString:
     """Convertit une géométrie ou Feature GeoJSON brute en LineString."""
-    if isinstance(raw_geojson, str):
+    if isinstance(raw_geojson_linestring, str):
         try:
-            geojson_object = json.loads(raw_geojson)
+            geojson_object = json.loads(raw_geojson_linestring)
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f"Le GeoJSON fourni n'est pas un JSON valide : {exc}"
             ) from exc
-    elif isinstance(raw_geojson, dict):
-        geojson_object = raw_geojson
+    elif isinstance(raw_geojson_linestring, dict):
+        geojson_object = raw_geojson_linestring
     else:
         raise TypeError(
             "Le GeoJSON doit être une chaîne JSON ou un dictionnaire Python."
@@ -810,6 +810,25 @@ def rectangle_properties(
 
     return center.x, center.y, angle_deg, width, height
 
+def extract_linestring_from_feature_collection(feature_collection: dict) -> dict:
+    """
+    Extract the LineString feature from a FeatureCollection.
+
+    Args:
+        feature_collection (dict): A GeoJSON FeatureCollection containing a single LineString feature.
+
+    Returns:
+        dict: The extracted LineString feature.
+    """
+    features = feature_collection.get("features", [])
+    if len(features) != 1:
+        raise ValueError("The FeatureCollection must contain exactly one feature.")
+
+    feature = features[0]
+    if feature.get("geometry", {}).get("type") != "LineString":
+        raise ValueError("The feature must be a LineString.")
+
+    return feature
 
 def largest_inscribed_rectangle(
     raw_geojson: Union[str, Dict[str, Any]],
@@ -834,6 +853,9 @@ def largest_inscribed_rectangle(
     est effectuée dans un CRS métrique local, puis le résultat est reprojeté
     dans `output_crs` (égal à `input_crs` par défaut).
     """
+    
+    raw_geojson_linestring = extract_linestring_from_feature_collection(raw_geojson)
+    
     if not debug:
         debugger = NullDebugger()
     elif debug_directory is None:
@@ -844,7 +866,7 @@ def largest_inscribed_rectangle(
     source_crs = CRS.from_user_input(input_crs)
     destination_crs = CRS.from_user_input(output_crs or source_crs)
 
-    input_line = parse_geojson_linestring(raw_geojson)
+    input_line = parse_geojson_linestring(raw_geojson_linestring)
 
     debugger.write(
         "input_linestring",
