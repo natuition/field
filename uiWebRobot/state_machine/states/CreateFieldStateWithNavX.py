@@ -9,6 +9,7 @@ import os
 import json
 
 from config import config
+import navigation
 from uiWebRobot.state_machine import State, utilsFunction
 from uiWebRobot.state_machine.states import WaitWorkingState, ErrorState
 from uiWebRobot.state_machine.Events import Events
@@ -43,6 +44,23 @@ class CreateFieldStateWithNavX(State.State):
                                                 removeFieldButton=ButtonState.DISABLE,
                                                 joystick=True,
                                                 slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
+        
+        try:
+            if self.smoothie is None:
+                msg = f"initSmoothie"
+                self.__file_logger.write_and_flush(msg + "\n")
+                self.__logger.info(msg)
+                self.smoothie = utilsFunction.initSmoothie(self.__file_logger)
+
+            msg = f"initGPSComputing"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.info(msg)
+            self.nav = navigation.GPSComputing()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise e
+                
         self.field = None
         self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
 
@@ -97,7 +115,20 @@ class CreateFieldStateWithNavX(State.State):
             self.__logger.info(f"\t- Dimensions : {result.width:.3f} × {result.height:.3f} m")
             self.__logger.info(f"\t- CRS métrique : {result.metric_crs}")
             
-            self.field = result.corners
+            first_point_of_line_string = data['value']['features'][0]['geometry']['coordinates'][0]
+            reverse_first_point_of_line_string = [first_point_of_line_string[1], first_point_of_line_string[0]]
+            
+            d1 = float("inf")
+            closest_corner_index = 0
+            for index, corner in enumerate(result.corners):
+                d2 = self.nav.get_distance(reverse_first_point_of_line_string, corner)
+                if d2 < d1:
+                    d1 = d2
+                    closest_corner_index = index
+                    
+            organized_field = result.corners[closest_corner_index:] + result.corners[:closest_corner_index]
+            
+            self.field = organized_field
             field_name = "Example field"
             
             field_path, field_name = self.saveField("./fields/", field_name + ".txt")
