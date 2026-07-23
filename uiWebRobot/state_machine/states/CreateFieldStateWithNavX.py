@@ -31,8 +31,7 @@ class CreateFieldStateWithNavX(State.State):
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
         
-        self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
-
+        self.socketio.emit('field', {"status": "pushed"}, namespace='/button', broadcast=True)
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.CHARGING,
                                                 startButton=ButtonState.DISABLE,
                                                 continueButton=ButtonState.DISABLE,
