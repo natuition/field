@@ -85,11 +85,16 @@ class CreateFieldStateWithNavX(State.State):
             self.__file_logger.write_and_flush(msg + "\n")
             self.__logger.debug(msg)    
             
+            self.__logger.info("Calculating the largest inscribed rectangle...")
             result = utilsFunction.largest_inscribed_rectangle(
                 data['value'],
                 max_iterations=500,
                 population_size=20
             )
+            self.__logger.info("Largest inscribed rectangle calculated.")
+            self.__logger.info(f"\t- Surface : {result.area:.3f} m²")
+            self.__logger.info(f"\t- Dimensions : {result.width:.3f} × {result.height:.3f} m")
+            self.__logger.info(f"\t- CRS métrique : {result.metric_crs}")
             
             #coords = [[46.157483450000015, -1.1343000875002318], [46.15725290315734, -1.1349318497242264], [46.15744277717082, -1.1350762634362235], [46.157673325000005, -1.1344445]]  # Example coordinates
             self.field = result.corners
