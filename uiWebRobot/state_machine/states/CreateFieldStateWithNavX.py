@@ -1,9 +1,7 @@
 from flask_socketio import SocketIO
 import posix_ipc
-import os
-import json
 from urllib.parse import quote, unquote
-import time
+import logging
 
 from config import config
 from uiWebRobot.state_machine import State
@@ -11,11 +9,9 @@ from uiWebRobot.state_machine.states import WaitWorkingState
 from uiWebRobot.state_machine.states import ErrorState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState
-from uiWebRobot.state_machine import utilsFunction
 from shared_class.robot_synthesis import RobotSynthesis
 import utility
 import adapters
-import navigation
 from logger import LoggerFactory
 
 
@@ -58,6 +54,23 @@ class CreateFieldStateWithNavX(State.State):
             self.notificationQueue = None
     
         # self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
+        
+        print("logger.name:", self.__logger.name)
+        print("logger.level:", self.__logger.level)
+        print("logger.effective level:", self.__logger.getEffectiveLevel())
+        print("logger.disabled:", self.__logger.disabled)
+        print("logging global disable:", logging.root.manager.disable)
+        print("handlers:", self.__logger.handlers)
+        for handler in self.__logger.handlers:
+            print(
+                "handler:",
+                type(handler).__name__,
+                "level:",
+                handler.level,
+                "formatter:",
+                handler.formatter,
+            )
+        print("INFO enabled:", self.__logger.isEnabledFor(logging.INFO))
         
         self.__logger.info("Initialized")
         print("CreateFieldStateWithNavX initialized")
