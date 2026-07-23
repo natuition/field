@@ -216,9 +216,9 @@ class UIWebRobot:
         self.__logger.debug("Created message queue.")
         ui_language = self.__config.UI_LANGUAGE
 
+        self.__logger.debug("Waiting for notification...")
         while self.__notification_thread_alive:
             try:
-                self.__logger.debug("Waiting for notification...")
                 notification = notificationQueue.receive(timeout=1)
                 self.__logger.debug(f"Received notification: {notification}")
                 message_name = json.loads(notification[0])["message_name"]
