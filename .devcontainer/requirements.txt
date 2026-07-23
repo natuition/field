@@ -30,3 +30,8 @@ websocket-client==0.59.0
 PyYAML==3.12
 tomli==1.2.3
 haversine==2.6.0
+
+scipy==1.5.4
+pyproj==3.0.1
+shapely==1.8.5.post1
+numpy==1.19.5
