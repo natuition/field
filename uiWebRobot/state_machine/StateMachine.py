@@ -15,13 +15,25 @@ class StateMachine:
 
     def __init__(self, socketio, robot_state_client: RobotStateClient):
         utility.create_directories("logs/")
-        self.__file_logger = utility.Logger("logs/"+utility.get_current_time())
+        self.__file_logger = utility.Logger(
+            "logs/" + utility.get_current_time()
+        )
+
         self.__logger = LoggerFactory.create(self.__class__.__name__)
-        sys.stderr = ErrorLogger(self.__file_logger)
+
+        self.__original_stderr = sys.stderr
+        sys.stderr = ErrorLogger(
+            self.__file_logger,
+            self.__original_stderr,
+        )
+
         self.socketio: SocketIO = socketio
         self.currentState: State.State = None
         self.__robot_state_client = robot_state_client
-        self.change_current_state(CheckState(socketio,self.__file_logger))
+
+        self.change_current_state(
+            CheckState(socketio, self.__file_logger)
+        )
 
     def on_event(self, event: Events):
         msg = f"{self.currentState} received event : {event}."
@@ -73,12 +85,46 @@ class StateMachine:
         return self.currentState.getField()
 
     def close(self):
-        pass
+        sys.stderr = self.__original_stderr
 
 class ErrorLogger:
-
-    def __init__(self, file_logger: utility.Logger):
+    def __init__(self, file_logger: utility.Logger, original_stream):
         self.__file_logger = file_logger
+        self.__original_stream = original_stream
+        self.__buffer = ""
 
-    def write(self, s):
-        self.__file_logger.write_and_flush(s+"\n")
+    def write(self, text: str) -> int:
+        if not text:
+            return 0
+
+        # Affichage dans le terminal
+        self.__original_stream.write(text)
+        self.__original_stream.flush()
+
+        # Enregistrement dans le fichier, sans ajouter un second saut de ligne
+        self.__buffer += text
+
+        while "\n" in self.__buffer:
+            line, self.__buffer = self.__buffer.split("\n", 1)
+
+            if line:
+                self.__file_logger.write_and_flush(line + "\n")
+
+        return len(text)
+
+    def flush(self) -> None:
+        self.__original_stream.flush()
+
+        if self.__buffer:
+            self.__file_logger.write_and_flush(self.__buffer)
+            self.__buffer = ""
+
+    def isatty(self) -> bool:
+        return self.__original_stream.isatty()
+
+    def fileno(self) -> int:
+        return self.__original_stream.fileno()
+
+    @property
+    def encoding(self):
+        return self.__original_stream.encoding
