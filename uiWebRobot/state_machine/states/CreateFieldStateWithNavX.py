@@ -103,7 +103,6 @@ class CreateFieldStateWithNavX(State.State):
             return ErrorState.ErrorState(self.socketio, self.__file_logger)
 
     def on_socket_data(self, data):
-        self.__logger.info(data)
         if data["type"] == "create_field":
             msg = f"File value : {data['value']}."
             self.__file_logger.write_and_flush(msg + "\n")
