@@ -110,8 +110,8 @@ class WaitWorkingState(State.State):
 
         if createField:
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
-            if config.CREATE_FIELD_WITH_NAVX:
-                self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
+            # if config.CREATE_FIELD_WITH_NAVX:
+            #     self.socketio.emit('reload', {}, namespace='/broadcast', broadcast=True)
 
         self.learn_go_straight_angle = 0
 
