@@ -1121,7 +1121,7 @@ def add_forward_backward_path(abcd_points: list, nav: navigation.GPSComputing, l
     return currently_path
 
 
-def build_forward_path(abcd_points: list,
+def build_maneuver_path(abcd_points: list,
                                 nav: navigation.GPSComputing,
                                 logger: utility.Logger,
                                 SI_speed_fwd: float,
@@ -1888,8 +1888,8 @@ def main():
                             logger_full,
                             config.SI_SPEED_FWD,
                             config.SI_SPEED_REV)
-                    elif config.FORWARD_PATH_WITH_MANEUVER:
-                        path_points = build_forward_path(
+                    elif config.PATH_WITH_MANEUVER:
+                        path_points = build_maneuver_path(
                             field_gps_coords,
                             nav,
                             logger_full,
@@ -2205,7 +2205,7 @@ def main():
 
                         display_instruction_path = from_to[0:2]
 
-                    elif path_points[i][1] == 0 and config.FORWARD_PATH_WITH_MANEUVER:
+                    elif path_points[i][1] == 0 and config.PATH_WITH_MANEUVER:
                         #TODO: Make manoeuvre
 
                         from_to = [path_points[i - 2][0], path_points[i - 1][0]]
