@@ -59,6 +59,7 @@ class CreateFieldStateWithNavX(State.State):
         # self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
         
         self.__logger.info("Initialized")
+        print("CreateFieldStateWithNavX initialized")
 
 
     def on_event(self, event):
