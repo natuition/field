@@ -387,7 +387,22 @@ socketButton.on('field', function (dataServ) {
         $('#trash').attr('fill', "#FFF");
         wheelButton.classList.remove("disabled-wheel");
 
+    } else if (dataServ["status"] == "validate_geojson") {
+
+        divButton = document.getElementById("Newfield")
+        $(divButton).removeClass('active');
+        $(divButton).removeAttr('disabled');
+        $('#Start').removeAttr('disabled');
+        $('#Start').removeClass('disabled');
+        //$('#Audit').removeClass('disable-switcher-audit');
+
+        $('#RemoveField').removeAttr('disabled');
+        $('#RemoveField').removeClass('disabled');
+
+        $('#trash').attr('fill', "#FFF");
+        wheelButton.classList.remove("disabled-wheel");
     }
+
 });
 
 socketBroadcast.on('reloader', function (dataServ) {
