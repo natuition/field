@@ -264,26 +264,33 @@ class UIWebRobot:
         
         if "type" in data:
             if data["type"] in [str(i) for i in msg_socket_data_before_event]:
+                self.__logger.debug(f"Received socket data before event: {data}")
                 self.get_state_machine().on_socket_data(data)
 
             if data["type"] in [str(i) for i in msg_socket_to_event]:
+                self.__logger.debug(f"Received socket data to event: {data}")
                 self.get_state_machine().on_event(Events.from_str(data["type"]))
 
             if data["type"] in msg_socket_data_after_event:
+                self.__logger.debug(f"Received socket data after event: {data}")
                 self.get_state_machine().on_socket_data(data)
 
             if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
+                self.__logger.debug(f"Received joystick data: {data}")
                 self.get_state_machine().on_socket_data(data)
 
             elif data["type"] == "demo_resume_cmd":
+                self.__logger.debug(f"Received demo resume command: {data}")
                 self.demo_pause_client.send_resume_cmd()
 
             elif data["type"] == "validerZone":
+                self.__logger.debug(f"Received validerZone data: {data}")
                 data["client_id"] = request.sid
                 self.get_state_machine().on_socket_data(data)
                 self.get_state_machine().on_event(Events.VALIDATE_FIELD)
 
             elif data["type"] == "removeField":
+                self.__logger.debug(f"Received removeField data: {data}") 
                 if isinstance(self.get_state_machine().currentState, WaitWorkingState):
                     self.get_state_machine().on_socket_data(data)
 
