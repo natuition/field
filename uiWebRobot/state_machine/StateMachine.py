@@ -16,7 +16,8 @@ class StateMachine:
     def __init__(self, socketio, robot_state_client: RobotStateClient):
         utility.create_directories("logs/")
         self.__file_logger = utility.Logger(
-            "logs/" + utility.get_current_time()
+            "logs/" + utility.get_current_time(),
+            add_time = False
         )
         
         self.__original_stderr = sys.stderr
