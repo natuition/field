@@ -129,7 +129,7 @@ class CreateFieldStateWithNavX(State.State):
             organized_field = result.corners[closest_corner_index:] + result.corners[:closest_corner_index]
             
             self.field = organized_field
-            field_name = "Example field"
+            field_name = data['value']['features'][0]['properties'].get('Name',"Field with NavX")
             
             field_path, field_name = self.saveField("./fields/", field_name + ".txt")
             
