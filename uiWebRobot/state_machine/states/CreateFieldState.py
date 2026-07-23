@@ -28,6 +28,7 @@ class CreateFieldState(State.State):
                  smoothie: adapters.SmoothieAdapter,
                  vesc_engine: adapters.VescAdapterV4):
         self.__logger = LoggerFactory.create(self.__class__.__name__)
+        self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.robot_synthesis_value = RobotSynthesis.UI_CREATE_FIELD_STATE
         self.socketio = socketio
         self.__file_logger = file_logger

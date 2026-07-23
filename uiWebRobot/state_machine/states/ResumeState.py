@@ -16,6 +16,7 @@ class ResumeState(State.State):
 
     def __init__(self, socketio: SocketIO, file_logger: utility.Logger, isAudit=False, wasPhysicallyBlocked=False):
         self.__logger = LoggerFactory.create(self.__class__.__name__)
+        self.__logger.setLevel(config.LOG_LEVEL_UI)
         self.robot_synthesis_value = RobotSynthesis.UI_CONTINUE_STATE
         self.socketio = socketio
         self.__file_logger = file_logger
