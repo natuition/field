@@ -2,6 +2,7 @@ from flask_socketio import SocketIO
 import posix_ipc
 from urllib.parse import quote, unquote
 import logging
+import sys
 
 from config import config
 from uiWebRobot.state_machine import State
@@ -71,6 +72,12 @@ class CreateFieldStateWithNavX(State.State):
                 handler.formatter,
             )
         print("INFO enabled:", self.__logger.isEnabledFor(logging.INFO))
+        
+        handler = self.__logger.handlers[0]
+        print("handler.stream:", handler.stream)
+        print("sys.stderr:", sys.stderr)
+        print("same stream:", handler.stream is sys.stderr)
+        print("stream closed:", getattr(handler.stream, "closed", None))
         
         self.__logger.info("Initialized")
         print("CreateFieldStateWithNavX initialized")
