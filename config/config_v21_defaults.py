@@ -116,7 +116,8 @@ ALLOW_FIELD_LEAVING_PROTECTION = True
 LEAVING_PROTECTION_DISTANCE_MAX = 5000
 
 # For sedum extra bv, maneuver
-PATH_WITH_MANEUVER= True
+PATH_WITH_MANEUVER = True
+CREATE_FIELD_WITH_NAVX = True
 
 # ======================================================================================================================
 # ROBOT PATH (TRAJECTORY PLANNER) CREATION SETTINGS

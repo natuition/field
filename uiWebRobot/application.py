@@ -272,7 +272,7 @@ class UIWebRobot:
             if data["type"] in msg_socket_data_after_event:
                 self.get_state_machine().on_socket_data(data)
 
-            if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldState)):
+            if data["type"] == "joystick" and isinstance(self.get_state_machine().currentState, (WaitWorkingState, CreateFieldStateWithNavX, CreateFieldState)):
                 self.get_state_machine().on_socket_data(data)
 
             elif data["type"] == "demo_resume_cmd":
@@ -291,7 +291,7 @@ class UIWebRobot:
         emit(data["type"], data, broadcast=True)
 
     def on_disconnect(self):
-        if isinstance(self.get_state_machine().currentState, (WaitWorkingState,CreateFieldState)):
+        if isinstance(self.get_state_machine().currentState, (WaitWorkingState,CreateFieldStateWithNavX,CreateFieldState)):
             self.get_state_machine().on_socket_data(
                 {"type": "joystick", "x": 0, "y": 0})
 
@@ -326,7 +326,7 @@ class UIWebRobot:
             else:
                 return render_template("Error.html", sn=sn, error_message=self.__ui_languages["Error_500"][self.__get_ui_language()]), 500
 
-        return render_template('UIRobot.html', path_with_maneuver=self.__config.PATH_WITH_MANEUVER, demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
+        return render_template('UIRobot.html', create_field_with_navx=self.__config.CREATE_FIELD_WITH_NAVX, demo_mode=self.__config.ALLOW_DEMO_PAUSES, sn=sn, statusOfUIObject=statusOfUIObject, ui_languages=self.__ui_languages, ui_language=self.__get_ui_language(), Field_list=Field_list, current_field=current_field, IA_list=IA_list, now=datetime.now().strftime("%H_%M_%S_%f"), slider_min=self.__config.SLIDER_CREATE_FIELD_MIN, slider_max=self.__config.SLIDER_CREATE_FIELD_MAX, slider_step=self.__config.SLIDER_CREATE_FIELD_STEP)
 
     def received_on_socket_data(self, event_name):
         self.on_socket_data({"type": event_name})
@@ -358,7 +358,7 @@ class UIWebRobot:
             return redirect('/')
 
     def maps(self):
-        if not isinstance(self.get_state_machine().currentState, (WorkingState, WaitWorkingState, CreateFieldState, ResumeState, StartingState, PhysicalBlocageState)):
+        if not isinstance(self.get_state_machine().currentState, (WorkingState, WaitWorkingState, CreateFieldState, CreateFieldStateWithNavX, ResumeState, StartingState, PhysicalBlocageState)):
             return redirect('/')
         myCoords = [0, 0]
         if isinstance(self.get_state_machine().currentState, (PhysicalBlocageState)):

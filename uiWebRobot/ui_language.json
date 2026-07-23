@@ -814,5 +814,11 @@
 		"en": "Seuil de vitesse",
 		"nl": "Seuil de vitesse",
 		"de": "Seuil de vitesse"
+	},
+	"extension_file_geojson": {
+		"fr": "Le fichier doit avoir l'extension .geojson.",
+		"en": "The file must have the .geojson extension.",
+		"nl": "The file must have the .geojson extension.",
+		"de": "The file must have the .geojson extension."
 	}
 }

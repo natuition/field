@@ -7,12 +7,7 @@ from urllib.parse import quote
 
 from config import config
 from uiWebRobot.state_machine import State
-from uiWebRobot.state_machine.states import CreateFieldState
-from uiWebRobot.state_machine.states import StartingState
-from uiWebRobot.state_machine.states import ResumeState
-from uiWebRobot.state_machine.states import ErrorState
-from uiWebRobot.state_machine.states import CalibrateState
-from uiWebRobot.state_machine.states import ActuatorScreeningState
+from uiWebRobot.state_machine.states import CreateFieldStateWithNavX, CreateFieldState, StartingState, ResumeState, ErrorState, CalibrateState, ActuatorScreeningState
 from uiWebRobot.state_machine.Events import Events
 from uiWebRobot.state_machine.FrontEndObjects import FrontEndObjects, ButtonState, AuditButtonState
 from uiWebRobot.state_machine import utilsFunction
@@ -211,7 +206,10 @@ class WaitWorkingState(State.State):
             self.statusOfUIObject.continueButton = ButtonState.DISABLE
             self.statusOfUIObject.joystick = ButtonState.DISABLE
             self.statusOfUIObject.audit = AuditButtonState.BUTTON_DISABLE
-            return CreateFieldState.CreateFieldState(self.socketio, self.__file_logger, self.smoothie, self.vesc_engine)
+            if config.CREATE_FIELD_WITH_NAVX:
+                return CreateFieldState.CreateFieldState(self.socketio, self.__file_logger, self.smoothie, self.vesc_engine)
+            else:
+                return CreateFieldStateWithNavX.CreateFieldStateWithNavX(self.socketio, self.__file_logger, self.smoothie, self.vesc_engine)
         
         elif event == Events.CALIBRATION:
             self.__stop_thread()

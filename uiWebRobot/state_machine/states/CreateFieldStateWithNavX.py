@@ -118,72 +118,10 @@ class CreateFieldStateWithNavX(State.State):
             return ErrorState.ErrorState(self.socketio, self.__file_logger)
 
     def on_socket_data(self, data):
-        if data["type"] == "joystick":
-            if self.statusOfUIObject.fieldButton != ButtonState.VALIDATE and not self.manoeuvre:
-                x = int(data["x"]) / 2
-                if x < 0:
-                    x *= -(config.A_MIN / 100)
-                if x > 0:
-                    x *= config.A_MAX / 100
-                self.smoothie.custom_move_to(A_F=config.A_F_UI, A=x)
-        elif data["type"] == "create_field":
-            msg = f"Slider value : {data['value']}."
+        if data["type"] == "create_field":
+            msg = f"File value : {data['value']}."
             self.__file_logger.write_and_flush(msg + "\n")
             self.__logger.info(msg)
-            self.statusOfUIObject.slider = float(data["value"])
-            self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
-
-            try:
-                self.fieldCreator.setFirstPoint()
-
-                #self._send_last_pos_thread.start()
-
-                self.socketio.emit('field', {"status": "inRun"}, namespace='/button', broadcast=True)
-                self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
-            except TimeoutError:
-                if self.notificationQueue is not None:
-                    self.notificationQueue.send(json.dumps({"message_name": "No_GPS_for_field"}))
-                #self.__send_last_pos_thread_alive = False
-                #self._send_last_pos_thread.join()
-                return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, False, self.smoothie, self.vesc_engine)
-
-        elif data["type"] == "modifyZone":
-            msg = f"Slider value : {data['value']}."
-            self.__file_logger.write_and_flush(msg + "\n")
-            self.__logger.info(msg)
-            self.statusOfUIObject.slider = float(data["value"])
-            self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
-            self.field = self.fieldCreator.calculateField()
-        elif data["type"] == "validerZone":
-            msg = f"Slider value final : {data['value']}."
-            self.__file_logger.write_and_flush(msg + "\n")
-            self.__logger.info(msg)
-            self.statusOfUIObject.slider = float(data["value"])
-            self.fieldCreator.setFieldSize(float(data["value"]) * 1000)
-            self.field = self.fieldCreator.calculateField()
-            self.socketio.emit('field', {"status": "validate_name"}, namespace='/button', room=data["client_id"])
-        elif data["type"] == "validate_field_name":
-            self.statusOfUIObject.fieldButton = ButtonState.CHARGING
-            #patch bug field
-            #utilsFunction.save_gps_coordinates(self.field, "./fields/tmp.txt")
-            field_path, field_name = self.fieldCreator.saveField("./fields/", data["name"] + ".txt")
-
-            if utilsFunction.is_valid_field_file(field_path, self.__file_logger):
-                fields_list = utilsFunction.load_field_list("./fields")
-
-                if len(fields_list) > 0:
-                    coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
-                else:
-                    coords, other_fields, current_field_name = list(), list(), ""
-
-                self.socketio.emit('newField', json.dumps(
-                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
-                    "fields_list": fields_list}), namespace='/map')
-            else:
-                if os.path.exists(field_path):
-                    os.remove(field_path)
-                message = self.__ui_languages["working_zone_too_small"][self.__current_ui_language]
-                self.socketio.emit('notification', {"message_name": "not_a_good_zone", "message": message}, namespace='/broadcast', broadcast=True)
 
         return self
 

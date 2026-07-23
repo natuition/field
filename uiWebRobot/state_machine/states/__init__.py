@@ -2,6 +2,7 @@ from uiWebRobot.state_machine.states.ActuatorScreeningState import ActuatorScree
 from uiWebRobot.state_machine.states.CheckState import CheckState
 from uiWebRobot.state_machine.states.CalibrateState import CalibrateState
 from uiWebRobot.state_machine.states.CreateFieldState import CreateFieldState
+from uiWebRobot.state_machine.states.CreateFieldStateWithNavX import CreateFieldStateWithNavX
 from uiWebRobot.state_machine.states.ErrorState import ErrorState
 from uiWebRobot.state_machine.states.ResumeState import ResumeState
 from uiWebRobot.state_machine.states.StartingState import StartingState

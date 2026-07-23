@@ -74,11 +74,22 @@ async function selectGeoJSONFile() {
 
 function clickHandler() {
     if (this.id == "Newfield") {
-        if (path_with_maneuver) {
+        if (create_field_with_navx) {
             const file = selectGeoJSONFile()
                 .then((file) => {
                     //TODO: send file to server and create field
                     console.log(file.name);
+
+                    if (!file.name.toLowerCase().endsWith(".geojson")) {
+                        sendAlert("extension_file_geojson", (ui_languages["extension_file_geojson"])[ui_language], false)
+                    }
+
+                    const geojson = JSON.parse(file.text());
+
+                    socketio.emit("data", {
+                        type: "create_field",
+                        value: geojson,
+                    });
                 })
                 .catch((error) => {
                     console.error(error);
