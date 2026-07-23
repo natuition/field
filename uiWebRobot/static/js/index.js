@@ -54,7 +54,7 @@ var audit = false;
 
 var reloader = 0;
 
-function selectGeoJSONFile() {
+async function selectGeoJSONFile() {
     return new Promise((resolve, reject) => {
         const input = document.createElement("input");
         input.type = "file";
@@ -75,9 +75,14 @@ function selectGeoJSONFile() {
 function clickHandler() {
     if (this.id == "Newfield") {
         if (path_with_maneuver) {
-            const file = await selectGeoJSONFile();
-            console.log(file.name);
-            //TODO: send file to server and create field
+            const file = selectGeoJSONFile()
+                .then((file) => {
+                    //TODO: send file to server and create field
+                    console.log(file.name);
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         } else {
             if (gpsQuality == "no_gps") {
                 sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
