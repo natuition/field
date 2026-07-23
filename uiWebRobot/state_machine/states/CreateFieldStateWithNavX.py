@@ -105,7 +105,7 @@ class CreateFieldStateWithNavX(State.State):
             msg = f"File value : {data['value']}."
             self.__file_logger.write_and_flush(msg + "\n")
             self.__logger.debug(msg)
-            self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
+            # self.statusOfUIObject.fieldButton = ButtonState.NOT_HERE
 
         return self
 
