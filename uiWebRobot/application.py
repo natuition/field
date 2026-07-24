@@ -523,10 +523,11 @@ def main():
     except Exception:
         runtime_logger.error(traceback.format_exc(), stack_info=True)
     finally:
-        if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
-            runtime_logger.info("Closing app...")
-            uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
-        uiWebRobot.exit()
+        if uiWebRobot:
+            if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
+                runtime_logger.info("Closing app...")
+                uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
+            uiWebRobot.exit()
         
 # def shutdown_ui(*args):
 #     global _shutdown_done
