@@ -529,38 +529,6 @@ def main():
                 runtime_logger.info("Closing app...")
                 uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
             uiWebRobot.exit()
-        
-# def shutdown_ui(*args):
-#     global _shutdown_done
-
-#     if _shutdown_done:
-#         return
-
-#     _shutdown_done = True
-
-#     try:
-#         if isinstance(uiWebRobot.get_state_machine().currentState, WaitWorkingState):
-#             uiWebRobot.get_state_machine().on_event(Events.CLOSE_APP)
-#         uiWebRobot.exit()
-
-#     except Exception:
-#         try:
-#             runtime_logger.error("Error during shutdown_ui: " + traceback.format_exc())
-#         except Exception:
-#             pass
 
 if __name__ == "__main__":
     main()
-
-# # For Gunicorn
-# LoggerFactory.set_level(config.LOG_LEVEL_UI)
-# runtime_logger = LoggerFactory.create("Runtime")
-# runtime_logger.info(f"Starting UIWebRobot...")
-# uiWebRobot = UIWebRobot()
-# app = uiWebRobot.app
-# socketio = uiWebRobot.socketio
-# _shutdown_done = False
-
-# signal.signal(signal.SIGTERM, shutdown_ui)
-# signal.signal(signal.SIGINT, shutdown_ui)
-# atexit.register(shutdown_ui)
