@@ -513,6 +513,7 @@ class UIWebRobot:
 def main():
     LoggerFactory.set_level(config.LOG_LEVEL_UI)
     runtime_logger = LoggerFactory.create("Runtime")
+    uiWebRobot = None
     try:
         uiWebRobot = UIWebRobot()
         host="0.0.0.0"
