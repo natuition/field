@@ -460,7 +460,6 @@ DATAGATHERING_HOST = "172.16.0.10"
 DATAGATHERING_PORT = 8080
 
 LIFE_LINE_PIN = 78 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
-LIFE_LINE_PIN = 78 #77 for lifeline with nvidia board (board pin 38) | 78 for motherboard V2.4
 # ======================================================================================================================
 # WEB INTERFACE SETTINGS
 # ======================================================================================================================
