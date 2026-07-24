@@ -1155,12 +1155,16 @@ def build_maneuver_path(abcd_points: list,
         raise TypeError(msg)
 
     a, b, c, d = abcd_points[0], abcd_points[1], abcd_points[2], abcd_points[3]
+    
+    MAIN_LOGGER.info(f"1:{a, b, c, d}")
 
     if nav.get_distance(a,b) < nav.get_distance(b,c):
         a, b, c, d = abcd_points[1], abcd_points[2], abcd_points[3], abcd_points[0]
+        
+    MAIN_LOGGER.info(f"2:{a, b, c, d}")
 
     # separate stop-flags and BC & AD length control allows correct processing 4 corner non 90 degrees fields
-    bc_dist_ok = ad_dist_ok = True
+    bc_dist_ok, ad_dist_ok = True, True
 
     a_start_point = True
 
@@ -1184,6 +1188,8 @@ def build_maneuver_path(abcd_points: list,
             ad_dist_ok = False
 
         a_start_point = not a_start_point
+                
+        MAIN_LOGGER.info(f"Current path length: {len(path)} points, last point: {path[-1]}")
 
     return path
 
@@ -1897,6 +1903,7 @@ def main():
 
                     msg = "Generated " + str(len(path_points)) + " points."
                     logger_full.write(msg + "\n")
+                    MAIN_LOGGER.info(msg)
                 elif len(field_gps_coords) == 2:
                     path_start_index = 1
                     path_points = field_gps_coords
