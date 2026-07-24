@@ -1189,7 +1189,7 @@ def build_maneuver_path(abcd_points: list,
 
         a_start_point = not a_start_point
                 
-        MAIN_LOGGER.info(f"Current path length: {len(path)} points, last point: {path[-1]}")
+        MAIN_LOGGER.debug(f"Current path length: {len(path)} points, last point: {path[-1]}")
 
     return path
 

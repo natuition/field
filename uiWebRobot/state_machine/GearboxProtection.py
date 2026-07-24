@@ -91,12 +91,12 @@ class GearboxProtection:
         list_valid_distances.sort()
         median_index = len(list_valid_distances) // 2
         median_value = list_valid_distances[median_index]
-        self.__logger.info("Median distance = ", median_value)
+        self.__logger.info(f"Median distance = {median_value}")
         
         # Calculate the percentage of the minimum speed
         if self.__percentage_of_min_speed < 100 :
             self.__percentage_of_min_speed += self.__step_percentage_of_min_speed
-        self.__logger.info("Minimum distance = ", self.__min_speed * (self.__percentage_of_min_speed / 100))
+        self.__logger.info(f"Minimum distance = {self.__min_speed * (self.__percentage_of_min_speed / 100)}")
         
         return median_value < self.__min_speed * (self.__percentage_of_min_speed / 100)
     
