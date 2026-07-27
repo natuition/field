@@ -217,7 +217,7 @@ def main():
                 if delay_count > 0:
                     average_delay = sum_delay / delay_count
 
-                    print(
+                    logger.info(
                         "Average delay over 5 seconds: "
                         "{:.6f} s ({:.2f} ms) over {} samples".format(
                             average_delay,
@@ -225,8 +225,6 @@ def main():
                             delay_count,
                         )
                     )
-                else:
-                    print("Average delay over 5 seconds: no GPS samples")
 
                 sum_delay = 0.0
                 delay_count = 0
