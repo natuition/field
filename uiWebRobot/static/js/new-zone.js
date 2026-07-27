@@ -8,9 +8,11 @@ let currentFeatures = [];
 const extractFiles = async (zip, extension, outputFormat = "string") => {
   const unzippedFiles = [];
   const ZIP = new JSZip();
+  console.log(ZIP);
 
   try {
     const zipContent = await ZIP.loadAsync(zip);
+    console.log("Contenu du zip :", zipContent);
 
     for (const [relativePath, entry] of Object.entries(zipContent.files)) {
       if (entry.dir || !relativePath.endsWith(extension)) {
@@ -18,6 +20,7 @@ const extractFiles = async (zip, extension, outputFormat = "string") => {
       }
 
       const content = await entry.async(outputFormat);
+      console.log(`Contenu du fichier ${relativePath} :`, content);
       unzippedFiles.push(content);
     }
 

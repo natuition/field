@@ -77,9 +77,13 @@ function clickHandler() {
         if (create_field_with_navx) {
             selectGeoJSONFile()
                 .then(async (zip) => {
+                    console.log("Fichier sélectionné :", zip.name);
                     const files = await extractFiles(zip, "geojson");
+                    console.log("Fichiers extraits :", files);
                     const parsedGeoJSON = parseGeoJSON(files);
+                    console.log("GeoJSON parsé :", parsedGeoJSON);
                     const validFeatures = filterFeatures(parsedGeoJSON, (feature) => feature.geometry?.type === "LineString");
+                    console.log("Entités valides :", validFeatures);
 
                     openModal(validFeatures);
                 })
