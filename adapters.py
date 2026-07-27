@@ -1536,7 +1536,7 @@ class GPSUbloxAdapter:
         self._last_pos_count = last_pos_count
         self._ser_port = ser_port
         self._ser_baudrate = ser_baudrate
-        self._last_pos_container: List[navigation.GPSPoint] = []
+        self._last_pos_container: List[navigation.GNSSPoint] = []
         self._sync_locker = multiprocessing.RLock()
 
         self._serial = self._get_new_connection()
@@ -1591,7 +1591,7 @@ class GPSUbloxAdapter:
                     continue
             return self.get_last_position()
 
-    def get_fresh_position_v2(self) -> navigation.GPSPoint:
+    def get_fresh_position_v2(self) -> navigation.GNSSPoint:
         """Waits for new fresh position from gps and returns it, blocking until new position received.
         Returns copy of stored position (returned value can be safely changed with no worrying about obj reference
         features)"""
@@ -1636,11 +1636,11 @@ class GPSUbloxAdapter:
         with self._sync_locker:
             return self._last_pos_container[-1].as_old_list if len(self._last_pos_container) > 0 else None
 
-    def get_last_position_v2(self) -> navigation.GPSPoint:
+    def get_last_position_v2(self) -> navigation.GNSSPoint:
         """Waits until at least one position is stored, returns last saved position copy at the moment of call
         (reference type safe)
 
-        Returned position is an instance of navigation.GPSPoint class.
+        Returned position is an instance of navigation.GNSSPoint class.
         """
 
         while len(self._last_pos_container) < 1:
@@ -1649,11 +1649,11 @@ class GPSUbloxAdapter:
             # TODO currently it's not a deep copy
             return self._last_pos_container[-1]
 
-    def get_last_position_v2_non_blocking(self) -> Optional[navigation.GPSPoint]:
+    def get_last_position_v2_non_blocking(self) -> Optional[navigation.GNSSPoint]:
         """Returns None if no positions are stored, returns last saved position copy at the moment of call
         (reference type safe)
 
-        Returned position is an instance of navigation.GPSPoint class.
+        Returned position is an instance of navigation.GNSSPoint class.
         """
 
         with self._sync_locker:
@@ -1705,7 +1705,7 @@ class GPSUbloxAdapter:
                         point_quality = data[6]
                         if -90 <= lati <= 90 and -180 <= longi <= 180:
                             # return [lati, longi, point_quality]  # , float(data[11])  # alti
-                            return navigation.GPSPoint(lati, longi, point_quality, float(data[1]), time.time())
+                            return navigation.GNSSPoint(lati, longi, point_quality, float(data[1]), time.time())
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except:

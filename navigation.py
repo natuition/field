@@ -562,7 +562,7 @@ class NavigationPrediction:
         self.logger_full.write(msg + "\n")
 
 
-class GPSPoint:
+class GNSSPoint:
     """
     Class representing a GPS point with latitude, longitude, quality, creation timestamp, and receiving timestamp.
     Attributes:
@@ -643,7 +643,7 @@ class GPSPoint:
         return self.__receiving_ts
     
     def __eq__(self, other):
-        if not isinstance(other, GPSPoint):
+        if not isinstance(other, GNSSPoint):
             return NotImplemented
 
         return (
@@ -674,15 +674,15 @@ class GPSPoint:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GPSPoint":
+    def from_dict(cls, data: Dict[str, Any]) -> "GNSSPoint":
         if not isinstance(data, dict):
-            raise TypeError("GPSPoint data must be a dictionary")
+            raise TypeError("GNSSPoint data must be a dictionary")
 
         if "latitude" not in data:
-            raise ValueError("Missing GPSPoint field: latitude")
+            raise ValueError("Missing GNSSPoint field: latitude")
 
         if "longitude" not in data:
-            raise ValueError("Missing GPSPoint field: longitude")
+            raise ValueError("Missing GNSSPoint field: longitude")
 
         return cls(
             latitude=data["latitude"],
@@ -694,7 +694,7 @@ class GPSPoint:
 
     def __repr__(self):
         return (
-            f"GPSPoint("
+            f"GNSSPoint("
             f"latitude={self.latitude!r}, "
             f"longitude={self.longitude!r}, "
             f"quality={self.quality!r}, "
