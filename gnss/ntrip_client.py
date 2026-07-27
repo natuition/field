@@ -97,6 +97,7 @@ class NtripClient(object):
         return "%02X" % xsum_calc
 
     def getGGABytes(self):
+        self.setPosition(self.lat, self.long)
         now = datetime.datetime.utcnow()
         ggaString= "GPGGA,%02d%02d%04.2f,%02d%011.8f,%1s,%03d%011.8f,%1s,1,05,0.19,+00000,M,%5.3f,M,," % \
             (now.hour,now.minute,now.second,self.latDeg,self.latMin,self.flagN,self.longDeg,self.longMin,self.flagE,self.height)
