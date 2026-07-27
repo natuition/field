@@ -162,7 +162,9 @@ class GPSSubscriber:
                 )
             )
 
-        return GPSPoint.from_dict(data)
+        gps_point = GPSPoint.from_dict(data)
+        gps_point.receiving_ts = time.time()
+        return gps_point
 
     def __enter__(self):
         self.start()
