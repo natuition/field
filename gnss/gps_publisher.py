@@ -31,7 +31,7 @@ class GPSPublisher:
             )
 
         payload = json.dumps(
-            point.to_dict(),
+            point.as_dict(),
             separators=(",", ":"),
         ).encode("utf-8")
 
