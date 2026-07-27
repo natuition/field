@@ -5,12 +5,12 @@ import time
 import zmq
 
 from gnss.constants import IPC_ENDPOINT, TOPIC
-from navigation import GPSPoint
+from navigation import GNSSPoint
 
 from logger import LoggerFactory
 
 
-class GPSPublisher:
+class GNSSPublisher:
     def __init__(self, endpoint=IPC_ENDPOINT, topic=TOPIC):
         self.__endpoint = endpoint
         self.__topic = topic
@@ -22,10 +22,10 @@ class GPSPublisher:
 
         self.__publisher.bind(self.__endpoint)
 
-    def publish(self, point: GPSPoint)-> None:
-        if not isinstance(point, GPSPoint):
+    def publish(self, point: GNSSPoint)-> None:
+        if not isinstance(point, GNSSPoint):
             raise TypeError(
-                "point must be a GPSPoint, got {} instead".format(
+                "point must be a GNSSPoint, got {} instead".format(
                     type(point).__name__
                 )
             )
@@ -57,7 +57,7 @@ def create_random_gps_point():
 
     timestamp = time.time()
 
-    return GPSPoint(
+    return GNSSPoint(
         latitude=latitude,
         longitude=longitude,
         quality=random.choice(
@@ -74,10 +74,10 @@ def create_random_gps_point():
 
 def main():
     LoggerFactory.set_level("DEBUG")
-    logger = LoggerFactory.create("GPSPublisher-Runtime")
+    logger = LoggerFactory.create("GNSSPublisher-Runtime")
     
-    publisher = GPSPublisher()
-    logger.info("GPS publisher started")
+    publisher = GNSSPublisher()
+    logger.info("GNSS publisher started")
     logger.info("Endpoint: {}".format(IPC_ENDPOINT))
     logger.info("Topic: {}".format(TOPIC))
 
@@ -99,11 +99,11 @@ def main():
             time.sleep(0.25)
 
     except KeyboardInterrupt:
-        logger.info("GPS publisher shutdown requested")
+        logger.info("GNSS publisher shutdown requested")
 
     finally:
         publisher.close()
-        logger.info("GPS publisher stopped")
+        logger.info("GNSS publisher stopped")
 
 
 if __name__ == "__main__":

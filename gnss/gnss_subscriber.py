@@ -6,11 +6,11 @@ from typing import Optional
 import zmq
 
 from gnss.constants import IPC_ENDPOINT, TOPIC
-from navigation import GPSPoint
+from navigation import GNSSPoint
 from logger import LoggerFactory
 
 
-class GPSSubscriber:
+class GNSSSubscriber:
     def __init__(
         self,
         endpoint=IPC_ENDPOINT,
@@ -23,7 +23,7 @@ class GPSSubscriber:
 
         self.__logger = LoggerFactory.create(self.__class__.__name__)
 
-        self.__latest_point: Optional[GPSPoint] = None
+        self.__latest_point: Optional[GNSSPoint] = None
         self.__point_lock = threading.RLock()
 
         self.__running = threading.Event()
@@ -33,7 +33,7 @@ class GPSSubscriber:
     def is_running(self):
         return self.__running.is_set()
 
-    def get_last_position_v2(self) -> Optional[GPSPoint]:
+    def get_last_position_v2(self) -> Optional[GNSSPoint]:
         with self.__point_lock:
             return self.__latest_point
 
@@ -45,7 +45,7 @@ class GPSSubscriber:
 
         self.__thread = threading.Thread(
             target=self.__subscriber_loop,
-            name="GPS-ZMQ-Subscriber",
+            name="GNSS-ZMQ-Subscriber",
         )
 
         self.__thread.daemon = True
@@ -79,7 +79,7 @@ class GPSSubscriber:
             poller.register(subscriber, zmq.POLLIN)
 
             self.__logger.info(
-                "GPS subscriber connected to {}".format(
+                "GNSS subscriber connected to {}".format(
                     self.__endpoint
                 )
             )
@@ -124,7 +124,7 @@ class GPSSubscriber:
         except zmq.ZMQError as error:
             if self.__running.is_set():
                 self.__logger.error(
-                    "ZeroMQ error in GPS subscriber: {}".format(
+                    "ZeroMQ error in GNSS subscriber: {}".format(
                         error
                     )
                 )
@@ -132,7 +132,7 @@ class GPSSubscriber:
         except Exception as error:
             if self.__running.is_set():
                 self.__logger.exception(
-                    "Unexpected error in GPS subscriber: {}".format(
+                    "Unexpected error in GNSS subscriber: {}".format(
                         error
                     )
                 )
@@ -148,21 +148,21 @@ class GPSSubscriber:
             subscriber.close()
             context.term()
 
-            self.__logger.info("GPS subscriber stopped")
+            self.__logger.info("GNSS subscriber stopped")
 
     @staticmethod
-    def __deserialize_point(payload: bytes) -> GPSPoint:
+    def __deserialize_point(payload: bytes) -> GNSSPoint:
         try:
             data = json.loads(payload.decode("utf-8"))
 
         except (UnicodeDecodeError, ValueError) as error:
             raise ValueError(
-                "Invalid GPSPoint JSON payload: {}".format(
+                "Invalid GNSSPoint JSON payload: {}".format(
                     error
                 )
             )
 
-        return GPSPoint.from_dict(data)
+        return GNSSPoint.from_dict(data)
 
     def __enter__(self):
         self.start()
@@ -174,10 +174,10 @@ class GPSSubscriber:
 
 def main():
     LoggerFactory.set_level("DEBUG")
-    logger = LoggerFactory.create("GPSSubscriber-Runtime")
+    logger = LoggerFactory.create("GNSSSubscriber-Runtime")
     
-    subscriber = GPSSubscriber()
-    logger.info("Starting GPS subscriber runtime")
+    subscriber = GNSSSubscriber()
+    logger.info("Starting GNSS subscriber runtime")
     logger.info("Endpoint: {}".format(IPC_ENDPOINT))
     logger.info("Topic: {}".format(TOPIC))
     subscriber.start()
@@ -193,7 +193,7 @@ def main():
             current_ts = time.time()
 
             if point is None:
-                logger.debug("No GPS position received yet")
+                logger.debug("No GNSS position received yet")
             else:
                 delay = current_ts - point.receiving_ts
 
@@ -201,7 +201,7 @@ def main():
                 delay_count += 1
 
                 logger.debug(
-                    "Latest GPS position at current_ts={} : "
+                    "Latest GNSS position at current_ts={} : "
                     "latitude={:.8f}, longitude={:.8f}, quality={}, "
                     "creation_ts={}, receiving_ts={}".format(
                         current_ts,
@@ -233,11 +233,11 @@ def main():
             time.sleep(0.01)
 
     except KeyboardInterrupt:
-        logger.info("GPS subscriber shutdown requested")
+        logger.info("GNSS subscriber shutdown requested")
 
     finally:
         subscriber.stop()
-        logger.info("GPS subscriber runtime stopped")
+        logger.info("GNSS subscriber runtime stopped")
 
 
 if __name__ == "__main__":
