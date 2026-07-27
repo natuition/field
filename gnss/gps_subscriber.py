@@ -201,7 +201,7 @@ def main():
                     )
                 )
 
-            time.sleep(1.0)
+            time.sleep(0.125)
 
     except KeyboardInterrupt:
         logger.info("GPS subscriber shutdown requested")
