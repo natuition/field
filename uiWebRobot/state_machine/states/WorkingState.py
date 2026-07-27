@@ -42,7 +42,8 @@ class WorkingState(State.State):
         self.extracted_plants = dict()
         self.last_path_all_points = list()
         self.previous_sessions_working_time = None
-        self.__gearbox_protection = GearboxProtection()
+        if config.CHECK_PHYSICAL_BLOCAGE:
+            self.__gearbox_protection = GearboxProtection()
 
         self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.DISABLE,
                                                 startButton=ButtonState.DISABLE,
@@ -296,7 +297,8 @@ class WorkingState(State.State):
                     self.extracted_plants = data["datacollector"][1]
                     self.previous_sessions_working_time = data["datacollector"][2]
                     self.sendLastStatistics()
-                    self.__gearbox_protection.store_number_of_extracts(data["datacollector"][1])
+                    if config.CHECK_PHYSICAL_BLOCAGE:
+                        self.__gearbox_protection.store_number_of_extracts(data["datacollector"][1])
                     
                 elif "last_gps" in data:
                     data = data["last_gps"]
@@ -305,9 +307,10 @@ class WorkingState(State.State):
                         self.lastGpsQuality = data[2]
                     self.socketio.emit('updatePath', json.dumps([self.allPath, self.lastGpsQuality]), namespace='/map', broadcast=True)
                     self.socketio.emit('updateGPSQuality', self.lastGpsQuality, namespace='/gps', broadcast=True)
-                    self.__gearbox_protection.store_coord(data[0], data[1], data[2])
-                    if(self.__gearbox_protection.is_physically_blocked() and config.CHECK_PHYSICAL_BLOCAGE) :
-                        utilsFunction.change_state(Events.PHYSICAL_BLOCAGE)
+                    if config.CHECK_PHYSICAL_BLOCAGE:
+                        self.__gearbox_protection.store_coord(data[0], data[1], data[2])
+                        if self.__gearbox_protection.is_physically_blocked() :
+                            utilsFunction.change_state(Events.PHYSICAL_BLOCAGE)
 
                 elif "last_gps_list_file" in data:
                     last_gps_list_file = data["last_gps_list_file"]
