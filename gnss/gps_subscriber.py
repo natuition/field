@@ -190,7 +190,7 @@ def main():
                 logger.debug("No GPS position received yet")
             else:
                 logger.debug(
-                    "Latest GPS position at current_ts={} :"
+                    "Latest GPS position at current_ts={} : "
                     "latitude={:.8f}, longitude={:.8f}, quality={}, "
                     "creation_ts={}, receiving_ts={}".format(
                         time.time(),
