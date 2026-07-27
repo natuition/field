@@ -7,7 +7,8 @@ import time
 from config import config
 import os
 
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union, Dict
+
 Number = Union[int, float]
 
 from logger import LoggerFactory
@@ -563,18 +564,19 @@ class NavigationPrediction:
 
 
 class GPSPoint:
-    def __init__(self,
-                 latitude: float,
-                 longitude : float,
-                 quality: Optional[str]=None,
-                 creation_ts: Optional[float]=None,
-                 receiving_ts: Optional[float]=None):
-
-        self.__latitude = latitude
-        self.__longitude = longitude
-        self.__quality = quality
-        self.__creation_ts = creation_ts
-        self.__receiving_ts = receiving_ts
+    def __init__(
+        self,
+        latitude: float,
+        longitude: float,
+        quality: Optional[str] = None,
+        creation_ts: Optional[float] = None,
+        receiving_ts: Optional[float] = None,
+    ):
+        self.__latitude: float = latitude
+        self.__longitude: float = longitude
+        self.__quality: Optional[str] = quality
+        self.__creation_ts: Optional[float] = creation_ts
+        self.__receiving_ts: Optional[float] = receiving_ts
 
     @property
     def latitude(self):
@@ -582,10 +584,18 @@ class GPSPoint:
 
     @latitude.setter
     def latitude(self, value: Number):
-        if not (-90 <= value <= 90):
-            raise ValueError(f"latitude must be in range [-90 - 90], got {value} instead")
+        if not isinstance(value, Number):
+            raise TypeError(
+                "latitude must be a number, got {!r} instead".format(value)
+            )
 
-        self.__latitude = value
+        if not -90 <= value <= 90:
+            raise ValueError(
+                "latitude must be in range [-90, 90], "
+                "got {} instead".format(value)
+            )
+
+        self.__latitude = float(value)
 
     @property
     def longitude(self):
@@ -593,10 +603,18 @@ class GPSPoint:
 
     @longitude.setter
     def longitude(self, value: Number):
-        if not (-180 <= value <= 180):
-            raise ValueError(f"longitude must be in range [-180 - 180], got {value} instead")
+        if not isinstance(value, Number):
+            raise TypeError(
+                "longitude must be a number, got {!r} instead".format(value)
+            )
 
-        self.__longitude = value
+        if not -180 <= value <= 180:
+            raise ValueError(
+                "longitude must be in range [-180, 180], "
+                "got {} instead".format(value)
+            )
+
+        self.__longitude = float(value)
 
     @property
     def quality(self) -> Optional[str]:
@@ -616,8 +634,56 @@ class GPSPoint:
         return self.__receiving_ts
 
     @property
-    def as_old_list(self):
-        point: List[Union[Number,str]] = [self.__latitude, self.__longitude]
+    def as_old_list(self) -> List[Union[float, str]]:
+        point = [self.__latitude, self.__longitude]
+
         if self.__quality is not None:
             point.append(self.__quality)
+
         return point
+
+    @property
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "latitude": self.__latitude,
+            "longitude": self.__longitude,
+            "quality": self.__quality,
+            "creation_ts": self.__creation_ts,
+            "receiving_ts": self.__receiving_ts,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GPSPoint":
+        if not isinstance(data, dict):
+            raise TypeError("GPSPoint data must be a dictionary")
+
+        if "latitude" not in data:
+            raise ValueError("Missing GPSPoint field: latitude")
+
+        if "longitude" not in data:
+            raise ValueError("Missing GPSPoint field: longitude")
+
+        return cls(
+            latitude=data["latitude"],
+            longitude=data["longitude"],
+            quality=data.get("quality"),
+            creation_ts=data.get("creation_ts"),
+            receiving_ts=data.get("receiving_ts"),
+        )
+
+    def __repr__(self):
+        return (
+            "GPSPoint("
+            "latitude={!r}, "
+            "longitude={!r}, "
+            "quality={!r}, "
+            "creation_ts={!r}, "
+            "receiving_ts={!r}"
+            ")"
+        ).format(
+            self.__latitude,
+            self.__longitude,
+            self.__quality,
+            self.__creation_ts,
+            self.__receiving_ts,
+        )
