@@ -61,11 +61,11 @@ class CheckState(State.State):
             self.socketio.emit('data', {"ACK": "list_validation"}, namespace='/server', broadcast=True)
             EnvironnementConfig.NATUITION_CHECKLIST(True)
             self.__stop_thread()
-            if config.NTRIP:
-                msg = f"Restarting ntripClient.service..."
-                self.__file_logger.write_and_flush(msg + "\n")
-                self.__logger.info(msg)
-                os.system("sudo systemctl restart ntripClient.service")
+            # if config.NTRIP:
+            #     msg = f"Restarting ntripClient.service..."
+            #     self.__file_logger.write_and_flush(msg + "\n")
+            #     self.__logger.info(msg)
+            #     os.system("sudo systemctl restart ntripClient.service")
             return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, False, vesc_engine=self.vesc_engine)
         
         else:

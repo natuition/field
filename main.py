@@ -439,7 +439,7 @@ def move_to_point_and_extract(coords_from_to: list,
         # points filter by quality flag
         if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
             # restart ntrip if enough time passed since the last ntrip restart
-            navigation.NavigationV3.restart_ntrip_service(logger_full)
+            # navigation.NavigationV3.restart_ntrip_service(logger_full)
 
             # stop robot due to bad point quality if allowed
             if config.ALLOW_GPS_BAD_QUALITY_STOP:
@@ -473,8 +473,10 @@ def move_to_point_and_extract(coords_from_to: list,
                     # check if it's a good quality point
                     if cur_pos[2] != "4":
                         # restart ntrip if enough time passed since the last ntrip restart
-                        navigation.NavigationV3.restart_ntrip_service(
-                            logger_full)
+                        # navigation.NavigationV3.restart_ntrip_service(
+                        #     logger_full)
+                        msg = f"Still waiting for gps quality 4, current point quality is '{cur_pos[2]}'." 
+                        MAIN_LOGGER.info(msg)
                     else:
                         msg = "The gps has regained quality 4, starting movement"
                         MAIN_LOGGER.info(msg)
@@ -525,7 +527,9 @@ def move_to_point_and_extract(coords_from_to: list,
                 # check if it's a good quality point or ignore point quality if bad quality stop is not allowed
                 if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
                     # restart ntrip if enough time passed since the last ntrip restart
-                    navigation.NavigationV3.restart_ntrip_service(logger_full)
+                    # navigation.NavigationV3.restart_ntrip_service(logger_full)
+                    msg = f"Still waiting for good prev-cur distance due to current point quality '{cur_pos[2]}' not being '4'." 
+                    MAIN_LOGGER.info(msg)
                     continue
 
                 # check if distance became ok

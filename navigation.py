@@ -471,13 +471,13 @@ class NavigationV3:
             logger_full.write(msg + "\n")
             return False
 
-        if time.time() - NavigationV3.__ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT:
-            msg = f"[{cls.__name__}] -> Restarting Ntrip service."
-            logger_full.write(msg + "\n")
-            NavigationV3.LOGGER.info(msg)
-            os.system("sudo systemctl restart ntripClient.service")
-            NavigationV3.__ntrip_restart_ts = time.time()
-            return True
+        # if time.time() - NavigationV3.__ntrip_restart_ts > config.NTRIP_RESTART_TIMEOUT:
+        #     msg = f"[{cls.__name__}] -> Restarting Ntrip service."
+        #     logger_full.write(msg + "\n")
+        #     NavigationV3.LOGGER.info(msg)
+        #     os.system("sudo systemctl restart ntripClient.service")
+        #     NavigationV3.__ntrip_restart_ts = time.time()
+        #     return True
 
     @staticmethod
     def get_last_ntrip_restart_ts():

@@ -1,12 +1,12 @@
 [Unit]
-Description=Job that runs at start for ntripClient.py.
+Description=Job that runs at start for gnss_publisher.py.
 After=network-online.target
 
 [Service]
 Type=simple
 User=violette
 WorkingDirectory=/home/violette/field/
-ExecStart=/usr/bin/sudo /usr/bin/python3.6 /home/violette/field/ntripClient.py
+ExecStart=/usr/bin/sudo /usr/bin/python3.6 -m gnss.gnss_publisher
 Restart=on-failure
 
 [Install]

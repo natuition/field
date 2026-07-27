@@ -134,8 +134,8 @@ def send_last_pos_thread_tf(send_last_pos_thread_alive: bool, socketio: SocketIO
     with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, 1) as gps:
         while send_last_pos_thread_alive():
             lastPos = gps.get_fresh_position()
-            if config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART and lastPos[2]!='4':
-                NavigationV3.restart_ntrip_service(file_logger)
+            #if config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART and lastPos[2]!='4':
+            #    NavigationV3.restart_ntrip_service(file_logger)
             socketio.emit('updatePath', json.dumps([[[lastPos[1], lastPos[0]]], lastPos[2]]), namespace='/map', broadcast=True)
             socketio.emit('updateGPSQuality', lastPos[2], namespace='/gps', broadcast=True)
 

@@ -165,7 +165,7 @@ def end():
 @socketio.on('client_config', namespace='/server')
 def on_client_config(data):
     if data["apply"]:
-        for service in ["ntripClient.service","UI.service","configBackup.service"]:
+        for service in ["gnss_publisher.service","UI.service","configBackup.service"]:
             shutil.copyfile(f"./services/{service}", f"/etc/systemd/system/{service}")
             os.system(f"sudo systemctl enable {service}")
         LOG["Client configuration apply"] = "OK"
