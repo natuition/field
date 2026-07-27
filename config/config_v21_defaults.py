@@ -294,6 +294,8 @@ PREV_CUR_POINT_MAX_DIST = 10000
 # distance < PREV_CUR_POINT_MAX_DIST before stop reading new points and accept current cur_pos point
 GPS_DIST_WAIT_TIME_MAX = 30
 
+GPS_IPC_ZMQ_PATH = "/tmp/robot-events.ipc"
+GPS_IPC_ZMQ_TOPIC = "gps"
 
 # ======================================================================================================================
 # SMOOTHIE SETTINGS
