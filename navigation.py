@@ -8,8 +8,7 @@ from config import config
 import os
 
 from typing import Any, List, Optional, Tuple, Union, Dict
-
-Number = Union[int, float]
+from numbers import Number
 
 from logger import LoggerFactory
 

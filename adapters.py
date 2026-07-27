@@ -12,7 +12,7 @@ import json
 from serial import SerialException
 
 from typing import Any, Dict, List, Tuple, Type, Optional, TypeVar, Union, cast
-Number = Union[int, float]
+from numbers import Number
 OptionalNumber = Optional[Number]
 ResultType = TypeVar("ResultType")
 
