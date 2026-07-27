@@ -204,11 +204,7 @@ def main():
         while True:
             point = subscriber.get_last_position_v2()
 
-            if point is None:
-                logger.debug("No GNSS position received yet")
-
-            elif point != last_point:
-                # Nouveau point GNSS
+            if point != last_point:
                 last_point = point
 
                 current_ts = time.time()
