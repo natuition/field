@@ -668,7 +668,7 @@ class GPSPoint:
             longitude=data["longitude"],
             quality=data.get("quality"),
             creation_ts=data.get("creation_ts"),
-            receiving_ts=data.get("receiving_ts"),
+            receiving_ts=data.get("receiving_ts") if data.get("receiving_ts") is not None else time.time(),
         )
 
     def __repr__(self):
