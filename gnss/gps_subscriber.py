@@ -183,17 +183,28 @@ def main():
     subscriber.start()
 
     try:
+        sum_delay = 0.0
+        delay_count = 0
+
+        last_average_print_ts = time.monotonic()
+
         while True:
             point = subscriber.get_last_position_v2()
+            current_ts = time.time()
 
             if point is None:
                 logger.debug("No GPS position received yet")
             else:
+                delay = current_ts - point.receiving_ts
+
+                sum_delay += delay
+                delay_count += 1
+
                 logger.debug(
                     "Latest GPS position at current_ts={} : "
                     "latitude={:.8f}, longitude={:.8f}, quality={}, "
                     "creation_ts={}, receiving_ts={}".format(
-                        time.time(),
+                        current_ts,
                         point.latitude,
                         point.longitude,
                         point.quality,
@@ -202,7 +213,26 @@ def main():
                     )
                 )
 
-            time.sleep(0.125)
+            if time.monotonic() - last_average_print_ts >= 5.0:
+                if delay_count > 0:
+                    average_delay = sum_delay / delay_count
+
+                    print(
+                        "Average delay over 5 seconds: "
+                        "{:.6f} s ({:.2f} ms) over {} samples".format(
+                            average_delay,
+                            average_delay * 1000.0,
+                            delay_count,
+                        )
+                    )
+                else:
+                    print("Average delay over 5 seconds: no GPS samples")
+
+                sum_delay = 0.0
+                delay_count = 0
+                last_average_print_ts = time.monotonic()
+
+            time.sleep(0.01)
 
     except KeyboardInterrupt:
         logger.info("GPS subscriber shutdown requested")
