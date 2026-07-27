@@ -67,8 +67,8 @@ def create_random_gps_point():
                 "4",
             ]
         ),
-        creation_ts=timestamp,
-        receiving_ts=None,
+        creation_ts=timestamp-(random(0, 5)*0.001),
+        receiving_ts=timestamp,
     )
 
 

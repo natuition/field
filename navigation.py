@@ -564,6 +564,16 @@ class NavigationPrediction:
 
 
 class GPSPoint:
+    """
+    Class representing a GPS point with latitude, longitude, quality, creation timestamp, and receiving timestamp.
+    Attributes:
+        latitude (float): Latitude of the GPS point.
+        longitude (float): Longitude of the GPS point.
+        quality (Optional[str]): Quality of the GPS signal (optional).
+        creation_ts (Optional[float]): Timestamp of NMEA (optional).
+        receiving_ts (Optional[float]): Timestamp when the GPS point was received (optional).
+    """
+    
     def __init__(
         self,
         latitude: float,
@@ -572,14 +582,14 @@ class GPSPoint:
         creation_ts: Optional[float] = None,
         receiving_ts: Optional[float] = None,
     ):
-        self.__latitude: float = latitude
-        self.__longitude: float = longitude
-        self.__quality: Optional[str] = quality
+        self.latitude: float = latitude
+        self.longitude: float = longitude
+        self.quality: Optional[str] = quality
         self.__creation_ts: Optional[float] = creation_ts
         self.__receiving_ts: Optional[float] = receiving_ts
 
     @property
-    def latitude(self):
+    def latitude(self) -> float:
         return self.__latitude
 
     @latitude.setter
@@ -598,7 +608,7 @@ class GPSPoint:
         self.__latitude = float(value)
 
     @property
-    def longitude(self):
+    def longitude(self) ->float:
         return self.__longitude
 
     @longitude.setter
@@ -632,6 +642,18 @@ class GPSPoint:
     @property
     def receiving_ts(self) -> Optional[float]:
         return self.__receiving_ts
+    
+    def __eq__(self, other):
+        if not isinstance(other, GPSPoint):
+            return NotImplemented
+
+        return (
+            self.latitude == other.latitude
+            and self.longitude == other.longitude
+            and self.quality == other.quality
+            and self.creation_ts == other.creation_ts
+            and self.receiving_ts == other.receiving_ts
+        )
 
     @property
     def as_old_list(self) -> List[Union[float, str]]:
@@ -668,22 +690,15 @@ class GPSPoint:
             longitude=data["longitude"],
             quality=data.get("quality"),
             creation_ts=data.get("creation_ts"),
-            receiving_ts=data.get("receiving_ts") if data.get("receiving_ts") is not None else time.time(),
+            receiving_ts=data.get("receiving_ts"),
         )
 
     def __repr__(self):
         return (
-            "GPSPoint("
-            "latitude={!r}, "
-            "longitude={!r}, "
-            "quality={!r}, "
-            "creation_ts={!r}, "
-            "receiving_ts={!r}"
-            ")"
-        ).format(
-            self.__latitude,
-            self.__longitude,
-            self.__quality,
-            self.__creation_ts,
-            self.__receiving_ts,
+            f"GPSPoint("
+            f"latitude={self.latitude!r}, "
+            f"longitude={self.longitude!r}, "
+            f"quality={self.quality!r}, "
+            f"creation_ts={self.creation_ts!r}, "
+            f"receiving_ts={self.receiving_ts!r})"
         )
