@@ -43,6 +43,11 @@ class GNSSPublisher:
         self.__ntrip_client = None
         self.__sent_rtcm_ids = []
         self.__closed = False
+        
+        self.__position_count = 0
+        self.__position_quality_counts = {}
+        self.__last_position_stats_ts = time.monotonic()
+        self.__position_stats_interval = 5.0
 
     def publish(self, point: GNSSPoint) -> None:
         if not isinstance(point, GNSSPoint):
@@ -220,6 +225,36 @@ class GNSSPublisher:
 
         return any(rtcm_id in filter_ids for filter_ids in config.RTK_ID_SEND)
     
+    def __log_position_statistics_if_needed(self):
+        current_ts = time.monotonic()
+        elapsed = current_ts - self.__last_position_stats_ts
+
+        if elapsed < self.__position_stats_interval:
+            return
+
+        qualities = ", ".join(
+            "{}={}".format(quality, count)
+            for quality, count in sorted(
+                self.__position_quality_counts.items()
+            )
+        )
+
+        if not qualities:
+            qualities = "none"
+
+        self.__logger.info(
+            "{} GNSS position(s) sent during the last {:.1f} seconds. "
+            "Qualities: {}".format(
+                self.__position_count,
+                elapsed,
+                qualities,
+            )
+        )
+
+        self.__position_count = 0
+        self.__position_quality_counts = {}
+        self.__last_position_stats_ts = current_ts
+    
     def __must_pause_ntrip(self):
         if not config.RTK_ID_SEND:
             return False
@@ -270,6 +305,11 @@ class GNSSPublisher:
             return
 
         self.publish(point)
+        self.__position_count += 1
+
+        self.__position_quality_counts[point.quality] = (
+            self.__position_quality_counts.get(point.quality, 0) + 1
+        )
 
         self.__logger.debug(
             "Position sent: latitude={:.8f}, longitude={:.8f}, "
@@ -328,6 +368,7 @@ class GNSSPublisher:
             while True:
                 self.__read_and_publish_position()
                 self.__read_and_send_rtcm_correction()
+                self.__log_position_statistics_if_needed()
 
         except KeyboardInterrupt:
             self.__logger.info(
