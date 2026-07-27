@@ -301,7 +301,7 @@ class GNSSPublisher:
         if rtcm_id not in self.__sent_rtcm_ids:
             self.__sent_rtcm_ids.append(rtcm_id)
 
-            self.__logger.info(
+            self.__logger.debug(
                 "RTCM IDs received: {}".format(
                     self.__sent_rtcm_ids
                 )
