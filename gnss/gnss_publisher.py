@@ -1,3 +1,4 @@
+import argparse
 import json
 import random
 import time
@@ -72,8 +73,20 @@ def create_random_gps_point():
     )
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="GNSS subscriber runtime")
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logger level (default: INFO)",
+    )
+
+    return parser.parse_args()
+
 def main():
-    LoggerFactory.set_level("DEBUG")
+    args = parse_args()
+    LoggerFactory.set_level(args.log_level)
     logger = LoggerFactory.create("GNSSPublisher-Runtime")
     
     publisher = GNSSPublisher()
