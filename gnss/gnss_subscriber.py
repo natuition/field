@@ -198,30 +198,36 @@ def main():
         sum_delay = 0.0
         delay_count = 0
 
+        last_point = None
         last_average_print_ts = time.monotonic()
 
         while True:
             point = subscriber.get_last_position_v2()
-            current_ts = time.time()
 
             if point is None:
                 logger.debug("No GNSS position received yet")
-            else:
+
+            elif point != last_point:
+                # Nouveau point GNSS
+                last_point = point
+
+                current_ts = time.time()
                 delay = current_ts - point.receiving_ts
 
                 sum_delay += delay
                 delay_count += 1
 
                 logger.debug(
-                    "Latest GNSS position at current_ts={} : "
+                    "New GNSS position at current_ts={} : "
                     "latitude={:.8f}, longitude={:.8f}, quality={}, "
-                    "creation_ts={}, receiving_ts={}".format(
+                    "creation_ts={}, receiving_ts={}, delay={:.2f} ms".format(
                         current_ts,
                         point.latitude,
                         point.longitude,
                         point.quality,
                         point.creation_ts,
                         point.receiving_ts,
+                        delay * 1000.0,
                     )
                 )
 
@@ -231,12 +237,14 @@ def main():
 
                     logger.info(
                         "Average delay over 5 seconds: "
-                        "{:.6f} s ({:.2f} ms) over {} samples".format(
+                        "{:.6f} s ({:.2f} ms) over {} unique samples".format(
                             average_delay,
                             average_delay * 1000.0,
                             delay_count,
                         )
                     )
+                else:
+                    logger.warning("No new GNSS sample received over 5 seconds")
 
                 sum_delay = 0.0
                 delay_count = 0
