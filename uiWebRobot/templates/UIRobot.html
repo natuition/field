@@ -7,11 +7,13 @@
         content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/new-zone.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jszip.min.js') }}"></script>
     <script type="text/javascript" src="/static/{{ now }}/fontawesome/solid.js"></script>
     <script type="text/javascript" src="/static/{{ now }}/fontawesome/fontawesome.js"></script>
     <script src="/static/{{ now }}/js/voltage_indicator.js"></script>
@@ -103,8 +105,8 @@
             class="ruler {% if statusOfUIObject['startButton'] == None or statusOfUIObject['continueButton'] == None %} display-none {% else %} display-flex {% endif %}"
             style="padding: 5px 20px;
                                 justify-content: center;">
-            <div class="ruler__main">
-                <div class="ruler__main--assets">
+            <div class="ruler__main ">
+                <div class="ruler__main--assets {{  'display-none' if create_field_with_navx else '' }}">
                     <div class="ruler__assets--title">
                         <p>
                             {{(ui_languages["Length"])[ui_language] }}
@@ -112,7 +114,7 @@
                         <span id="rangeCol">{{ statusOfUIObject['slider'] }}</span>
                     </div>
                     <div class="ruler__assets--line">
-                        <input type="range" min="{{ slider_min }}" max="{{ slider_max }}"
+                        <input type="range" min="{{ slider_min }}" max="{{ slider_max }} "
                             value="{{ statusOfUIObject['slider'] }}" step="{{ slider_step }}" id="r1"
                             oninput="range('r1','rangeCol')">
                     </div>
@@ -343,11 +345,42 @@
             {% endif %}
         </div>
     </div>
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <form id="feature-form">
+                <div class="field-group">
+                    <div class="checklist__select">
+                        <div class="checklist__select--title">Sélectionner la zone à charger</div>
+                        <div class="checklist__select--role">
+                            <select id="feature-select"
+                                    name="selectedFeature"
+                                    required
+                                    style="background-color: rgb(238 240 243)!important; border-radius:20px;margin-top:5px;"
+                            ></select>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#9ca2b4" class="bi bi-caret-down-fill position-absolute" viewBox="0 0 16 16">
+                                <path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="btn-cancel" class="setting_btn unselectable" style=" background-color: rgb(234, 40, 40)!important; box-shadow: 0px 4px 14px 0px rgba(234, 40, 40, 0.6)!important;">
+                        <span class="submit">Annuler</span>
+                    </button>
+                    <button type="submit" class="setting_btn unselectable" style=" background-color: rgb(71, 168, 87)!important; box-shadow: 0px 4px 14px 0px rgba(71, 168, 87, 0.6)!important;">
+                        <span class="submit">Confirmer</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     <script type="text/javascript" src="/static/{{ now }}/js/joy.js"></script>
     <script type="text/javascript" src="/static/{{ now }}/js/joystick.js" defer></script>
     <script type="text/javascript" src="/static/{{ now }}/js/Chart.min.js"></script>
     <script type="text/javascript" src="/static/{{ now }}/js/chartjs-plugin-doughnutlabel.min.js"></script>
     <script src="/static/{{ now }}/js/index.js" defer></script>
+    <script src="/static/{{ now }}/js/new-zone.js" defer></script>
     <script src="/static/{{ now }}/js/statistics.js" defer></script>
     {% else %}
     <div class="main" id="main">

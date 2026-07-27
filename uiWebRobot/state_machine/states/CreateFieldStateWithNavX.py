@@ -21,30 +21,36 @@ from logger import LoggerFactory
 
 
 class CreateFieldStateWithNavX(State.State):
-    """This state corresponds when the robot process a geojson file from NavX with Linestring for create the field. """
+    """This state corresponds when the robot process a geojson file from NavX with Linestring for create the field."""
 
-    def __init__(self,
-                 socketio: SocketIO,
-                 file_logger: utility.Logger,
-                 smoothie: adapters.SmoothieAdapter,
-                 vesc_engine: adapters.VescAdapterV4):
+    def __init__(
+        self,
+        socketio: SocketIO,
+        file_logger: utility.Logger,
+        smoothie: adapters.SmoothieAdapter,
+        vesc_engine: adapters.VescAdapterV4,
+    ):
         self.__logger = LoggerFactory.create(self.__class__.__name__)
         self.robot_synthesis_value = RobotSynthesis.UI_CREATE_FIELD_STATE
         self.socketio = socketio
         self.__file_logger = file_logger
         self.smoothie = smoothie
         self.vesc_engine = vesc_engine
-        
-        self.socketio.emit('field', {"status": "pushed"}, namespace='/button', broadcast=True)
-        self.statusOfUIObject = FrontEndObjects(fieldButton=ButtonState.CHARGING,
-                                                startButton=ButtonState.DISABLE,
-                                                continueButton=ButtonState.DISABLE,
-                                                stopButton=ButtonState.ENABLE,
-                                                wheelButton=ButtonState.NOT_HERE,
-                                                removeFieldButton=ButtonState.DISABLE,
-                                                joystick=True,
-                                                slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE)
-        
+
+        self.socketio.emit(
+            "field", {"status": "pushed"}, namespace="/button", broadcast=True
+        )
+        self.statusOfUIObject = FrontEndObjects(
+            fieldButton=ButtonState.CHARGING,
+            startButton=ButtonState.DISABLE,
+            continueButton=ButtonState.DISABLE,
+            stopButton=ButtonState.ENABLE,
+            wheelButton=ButtonState.NOT_HERE,
+            removeFieldButton=ButtonState.DISABLE,
+            joystick=True,
+            slider=config.SLIDER_CREATE_FIELD_DEFAULT_VALUE,
+        )
+
         try:
             if self.smoothie is None:
                 msg = f"initSmoothie"
@@ -60,10 +66,11 @@ class CreateFieldStateWithNavX(State.State):
             raise KeyboardInterrupt
         except Exception as e:
             raise e
-                
-        self.field = None
-        self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
 
+        self.field = None
+        self.__ui_languages, self.__current_ui_language = (
+            utilsFunction.get_ui_language()
+        )
 
     def on_event(self, event):
         if event == Events.WHEEL:
@@ -82,11 +89,11 @@ class CreateFieldStateWithNavX(State.State):
             except Exception as e:
                 self.__file_logger.write_and_flush(e + "\n")
             return ErrorState.ErrorState(self.socketio, self.__file_logger)
-        
+
     def saveField(self, fieldPath: str, fieldName: str):
         cpt = 1
-        fieldName = quote(fieldName, safe="", encoding='utf-8')
-        if (os.path.exists(fieldPath + fieldName)):
+        fieldName = quote(fieldName, safe="", encoding="utf-8")
+        if os.path.exists(fieldPath + fieldName):
             while os.path.exists(f"{fieldPath + fieldName[:-4]}_{cpt}.txt"):
                 cpt += 1
             fieldName = f"{fieldName[:-4]}_{cpt}.txt"
@@ -95,29 +102,32 @@ class CreateFieldStateWithNavX(State.State):
         self.__file_logger.write_and_flush(msg + "\n")
         self.__logger.info(msg)
         utilsFunction.save_gps_coordinates(self.field, path)
-        return (path, unquote(fieldName[:-4], encoding='utf-8'))
+        return (path, unquote(fieldName[:-4], encoding="utf-8"))
 
     def on_socket_data(self, data):
         if data["type"] == "create_field":
             msg = f"File value : {data['value']}."
             self.__file_logger.write_and_flush(msg + "\n")
-            self.__logger.debug(msg)    
-            
+            self.__logger.debug(msg)
+
             self.__logger.info("Calculating the largest inscribed rectangle...")
-            
+
             result = utilsFunction.largest_inscribed_rectangle(
-                data['value'],
-                max_iterations=500,
-                population_size=20
+                data["value"], max_iterations=500, population_size=20
             )
             self.__logger.info("Largest inscribed rectangle calculated.")
             self.__logger.info(f"\t- Surface : {result.area:.3f} m²")
-            self.__logger.info(f"\t- Dimensions : {result.width:.3f} × {result.height:.3f} m")
+            self.__logger.info(
+                f"\t- Dimensions : {result.width:.3f} × {result.height:.3f} m"
+            )
             self.__logger.info(f"\t- CRS métrique : {result.metric_crs}")
-            
-            first_point_of_line_string = data['value']['features'][0]['geometry']['coordinates'][0]
-            reverse_first_point_of_line_string = [first_point_of_line_string[1], first_point_of_line_string[0]]
-            
+
+            first_point_of_line_string = data["value"]["geometry"]["coordinates"][0]
+            reverse_first_point_of_line_string = [
+                first_point_of_line_string[1],
+                first_point_of_line_string[0],
+            ]
+
             d1 = float("inf")
             closest_corner_index = 0
             for index, corner in enumerate(result.corners):
@@ -125,34 +135,65 @@ class CreateFieldStateWithNavX(State.State):
                 if d2 < d1:
                     d1 = d2
                     closest_corner_index = index
-                    
-            organized_field = result.corners[closest_corner_index:] + result.corners[:closest_corner_index]
-            
+
+            organized_field = (
+                result.corners[closest_corner_index:]
+                + result.corners[:closest_corner_index]
+            )
+
             self.field = organized_field
-            field_name = data['value']['features'][0]['properties'].get('Name',"Field with NavX")
-            
+            field_name = data["value"]["properties"].get("Name", "Field with NavX")
+
             field_path, field_name = self.saveField("./fields/", field_name + ".txt")
-            
+
             if utilsFunction.is_valid_field_file(field_path, self.__file_logger):
                 fields_list = utilsFunction.load_field_list("./fields")
 
                 if len(fields_list) > 0:
-                    coords, other_fields, current_field_name = utilsFunction.updateFields(field_name)
+                    coords, other_fields, current_field_name = (
+                        utilsFunction.updateFields(field_name)
+                    )
                 else:
                     coords, other_fields, current_field_name = list(), list(), ""
 
-                self.socketio.emit('newField', json.dumps(
-                    {"field": coords, "other_fields": other_fields, "current_field_name": current_field_name,
-                    "fields_list": fields_list}), namespace='/map')
+                self.socketio.emit(
+                    "newField",
+                    json.dumps(
+                        {
+                            "field": coords,
+                            "other_fields": other_fields,
+                            "current_field_name": current_field_name,
+                            "fields_list": fields_list,
+                        }
+                    ),
+                    namespace="/map",
+                )
                 time.sleep(0.5)
-                self.socketio.emit('field', {"status": "validate_geojson"}, namespace='/button', broadcast=True)
-                return WaitWorkingState.WaitWorkingState(self.socketio, self.__file_logger, True, self.smoothie, self.vesc_engine)
+                self.socketio.emit(
+                    "field",
+                    {"status": "validate_geojson"},
+                    namespace="/button",
+                    broadcast=True,
+                )
+                return WaitWorkingState.WaitWorkingState(
+                    self.socketio,
+                    self.__file_logger,
+                    True,
+                    self.smoothie,
+                    self.vesc_engine,
+                )
             else:
                 if os.path.exists(field_path):
                     os.remove(field_path)
-                message = self.__ui_languages["working_zone_too_small"][self.__current_ui_language]
-                self.socketio.emit('notification', {"message_name": "not_a_good_zone", "message": message}, namespace='/broadcast', broadcast=True)
-            
+                message = self.__ui_languages["working_zone_too_small"][
+                    self.__current_ui_language
+                ]
+                self.socketio.emit(
+                    "notification",
+                    {"message_name": "not_a_good_zone", "message": message},
+                    namespace="/broadcast",
+                    broadcast=True,
+                )
 
         return self
 

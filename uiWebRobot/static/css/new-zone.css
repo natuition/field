@@ -1,0 +1,158 @@
+:root {
+  --primary-color: #6366f1;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --border-color: #cbd5e1;
+  --bg-color: #f8fafc;
+
+  --neutral-100: #fcfcfc;
+  --neutral-200: #f4f4f5;
+  --neutral-300: #e4e4e7;
+  --neutral-400: #a1a1aa;
+  --neutral-700: #3f3f46;
+  --neutral-900: #18181b;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-content {
+  background-color: #f9fafc;
+  padding: 2rem;
+  border-radius: 19px;
+  border: 1px solid var(--neutral-300);
+  width: 90%;
+  max-width: 440px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  font-family:
+    "Merriweather Sans",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.modal-content h3 {
+  margin: 0 0 1.25rem 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--neutral-900);
+}
+
+.features-list {
+  overflow-y: auto;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-right: 0.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--neutral-700);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.feature-item:hover {
+  background-color: var(--neutral-200);
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.field-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--neutral-700);
+}
+
+.custom-select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--neutral-900);
+  background-color: #ffffff;
+  border: 1px solid var(--neutral-300);
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%3c71717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.25rem;
+}
+
+.custom-select:focus {
+  border-color: var(--neutral-900);
+  box-shadow: 0 0 0 1px var(--neutral-900);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--neutral-700);
+  border: 1px solid transparent;
+}
+
+.btn-secondary:hover {
+  background-color: var(--neutral-200);
+}
+
+.btn-primary {
+  background-color: var(--neutral-900);
+  color: #ffffff;
+  border: 1px solid var(--neutral-900);
+}
+
+.btn-primary:hover {
+  background-color: #27272a;
+}

@@ -58,7 +58,7 @@ async function selectGeoJSONFile() {
     return new Promise((resolve, reject) => {
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = ".geojson,application/geo+json,application/json";
+        input.accept = ".zip,application/zip,application/x-zip-compressed";
 
         input.onchange = () => {
             if (input.files.length > 0) {
@@ -76,26 +76,12 @@ function clickHandler() {
     if (this.id == "Newfield") {
         if (create_field_with_navx) {
             selectGeoJSONFile()
-                .then(async (file) => {
-                    //TODO: send file to server and create field
-                    console.log(file.name);
+                .then(async (zip) => {
+                    const files = await extractFiles(zip, "geojson");
+                    const parsedGeoJSON = parseGeoJSON(files);
+                    const validFeatures = filterFeatures(parsedGeoJSON, (feature) => feature.geometry?.type === "LineString");
 
-                    if (!file.name.toLowerCase().endsWith(".geojson")) {
-                        sendAlert("extension_file_geojson", (ui_languages["extension_file_geojson"])[ui_language], false);
-                        return;
-                    }
-
-                    const content = await file.text();
-                    const geojson = JSON.parse(content);
-
-                    console.log(geojson);
-
-                    socketio.emit("data", {
-                        type: "create_field",
-                        value: geojson,
-                    });
-
-                    console.log("geojson sent");
+                    openModal(validFeatures);
                 })
                 .catch((error) => {
                     console.error(error);
