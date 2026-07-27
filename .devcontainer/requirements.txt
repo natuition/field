@@ -36,3 +36,4 @@ pyproj==3.0.1
 shapely==1.8.5.post1
 numpy==1.19.5
 pyzmq==25.1.2
+ntripbrowser==2.2.3
