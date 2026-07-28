@@ -93,51 +93,6 @@ function createMap(coords_field, coords_other) {
     }
 
     map.on('load', function () {
-
-        map.loadImage(
-            `${location.origin}/static/nav.png`,
-            (error, image) => {
-                if (error) {
-                    console.error('Impossible de charger nav.png', error);
-                    return;
-                }
-
-                if (!map.hasImage('nav-img')) {
-                    map.addImage('nav-img', image);
-                }
-
-                map.addSource('field_start', {
-                    type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        geometry: {
-                            type: 'Point',
-                            coordinates: start_point_start_btn
-                        },
-                        properties: {
-                            rotate: degrees
-                        }
-                    }
-                });
-
-                map.addLayer({
-                    id: 'field_startLayer',
-                    type: 'symbol',
-                    source: 'field_start',
-                    layout: {
-                        'icon-rotate': ['get', 'rotate'],
-                        'icon-rotation-alignment': 'map',
-                        'icon-image': 'nav-img',
-                        'icon-size': 0.3
-                    }
-                });
-            }
-        );
-
-        socketMap.on('updatePath', updatePath);
-    });
-
-    map.on('load', function () {
         //Other field zone
         if (typeof (map.getSource('other_field')) == "undefined") {
             map.addSource('other_field', {
