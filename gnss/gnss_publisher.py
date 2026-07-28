@@ -189,7 +189,7 @@ class GNSSPublisher:
 
         latitude = GNSSPublisher.nmea_coordinate_to_decimal(fields[2], fields[3])
         longitude = GNSSPublisher.nmea_coordinate_to_decimal(fields[4], fields[5])
-        print(f"[DEBUG] {datetime.datetime.now()} Parsed latitude: {latitude:.20f}, fields[2]: {fields[2]}, fields[3]: {fields[3]}, parsed longitude: {longitude:.20f}, fields[4]: {fields[4]}, fields[5]: {fields[5]}", flush=True)
+        # print(f"[DEBUG] {datetime.datetime.now()} Parsed latitude: {latitude:.20f}, fields[2]: {fields[2]}, fields[3]: {fields[3]}, parsed longitude: {longitude:.20f}, fields[4]: {fields[4]}, fields[5]: {fields[5]}", flush=True)
         quality = int(fields[6])
         if quality == 0:
             return None
