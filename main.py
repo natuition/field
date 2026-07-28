@@ -858,8 +858,6 @@ def move_to_point_and_extract(coords_from_to: list,
         msg = 'GpsQ|Raw ang|PI ang |Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
                 'centroid factor|cruise factor|Delta NMEA ms|Delta pub ms'
         MAIN_LOGGER.info(msg)
-            
-        MAIN_LOGGER.info(msg)
         logger_full.write(msg + "\n")
 
         # TODO vesc sensors are being asked 4 times per second
