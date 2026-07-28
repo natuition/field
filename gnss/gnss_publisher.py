@@ -188,7 +188,9 @@ class GNSSPublisher:
             raise ValueError("Incomplete GGA sentence: {}".format(line))
 
         latitude = GNSSPublisher.nmea_coordinate_to_decimal(fields[2], fields[3])
+        print(f"[DEBUG] Parsed latitude: {latitude:.20f}, fields[2]: {fields[2]}, fields[3]: {fields[3]}")
         longitude = GNSSPublisher.nmea_coordinate_to_decimal(fields[4], fields[5])
+        print(f"[DEBUG] Parsed longitude: {longitude:.20f}, fields[4]: {fields[4]}, fields[5]: {fields[5]}")
         quality = int(fields[6])
         if quality == 0:
             return None
