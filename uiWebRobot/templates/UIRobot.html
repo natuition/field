@@ -350,7 +350,7 @@
             <form id="feature-form">
                 <div class="field-group">
                     <div class="checklist__select">
-                        <div class="checklist__select--title">Sélectionner la zone à charger</div>
+                        <div class="checklist__select--title">{{(ui_languages["zone__select_zone"])[ui_language] }}</div>
                         <div class="checklist__select--role">
                             <select id="feature-select"
                                     name="selectedFeature"
@@ -366,10 +366,10 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" id="btn-cancel" class="setting_btn unselectable" style=" background-color: rgb(234, 40, 40)!important; box-shadow: 0px 4px 14px 0px rgba(234, 40, 40, 0.6)!important;">
-                        <span class="submit">Annuler</span>
+                        <span class="submit">{{(ui_languages["common__cancel"])[ui_language] }}</span>
                     </button>
                     <button type="submit" class="setting_btn unselectable" style=" background-color: rgb(71, 168, 87)!important; box-shadow: 0px 4px 14px 0px rgba(71, 168, 87, 0.6)!important;">
-                        <span class="submit">Confirmer</span>
+                        <span class="submit">{{(ui_languages["common__confirm"])[ui_language] }}</span>
                     </button>
                 </div>
             </form>

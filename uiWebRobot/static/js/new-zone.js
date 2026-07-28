@@ -3,16 +3,16 @@ const featureSelect = document.getElementById('feature-select');
 const featureForm = document.getElementById('feature-form');
 const btnCancel = document.getElementById('btn-cancel');
 
+const PROPERTY_KEY_AS_ZONE_NAME = "Name" // Default with SW Maps
+
 let currentFeatures = [];
 
 const extractFiles = async (zip, extension, outputFormat = "string") => {
   const unzippedFiles = [];
   const ZIP = new JSZip();
-  console.log(ZIP);
 
   try {
     const zipContent = await ZIP.loadAsync(zip);
-    console.log("Contenu du zip :", zipContent);
 
     for (const [relativePath, entry] of Object.entries(zipContent.files)) {
       if (entry.dir || !relativePath.endsWith(extension)) {
@@ -20,14 +20,13 @@ const extractFiles = async (zip, extension, outputFormat = "string") => {
       }
 
       const content = await entry.async(outputFormat);
-      console.log(`Contenu du fichier ${relativePath} :`, content);
       unzippedFiles.push(content);
     }
 
     return unzippedFiles;
   } catch (error) {
-    console.error(`Erreur lors de la lecture du fichier ${zip.name} :`, error);
-    throw new Error(`Le fichier '${zip.name}' est invalide.`);
+    console.error("Error during file extraction:", error)
+    throw new Error((ui_languages["zone__err_invalid_file"])[ui_language]);
   }
 };
 
@@ -38,7 +37,7 @@ const parseGeoJSON = (jsonStrings) => {
     try {
       parsedFiles.push(JSON.parse(jsonString));
     } catch (error) {
-      console.warn("Erreur de désérialisation sur un fichier, on passe :", error);
+      console.warn("Error while deserializing file, skipping.", error)
     }
   }
 
@@ -50,9 +49,10 @@ const filterFeatures = (collections, predicate) => {
   for (const collection of collections) {
     try {
       const validFeatures = collection.features.filter(predicate);
+      // TODO: assertValidFeatureCollection(collection)
       features.push(...validFeatures);
     } catch (error) {
-      console.warn("Collection de features invalide, on passe :", error);
+      console.warn("Invalid feature collection, skipping.", error)
       continue;
     }
   }
@@ -61,47 +61,37 @@ const filterFeatures = (collections, predicate) => {
 };
 
 const openModal = (features) => {
-  featureSelect.innerHTML = ''; // Nettoyage des options précédentes
+  featureSelect.innerHTML = '';
   currentFeatures = features;
 
   if (features.length === 0) {
     const defaultOption = document.createElement('option');
     defaultOption.value = "";
-    defaultOption.textContent = "Aucune entité zone disponible";
+    defaultOption.textContent = (ui_languages["zone__default_option"])[ui_language];
     featureSelect.appendChild(defaultOption);
     featureSelect.disabled = true;
+    featureSelect.removeAttribute('required');
   } else {
     featureSelect.disabled = false;
 
     features.forEach((feature, index) => {
-      const name = feature.properties?.Name || `Feature #${index + 1}`;
+      const label = feature.properties?.[PROPERTY_KEY_AS_ZONE_NAME] || `${(ui_languages["zone__fallback_label"])[ui_language]}_${index + 1} `;
 
       const option = document.createElement('option');
-      option.value = index; // L'index sert d'identifiant
-      option.textContent = name;
+      option.value = String(index);
+      option.textContent = label;
+
+      if (index === 0) {
+        option.selected = true; // Forcer la sélection du premier élément pour iOS WebKit
+      }
 
       featureSelect.appendChild(option);
     });
+
+    featureSelect.value = "0"; // Forcer le DOM à enregistrer la valeur "0"
   }
 
   modalOverlay.classList.remove('hidden');
-};
-
-const closeModal = () => {
-  console.log("Cancel")
-  modalOverlay.classList.add('hidden');
-  currentFeatures = [];
-};
-
-const processSelectedFeature = (feature) => {
-  console.log("Entité sélectionnée :", feature);
-
-  const featureName = feature.properties?.Name || "Sans nom";
-
-  socketio.emit("data", {
-    type: "create_field",
-    value: feature,
-  });
 };
 
 const onFormSubmit = (e) => {
@@ -109,13 +99,37 @@ const onFormSubmit = (e) => {
 
   if (currentFeatures.length === 0) return;
 
-  const selectedIndex = Number(featureSelect.value);
+  // Sécurité pour iOS : si featureSelect.value est vide ou non-numérique
+  const rawValue = featureSelect.value;
+  const selectedIndex = rawValue !== "" ? Number(rawValue) : 0;
 
   const selectedFeature = currentFeatures[selectedIndex];
 
-  closeModal();
+  if (!selectedFeature) {
+    console.error("Aucune feature trouvée à l'index :", selectedIndex);
+    return;
+  }
 
+  closeModal();
   processSelectedFeature(selectedFeature);
+};
+
+const closeModal = () => {
+  console.warn("User cancelled zone selection, closing modal.")
+  modalOverlay.classList.add('hidden');
+  currentFeatures = [];
+};
+
+const processSelectedFeature = (feature) => {
+  console.log("Selected feature:", feature)
+
+  const featureName = feature.properties?.[PROPERTY_KEY_AS_ZONE_NAME] || (ui_languages["zone__fallback_name"])[ui_language]
+
+  sendInfo("info_create_field_with_navx", (ui_languages["zone__loading_state"])[ui_language])
+  socketio.emit("data", {
+    type: "create_field",
+    value: feature,
+  });
 };
 
 featureForm.addEventListener('submit', onFormSubmit);
