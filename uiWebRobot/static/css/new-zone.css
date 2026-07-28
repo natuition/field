@@ -162,7 +162,9 @@
     display: inline-block;
 }
 
-#Newfield input[type="file"] {
+#Newfield input[type="file"],
+#Stop input[type="file"],
+#ValidateZone input[type="file"] {
     position: absolute;
     z-index: 10;
     inset: 0;
