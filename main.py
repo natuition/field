@@ -400,8 +400,8 @@ def move_to_point_and_extract(coords_from_to: list,
         navigation_prediction.set_current_lat_long(cur_pos)
 
         # skip same points (non-blocking reading returns old point if new point isn't available yet)
-        if math.isclose(cur_pos_obj.creation_ts, prev_pos_obj.creation_ts):
-            # MAIN_LOGGER.info("Skipping same point as previous one")
+        if math.isclose(cur_pos_obj.creation_ts, prev_pos_obj.creation_ts) and False:
+            MAIN_LOGGER.info("Skipping same point as previous one")
             # stop robot if there's no new points for a while
             if time.time() - point_reading_t > config.GPS_POINT_TIME_BEFORE_STOP:
                 vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
