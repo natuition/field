@@ -94,111 +94,253 @@ function createMap(coords_field, coords_other) {
 
     map.on('load', function () {
 
+        map.loadImage(
+            `${location.origin}/static/nav.png`,
+            (error, image) => {
+                if (error) {
+                    console.error('Impossible de charger nav.png', error);
+                    return;
+                }
 
+                if (!map.hasImage('nav-img')) {
+                    map.addImage('nav-img', image);
+                }
+
+                map.addSource('field_start', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: start_point_start_btn
+                        },
+                        properties: {
+                            rotate: degrees
+                        }
+                    }
+                });
+
+                map.addLayer({
+                    id: 'field_startLayer',
+                    type: 'symbol',
+                    source: 'field_start',
+                    layout: {
+                        'icon-rotate': ['get', 'rotate'],
+                        'icon-rotation-alignment': 'map',
+                        'icon-image': 'nav-img',
+                        'icon-size': 0.3
+                    }
+                });
+            }
+        );
+
+        socketMap.on('updatePath', updatePath);
+    });
+
+    map.on('load', function () {
+        //Other field zone
+        if (typeof (map.getSource('other_field')) == "undefined") {
+            map.addSource('other_field', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiPolygon',
+                        'coordinates': coords_other_multipolygon
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'otherFieldLayer',
+                'type': 'fill',
+                'source': 'other_field',
+                'layout': {},
+                'paint': {
+                    'fill-color': '#888',
+                    'fill-opacity': 0.4
+                }
+            });
+        }
+        //Other field line
+        if (typeof (map.getSource('other_field_corner')) == "undefined") {
+            map.addSource('other_field_corner', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiLineString',
+                        'coordinates': coords_other
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'other_field_cornerLayer',
+                'type': 'line',
+                'source': 'other_field_corner',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#888',
+                    'line-width': 4
+                }
+            });
+        }
+        //Field zone
+        if (typeof (map.getSource('field')) == "undefined") {
+            map.addSource('field', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Polygon',
+                        'coordinates': [
+                            coords_field
+                        ]
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'fieldLayer',
+                'type': 'fill',
+                'source': 'field',
+                'layout': {},
+                'paint': {
+                    'fill-color': '#0620FB',
+                    'fill-opacity': 0.4
+                }
+            });
+        }
+        //Field line
+        if (typeof (map.getSource('field_corner')) == "undefined") {
+            map.addSource('field_corner', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': coords_field
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'field_cornerLayer',
+                'type': 'line',
+                'source': 'field_corner',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#0620FB',
+                    'line-width': 4
+                }
+            });
+        }
+
+        //Instruction_line
+        if (typeof (map.getSource('instruction_line')) == "undefined") {
+            map.addSource('instruction_line', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': []
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'instruction_lineLayer',
+                'type': 'line',
+                'source': 'instruction_line',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#FF8C15',
+                    'line-width': 2
+                }
+            });
+        }
+        //Instruction_point
+        if (typeof (map.getSource('instruction_point')) == "undefined") {
+            map.addSource('instruction_point', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiPoint',
+                        'coordinates': []
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'instruction_pointLayer',
+                'type': 'circle',
+                'source': 'instruction_point',
+                'paint': {
+                    'circle-radius': 3,
+                    'circle-color': '#FF8C15'
+                }
+            });
+        }
+        //Path line
+        if (typeof (map.getSource('pathRobot')) == "undefined") {
+            map.addSource('pathRobot', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'MultiLineString',
+                        'coordinates': []
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'pathRobotLayer',
+                'type': 'line',
+                'source': 'pathRobot',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                },
+                'paint': {
+                    'line-color': '#ff00e0',
+                    'line-width': 2
+                }
+            });
+        }
+        //Last pos
+        if (typeof (map.getSource('lastPos')) == "undefined") {
+            map.addSource('lastPos', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': []
+                    }
+                }
+            });
+            map.addLayer({
+                id: "lastPosLayer",
+                type: "circle",
+                source: "lastPos",
+                paint: {
+                    "circle-radius": 5,
+                    "circle-color": "#ff00e0",
+                },
+            });
+        }
+
+        // Seul le layer qui utilise nav-img dépend du chargement de l'image.
         map.loadImage('http://' + document.domain + ':' + location.port + '/static/nav.png', (error, image) => {
             if (error) throw error;
             map.addImage('nav-img', image);
 
-            //Other field zone
-            if (typeof (map.getSource('other_field')) == "undefined") {
-                map.addSource('other_field', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'MultiPolygon',
-                            'coordinates': coords_other_multipolygon
-                        }
-                    }
-                });
-                map.addLayer({
-                    'id': 'otherFieldLayer',
-                    'type': 'fill',
-                    'source': 'other_field',
-                    'layout': {},
-                    'paint': {
-                        'fill-color': '#888',
-                        'fill-opacity': 0.4
-                    }
-                });
-            }
-            //Other field line
-            if (typeof (map.getSource('other_field_corner')) == "undefined") {
-                map.addSource('other_field_corner', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'MultiLineString',
-                            'coordinates': coords_other
-                        }
-                    }
-                });
-                map.addLayer({
-                    'id': 'other_field_cornerLayer',
-                    'type': 'line',
-                    'source': 'other_field_corner',
-                    'layout': {
-                        'line-join': 'round',
-                        'line-cap': 'round',
-                    },
-                    'paint': {
-                        'line-color': '#888',
-                        'line-width': 4
-                    }
-                });
-            }
-            //Field zone
-            if (typeof (map.getSource('field')) == "undefined") {
-                map.addSource('field', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'Polygon',
-                            'coordinates': [
-                                coords_field
-                            ]
-                        }
-                    }
-                });
-                map.addLayer({
-                    'id': 'fieldLayer',
-                    'type': 'fill',
-                    'source': 'field',
-                    'layout': {},
-                    'paint': {
-                        'fill-color': '#0620FB',
-                        'fill-opacity': 0.4
-                    }
-                });
-            }
-            //Field line
-            if (typeof (map.getSource('field_corner')) == "undefined") {
-                map.addSource('field_corner', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'LineString',
-                            'coordinates': coords_field
-                        }
-                    }
-                });
-                map.addLayer({
-                    'id': 'field_cornerLayer',
-                    'type': 'line',
-                    'source': 'field_corner',
-                    'layout': {
-                        'line-join': 'round',
-                        'line-cap': 'round',
-                    },
-                    'paint': {
-                        'line-color': '#0620FB',
-                        'line-width': 4
-                    }
-                });
-            }
             //Field start point
             var degrees = 0;
             var start_point_start_btn = [];
@@ -236,103 +378,6 @@ function createMap(coords_field, coords_other) {
                     }
                 });
             }
-            //Instruction_line
-            if (typeof (map.getSource('instruction_line')) == "undefined") {
-                map.addSource('instruction_line', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'LineString',
-                            'coordinates': []
-                        }
-                    }
-                });
-                map.addLayer({
-                    'id': 'instruction_lineLayer',
-                    'type': 'line',
-                    'source': 'instruction_line',
-                    'layout': {
-                        'line-join': 'round',
-                        'line-cap': 'round',
-                    },
-                    'paint': {
-                        'line-color': '#FF8C15',
-                        'line-width': 2
-                    }
-                });
-            }
-            //Instruction_point
-            if (typeof (map.getSource('instruction_point')) == "undefined") {
-                map.addSource('instruction_point', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'MultiPoint',
-                            'coordinates': []
-                        }
-                    }
-                });
-                map.addLayer({
-                    'id': 'instruction_pointLayer',
-                    'type': 'circle',
-                    'source': 'instruction_point',
-                    'paint': {
-                        'circle-radius': 3,
-                        'circle-color': '#FF8C15'
-                    }
-                });
-            }
-            //Path line
-            if (typeof (map.getSource('pathRobot')) == "undefined") {
-                map.addSource('pathRobot', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'MultiLineString',
-                            'coordinates': []
-                        }
-                    }
-                });
-                map.addLayer({
-                    'id': 'pathRobotLayer',
-                    'type': 'line',
-                    'source': 'pathRobot',
-                    'layout': {
-                        'line-join': 'round',
-                        'line-cap': 'round',
-                    },
-                    'paint': {
-                        'line-color': '#ff00e0',
-                        'line-width': 2
-                    }
-                });
-            }
-            //Last pos
-            if (typeof (map.getSource('lastPos')) == "undefined") {
-                map.addSource('lastPos', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'Point',
-                            'coordinates': []
-                        }
-                    }
-                });
-                map.addLayer({
-                    id: "lastPosLayer",
-                    type: "circle",
-                    source: "lastPos",
-                    paint: {
-                        "circle-radius": 5,
-                        "circle-color": "#ff00e0",
-                    },
-                });
-            }
-            //console.log(map.getStyle().layers);
         });
 
         socketMap.on('updatePath', function (dataServ) {
