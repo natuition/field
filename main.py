@@ -29,6 +29,7 @@ from notification import NotificationClient
 import connectors
 from penetrometry.PenetrometryAnalyse import PenetrometryAnalyse
 from logger import LoggerFactory
+import gnss
 
 #LoggerFactory.set_level(config.LOG_LEVEL)
 MAIN_LOGGER = LoggerFactory.create("Main")
@@ -400,6 +401,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         # skip same points (non-blocking reading returns old point if new point isn't available yet)
         if math.isclose(cur_pos_obj.creation_ts, prev_pos_obj.creation_ts):
+            MAIN_LOGGER.info("Skipping same point as previous one")
             # stop robot if there's no new points for a while
             if time.time() - point_reading_t > config.GPS_POINT_TIME_BEFORE_STOP:
                 vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
@@ -438,6 +440,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         # points filter by quality flag
         if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
+            MAIN_LOGGER.info(f"Current point quality is '{cur_pos[2]}', not '4' (quality filter)")
             # restart ntrip if enough time passed since the last ntrip restart
             # navigation.NavigationV3.restart_ntrip_service(logger_full)
 
@@ -487,6 +490,7 @@ def move_to_point_and_extract(coords_from_to: list,
         # points filter by distance
         prev_cur_distance = nav.get_distance(prev_pos, cur_pos)
         if config.ALLOW_GPS_PREV_CUR_DIST_STOP and prev_cur_distance > config.PREV_CUR_POINT_MAX_DIST:
+            MAIN_LOGGER.info(f"Distance between current position and prev is to low (distance filter)")
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             msg = f"Stopping the robot due to GPS points filter by distance (assuming current position point " \
                   f"{str(cur_pos)} is wrong as distance between current position and prev. position {str(prev_pos)}" \
@@ -603,6 +607,7 @@ def move_to_point_and_extract(coords_from_to: list,
             coords_from_to[1], stop_helping_point, cur_pos)
         # if distance <= config.COURSE_DESTINATION_DIFF:  # old way
         if side != 1:  # TODO: maybe should use both side and distance checking methods at once
+            MAIN_LOGGER.info("Arrived to destination point")
             vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
             data_collector.add_vesc_moving_time_data(
                 vesc_engine.get_last_movement_time(vesc_engine.PROPULSION_KEY))
@@ -642,6 +647,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
+            MAIN_LOGGER.debug("Using speed limit as USE_SPEED_LIMIT is True")
             distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
             close_to_end = distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD
 
@@ -665,10 +671,12 @@ def move_to_point_and_extract(coords_from_to: list,
 
         if nav.get_distance(coords_from_to[0], coords_from_to[1]) < config.CORNER_THRESHOLD and nav.get_distance(coords_from_to[1], future_points[0][0]) < config.CORNER_THRESHOLD:
             # if abs(raw_angle_legacy)>config.LOST_THRESHOLD:
-            centroid_factor = config.CENTROID_FACTOR_LOST
+            MAIN_LOGGER.info(f"Robot is in a corner")
+            centroid_factor = config.CENTROID_FACTOR_LOST #0.2
             cruise_factor = 1/centroid_factor
         else:
-            centroid_factor = config.CENTROID_FACTOR_ORIENTED
+            MAIN_LOGGER.info(f"Robot is not in a corner")
+            centroid_factor = config.CENTROID_FACTOR_ORIENTED #0.585
             cruise_factor = 1
 
         raw_angle = raw_angle_centroid*centroid_factor + raw_angle_cruise*cruise_factor
@@ -828,6 +836,9 @@ def move_to_point_and_extract(coords_from_to: list,
 
         raw_angle_cruise = round(raw_angle_cruise, 2)
 
+        delta_NMEA = round(time.time()*1000 - cur_pos_obj.creation_ts*1000, 3)
+        delta_publisher = round(time.time()*1000 - cur_pos_obj.receiving_ts*1000, 3)
+
         msg = str(gps_quality).ljust(5) + \
             str(raw_angle).ljust(8) + \
             str(angle_kp_ki).ljust(8) + \
@@ -840,7 +851,14 @@ def move_to_point_and_extract(coords_from_to: list,
             str(perpendicular).ljust(10) + \
             corridor.ljust(9) + \
             str(centroid_factor).ljust(16) + \
-            str(cruise_factor).ljust(14)
+            str(cruise_factor).ljust(14) + \
+            str(delta_NMEA).ljust(14) + \
+            str(delta_publisher).ljust(12)
+            
+        msg = 'GpsQ|Raw ang|PI ang |Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
+                'centroid factor|cruise factor|Delta NMEA ms|Delta pub ms'
+        MAIN_LOGGER.info(msg)
+            
         MAIN_LOGGER.info(msg)
         logger_full.write(msg + "\n")
 
@@ -1727,7 +1745,7 @@ def main():
             adapters.VescAdapterV4(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
                                    config.VESC_STOPPER_CHECK_FREQ) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
-            adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps, \
+            adapters.GNSSZMQAdapter(gnss.IPC_ENDPOINT, gnss.TOPIC) as gps, \
             adapters.ClientMVI(config.MVI_HOST, config.MVI_PORT) as client_mvi, \
             ExtractionManagerV3(smoothie, client_mvi, logger_full, data_collector,
                                 log_cur_dir, config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \
@@ -1951,8 +1969,8 @@ def main():
                 MAIN_LOGGER.warning(msg)
                 logger_full.write(msg + "\n")
 
-            msg = 'GpsQ|Raw ang|Res ang|Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
-                  'centroid factor|cruise factor'
+            msg = 'GpsQ|Raw ang|PI ang |Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
+                    'centroid factor|cruise factor|Delta NMEA ms|Delta pub ms'
             MAIN_LOGGER.info(msg)
             logger_full.write(msg + "\n")
 
