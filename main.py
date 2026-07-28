@@ -439,7 +439,7 @@ def move_to_point_and_extract(coords_from_to: list,
         have_time_for_inference = True
 
         # points filter by quality flag
-        if cur_pos[2] not in ["4",4] and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
+        if str(cur_pos[2]) != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
             MAIN_LOGGER.info(f"Current point quality is '{cur_pos[2]}', not '4' (quality filter)")
             # restart ntrip if enough time passed since the last ntrip restart
             # navigation.NavigationV3.restart_ntrip_service(logger_full)
@@ -474,7 +474,7 @@ def move_to_point_and_extract(coords_from_to: list,
                         prev_bad_quality_pos_obj = cur_pos_obj
 
                     # check if it's a good quality point
-                    if cur_pos[2] != "4":
+                    if str(cur_pos[2]) != "4":
                         # restart ntrip if enough time passed since the last ntrip restart
                         # navigation.NavigationV3.restart_ntrip_service(
                         #     logger_full)
@@ -529,7 +529,7 @@ def move_to_point_and_extract(coords_from_to: list,
                     prev_bad_quality_pos_obj = cur_pos_obj
 
                 # check if it's a good quality point or ignore point quality if bad quality stop is not allowed
-                if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
+                if str(cur_pos[2]) != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
                     # restart ntrip if enough time passed since the last ntrip restart
                     # navigation.NavigationV3.restart_ntrip_service(logger_full)
                     msg = f"Still waiting for good prev-cur distance due to current point quality '{cur_pos[2]}' not being '4'." 
@@ -2312,7 +2312,7 @@ def main():
                             i - 1 in bezier_points_indexes and i in bezier_points_indexes:
                         cur_pos = gps.get_last_position()
                         
-                        if cur_pos[2] != "4":
+                        if str(cur_pos[2]) != "4":
                             msg = f"Additional wheels turn got point {cur_pos} with non 4 quality - " \
                                   f"skipping wheels turn actions"
                             logger_full.write(msg + "\n")
