@@ -401,7 +401,7 @@ def move_to_point_and_extract(coords_from_to: list,
 
         # skip same points (non-blocking reading returns old point if new point isn't available yet)
         if math.isclose(cur_pos_obj.creation_ts, prev_pos_obj.creation_ts):
-            MAIN_LOGGER.info("Skipping same point as previous one")
+            # MAIN_LOGGER.info("Skipping same point as previous one")
             # stop robot if there's no new points for a while
             if time.time() - point_reading_t > config.GPS_POINT_TIME_BEFORE_STOP:
                 vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
@@ -439,7 +439,7 @@ def move_to_point_and_extract(coords_from_to: list,
         have_time_for_inference = True
 
         # points filter by quality flag
-        if cur_pos[2] != "4" and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
+        if cur_pos[2] not in ["4",4] and config.ALLOW_GPS_BAD_QUALITY_NTRIP_RESTART:
             MAIN_LOGGER.info(f"Current point quality is '{cur_pos[2]}', not '4' (quality filter)")
             # restart ntrip if enough time passed since the last ntrip restart
             # navigation.NavigationV3.restart_ntrip_service(logger_full)
