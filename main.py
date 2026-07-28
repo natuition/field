@@ -647,7 +647,6 @@ def move_to_point_and_extract(coords_from_to: list,
 
         # reduce speed if near the target point
         if config.USE_SPEED_LIMIT:
-            MAIN_LOGGER.debug("Using speed limit as USE_SPEED_LIMIT is True")
             distance_from_start = nav.get_distance(coords_from_to[0], cur_pos)
             close_to_end = distance < config.DECREASE_SPEED_TRESHOLD or distance_from_start < config.DECREASE_SPEED_TRESHOLD
 
@@ -671,11 +670,9 @@ def move_to_point_and_extract(coords_from_to: list,
 
         if nav.get_distance(coords_from_to[0], coords_from_to[1]) < config.CORNER_THRESHOLD and nav.get_distance(coords_from_to[1], future_points[0][0]) < config.CORNER_THRESHOLD:
             # if abs(raw_angle_legacy)>config.LOST_THRESHOLD:
-            MAIN_LOGGER.info(f"Robot is in a corner")
             centroid_factor = config.CENTROID_FACTOR_LOST #0.2
             cruise_factor = 1/centroid_factor
         else:
-            MAIN_LOGGER.info(f"Robot is not in a corner")
             centroid_factor = config.CENTROID_FACTOR_ORIENTED #0.585
             cruise_factor = 1
 
@@ -839,6 +836,10 @@ def move_to_point_and_extract(coords_from_to: list,
         delta_NMEA = round(time.time()*1000 - cur_pos_obj.creation_ts*1000, 3)
         delta_publisher = round(time.time()*1000 - cur_pos_obj.receiving_ts*1000, 3)
 
+        msg = 'GpsQ|Raw ang|PI ang |Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
+                        'centroid factor|cruise factor|Delta NMEA ms|Delta pub ms'
+        MAIN_LOGGER.info(msg)
+
         msg = str(gps_quality).ljust(5) + \
             str(raw_angle).ljust(8) + \
             str(angle_kp_ki).ljust(8) + \
@@ -855,8 +856,6 @@ def move_to_point_and_extract(coords_from_to: list,
             str(delta_NMEA).ljust(14) + \
             str(delta_publisher).ljust(12)
             
-        msg = 'GpsQ|Raw ang|PI ang |Ord ang|Sum ang|Distance    |Adapter|Smoothie|PointStatus|deviation|side dev|' \
-                'centroid factor|cruise factor|Delta NMEA ms|Delta pub ms'
         MAIN_LOGGER.info(msg)
         logger_full.write(msg + "\n")
 
