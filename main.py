@@ -1745,7 +1745,7 @@ def main():
             adapters.VescAdapterV4(vesc_address, config.VESC_BAUDRATE, config.VESC_ALIVE_FREQ, config.VESC_CHECK_FREQ,
                                    config.VESC_STOPPER_CHECK_FREQ) as vesc_engine, \
             adapters.SmoothieAdapter(smoothie_address) as smoothie, \
-            adapters.GNSSZMQAdapter(gnss.IPC_ENDPOINT, gnss.TOPIC) as gps, \
+            adapters.GNSSZMQAdapter(gnss.IPC_ENDPOINT, gnss.TOPIC, config.GPS_POSITIONS_TO_KEEP) as gps, \
             adapters.ClientMVI(config.MVI_HOST, config.MVI_PORT) as client_mvi, \
             ExtractionManagerV3(smoothie, client_mvi, logger_full, data_collector,
                                 log_cur_dir, config.CAMERA_POSITIONS, config.PDZ_DISTANCES, vesc_engine) as extraction_manager_v3, \
