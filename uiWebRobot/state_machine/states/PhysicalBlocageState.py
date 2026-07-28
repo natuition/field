@@ -13,6 +13,7 @@ from uiWebRobot.state_machine.FrontEndObjects import ButtonState, FrontEndObject
 import utility
 import adapters
 from logger import LoggerFactory
+import gnss
 
 class PhysicalBlocageState(State) :
     """This state corresponds when the robot is physically blocking. """
@@ -50,7 +51,7 @@ class PhysicalBlocageState(State) :
                                                 )
         
         # Init GPS
-        self.__gps = adapters.GPSUbloxAdapter(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP)
+        self.__gps = adapters.GNSSZMQAdapter(gnss.IPC_ENDPOINT, gnss.TOPIC, config.GPS_POSITIONS_TO_KEEP)
         self.__blocagePos = self.__gps.get_last_position()
         self.__allPath = [] # store all GPS point during the backward process
 

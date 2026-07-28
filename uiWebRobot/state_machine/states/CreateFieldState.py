@@ -17,7 +17,7 @@ import utility
 import adapters
 import navigation
 from logger import LoggerFactory
-
+import gnss
 
 class CreateFieldState(State.State):
     """This state corresponds when the robot is generating the work area. """
@@ -234,7 +234,7 @@ class FieldCreator:
         msg = f"Getting point A..."
         self.__file_logger.write_and_flush(msg + "\n")
         self.__logger.info(msg)
-        with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+        with adapters.GNSSZMQAdapter(gnss.IPC_ENDPOINT, gnss.TOPIC, config.GPS_POSITIONS_TO_KEEP) as gps:
             self.A = utility.average_point(gps, None, self.nav, self.__file_logger)
 
         self.socketio.emit('newPos', json.dumps([self.A[1], self.A[0]]), namespace='/map')
@@ -262,7 +262,7 @@ class FieldCreator:
         msg = f"Getting point B..."
         self.__file_logger.write_and_flush(msg + "\n")
         self.__logger.info(msg)
-        with adapters.GPSUbloxAdapterWithoutThread(config.GPS_PORT, config.GPS_BAUDRATE, config.GPS_POSITIONS_TO_KEEP) as gps:
+        with adapters.GNSSZMQAdapter(gnss.IPC_ENDPOINT, gnss.TOPIC, config.GPS_POSITIONS_TO_KEEP) as gps:
             self.B = utility.average_point(gps, None, self.nav, self.__file_logger)
 
         self.socketio.emit('newPos', json.dumps([self.B[1], self.B[0]]), namespace='/map')

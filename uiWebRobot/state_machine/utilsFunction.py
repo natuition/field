@@ -31,6 +31,7 @@ from shapely.ops import transform
 from shapely.validation import make_valid
 
 from config import config
+import gnss
 from navigation import NavigationV3
 from navigation import GPSComputing
 from uiWebRobot.state_machine import Events
@@ -141,8 +142,8 @@ def send_last_pos_thread_tf(
         - socketio : socket connected with ui
         - file_logger
     """
-    with adapters.GPSUbloxAdapterWithoutThread(
-        config.GPS_PORT, config.GPS_BAUDRATE, 1
+    with adapters.GNSSZMQAdapter(
+        gnss.IPC_ENDPOINT, gnss.TOPIC, 1
     ) as gps:
         while send_last_pos_thread_alive():
             lastPos = gps.get_fresh_position()

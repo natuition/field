@@ -23,6 +23,7 @@ from common import MVICustomResultType, MVIPipelineDescriptor, MVIProperty, MVIS
 from message import CallType, ResultMessage
 from protos import DetectionResultDTO, ResultDTO, DetectionResult, KeypointDTO
 from logger import LoggerFactory
+from gnss import GNSSSubscriber
 
 class SmoothieAdapter:
     RESPONSE_OK = "ok\r\n"
@@ -1834,6 +1835,260 @@ class GPSUbloxAdapterWithoutThread:
         Mythread = "B5 62 06 04 04 00 00 00 02 00 10 68"
         self._serial.write(bytearray.fromhex(Mythread))
 
+class GNSSZMQAdapter:
+    """GPS adapter backed by :class:`GNSSSubscriber` instead of a serial UBLOX card.
+
+    This class exposes the same public position-access methods as
+    :class:`GPSUbloxAdapter`, allowing both adapters to be used interchangeably.
+    """
+
+    def __init__(
+        self,
+        endpoint: str,
+        topic: str,
+        last_pos_count: int,
+        poll_timeout_ms: int = 200,
+    ):
+        """Initialize the adapter.
+        Arguments:
+            endpoint (str): The ZMQ endpoint to connect to.
+            topic (str): The ZMQ topic to subscribe to.
+            last_pos_count (int): The number of last positions to store.
+            poll_timeout_ms (int, optional): The ZMQ poll timeout in milliseconds. Defaults to 200.
+        Raises:
+            ValueError: If last_pos_count is less than 1.
+        """
+        if last_pos_count < 1:
+            raise ValueError(
+                "last_pos_count shouldn't be less than 1, got {} instead".format(
+                    last_pos_count
+                )
+            )
+
+        self.__logger = LoggerFactory.create(self.__class__.__name__)
+
+        self._endpoint = endpoint
+        self._topic = topic
+        self._poll_timeout_ms = poll_timeout_ms
+        self._last_pos_count = last_pos_count
+
+        self._last_pos_container: List[navigation.GNSSPoint] = []
+        self._sync_locker = threading.RLock()
+        self._position_condition = threading.Condition(self._sync_locker)
+
+        self._keep_thread_alive = True
+        self._subscriber = self._get_new_subscriber()
+
+        self._reader_thread = threading.Thread(
+            target=self._reader_thread_tf,
+            name="GNSS-ZMQ-Adapter",
+            daemon=True,
+        )
+        self._reader_thread.start()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
+        self.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def close(self):
+        """Stop the adapter and release the underlying ZMQ subscriber."""
+
+        with self._position_condition:
+            if not self._keep_thread_alive:
+                return
+
+            self._keep_thread_alive = False
+            self._position_condition.notify_all()
+
+        self._subscriber.stop()
+
+        if (
+            self._reader_thread.is_alive()
+            and self._reader_thread is not threading.current_thread()
+        ):
+            self._reader_thread.join(timeout=2.0)
+
+    def disconnect(self):
+        """Obsolete method kept for compatibility with GPSUbloxAdapter."""
+        self.close()
+
+    def reconnect(self):
+        """Restart the underlying subscriber while keeping the adapter alive."""
+        old_subscriber = self._subscriber
+        old_subscriber.stop()
+
+        with self._position_condition:
+            self._subscriber = self._get_new_subscriber()
+            self._position_condition.notify_all()
+
+    def get_fresh_position(self) -> List[Any]:
+        """Block until a position newer than the current one is received. 
+        Returns:
+            List[Any]: The latest position in old list format.
+        Raises:
+            RuntimeError: If the adapter is closed before a new position is received.
+        """
+        return self.get_fresh_position_v2().as_old_list
+
+    def get_fresh_position_v2(self) -> navigation.GNSSPoint:
+        """Block until a position newer than the current one is received.
+        Returns:
+            navigation.GNSSPoint: The latest GNSSPoint.
+        Raises:
+            RuntimeError: If the adapter is closed before a new position is received.
+        """
+
+        with self._position_condition:
+            previous_point = (
+                self._last_pos_container[-1]
+                if self._last_pos_container
+                else None
+            )
+
+            while self._keep_thread_alive:
+                current_point = (
+                    self._last_pos_container[-1]
+                    if self._last_pos_container
+                    else None
+                )
+
+                if current_point is not None and current_point != previous_point:
+                    return current_point
+
+                self._position_condition.wait(timeout=0.5)
+
+        raise RuntimeError("GNSSZMQAdapter was closed while waiting for a position")
+
+    def get_last_position(self) -> List[Any]:
+        """Block until a position exists and return it in the old list format.
+        Returns:
+            List[Any]: The latest position in old list format.
+        Raises:
+            RuntimeError: If the adapter is closed before a position is received.
+        """
+        return self.get_last_position_v2().as_old_list
+
+    def get_last_position_non_blocking(self) -> Optional[List[Number]]:
+        """Return the latest position in old list format, or None.
+        Returns:
+            Optional[List[Number]]: The latest position in old list format, or None if no position has been received yet.
+        """
+        point = self.get_last_position_v2_non_blocking()
+        return point.as_old_list if point is not None else None
+
+    def get_last_position_v2(self) -> navigation.GNSSPoint:
+        """Block until a GNSSPoint is available and return the latest one.
+        Returns:
+            navigation.GNSSPoint: The latest GNSSPoint.
+        Raises:
+            RuntimeError: If the adapter is closed before a position is received.
+        """
+
+        with self._position_condition:
+            while not self._last_pos_container and self._keep_thread_alive:
+                self._position_condition.wait(timeout=0.5)
+
+            if self._last_pos_container:
+                return self._last_pos_container[-1]
+
+        raise RuntimeError("GNSSZMQAdapter was closed before receiving a position")
+
+    def get_last_position_v2_non_blocking(
+        self,
+    ) -> Optional[navigation.GNSSPoint]:
+        """Return the latest GNSSPoint, or None when none has been received.
+        Returns:
+            Optional[navigation.GNSSPoint]: The latest GNSSPoint, or None if no position has been received yet.
+        """
+        with self._sync_locker:
+            return (
+                self._last_pos_container[-1]
+                if self._last_pos_container
+                else None
+            )
+
+    def get_last_positions_list(self) -> List[List[Number]]:
+        """Return the stored positions in the legacy list format.
+        Returns:
+            List[List[Number]]: Stored positions, each represented in the legacy
+                list format.
+
+        Raises:
+            TimeoutError: If no position is received within the configured timeout.
+        """
+        deadline = time.time() + config.NO_GPS_TIMEOUT
+
+        with self._position_condition:
+            while not self._last_pos_container and self._keep_thread_alive:
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    raise TimeoutError
+
+                self._position_condition.wait(timeout=min(remaining, 0.5))
+
+            if not self._last_pos_container:
+                raise RuntimeError(
+                    "GNSSZMQAdapter was closed before receiving a position"
+                )
+
+            return [point.as_old_list for point in self._last_pos_container]
+
+    def get_stored_pos_count(self):
+        with self._sync_locker:
+            return len(self._last_pos_container)
+
+    def _reader_thread_tf(self):
+        """Copy each new point from GNSSSubscriber into the adapter history.
+        Raises:
+            RuntimeError: If the adapter is closed while waiting for a new position.
+        """
+
+        last_point = None
+
+        try:
+            while self._keep_thread_alive:
+                subscriber = self._subscriber
+                position = subscriber.get_last_position_v2()
+
+                if position is None or position == last_point:
+                    time.sleep(0.01)
+                    continue
+
+                last_point = position
+
+                with self._position_condition:
+                    if len(self._last_pos_container) == self._last_pos_count:
+                        self._last_pos_container.pop(0)
+
+                    self._last_pos_container.append(position)
+                    self._position_condition.notify_all()
+
+        except Exception as ex:
+            if self._keep_thread_alive:
+                self.__logger.exception(
+                    "GNSS ZMQ adapter reading error: {}".format(ex)
+                )
+
+    def _get_new_subscriber(self) -> GNSSSubscriber:
+        """Create and start a new GNSSSubscriber instance.
+        Returns:
+            GNSSSubscriber: A new GNSSSubscriber instance.
+        """
+        subscriber = GNSSSubscriber(
+            endpoint=self._endpoint,
+            topic=self._topic,
+            poll_timeout_ms=self._poll_timeout_ms,
+        )
+        subscriber.start()
+        return subscriber
 
 class ClientMVI:
     """Provides access to the robot's on-board MVI (Machine Vision Interface)
