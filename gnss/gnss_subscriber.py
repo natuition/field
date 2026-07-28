@@ -215,7 +215,7 @@ def main():
 
                 logger.debug(
                     "New GNSS position at current_ts={} : "
-                    "latitude={:.8f}, longitude={:.8f}, quality={}, "
+                    "latitude={:.20f}, longitude={:.20f}, quality={}, "
                     "creation_ts={}, receiving_ts={}, delay={:.2f} ms".format(
                         current_ts,
                         point.latitude,
