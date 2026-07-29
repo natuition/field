@@ -124,12 +124,9 @@ class GNSSPublisher:
             caster=config.NTRIP_CASTER,
             port=config.NTRIP_PORT,
             mountpoint=config.NTRIP_MOUNTPOINT,
-            lat=latitude,
-            long=longitude,
             caster_encoding_format=config.CASTER_RESPONSE_DECODE,
             send_gga_to_caster=config.SEND_LOCATION_TO_NTRIP,
             filter_rtcm_by_id=config.RTK_ID_SEND,
-            ntrip_sleep_time=config.NTRIP_SLEEP_TIME,
         )
     
     def __log_position_statistics_if_needed(self):
