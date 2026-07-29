@@ -90,6 +90,11 @@ class NtripClient(object):
                     self.__filter_rtcm_by_id
                 )
             )
+            
+    def update_position(self, latitude, longitude, altitude):
+        self.__current_lat = latitude
+        self.__current_long = longitude
+        self.__current_altitude = altitude
 
     def getGGABytes(self) -> bytes:
         if self.__current_lat is None or self.__current_long is None:

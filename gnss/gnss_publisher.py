@@ -175,9 +175,12 @@ class GNSSPublisher:
             )
 
             return
-
-        self.__ntrip_client.__current_lat = point.latitude
-        self.__ntrip_client.__current_long = point.longitude
+        
+        self.__ntrip_client.update_position(
+            point.latitude,
+            point.longitude,
+            point.altitude,
+        )
         
     def __read_and_publish_position(self):
         raw_line = self.__gps_serial.readline()
