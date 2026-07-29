@@ -228,10 +228,10 @@ class GNSSPublisher:
         if correction is None:
             return
 
-        rtcm_id = self.__ntrip_client.__last_packet_id
+        last_rtcm_id = self.__ntrip_client.get_last_packet_id()
 
-        if rtcm_id not in self.__sent_rtcm_ids:
-            self.__sent_rtcm_ids.append(rtcm_id)
+        if last_rtcm_id not in self.__sent_rtcm_ids:
+            self.__sent_rtcm_ids.append(last_rtcm_id)
 
             self.__logger.debug(
                 "RTCM IDs received: {}".format(
@@ -245,7 +245,7 @@ class GNSSPublisher:
         self.__logger.debug(
             "RTCM correction {} sent to GNSS receiver"
             "({}/{} bytes)".format(
-                rtcm_id,
+                last_rtcm_id,
                 written_size,
                 len(correction),
             )

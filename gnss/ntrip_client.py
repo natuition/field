@@ -95,6 +95,9 @@ class NtripClient(object):
         self.__current_lat = latitude
         self.__current_long = longitude
         self.__current_altitude = altitude
+        
+    def get_last_packet_id(self):
+        return self.__last_packet_id
 
     def getGGABytes(self) -> bytes:
         if self.__current_lat is None or self.__current_long is None:
