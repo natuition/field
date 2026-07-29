@@ -434,7 +434,13 @@ class GPSComputing:
     
     @staticmethod
     def nmea_coordinate_to_decimal(value, hemisphere):
-        """Convert a NMEA ddmm.mmmm/dddmm.mmmm coordinate to decimal degrees."""
+        """Convert a NMEA ddmm.mmmm/dddmm.mmmm coordinate to decimal degrees.
+        Arguments: 
+            value: The ddmm.mmmm or dddmm.mmmm string from the NMEA sentence.
+            hemisphere: The hemisphere character ('N', 'S', 'E', 'W') from the NMEA sentence.
+        Returns:
+            The coordinate in decimal degrees.
+        """
         if not value:
             raise ValueError("Empty NMEA coordinate")
 
@@ -450,7 +456,13 @@ class GPSComputing:
 
     @staticmethod
     def nmea_time_to_timestamp(value, receiving_ts):
-        """Build today's UTC timestamp from the GGA hhmmss.sss field."""
+        """Build today's UTC timestamp from the GGA hhmmss.sss field.
+        Arguments:
+            value: The hhmmss.sss string from the GGA sentence.
+            receiving_ts: The timestamp when the sentence was received.
+        Returns:
+            The timestamp of the GGA sentence, adjusted to the correct day.
+        """
         if not value:
             return receiving_ts
 
@@ -492,7 +504,13 @@ class GPSComputing:
     
     @staticmethod
     def parse_gga(line, receiving_ts):
-        """Parse a GGA sentence and return a GNSSPoint, or None for another sentence."""
+        """Parse a GGA sentence and return a GNSSPoint, or None for another sentence.
+        Arguments:
+            line: The NMEA sentence string.
+            receiving_ts: The timestamp when the sentence was received.
+        Returns:
+            A GNSSPoint object if the sentence is a valid GGA sentence, or None otherwise.
+        """
         if not line.startswith(("$GPGGA,", "$GNGGA,")):
             return None
 
@@ -516,6 +534,94 @@ class GPSComputing:
             creation_ts=creation_ts,
             receiving_ts=receiving_ts,
         )
+        
+    @staticmethod
+    def decimal_to_nmea_coordinate(coordinate, is_latitude=False, is_longitude=False):
+        """
+        Convert a decimal degree coordinate to NMEA format.
+        Arguments:
+            coordinate: The coordinate in decimal degrees.
+            is_latitude: True if the coordinate is latitude, False otherwise.
+            is_longitude: True if the coordinate is longitude, False otherwise.
+        Returns:
+            tuple[int, float, str]:
+                - degrees
+                - minutes
+                - hemisphere (N/S/E/W)
+        """
+        if is_latitude and not is_longitude:
+            hemisphere = "N" if coordinate >= 0 else "S"
+        elif is_longitude and not is_latitude:
+            hemisphere = "E" if coordinate >= 0 else "W"
+        else:
+            raise ValueError("Specify either is_latitude or is_longitude as True.")
+
+        coordinate = abs(coordinate)
+
+        degrees = int(coordinate)
+        minutes = (coordinate - degrees) * 60.0
+
+        return degrees, minutes, hemisphere
+    
+    @staticmethod
+    def calcultateCheckSum(stringToCheck):
+        """Calculate the checksum for a given NMEA sentence string.
+        Arguments:
+            stringToCheck: The NMEA sentence string (without the starting '$' and without the checksum part).
+        Returns:
+            A string representing the checksum in hexadecimal format (two uppercase characters).
+        """
+        xsum_calc = 0
+
+        for char in stringToCheck:
+            xsum_calc = xsum_calc ^ ord(char)
+
+        return "%02X" % xsum_calc
+
+    @staticmethod
+    def get_gga_with_decimal_position(gga_time: datetime, latitude, longitude, altitude) -> bytes:
+        """This function generates a GGA NMEA sentence from the given parameters.
+        Arguments:
+            gga_time: datetime object representing the time of the GGA sentence.
+            latitude: Latitude in decimal degrees.
+            longitude: Longitude in decimal degrees.
+            altitude: Altitude in meters.
+        Returns:
+            A bytes object containing the GGA NMEA sentence.
+        """
+        lat_deg, lat_min, lat_hemi = GPSComputing.decimal_to_nmea_coordinate(
+            latitude, is_latitude=True
+        )
+        lon_deg, lon_min, lon_hemi = GPSComputing.decimal_to_nmea_coordinate(
+            longitude, is_longitude=True
+        )
+
+        ggaString = (
+            "GPGGA,%02d%02d%04.2f,"
+            "%02d%011.8f,%1s,"
+            "%03d%011.8f,%1s,"
+            "1,05,0.19,+00000,M,%5.3f,M,,"
+        ) % (
+            gga_time.hour,
+            gga_time.minute,
+            gga_time.second,
+            lat_deg,
+            lat_min,
+            lat_hemi,
+            lon_deg,
+            lon_min,
+            lon_hemi,
+            altitude,
+        )
+        
+        checksum = GPSComputing.calcultateCheckSum(ggaString)
+        
+        gga_bytes = bytes(
+            "$%s*%s\r\n" % (ggaString, checksum),
+            "ascii",
+        )
+        
+        return gga_bytes
 
 class AntiTheftZone:
 

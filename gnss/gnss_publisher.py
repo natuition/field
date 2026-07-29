@@ -1,5 +1,4 @@
 import argparse
-import datetime
 import json
 import time
 
@@ -127,9 +126,9 @@ class GNSSPublisher:
             mountpoint=config.NTRIP_MOUNTPOINT,
             lat=latitude,
             long=longitude,
-            caster_response_decode=config.CASTER_RESPONSE_DECODE,
-            send_location_to_ntrip=config.SEND_LOCATION_TO_NTRIP,
-            rtk_id_send=config.RTK_ID_SEND,
+            caster_encoding_format=config.CASTER_RESPONSE_DECODE,
+            send_gga_to_caster=config.SEND_LOCATION_TO_NTRIP,
+            filter_rtcm_by_id=config.RTK_ID_SEND,
             ntrip_sleep_time=config.NTRIP_SLEEP_TIME,
         )
     
@@ -180,8 +179,8 @@ class GNSSPublisher:
 
             return
 
-        self.__ntrip_client.lat = point.latitude
-        self.__ntrip_client.long = point.longitude
+        self.__ntrip_client.__current_lat = point.latitude
+        self.__ntrip_client.__current_long = point.longitude
         
     def __read_and_publish_position(self):
         raw_line = self.__gps_serial.readline()
@@ -232,7 +231,7 @@ class GNSSPublisher:
         if correction is None:
             return
 
-        rtcm_id = self.__ntrip_client.last_id
+        rtcm_id = self.__ntrip_client.__last_packet_id
 
         if rtcm_id not in self.__sent_rtcm_ids:
             self.__sent_rtcm_ids.append(rtcm_id)
