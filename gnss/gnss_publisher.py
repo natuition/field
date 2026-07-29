@@ -10,7 +10,7 @@ import utility
 from config import config
 from gnss.constants import IPC_ENDPOINT, TOPIC
 from logger import LoggerFactory
-from navigation import GNSSPoint
+from navigation import GNSSPoint, GPSComputing
 from gnss.ntrip_client import NtripClient, NtripError
 
 
@@ -19,8 +19,8 @@ class GNSSPublisher:
         self.__endpoint = endpoint
         self.__topic = topic
 
-        self.__context = zmq.Context()
-        self.__publisher = self.__context.socket(zmq.PUB)
+        self.__zmq_context = zmq.Context()
+        self.__publisher = self.__zmq_context.socket(zmq.PUB)
         self.__publisher.setsockopt(zmq.LINGER, 0)
         self.__publisher.bind(self.__endpoint)
 
@@ -109,8 +109,8 @@ class GNSSPublisher:
         if self.__publisher is not None:
             self.__publisher.close()
 
-        if self.__context is not None:
-            self.__context.term()
+        if self.__zmq_context is not None:
+            self.__zmq_context.term()
 
         self.__logger.info("GNSS publisher stopped")
 
@@ -118,93 +118,7 @@ class GNSSPublisher:
         self.close()
 
     @staticmethod
-    def nmea_coordinate_to_decimal(value, hemisphere):
-        """Convert a NMEA ddmm.mmmm/dddmm.mmmm coordinate to decimal degrees."""
-        if not value:
-            raise ValueError("Empty NMEA coordinate")
-
-        raw = float(value)
-        degrees = int(raw // 100)
-        minutes = raw - degrees * 100
-        coordinate = degrees + minutes / 60.0
-
-        if hemisphere in ("S", "W"):
-            coordinate = -coordinate
-
-        return coordinate
-
-    @staticmethod
-    def nmea_time_to_timestamp(value, receiving_ts):
-        """Build today's UTC timestamp from the GGA hhmmss.sss field."""
-        if not value:
-            return receiving_ts
-
-        hours = int(value[0:2])
-        minutes = int(value[2:4])
-        seconds_float = float(value[4:])
-        seconds = int(seconds_float)
-        microseconds = int(round((seconds_float - seconds) * 1_000_000))
-
-        if microseconds == 1_000_000:
-            seconds += 1
-            microseconds = 0
-
-        receiving_date = datetime.datetime.fromtimestamp(
-            receiving_ts,
-            tz=datetime.timezone.utc,
-        ).date()
-
-        creation_datetime = datetime.datetime(
-            receiving_date.year,
-            receiving_date.month,
-            receiving_date.day,
-            hours,
-            minutes,
-            seconds,
-            microseconds,
-            tzinfo=datetime.timezone.utc,
-        )
-
-        creation_ts = creation_datetime.timestamp()
-
-        # Around UTC midnight, the GGA time can belong to the adjacent day.
-        if creation_ts - receiving_ts > 12 * 3600:
-            creation_ts -= 24 * 3600
-        elif receiving_ts - creation_ts > 12 * 3600:
-            creation_ts += 24 * 3600
-
-        return creation_ts
-
-    @staticmethod
-    def parse_gga(line, receiving_ts):
-        """Parse a GGA sentence and return a GNSSPoint, or None for another sentence."""
-        if not line.startswith(("$GPGGA,", "$GNGGA,")):
-            return None
-
-        sentence = line.split("*", 1)[0]
-        fields = sentence.split(",")
-
-        if len(fields) < 10:
-            raise ValueError("Incomplete GGA sentence: {}".format(line))
-
-        latitude = GNSSPublisher.nmea_coordinate_to_decimal(fields[2], fields[3])
-        longitude = GNSSPublisher.nmea_coordinate_to_decimal(fields[4], fields[5])
-        # print(f"[DEBUG] {datetime.datetime.now()} Parsed latitude: {latitude:.20f}, fields[2]: {fields[2]}, fields[3]: {fields[3]}, parsed longitude: {longitude:.20f}, fields[4]: {fields[4]}, fields[5]: {fields[5]}", flush=True)
-        quality = int(fields[6])
-        if quality == 0:
-            return None
-        creation_ts = GNSSPublisher.nmea_time_to_timestamp(fields[1], receiving_ts)
-
-        return GNSSPoint(
-            latitude=latitude,
-            longitude=longitude,
-            quality=quality,
-            creation_ts=creation_ts,
-            receiving_ts=receiving_ts,
-        )
-
-    @staticmethod
-    def create_ntrip_client(latitude, longitude):
+    def __create_ntrip_client(latitude, longitude):
         return NtripClient(
             user=config.NTRIP_USER,
             password=config.NTRIP_PASSWORD,
@@ -218,13 +132,6 @@ class GNSSPublisher:
             rtk_id_send=config.RTK_ID_SEND,
             ntrip_sleep_time=config.NTRIP_SLEEP_TIME,
         )
-
-    @staticmethod
-    def rtcm_id_is_allowed(rtcm_id):
-        if not config.RTK_ID_SEND:
-            return True
-
-        return any(rtcm_id in filter_ids for filter_ids in config.RTK_ID_SEND)
     
     def __log_position_statistics_if_needed(self):
         current_ts = time.monotonic()
@@ -255,19 +162,10 @@ class GNSSPublisher:
         self.__position_count = 0
         self.__position_quality_counts = {}
         self.__last_position_stats_ts = current_ts
-    
-    def __must_pause_ntrip(self):
-        if not config.RTK_ID_SEND:
-            return False
-
-        return all(
-            bool(set(self.__sent_rtcm_ids) & set(filter_ids))
-            for filter_ids in config.RTK_ID_SEND
-        )
         
     def __update_ntrip_position(self, point):
         if self.__ntrip_client is None:
-            self.__ntrip_client = GNSSPublisher.create_ntrip_client(
+            self.__ntrip_client = GNSSPublisher.__create_ntrip_client(
                 point.latitude,
                 point.longitude,
             )
@@ -295,7 +193,7 @@ class GNSSPublisher:
 
         try:
             line = raw_line.decode("ascii", errors="ignore").strip()
-            point = GNSSPublisher.parse_gga(line, receiving_ts)
+            point = GPSComputing.parse_gga(line, receiving_ts)
         except (ValueError, IndexError) as error:
             self.__logger.debug(
                 "Invalid NMEA sentence: {}".format(error)
@@ -336,9 +234,6 @@ class GNSSPublisher:
 
         rtcm_id = self.__ntrip_client.last_id
 
-        if not self.rtcm_id_is_allowed(rtcm_id):
-            return
-
         if rtcm_id not in self.__sent_rtcm_ids:
             self.__sent_rtcm_ids.append(rtcm_id)
 
@@ -352,17 +247,13 @@ class GNSSPublisher:
         self.__gps_serial.flush()
 
         self.__logger.debug(
-            "RTCM correction {} sent to F9P "
+            "RTCM correction {} sent to GNSS receiver"
             "({}/{} bytes)".format(
                 rtcm_id,
                 written_size,
                 len(correction),
             )
         )
-
-        if self.__must_pause_ntrip():
-            self.__sent_rtcm_ids = []
-            time.sleep(config.NTRIP_SLEEP_TIME)
 
     def run(self):
         try:

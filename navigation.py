@@ -1,3 +1,4 @@
+import datetime
 import math
 from haversine import haversine # type: ignore
 import numpy as np
@@ -430,6 +431,91 @@ class GPSComputing:
         corner_3 = self.get_coordinate(center_point, corner_point,  180, distance)
         corners = self._corner_sort([corner_point, corner_1, corner_2, corner_3])
         return corners
+    
+    @staticmethod
+    def nmea_coordinate_to_decimal(value, hemisphere):
+        """Convert a NMEA ddmm.mmmm/dddmm.mmmm coordinate to decimal degrees."""
+        if not value:
+            raise ValueError("Empty NMEA coordinate")
+
+        raw = float(value)
+        degrees = int(raw // 100)
+        minutes = raw - degrees * 100
+        coordinate = degrees + minutes / 60.0
+
+        if hemisphere in ("S", "W"):
+            coordinate = -coordinate
+
+        return coordinate
+
+    @staticmethod
+    def nmea_time_to_timestamp(value, receiving_ts):
+        """Build today's UTC timestamp from the GGA hhmmss.sss field."""
+        if not value:
+            return receiving_ts
+
+        hours = int(value[0:2])
+        minutes = int(value[2:4])
+        seconds_float = float(value[4:])
+        seconds = int(seconds_float)
+        microseconds = int(round((seconds_float - seconds) * 1_000_000))
+
+        if microseconds == 1_000_000:
+            seconds += 1
+            microseconds = 0
+
+        receiving_date = datetime.datetime.fromtimestamp(
+            receiving_ts,
+            tz=datetime.timezone.utc,
+        ).date()
+
+        creation_datetime = datetime.datetime(
+            receiving_date.year,
+            receiving_date.month,
+            receiving_date.day,
+            hours,
+            minutes,
+            seconds,
+            microseconds,
+            tzinfo=datetime.timezone.utc,
+        )
+
+        creation_ts = creation_datetime.timestamp()
+
+        # Around UTC midnight, the GGA time can belong to the adjacent day.
+        if creation_ts - receiving_ts > 12 * 3600:
+            creation_ts -= 24 * 3600
+        elif receiving_ts - creation_ts > 12 * 3600:
+            creation_ts += 24 * 3600
+
+        return creation_ts
+    
+    @staticmethod
+    def parse_gga(line, receiving_ts):
+        """Parse a GGA sentence and return a GNSSPoint, or None for another sentence."""
+        if not line.startswith(("$GPGGA,", "$GNGGA,")):
+            return None
+
+        sentence = line.split("*", 1)[0]
+        fields = sentence.split(",")
+
+        if len(fields) < 10:
+            raise ValueError("Incomplete GGA sentence: {}".format(line))
+
+        latitude = GPSComputing.nmea_coordinate_to_decimal(fields[2], fields[3])
+        longitude = GPSComputing.nmea_coordinate_to_decimal(fields[4], fields[5])
+        quality = int(fields[6])
+        if quality == 0:
+            return None
+        creation_ts = GPSComputing.nmea_time_to_timestamp(fields[1], receiving_ts)
+
+        return GNSSPoint(
+            latitude=latitude,
+            longitude=longitude,
+            quality=quality,
+            creation_ts=creation_ts,
+            receiving_ts=receiving_ts,
+        )
 
 class AntiTheftZone:
 
