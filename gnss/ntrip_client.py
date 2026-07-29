@@ -26,6 +26,9 @@ class NtripError(Exception):
 
 
 class NtripClient(object):
+    
+    DATA_TIMEOUT_SECONDS = 3
+    
     def __init__(
         self,
         user="",
@@ -90,6 +93,8 @@ class NtripClient(object):
                     self.__filter_rtcm_by_id
                 )
             )
+            
+        self.__last_data_received_ts = time.monotonic()
             
     def update_position(self, latitude, longitude, altitude= 0):
         self.__current_lat = latitude
@@ -338,10 +343,28 @@ class NtripClient(object):
                 raise
 
             except ssl.SSLWantReadError:
+                if (
+                    time.monotonic() - self.__last_data_received_ts
+                    > NtripClient.DATA_TIMEOUT_SECONDS
+                ):
+                    self.__logger.warning(
+                        "No NTRIP data received for more than {:.1f} seconds; "
+                        "reconnecting.".format(NtripClient.DATA_TIMEOUT_SECONDS)
+                    )
+                    self.__close_socket()
                 return None
 
             except IOError as error:
                 if error.errno == errno.EWOULDBLOCK:
+                    if (
+                        time.monotonic() - self.__last_data_received_ts
+                        > NtripClient.DATA_TIMEOUT_SECONDS
+                    ):
+                        self.__logger.warning(
+                            "No NTRIP data received for more than {:.1f} seconds; "
+                            "reconnecting.".format(NtripClient.DATA_TIMEOUT_SECONDS)
+                        )
+                        self.__close_socket()
                     return None
 
                 self.__logger.warning(
@@ -370,6 +393,8 @@ class NtripClient(object):
 
                 self.__close_socket()
                 return None
+            
+            self.__last_data_received_ts = time.monotonic()
 
             if self.__rtcm3_decoder.read(data):
                 self.__last_packet_id = self.__rtcm3_decoder.get_packet_ID()
