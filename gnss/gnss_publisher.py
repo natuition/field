@@ -173,8 +173,6 @@ class GNSSPublisher:
                     point.longitude,
                 )
             )
-
-            return
         
         self.__ntrip_client.update_position(
             point.latitude,
