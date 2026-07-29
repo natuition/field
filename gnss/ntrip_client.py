@@ -91,7 +91,7 @@ class NtripClient(object):
                 )
             )
             
-    def update_position(self, latitude, longitude, altitude):
+    def update_position(self, latitude, longitude, altitude= 0):
         self.__current_lat = latitude
         self.__current_long = longitude
         self.__current_altitude = altitude

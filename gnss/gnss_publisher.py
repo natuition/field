@@ -159,25 +159,24 @@ class GNSSPublisher:
         self.__position_quality_counts = {}
         self.__last_position_stats_ts = current_ts
         
-    def __update_ntrip_position(self, point):
+    def __update_ntrip_position(self, gnss_point: GNSSPoint):
         if self.__ntrip_client is None:
             self.__ntrip_client = GNSSPublisher.__create_ntrip_client(
-                point.latitude,
-                point.longitude,
+                gnss_point.latitude,
+                gnss_point.longitude,
             )
 
             self.__logger.info(
                 "NTRIP client initialized at latitude={:.8f}, "
                 "longitude={:.8f}".format(
-                    point.latitude,
-                    point.longitude,
+                    gnss_point.latitude,
+                    gnss_point.longitude,
                 )
             )
         
         self.__ntrip_client.update_position(
-            point.latitude,
-            point.longitude,
-            point.altitude,
+            gnss_point.latitude,
+            gnss_point.longitude
         )
         
     def __read_and_publish_position(self):
