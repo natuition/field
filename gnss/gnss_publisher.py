@@ -76,21 +76,12 @@ class GNSSPublisher:
         self.__closed = True
 
         if self.__ntrip_client is not None:
-            ntrip_socket = getattr(
-                self.__ntrip_client,
-                "socket",
-                None,
-            )
-
-            if ntrip_socket is not None:
-                try:
-                    ntrip_socket.close()
-                except OSError as error:
-                    self.__logger.warning(
-                        "Error while closing NTRIP socket: {}".format(
-                            error
-                        )
-                    )
+            try:
+                self.__ntrip_client.close()
+            except OSError as error:
+                self.__logger.warning(
+                    "Error while closing NTRIP client: {}".format(error)
+                )
 
         if (
             self.__gps_serial is not None
@@ -117,7 +108,7 @@ class GNSSPublisher:
         self.close()
 
     @staticmethod
-    def __create_ntrip_client(latitude, longitude):
+    def __create_ntrip_client():
         return NtripClient(
             user=config.NTRIP_USER,
             password=config.NTRIP_PASSWORD,
@@ -161,10 +152,7 @@ class GNSSPublisher:
         
     def __update_ntrip_position(self, gnss_point: GNSSPoint):
         if self.__ntrip_client is None:
-            self.__ntrip_client = GNSSPublisher.__create_ntrip_client(
-                gnss_point.latitude,
-                gnss_point.longitude,
-            )
+            self.__ntrip_client = GNSSPublisher.__create_ntrip_client()
 
             self.__logger.info(
                 "NTRIP client initialized at latitude={:.8f}, "
