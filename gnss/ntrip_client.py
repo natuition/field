@@ -87,13 +87,13 @@ class NtripClient(object):
 
         self.__caster_socket = None
         self.__state = self.STATE_DISCONNECTED
+        self.__resolver_generation = 0
         self.__resolver_generation += 1
         self.__connect_started_ts = None
         self.__next_connect_attempt_ts = 0.0
 
         self.__resolver_thread = None
         self.__resolver_lock = threading.Lock()
-        self.__resolver_generation = 0
         self.__resolver_started_ts = None
         self.__resolver_result = None
         self.__resolver_error = None
