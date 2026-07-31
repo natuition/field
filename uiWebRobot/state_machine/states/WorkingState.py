@@ -114,13 +114,30 @@ class WorkingState(State.State):
         msg = f"Send KeyboardInterrupt to main"
         self.__file_logger.write_and_flush(msg + "\n")
         self.__logger.info(msg)
-        os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+        
+        try:
+            os.killpg(os.getpgid(self.main.pid), signal.SIGINT)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:  
+            msg = f"Error while sending SIGINT to main: {e}"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.error(msg)
+        
         time.sleep(3)
         
         msg = f"Wait main"
         self.__file_logger.write_and_flush(msg + "\n")
         self.__logger.debug(msg)
-        self.main.wait()
+        
+        try :
+            self.main.wait()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            msg = f"Error while waiting main: {e}"
+            self.__file_logger.write_and_flush(msg + "\n")
+            self.__logger.error(msg)
         
         msg = f"Try to stop main thread if alive"
         self.__file_logger.write_and_flush(msg + "\n")
