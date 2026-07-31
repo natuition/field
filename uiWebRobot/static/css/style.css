@@ -823,7 +823,7 @@ select {
     }
     body {
         position: relative;
-        /*max-height: 750px !important;*/
+        max-height: 750px !important;
         width: 400px !important;
         margin: auto;
         /*border: 16px black solid;
