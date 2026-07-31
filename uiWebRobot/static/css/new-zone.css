@@ -172,3 +172,10 @@
     height: 100%;
     opacity: 0;
 }
+
+@media (pointer: fine),
+(pointer: none) {
+  #popup_modal_alert {
+    width: 400px !important;
+  }
+}
