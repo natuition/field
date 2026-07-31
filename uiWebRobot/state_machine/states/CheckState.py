@@ -75,15 +75,17 @@ class CheckState(State.State):
 
     def on_socket_data(self, data):
         if data["type"] == 'list_validation':
-            try:
-                with open("./yolo/" + data["strategy"] + ".conf") as file:
-                    for line in file:
-                        content = line.split("#")[0].strip()
-                        if content != "" and "=" in content:
-                            key, value = content.split("=")[:2]
-                            utilsFunction.changeConfigValue(key.strip(), value.strip())
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
+            #TODO MVI call ?
+            pass
+            # try:
+            #     with open("./yolo/" + data["strategy"] + ".conf") as file:
+            #         for line in file:
+            #             content = line.split("#")[0].strip()
+            #             if content != "" and "=" in content:
+            #                 key, value = content.split("=")[:2]
+            #                 utilsFunction.changeConfigValue(key.strip(), value.strip())
+            # except KeyboardInterrupt:
+            #     raise KeyboardInterrupt
         else:
             self.socketio.emit(
                 'reload', {}, namespace='/broadcast', broadcast=True)

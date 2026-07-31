@@ -37,8 +37,9 @@ function canNext() {
 }
 
 function listValidationEvery500ms() {
-    var select_ai = document.getElementById("AI_selector");
+    //var select_ai = document.getElementById("AI_selector");
     socketio.emit('data', { type: "list_validation", strategy: select_ai.value });
+    socketio.emit('data', { type: "list_validation", strategy: null });
 }
 
 socketio.on('data', function (dataServ) {
@@ -53,7 +54,7 @@ function checkAllBoxAreChecked() {
         $('#checkbutton').attr('disabled', '');
         $('#checkbutton').addClass('unselectable');
         $('#checkbutton').addClass('active');
-        $('#AI_selector').attr('disabled', '');
+        //$('#AI_selector').attr('disabled', '');
         loading_next = document.getElementById("checkbutton").getElementsByClassName('loading')[0];
 
         //count_next_interval = setInterval(count_next, 500);
