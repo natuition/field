@@ -8,7 +8,7 @@ function sendAlert(message_name, message, reload = true, timeout = 5000) {
 }
 
 function sendInfo(message_name, message, reload = false, timeout = false) {
-    show_alert(message_name, message, "alert-info");
+    show_alert(message_name, message, "alert-success");
     if (timeout) {
         setTimeout(hide_alert, timeout, reload);
     }
