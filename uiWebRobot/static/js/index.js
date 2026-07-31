@@ -84,53 +84,10 @@ zipFileInput.addEventListener("change", async function () {
     }
 });
 
-// async function loadZip() {
-//     console.debug("loadZip.start")
-//     return new Promise((resolve, reject) => {
-//         const input = document.createElement("input");
-//         input.type = "file";
-//         input.id = "input-load-zip"
-//         input.hidden = true
-//         input.accept = ".zip,application/zip,application/x-zip-compressed";
-
-//         input.addEventListener("change", () => {
-//             console.debug("input.onchange")
-//             if (input.files.length > 0) {
-//                 console.debug("input.files.length > 0 = TRUE")
-//                 console.debug(`input.files[0].name = ${input.files[0].name}`)
-//                 resolve(input.files[0]);
-//             } else {
-//                 reject(new Error("Aucun fichier sélectionné"));
-//             }
-//         }, { once: true });
-
-//         console.debug("loadZip.will-click")
-//         input.click();
-//         console.debug("loadZip.input-clicked")
-//     });
-// }
-
 function clickHandler() {
     if (this.id == "Newfield") {
         if (create_field_with_navx) {
             console.debug("will-load-zip")
-            // loadZip()
-            //     .then(async (zip) => {
-            //         console.debug("will-extract")
-            //         const files = await extractFiles(zip, "geojson");
-            //         console.debug("extracted")
-            //         console.debug("will-parse")
-            //         const parsedGeoJSON = parseGeoJSON(files);
-            //         console.debug("parsed")
-            //         console.debug("will-validate")
-            //         const validFeatures = filterFeatures(parsedGeoJSON, (feature) => feature.geometry?.type === "LineString");
-            //         console.debug("validated")
-            //         console.debug("will-open-modal")
-            //         openModal(validFeatures);
-            //     })
-            //     .catch((error) => {
-            //         sendAlert("err_create_field_with_navx", error, false)
-            //     })
         } else {
             if (gpsQuality == "no_gps") {
                 sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
