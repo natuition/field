@@ -822,7 +822,7 @@ select {
         background-color: white;
     }
     body {
-        position: relative;
+        /*position: relative;*/
         max-height: 750px !important;
         width: 400px !important;
         margin: auto;
