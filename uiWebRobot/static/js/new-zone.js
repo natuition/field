@@ -125,14 +125,6 @@ const processSelectedFeature = (feature) => {
 
   const featureName = feature.properties?.[PROPERTY_KEY_AS_ZONE_NAME] || (ui_languages["zone__fallback_name"])[ui_language]
 
-  //sendInfo("info_create_field_with_navx", (ui_languages["zone__loading_state"])[ui_language])
-
-  socketBroadcast_.emit('popup_modal', {
-    message_name: "info_create_field_with_navx",
-    message: (ui_languages["zone__loading_state"])[ui_language],
-    type_alert: "alert-success"
-  });
-
   socketio.emit("data", {
     type: "create_field",
     value: feature,

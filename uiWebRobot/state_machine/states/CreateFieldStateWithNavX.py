@@ -40,6 +40,19 @@ class CreateFieldStateWithNavX(State.State):
         self.socketio.emit(
             "field", {"status": "pushed"}, namespace="/button", broadcast=True
         )
+        
+        self.__ui_languages, self.__current_ui_language = utilsFunction.get_ui_language()
+        message = self.__ui_languages["zone__loading_state"][self.__current_ui_language]
+        self.socketio.emit(
+            'popup_modal', {
+                "message_name":"info_create_field_with_navx", 
+                "message":message, 
+                "type_alert":"alert-success"
+            }, 
+            namespace='/broadcast', 
+            broadcast=True
+        )
+        
         self.statusOfUIObject = FrontEndObjects(
             fieldButton=ButtonState.CHARGING,
             startButton=ButtonState.DISABLE,
