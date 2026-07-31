@@ -179,4 +179,7 @@
     width: 400px !important;
     margin: auto;
   }
+  .modal-content{
+    width: 400px !important;
+  }
 }
