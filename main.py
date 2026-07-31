@@ -1526,7 +1526,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
     response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=a)
     if response != smoothie.RESPONSE_OK:
         msg = "Couldn't put straight wheels before maneuver, smoothie response:\n" + response
-        print(msg)
+        MAIN_LOGGER.error(msg)
         logger_full.write(msg + "\n")
     smoothie.wait_for_all_actions_done()
 
@@ -1545,7 +1545,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
             continue
 
         angle = abs(nav.get_angle(from_to_finished[1], from_to_finished[0], last_cur_pos, cur_pos))
-        print(f"Angle n°1 : {angle}")
+        MAIN_LOGGER.debug(f"Angle n°1 : {angle}")
 
         if angle > 85 and angle < 95 :
             break
@@ -1562,7 +1562,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
     response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
     if response != smoothie.RESPONSE_OK:
         msg = "Couldn't put straight wheels before maneuver, smoothie response:\n" + response
-        print(msg)
+        MAIN_LOGGER.error(msg)
         logger_full.write(msg + "\n")
     smoothie.wait_for_all_actions_done()
 
@@ -1581,7 +1581,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
         cur_pos_obj = gps.get_last_position_v2()
         cur_pos = cur_pos_obj.as_old_list
         distance = nav.get_distance(start_point, cur_pos)
-        print(f"Distance n°1 : {distance}")
+        MAIN_LOGGER.debug(f"Distance n°1 : {distance}")
         
     vesc_engine.stop_moving(vesc_engine.PROPULSION_KEY)
     
@@ -1592,7 +1592,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
     response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=a)
     if response != smoothie.RESPONSE_OK:
         msg = "Couldn't put straight wheels before maneuver, smoothie response:\n" + response
-        print(msg)
+        MAIN_LOGGER.error(msg)
         logger_full.write(msg + "\n")
     smoothie.wait_for_all_actions_done()
 
@@ -1614,7 +1614,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
             continue
 
         angle = nav.get_angle(from_to_finished[1], from_to_finished[0], last_cur_pos, cur_pos)
-        print(f"Angle n°2 : {angle}")
+        MAIN_LOGGER.debug(f"Angle n°2 : {angle}")
 
         if angle > -5 and angle < 5 :
             break
@@ -1629,7 +1629,7 @@ def maneuver(   smoothie: adapters.SmoothieAdapter,
     response = smoothie.custom_move_to(A_F=config.A_F_MAX, A=0)
     if response != smoothie.RESPONSE_OK:
         msg = "Couldn't put straight wheels before maneuver, smoothie response:\n" + response
-        print(msg)
+        MAIN_LOGGER.error(msg)
         logger_full.write(msg + "\n")
     smoothie.wait_for_all_actions_done()
 
