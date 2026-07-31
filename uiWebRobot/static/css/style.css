@@ -1004,6 +1004,20 @@ select {
     right: 0;
 }
 
+.alert {
+    padding: .75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid #856404;
+    border-radius: .25rem;
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 500;
+    margin: 0 10px;
+    left:0;
+    right: 0;
+}
+
 .alert-primary {
     color: #004085;
     background-color: #cce5ff;
@@ -1050,19 +1064,5 @@ select {
     color: #1b1e21;
     background-color: #d6d8d9;
     border-color: #c6c8ca;
-}
-
-.alert {
-    padding: .75rem 1.25rem;
-    margin-bottom: 1rem;
-    border: 1px solid #856404;
-    border-radius: .25rem;
-    position: fixed;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 500;
-    margin: 0 10px;
-    left:0;
-    right: 0;
 }
 
