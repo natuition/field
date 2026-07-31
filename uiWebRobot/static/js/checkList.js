@@ -38,7 +38,7 @@ function canNext() {
 
 function listValidationEvery500ms() {
     //var select_ai = document.getElementById("AI_selector");
-    socketio.emit('data', { type: "list_validation", strategy: select_ai.value });
+    //socketio.emit('data', { type: "list_validation", strategy: select_ai.value });
     socketio.emit('data', { type: "list_validation", strategy: null });
 }
 
