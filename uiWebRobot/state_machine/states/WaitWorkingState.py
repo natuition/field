@@ -268,6 +268,9 @@ class WaitWorkingState(State.State):
             self.__stop_thread()
             return self
         
+        elif event == Events.STOP:
+            return self
+        
         else:
             self.__stop_thread()
             try:
