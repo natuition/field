@@ -869,7 +869,7 @@ select {
         border-radius: 10px;
         background-color: white;
         position: absolute;
-        /*z-index: -2;*/
+        z-index: -2;
         overflow-x: hidden;
         -ms-overflow-style: none;  /* IE and Edge */
         scrollbar-width: none;  /* Firefox */
