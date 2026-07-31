@@ -889,11 +889,11 @@ select {
     }
 
     .header__color {
-        height: 20%;
-        width: 368px !important;
+        height: 20vh;
+        width: 400px !important;
         z-index: -1;
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
+        /*border-top-left-radius: 10px;
+        border-top-right-radius: 10px;*/
     }
 
     .header_top_info,
