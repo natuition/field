@@ -177,5 +177,6 @@
 (pointer: none) {
   #popup_modal_alert {
     width: 400px !important;
+    margin: auto;
   }
 }
