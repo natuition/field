@@ -821,20 +821,21 @@ select {
         height: 100%;
         background-color: white;
     }
-    /* body {
+    body {
         position: relative;
-        max-height: 750px !important;
+        /*max-height: 750px !important;*/
         width: 400px !important;
         margin: auto;
-        border: 16px black solid;
+        /*border: 16px black solid;
         border-top-width: 40px;
         border-bottom-width: 40px;
         border-radius: 36px;
         top:50%;
         transform: translateY(-50%);
-        background-color: black;
+        background-color: black;*/
     }
 
+    /* 
     body:before {
         content: '';
         display: block;
