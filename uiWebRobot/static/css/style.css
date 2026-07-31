@@ -821,9 +821,9 @@ select {
         height: 100%;
         background-color: white;
     }
-    body {
+    /* body {
         position: relative;
-        max-height: 750px !important;/*750+32px+2*60px*/
+        max-height: 750px !important;
         width: 400px !important;
         margin: auto;
         border: 16px black solid;
@@ -859,7 +859,7 @@ select {
         transform: translate(-50%, 40%);
         background: #333;
         border-radius: 50%;
-    }
+    } */
 
     .main {
         height: 100%;
