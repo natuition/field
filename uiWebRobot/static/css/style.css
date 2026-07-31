@@ -868,8 +868,8 @@ select {
         flex-direction: column;
         border-radius: 10px;
         background-color: white;
-        position: absolute;
-        z-index: -2;
+        /*position: absolute;
+        z-index: -2;*/
         overflow-x: hidden;
         -ms-overflow-style: none;  /* IE and Edge */
         scrollbar-width: none;  /* Firefox */
