@@ -359,6 +359,10 @@ class WaitWorkingState(State.State):
 
         elif data["type"] == "wait_working_state_refresh" :
             self.__check_ui_refresh_thread_alive = False
+            
+        elif data["type"] == "restart_gnss_publisher_service" :
+            utilsFunction.restart_gnss_publisher_service(self.__logger, self.__file_logger)
+        
         return self
 
     def getStatusOfControls(self):

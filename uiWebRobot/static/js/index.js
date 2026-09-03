@@ -91,6 +91,7 @@ function clickHandler() {
         } else {
             if (gpsQuality == "no_gps") {
                 sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
+                socketio.emit('data', { type: "restart_gnss_publisher_service"});
             } else {
                 sliderValue = document.getElementById("r1").value
                 socketio.emit('data', { type: "create_field", value: sliderValue });
@@ -104,6 +105,7 @@ function clickHandler() {
     } else if (this.id == "Start") {
         if (gpsQuality == "no_gps") {
             sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
+            socketio.emit('data', { type: "restart_gnss_publisher_service"});
         } else {
             socketio.emit('data', { type: "start_main", audit: audit });
         }
@@ -112,6 +114,7 @@ function clickHandler() {
     } else if (this.id == "Continue") {
         if (gpsQuality == "no_gps") {
             sendAlert("alert_on_no_gps", (ui_languages["alert_on_no_gps"])[ui_language], false)
+            socketio.emit('data', { type: "restart_gnss_publisher_service"});
         } else {
             socketio.emit('data', { type: "continue_main", audit: audit });
         }

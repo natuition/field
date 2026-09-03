@@ -1,3 +1,4 @@
+import logging
 from typing import Tuple, Dict, List, Union, Any, Iterable
 from flask_socketio import SocketIO
 import socketio
@@ -451,6 +452,29 @@ def get_ui_language() -> Tuple[dict, str]:
     if ui_language not in ui_languages["Supported Language"]:
         ui_language = "en"
     return ui_languages, ui_language
+
+
+def restart_gnss_publisher_service(logger: logging.Logger, file_logger: utility.Logger):
+    service_name = "gnss_publisher.service"
+    msg = f"Restarting {service_name}..."
+    file_logger.write_and_flush(msg + "\n")
+    logger.info(msg)
+    try:
+        result = subprocess.run(
+            ["sudo", "systemctl", "restart", service_name],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        if result.stdout:
+            logger.info(result.stdout.strip())
+    except subprocess.CalledProcessError as e:
+        error_msg = f"Error while restarting {service_name}!"
+        logger.exception(error_msg)
+        file_logger.write_and_flush(error_msg + "\n")
+        if e.stderr:
+            logger.error(e.stderr.strip())
+            file_logger.write_and_flush(e.stderr.strip() + "\n")
 
 
 ########## start largest_inscribed_rectangle ##########
