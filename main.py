@@ -2234,8 +2234,12 @@ def main():
                         #TODO: Make manoeuvre
 
                         from_to = [path_points[i - 2][0], path_points[i - 1][0]]
+                        
+                        client_mvi.run_passive_detection_on_MVI()
 
                         maneuver(smoothie, vesc_engine, gps, nav, logger_full, from_to, field_gps_coords)
+                        
+                        client_mvi.run_active_detection_on_MVI()
 
                         continue
 

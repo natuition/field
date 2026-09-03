@@ -36,7 +36,7 @@ class NtripClient(object):
     returns either one complete RTCM packet or ``None``.
     """
 
-    DATA_TIMEOUT_SECONDS = 3.0
+    DATA_TIMEOUT_SECONDS = 10.0
     CONNECT_TIMEOUT_SECONDS = 3.0
     DNS_TIMEOUT_SECONDS = 3.0
     RECONNECT_DELAY_SECONDS = 1.0
